@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloud-provider-config
+  namespace: {{ .Release.Namespace }}
+data:
+  cloudprovider.conf: |
+    [Global]
+    project-id="{{ .Values.projectID }}"
+    network-name="{{ .Values.networkName }}"
+    {{- if .Values.subNetworkName }}
+    subnetwork-name="{{ .Values.subNetworkName }}"
+    {{- end }}
+    multizone=true
+    local-zone="{{ .Values.zone }}"
+    token-url=nil
+    node-tags="{{ .Values.nodeTags }}"

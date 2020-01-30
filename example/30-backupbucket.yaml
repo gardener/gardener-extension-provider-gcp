@@ -1,0 +1,20 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backupprovider
+  namespace: garden
+type: Opaque
+data:
+# serviceaccount.json: base64(serviceaccount-json)
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: BackupBucket
+metadata:
+  name: cloud--gcp--fg2d6
+spec:
+  type: gcp
+  region: eu-west-1
+  secretRef:
+    name: backupprovider
+    namespace: garden

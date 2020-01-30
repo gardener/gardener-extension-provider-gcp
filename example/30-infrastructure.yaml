@@ -1,0 +1,65 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shoot--foobar--gcp
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: core-gcp
+  namespace: shoot--foobar--gcp
+type: Opaque
+data:
+# serviceaccount.json: base64(serviceaccount-json)
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: Cluster
+metadata:
+  name: shoot--foobar--gcp
+spec:
+  cloudProfile:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: CloudProfile
+  seed:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: Seed
+  shoot:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: Shoot
+    spec:
+      networking:
+        pods: 10.243.128.0/17
+        services: 10.243.0.0/17
+    status:
+      lastOperation:
+        state: Succeeded
+
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: Infrastructure
+metadata:
+  name: gcp-infra
+  namespace: shoot--foobar--gcp
+spec:
+  type: gcp
+  region: europe-west1
+  secretRef:
+    namespace: shoot--foobar--gcp
+    name: core-gcp
+  providerConfig:
+    apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+    kind: InfrastructureConfig
+    networks:
+    # vpc:
+    #   name: my-vpc
+    #   cloudRouter:
+    #     name: my-cloudrouter
+      workers: 10.242.0.0/19
+    # internal: 10.243.0.0/19
+    # cloudNAT:
+    #   minPortsPerVM: 2048
+    # flowLogs:
+    #   aggregationInterval: 0.5
+    #   flowSampling: 0.2
+    #   metadata: INCLUDE_ALL_METADATA

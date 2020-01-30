@@ -1,0 +1,5 @@
+projectID: foo-bar-1234
+networkName: default
+# subNetworkName: internal
+zone: europe-west-1b
+nodeTags: foo-bar

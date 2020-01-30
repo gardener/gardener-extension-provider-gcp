@@ -1,0 +1,12 @@
+{{- if eq .Values.gardener.seed.provider "gcp" }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.config.etcd.storage.className }}
+  labels:
+{{ include "labels" . | indent 4 }}
+provisioner: kubernetes.io/gce-pd
+allowVolumeExpansion: true
+parameters:
+  type: pd-ssd
+{{- end }}

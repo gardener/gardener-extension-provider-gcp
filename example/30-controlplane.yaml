@@ -1,0 +1,71 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shoot--foobar--gcp
+  labels:
+#    backup.gardener.cloud/provider: gcp
+#    seed.gardener.cloud/provider: gcp
+    shoot.gardener.cloud/provider: gcp
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudprovider
+  namespace: shoot--foobar--gcp
+type: Opaque
+data:
+  serviceaccount.json: eyJwcm9qZWN0X2lkIjoiYWJjIn0=
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: Cluster
+metadata:
+  name: shoot--foobar--gcp
+spec:
+  cloudProfile:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: CloudProfile
+  seed:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: Seed
+  shoot:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: Shoot
+    spec:
+      networking:
+        pods: 10.250.0.0/19
+      kubernetes:
+        version: 1.13.4
+      hibernation:
+        enabled: false
+    status:
+      lastOperation:
+        state: Succeeded
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: ControlPlane
+metadata:
+  name: control-plane
+  namespace: shoot--foobar--gcp
+spec:
+  type: gcp
+  region: europe-west1
+  secretRef:
+    name: cloudprovider
+    namespace: shoot--foobar--gcp
+  providerConfig:
+    apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+    kind: ControlPlaneConfig
+    zone: europe-west1a
+    cloudControllerManager:
+      featureGates:
+        CustomResourceValidation: true
+  infrastructureProviderStatus:
+    apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+    kind: InfrastructureStatus
+    networks:
+      vpc:
+        name: vpc-1234
+      subnets:
+      - purpose: internal
+        name: subnet-acbd1234
