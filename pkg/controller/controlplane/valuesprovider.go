@@ -83,7 +83,7 @@ var controlPlaneSecrets = &secrets.Secrets{
 
 var configChart = &chart.Chart{
 	Name: "cloud-provider-config",
-	Path: filepath.Join(internal.InternalChartsPath, "cloud-provider-config"),
+	Path: filepath.Join(gcp.InternalChartsPath, "cloud-provider-config"),
 	Objects: []*chart.Object{
 		{
 			Type: &corev1.ConfigMap{},
@@ -94,7 +94,7 @@ var configChart = &chart.Chart{
 
 var ccmChart = &chart.Chart{
 	Name:   "cloud-controller-manager",
-	Path:   filepath.Join(internal.InternalChartsPath, "cloud-controller-manager"),
+	Path:   filepath.Join(gcp.InternalChartsPath, "cloud-controller-manager"),
 	Images: []string{gcp.CloudControllerManagerImageName},
 	Objects: []*chart.Object{
 		{Type: &corev1.Service{}, Name: "cloud-controller-manager"},
@@ -105,7 +105,7 @@ var ccmChart = &chart.Chart{
 
 var ccmShootChart = &chart.Chart{
 	Name: "cloud-controller-manager-shoot",
-	Path: filepath.Join(internal.InternalChartsPath, "cloud-controller-manager-shoot"),
+	Path: filepath.Join(gcp.InternalChartsPath, "cloud-controller-manager-shoot"),
 	Objects: []*chart.Object{
 		{Type: &rbacv1.ClusterRole{}, Name: "system:controller:cloud-node-controller"},
 		{Type: &rbacv1.ClusterRoleBinding{}, Name: "system:controller:cloud-node-controller"},

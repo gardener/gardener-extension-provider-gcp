@@ -19,6 +19,7 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	extensionscontroller "github.com/gardener/gardener-extensions/pkg/controller"
 	"github.com/gardener/gardener-extensions/pkg/terraformer"
@@ -166,7 +167,7 @@ func RenderTerraformerChart(
 
 	values := ComputeTerraformerChartValues(infra, account, config, cluster)
 
-	release, err := renderer.Render(filepath.Join(internal.InternalChartsPath, "gcp-infra"), "gcp-infra", infra.Namespace, values)
+	release, err := renderer.Render(filepath.Join(gcp.InternalChartsPath, "gcp-infra"), "gcp-infra", infra.Namespace, values)
 	if err != nil {
 		return nil, err
 	}
