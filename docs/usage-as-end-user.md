@@ -53,9 +53,8 @@ If you want to get a fresh VPC for the shoot then just omit the `networks.vpc` f
 
 * If a VPC name is not given then we will create the cloud router + NAT gateway to ensure that worker nodes don't get external IPs.
 
-* If a VPC name is given then
-  * if a cloud router name is not given we won't do anything, i.e. not creating a cloud router + NAT ourselves, resulting in worker nodes having external IPs (only for limited amount of time, end-users are asked to migrate to the following case)
-  * if a cloud router name is given we re-use this one and create a dedicated NAT for the shoot, allowing worker nodes to not have external IPs.
+* If a VPC name is given then a cloud router name must also be given, failure to do so would result in validation errors
+and possibly clusters without egress connectivity.
 
 The `networks.workers` section describes the CIDR for a subnet that is used for all shoot worker nodes, i.e., VMs which later run your applications.
 
