@@ -16,6 +16,7 @@ clusterName: test-namespace
 networks:
   cloudNAT:
     minPortsPerVM: 2048
+#   natIPNames: ["manualnat1", "manualnat2"]
   services: 100.64.0.0/13
   pods: 100.96.0.0/11
   workers: 10.250.0.0/19
@@ -28,6 +29,7 @@ networks:
 outputKeys:
   vpcName: vpc_name
   cloudNAT: cloud_nat
+  natIPs: nat_ips
   cloudRouter: cloud_router
   subnetNodes: subnet_nodes
   serviceAccountEmail: service_account_email

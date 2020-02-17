@@ -55,7 +55,11 @@ resource "google_compute_router_nat" "nat" {
   router =  "${google_compute_router.router.name}"
   {{ end -}}
   region                             = "{{ required "google.region is required" .Values.google.region }}"
-  nat_ip_allocate_option             = "AUTO_ONLY"
+  nat_ip_allocate_option             = {{ if .Values.networks.cloudNAT.natIPNames }}"MANUAL_ONLY"{{ else }}"AUTO_ONLY"{{ end }}
+  {{ if .Values.networks.cloudNAT.natIPNames -}}
+  nat_ips                = [{{range $i, $name := .Values.networks.cloudNAT.natIPNames}}{{if $i}},{{end}}"${data.google_compute_address.{{$name}}.self_link}"{{end}}]
+  {{- end }}
+
   source_subnetwork_ip_ranges_to_nat = "LIST_OF_SUBNETWORKS"
   subnetwork {
     name                    =  "${google_compute_subnetwork.subnetwork-nodes.self_link}"
@@ -70,7 +74,13 @@ resource "google_compute_router_nat" "nat" {
 }
 {{- end}}
 
-
+{{ if .Values.networks.cloudNAT.natIPNames -}}
+{{range $index, $natIP := .Values.networks.cloudNAT.natIPNames}}
+data "google_compute_address" "{{ $natIP }}" {
+  name = "{{ $natIP }}"
+}
+{{end}}
+{{- end }}
 
 {{ if .Values.networks.internal -}}
 resource "google_compute_subnetwork" "subnetwork-internal" {
@@ -173,6 +183,12 @@ output "{{ .Values.outputKeys.cloudRouter }}" {
 
 output "{{ .Values.outputKeys.cloudNAT }}" {
   value = "${google_compute_router_nat.nat.name}"
+}
+{{- end }}
+
+{{ if .Values.networks.cloudNAT.natIPNames -}}
+output "{{ .Values.outputKeys.natIPs }}" {
+    value = "{{range $i, $name := .Values.networks.cloudNAT.natIPNames}}{{if $i}},{{end}}${data.google_compute_address.{{$name}}.address}{{end}}"
 }
 {{- end }}
 

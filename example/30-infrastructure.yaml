@@ -59,6 +59,9 @@ spec:
     # internal: 10.243.0.0/19
     # cloudNAT:
     #   minPortsPerVM: 2048
+    #   natIPNames:
+    #   - name: manualnat1
+    #   - name: manualnat2
     # flowLogs:
     #   aggregationInterval: 0.5
     #   flowSampling: 0.2

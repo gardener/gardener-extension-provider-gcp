@@ -250,6 +250,71 @@ var _ = Describe("Terraform", func() {
 			}))
 		})
 
+		It("should correctly compute the terraformer chart values with external cloud nat ips", func() {
+			infra.Spec.Region = "europe-west1"
+			projectID = "project"
+			internalCIDR := "192.168.0.0/16"
+			ipName1 := "manualnat1"
+			ipName2 := "manualnat2"
+			natIPNamesInput := []api.NatIPName{{Name: ipName1}, api.NatIPName{Name: ipName2}}
+			natIPNamesOutput := []string{ipName1, ipName2}
+
+			config = &api.InfrastructureConfig{
+				Networks: api.NetworkConfig{
+					VPC: &api.VPC{
+						Name: "vpc",
+						CloudRouter: &api.CloudRouter{
+							Name: "cloudrouter",
+						},
+					},
+					CloudNAT: &api.CloudNAT{
+						MinPortsPerVM: &minPortsPerVM,
+						NatIPNames:    natIPNamesInput,
+					},
+					Internal: &internalCIDR,
+					Workers:  "10.1.0.0/16",
+				},
+			}
+
+			values := ComputeTerraformerChartValues(infra, serviceAccount, config, cluster)
+
+			Expect(values).To(Equal(map[string]interface{}{
+				"google": map[string]interface{}{
+					"region":  infra.Spec.Region,
+					"project": projectID,
+				},
+				"create": map[string]interface{}{
+					"vpc":         false,
+					"cloudRouter": false,
+				},
+				"vpc": map[string]interface{}{
+					"name": config.Networks.VPC.Name,
+					"cloudRouter": map[string]interface{}{
+						"name": "cloudrouter",
+					},
+				},
+				"clusterName": infra.Namespace,
+				"networks": map[string]interface{}{
+					"pods":     podsCIDR,
+					"services": servicesCIDR,
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
+					"cloudNAT": map[string]interface{}{
+						"minPortsPerVM": minPortsPerVM,
+						"natIPNames":    natIPNamesOutput,
+					},
+				},
+				"outputKeys": map[string]interface{}{
+					"vpcName":             TerraformerOutputKeyVPCName,
+					"cloudNAT":            TerraformOutputKeyCloudNAT,
+					"cloudRouter":         TerraformOutputKeyCloudRouter,
+					"serviceAccountEmail": TerraformerOutputKeyServiceAccountEmail,
+					"subnetNodes":         TerraformerOutputKeySubnetNodes,
+					"subnetInternal":      TerraformerOutputKeySubnetInternal,
+				},
+			}))
+		})
+
 		It("should correctly compute the terraformer chart values with vpc flow logs", func() {
 			internalCIDR := "192.168.0.0/16"
 			aggregationInterval := "INTERVAL_30_SEC"

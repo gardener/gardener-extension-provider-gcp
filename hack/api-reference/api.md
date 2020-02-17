@@ -203,7 +203,7 @@ map[string]bool
 <a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
 </p>
 <p>
-<p>CloudNAT contains information about the the CloudNAT configuration</p>
+<p>CloudNAT contains configuration about the the CloudNAT resource</p>
 </p>
 <table>
 <thead>
@@ -224,6 +224,20 @@ int32
 <em>(Optional)</em>
 <p>MinPortsPerVM is the minimum number of ports allocated to a VM in the NAT config.
 The default value is 2048 ports.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>natIPNames</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NatIPName">
+[]NatIPName
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NatIPNames is a list of all user provided external premium ips which can be used by the nat gateway</p>
 </td>
 </tr>
 </tbody>
@@ -488,6 +502,66 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.NatIP">NatIP
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
+</p>
+<p>
+<p>NatIP is a user provided external ip which can be used by the nat gateway</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ip</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>IP is the external premium IP address used in GCP</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.NatIPName">NatIPName
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CloudNAT">CloudNAT</a>)
+</p>
+<p>
+<p>NatIPName is the name of a user provided external ip address which can be used by the nat gateway</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the external premium ip address which is used in gcp</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig
 </h3>
 <p>
@@ -530,7 +604,7 @@ CloudNAT
 </td>
 <td>
 <em>(Optional)</em>
-<p>CloudNAT contains configation about the the CloudNAT configuration</p>
+<p>CloudNAT contains configuration about the the CloudNAT resource</p>
 </td>
 </tr>
 <tr>
@@ -625,6 +699,20 @@ VPC
 </td>
 <td>
 <p>Subnets are the subnets that have been created.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>natIPs</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NatIP">
+[]NatIP
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NatIPs is a list of all user provided external premium ips which can be used by the nat gateway</p>
 </td>
 </tr>
 </tbody>
