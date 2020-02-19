@@ -60,15 +60,17 @@ var _ = Describe("ValuesProvider", func() {
 					Name:      v1beta1constants.SecretNameCloudProvider,
 					Namespace: namespace,
 				},
-				ProviderConfig: &runtime.RawExtension{
-					Raw: encode(&apisgcp.ControlPlaneConfig{
-						Zone: "europe-west1a",
-						CloudControllerManager: &apisgcp.CloudControllerManagerConfig{
-							FeatureGates: map[string]bool{
-								"CustomResourceValidation": true,
+				DefaultSpec: extensionsv1alpha1.DefaultSpec{
+					ProviderConfig: &runtime.RawExtension{
+						Raw: encode(&apisgcp.ControlPlaneConfig{
+							Zone: "europe-west1a",
+							CloudControllerManager: &apisgcp.CloudControllerManagerConfig{
+								FeatureGates: map[string]bool{
+									"CustomResourceValidation": true,
+								},
 							},
-						},
-					}),
+						}),
+					},
 				},
 				InfrastructureProviderStatus: &runtime.RawExtension{
 					Raw: encode(&apisgcp.InfrastructureStatus{
