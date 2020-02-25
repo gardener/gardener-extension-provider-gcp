@@ -18,14 +18,13 @@ import (
 	"reflect"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 // ValidateInfrastructureConfig validates a InfrastructureConfig object.
-func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string) field.ErrorList {
+func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	var (
@@ -46,7 +45,7 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 		services = cidrvalidation.NewCIDR(*servicesCIDR, nil)
 	}
 
-	networksPath := field.NewPath("networks")
+	networksPath := fldPath.Child("networks")
 	if len(infra.Networks.Worker) == 0 && len(infra.Networks.Workers) == 0 {
 		allErrs = append(allErrs, field.Required(networksPath.Child("workers"), "must specify the network range for the worker network"))
 	}
@@ -84,6 +83,16 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 		allErrs = append(allErrs, field.Invalid(networksPath.Child("vpc", "cloudRouter"), infra.Networks.VPC.CloudRouter, "cloud router can not be configured when the VPC name is not specified"))
 	}
 
+	if infra.Networks.VPC != nil && len(infra.Networks.VPC.Name) > 0 {
+		if infra.Networks.VPC.CloudRouter == nil {
+			allErrs = append(allErrs, field.Invalid(networksPath.Child("vpc", "cloudRouter"), infra.Networks.VPC.CloudRouter, "cloud router must be defined when reusing a VPC"))
+		}
+
+		if infra.Networks.VPC.CloudRouter != nil && len(infra.Networks.VPC.CloudRouter.Name) == 0 {
+			allErrs = append(allErrs, field.Invalid(networksPath.Child("vpc", "cloudRouter", "name"), infra.Networks.VPC.CloudRouter, "cloud router name must be specified when reusing a VPC"))
+		}
+	}
+
 	if infra.Networks.FlowLogs != nil {
 		if infra.Networks.FlowLogs.AggregationInterval == nil && infra.Networks.FlowLogs.FlowSampling == nil && infra.Networks.FlowLogs.Metadata == nil {
 			allErrs = append(allErrs, field.Required(networksPath.Child("flowLogs"), "at least one VPC flow log parameter must be specified when VPC flow log section is provided"))
@@ -111,10 +120,9 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 }
 
 // ValidateInfrastructureConfigUpdate validates a InfrastructureConfig object.
-func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string) field.ErrorList {
+func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.InfrastructureConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-
-	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks, oldConfig.Networks, field.NewPath("networks"))...)
+	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks, oldConfig.Networks, fldPath.Child("networks"))...)
 
 	return allErrs
 }

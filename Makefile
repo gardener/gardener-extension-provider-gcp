@@ -15,6 +15,7 @@
 EXTENSION_PREFIX            := gardener-extension
 NAME                        := provider-gcp
 REGISTRY                    := eu.gcr.io/gardener-project/gardener
+VALIDATOR_NAME              := validator-gcp
 IMAGE_PREFIX                := $(REGISTRY)/extensions
 REPO_ROOT                   := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 HACK_DIR                    := $(REPO_ROOT)/hack
@@ -110,3 +111,13 @@ start:
 		--webhook-config-server-port=8443 \
 		--webhook-config-mode=$(WEBHOOK_CONFIG_MODE) \
 		$(WEBHOOK_PARAM)
+
+.PHONY: start-validator
+start-validator:
+	@LEADER_ELECTION_NAMESPACE=garden GO111MODULE=on go run \
+		-mod=vendor \
+		-ldflags $(LD_FLAGS) \
+		./cmd/$(EXTENSION_PREFIX)-$(VALIDATOR_NAME) \
+		--webhook-config-server-host=0.0.0.0 \
+		--webhook-config-server-port=9443 \
+		--webhook-config-cert-dir=./example/validator-gcp-certs
