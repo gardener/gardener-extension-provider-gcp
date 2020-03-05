@@ -40,6 +40,9 @@ networks:
 # internal: 10.251.0.0/16
 # cloudNAT:
 #   minPortsPerVM: 2048
+#   natIPNames:
+#   - name: manualnat1
+#   - name: manualnat2
 # flowLogs:
 #   aggregationInterval: 0.5
 #   flowSampling: 0.2
@@ -61,6 +64,8 @@ The `networks.workers` section describes the CIDR for a subnet that is used for 
 The `networks.internal` section is optional and can describe a CIDR for a subnet that is used for [internal load balancers](https://cloud.google.com/load-balancing/docs/internal/),
 
 The `networks.cloudNAT.minPortsPerVM` is optional and is used to define the [minimum number of ports allocated to a VM for the CloudNAT](https://cloud.google.com/nat/docs/overview#number_of_nat_ports_and_connections)
+
+The `networks.cloudNAT.natIPNames` is optional and is used to specify the names of the manual ip addresses which should be used by the nat gateway
 
 The specified CIDR ranges must be contained in the VPC CIDR specified above, or the VPC CIDR of your already existing VPC.
 You can freely choose these CIDRs and it is your responsibility to properly design the network layout to suit your needs.

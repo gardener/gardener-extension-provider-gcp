@@ -33,7 +33,7 @@ type InfrastructureConfig struct {
 type NetworkConfig struct {
 	// VPC indicates whether to use an existing VPC or create a new one.
 	VPC *VPC
-	// CloudNAT contains configation about the the CloudNAT resource
+	// CloudNAT contains configuration about the the CloudNAT resource
 	CloudNAT *CloudNAT
 	// Internal is a private subnet (used for internal load balancers).
 	Internal *string
@@ -66,6 +66,9 @@ type NetworkStatus struct {
 
 	// Subnets are the subnets that have been created.
 	Subnets []Subnet
+
+	// NatIPs is a list of all user provided external premium ips which can be used by the nat gateway
+	NatIPs []NatIP
 }
 
 // SubnetPurpose is a purpose of a subnet.
@@ -100,11 +103,25 @@ type CloudRouter struct {
 	Name string
 }
 
-// CloudNAT contains information about the the CloudNAT configuration
+// CloudNAT contains configuration about the the CloudNAT resource
 type CloudNAT struct {
 	// MinPortsPerVM is the minimum number of ports allocated to a VM in the NAT config.
 	// The default value is 2048 ports.
 	MinPortsPerVM *int32
+	// NatIPNames is a list of all names of user provided external premium ips which can be used by the nat gateway
+	NatIPNames []NatIPName
+}
+
+// NatIP is a user provided external ip which can be used by the nat gateway
+type NatIP struct {
+	// IP is the external premium IP address used in GCP
+	IP string
+}
+
+// NatIPName is the name of a user provided external ip address which can be used by the nat gateway
+type NatIPName struct {
+	// Name of the external premium ip address which is used in gcp
+	Name string
 }
 
 // FlowLogs contains the configuration options for the vpc flow logs.

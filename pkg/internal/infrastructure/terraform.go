@@ -16,6 +16,7 @@ package infrastructure
 
 import (
 	"path/filepath"
+	"strings"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
@@ -46,6 +47,8 @@ const (
 	TerraformerOutputKeySubnetInternal = "subnet_internal"
 	// TerraformOutputKeyCloudNAT is the name of the cloud_nat terraform output variable.
 	TerraformOutputKeyCloudNAT = "cloud_nat"
+	// TerraformOutputKeyNATIPs is the name of the nat_ips terraform output variable.
+	TerraformOutputKeyNATIPs = "nat_ips"
 	// TerraformOutputKeyCloudRouter is the name of the cloud_router terraform output variable.
 	TerraformOutputKeyCloudRouter = "cloud_router"
 )
@@ -70,7 +73,7 @@ func ComputeTerraformerChartValues(
 		createVPC         = true
 		createCloudRouter = true
 		cloudRouterName   string
-		minPortsPerVM     = int32(2048)
+		cN                = map[string]interface{}{"minPortsPerVM": int32(2048)}
 	)
 
 	if config.Networks.VPC != nil {
@@ -85,7 +88,14 @@ func ComputeTerraformerChartValues(
 
 	if config.Networks.CloudNAT != nil {
 		if config.Networks.CloudNAT.MinPortsPerVM != nil {
-			minPortsPerVM = *config.Networks.CloudNAT.MinPortsPerVM
+			cN["minPortsPerVM"] = *config.Networks.CloudNAT.MinPortsPerVM
+		}
+		if config.Networks.CloudNAT.NatIPNames != nil {
+			natIPNames := []string{}
+			for _, v := range config.Networks.CloudNAT.NatIPNames {
+				natIPNames = append(natIPNames, v.Name)
+			}
+			cN["natIPNames"] = natIPNames
 		}
 	}
 
@@ -121,9 +131,7 @@ func ComputeTerraformerChartValues(
 			"services": extensionscontroller.GetServiceNetwork(cluster),
 			"workers":  workersCIDR,
 			"internal": config.Networks.Internal,
-			"cloudNAT": map[string]interface{}{
-				"minPortsPerVM": minPortsPerVM,
-			},
+			"cloudNAT": cN,
 		},
 		"outputKeys": map[string]interface{}{
 			"vpcName":             TerraformerOutputKeyVPCName,
@@ -194,6 +202,8 @@ type TerraformState struct {
 	CloudRouterName string
 	// CloudNATName is the name of the created Cloud NAT
 	CloudNATName string
+	// NatIPs is a list of external ips for the nat gateway
+	NatIPs []apiv1alpha1.NatIP
 	// ServiceAccountEmail is the service account email for a network.
 	ServiceAccountEmail string
 	// SubnetNodes is the CIDR of the nodes subnet of an infrastructure.
@@ -210,12 +220,16 @@ func ExtractTerraformState(tf terraformer.Terraformer, config *api.Infrastructur
 			TerraformerOutputKeySubnetNodes,
 			TerraformerOutputKeyServiceAccountEmail,
 		}
-
+		manualNatIPsSet                = config.Networks.CloudNAT != nil && config.Networks.CloudNAT.NatIPNames != nil
 		vpcSpecifiedWithoutCloudRouter = config.Networks.VPC != nil && config.Networks.VPC.CloudRouter == nil
 	)
 
 	if !vpcSpecifiedWithoutCloudRouter {
 		outputKeys = append(outputKeys, TerraformOutputKeyCloudRouter, TerraformOutputKeyCloudNAT)
+	}
+
+	if manualNatIPsSet {
+		outputKeys = append(outputKeys, TerraformOutputKeyNATIPs)
 	}
 
 	hasInternal := config.Networks.Internal != nil
@@ -234,6 +248,14 @@ func ExtractTerraformState(tf terraformer.Terraformer, config *api.Infrastructur
 		ServiceAccountEmail: vars[TerraformerOutputKeyServiceAccountEmail],
 	}
 
+	if manualNatIPsSet {
+		state.NatIPs = []apiv1alpha1.NatIP{}
+		for _, ip := range strings.Split(vars[TerraformOutputKeyNATIPs], ",") {
+			state.NatIPs = append(state.NatIPs, apiv1alpha1.NatIP{IP: ip})
+
+		}
+	}
+
 	if !vpcSpecifiedWithoutCloudRouter {
 		state.CloudRouterName = vars[TerraformOutputKeyCloudRouter]
 		state.CloudNATName = vars[TerraformOutputKeyCloudNAT]
@@ -243,6 +265,7 @@ func ExtractTerraformState(tf terraformer.Terraformer, config *api.Infrastructur
 		subnetInternal := vars[TerraformerOutputKeySubnetInternal]
 		state.SubnetInternal = &subnetInternal
 	}
+
 	return state, nil
 }
 
@@ -271,6 +294,10 @@ func StatusFromTerraformState(state *TerraformState) *apiv1alpha1.Infrastructure
 		status.Networks.VPC.CloudRouter = &apiv1alpha1.CloudRouter{
 			Name: state.CloudRouterName,
 		}
+	}
+
+	if state.NatIPs != nil {
+		status.Networks.NatIPs = state.NatIPs
 	}
 
 	if state.SubnetInternal != nil {

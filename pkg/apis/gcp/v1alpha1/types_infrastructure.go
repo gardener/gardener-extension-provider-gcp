@@ -34,7 +34,7 @@ type NetworkConfig struct {
 	// VPC indicates whether to use an existing VPC or create a new one.
 	// +optional
 	VPC *VPC `json:"vpc,omitempty"`
-	// CloudNAT contains configation about the the CloudNAT configuration
+	// CloudNAT contains configuration about the the CloudNAT resource
 	// +optional
 	CloudNAT *CloudNAT `json:"cloudNAT,omitempty"`
 	// Internal is a private subnet (used for internal load balancers).
@@ -70,6 +70,10 @@ type NetworkStatus struct {
 
 	// Subnets are the subnets that have been created.
 	Subnets []Subnet `json:"subnets"`
+
+	// NatIPs is a list of all user provided external premium ips which can be used by the nat gateway
+	// +optional
+	NatIPs []NatIP `json:"natIPs,omitempty"`
 }
 
 // SubnetPurpose is a purpose of a subnet.
@@ -105,12 +109,27 @@ type CloudRouter struct {
 	Name string `json:"name,omitempty"`
 }
 
-// CloudNAT contains information about the the CloudNAT configuration
+// CloudNAT contains configuration about the the CloudNAT resource
 type CloudNAT struct {
 	// MinPortsPerVM is the minimum number of ports allocated to a VM in the NAT config.
 	// The default value is 2048 ports.
 	// +optional
 	MinPortsPerVM *int32 `json:"minPortsPerVM,omitempty"`
+	// NatIPNames is a list of all user provided external premium ips which can be used by the nat gateway
+	// +optional
+	NatIPNames []NatIPName `json:"natIPNames,omitempty"`
+}
+
+// NatIP is a user provided external ip which can be used by the nat gateway
+type NatIP struct {
+	// IP is the external premium IP address used in GCP
+	IP string `json:"ip"`
+}
+
+// NatIPName is the name of a user provided external ip address which can be used by the nat gateway
+type NatIPName struct {
+	// Name of the external premium ip address which is used in gcp
+	Name string `json:"name"`
 }
 
 // FlowLogs contains the configuration options for the vpc flow logs.
