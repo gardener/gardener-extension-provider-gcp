@@ -22,7 +22,6 @@ import (
 	infrastructurecontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
 	workercontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
 	controlplanewebhook "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplane"
-	controlplanebackupwebhook "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplanebackup"
 	controlplaneexposurewebhook "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplaneexposure"
 	extensionsbackupbucketcontroller "github.com/gardener/gardener-extensions/pkg/controller/backupbucket"
 	extensionsbackupentrycontroller "github.com/gardener/gardener-extensions/pkg/controller/backupentry"
@@ -52,6 +51,5 @@ func WebhookSwitchOptions() *webhookcmd.SwitchOptions {
 	return webhookcmd.NewSwitchOptions(
 		webhookcmd.Switch(extensioncontrolplanewebhook.WebhookName, controlplanewebhook.AddToManager),
 		webhookcmd.Switch(extensioncontrolplanewebhook.ExposureWebhookName, controlplaneexposurewebhook.AddToManager),
-		webhookcmd.Switch(extensioncontrolplanewebhook.BackupWebhookName, controlplanebackupwebhook.AddToManager),
 	)
 }
