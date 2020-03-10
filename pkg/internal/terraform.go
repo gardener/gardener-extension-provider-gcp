@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/imagevector"
-	"github.com/gardener/gardener-extensions/pkg/terraformer"
 
+	"github.com/gardener/gardener-extensions/pkg/terraformer"
 	"github.com/gardener/gardener/pkg/logger"
 	"k8s.io/client-go/rest"
 )
@@ -44,10 +44,9 @@ func TerraformerVariablesEnvironmentFromServiceAccount(account *ServiceAccount) 
 	}, nil
 }
 
-// NewTerraformer initializes a new Terraformer that has the ServiceAccount credentials.
+// NewTerraformer initializes a new Terraformer.
 func NewTerraformer(
 	restConfig *rest.Config,
-	serviceAccount *ServiceAccount,
 	purpose,
 	namespace,
 	name string,
@@ -57,14 +56,34 @@ func NewTerraformer(
 		return nil, err
 	}
 
+	return tf.
+		SetTerminationGracePeriodSeconds(630).
+		SetDeadlineCleaning(5 * time.Minute).
+		SetDeadlinePod(15 * time.Minute), nil
+}
+
+// NewTerraformerWithAuth initializes a new Terraformer that has the ServiceAccount credentials.
+func NewTerraformerWithAuth(
+	restConfig *rest.Config,
+	purpose,
+	namespace,
+	name string,
+	serviceAccount *ServiceAccount,
+) (terraformer.Terraformer, error) {
+	tf, err := NewTerraformer(restConfig, purpose, namespace, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return SetTerraformerVariablesEnvironment(tf, serviceAccount)
+}
+
+// SetTerraformerVariablesEnvironment sets the environment variables based on the given service account.
+func SetTerraformerVariablesEnvironment(tf terraformer.Terraformer, serviceAccount *ServiceAccount) (terraformer.Terraformer, error) {
 	variables, err := TerraformerVariablesEnvironmentFromServiceAccount(serviceAccount)
 	if err != nil {
 		return nil, err
 	}
 
-	return tf.
-		SetVariablesEnvironment(variables).
-		SetActiveDeadlineSeconds(630).
-		SetDeadlineCleaning(5 * time.Minute).
-		SetDeadlinePod(15 * time.Minute), nil
+	return tf.SetVariablesEnvironment(variables), nil
 }
