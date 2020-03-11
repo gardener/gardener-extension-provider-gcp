@@ -70,6 +70,19 @@ func (a *actuator) cleanupKubernetesRoutes(
 
 // Delete implements infrastructure.Actuator.
 func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
+	tf, err := internal.NewTerraformer(a.RESTConfig(), infrastructure.TerraformerPurpose, infra.Namespace, infra.Name)
+	if err != nil {
+		return err
+	}
+
+	// If the Terraform state is empty then we can exit early as we didn't create anything. Though, we clean up potentially
+	// created configmaps/secrets related to the Terraformer.
+	stateIsEmpty := tf.IsStateEmpty()
+	if stateIsEmpty {
+		a.logger.Info("exiting early as infrastructure state is empty - nothing to do")
+		return tf.CleanupConfiguration(ctx)
+	}
+
 	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
 	if err != nil {
 		return err
@@ -80,12 +93,12 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 		return err
 	}
 
-	gcpClient, err := gcpclient.NewFromServiceAccount(ctx, serviceAccount.Raw)
+	tf, err = internal.SetTerraformerVariablesEnvironment(tf, serviceAccount)
 	if err != nil {
 		return err
 	}
 
-	tf, err := internal.NewTerraformer(a.RESTConfig(), serviceAccount, infrastructure.TerraformerPurpose, infra.Namespace, infra.Name)
+	gcpClient, err := gcpclient.NewFromServiceAccount(ctx, serviceAccount.Raw)
 	if err != nil {
 		return err
 	}
