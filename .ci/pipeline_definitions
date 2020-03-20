@@ -12,6 +12,11 @@ gardener-extension-provider-gcp:
             image: 'eu.gcr.io/gardener-project/gardener/extensions/provider-gcp'
             dockerfile: 'Dockerfile'
             target: gardener-extension-provider-gcp
+          gardener-extension-provider-gcp:
+            registry: 'gcr-readwrite'
+            image: 'eu.gcr.io/gardener-project/gardener/extensions/validator-gcp'
+            dockerfile: 'Dockerfile'
+            target: gardener-extension-validator-gcp
     steps: ~
   jobs:
     head-update:
@@ -44,4 +49,6 @@ gardener-extension-provider-gcp:
         publish:
           dockerimages:
             gardener-extension-provider-gcp:
+              tag_as_latest: true
+            gardener-extension-validator-gcp:
               tag_as_latest: true

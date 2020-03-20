@@ -16,53 +16,41 @@ package validation
 
 import (
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"k8s.io/apimachinery/pkg/util/sets"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 // ValidateControlPlaneConfig validates a ControlPlaneConfig object.
-func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, region string, regions []gardencorev1beta1.Region) field.ErrorList {
+func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, allowedZones, workerZones sets.String, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(controlPlaneConfig.Zone) == 0 {
-		allErrs = append(allErrs, field.Required(field.NewPath("zone"), "must provide the name of a zone in this region"))
-	} else if ok, validZones := validateZoneConstraints(regions, region, controlPlaneConfig.Zone, ""); !ok {
-		allErrs = append(allErrs, field.NotSupported(field.NewPath("zone"), controlPlaneConfig.Zone, validZones))
+		allErrs = append(allErrs, field.Required(fldPath.Child("zone"), "must provide the name of a zone in this region"))
+	} else if ok, validZones := validateZoneConstraints(allowedZones, controlPlaneConfig.Zone); !ok {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("zone"), controlPlaneConfig.Zone, validZones))
 	}
 
+	if !workerZones.Has(controlPlaneConfig.Zone) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("zone"), controlPlaneConfig.Zone, "must be part of at least one worker zone"))
+	}
 	return allErrs
 }
 
 // ValidateControlPlaneConfigUpdate validates a ControlPlaneConfig object.
-func ValidateControlPlaneConfigUpdate(oldConfig, newConfig *apisgcp.ControlPlaneConfig, region string, regions []gardencorev1beta1.Region) field.ErrorList {
+func ValidateControlPlaneConfigUpdate(oldConfig, newConfig *apisgcp.ControlPlaneConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Zone, oldConfig.Zone, field.NewPath("zone"))...)
+	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Zone, oldConfig.Zone, fldPath.Child("zone"))...)
 
 	return allErrs
 }
 
-func validateZoneConstraints(regions []gardencorev1beta1.Region, region, zone, oldZone string) (bool, []string) {
-	if zone == oldZone {
+func validateZoneConstraints(allowedZones sets.String, zone string) (bool, []string) {
+	if allowedZones.Has(zone) {
 		return true, nil
 	}
 
-	validValues := []string{}
-
-	for _, r := range regions {
-		if r.Name != region {
-			continue
-		}
-
-		for _, z := range r.Zones {
-			validValues = append(validValues, z.Name)
-			if z.Name == zone {
-				return true, nil
-			}
-		}
-	}
-
-	return false, validValues
+	return false, allowedZones.UnsortedList()
 }

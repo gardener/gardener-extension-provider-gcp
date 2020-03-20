@@ -34,6 +34,8 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		nodes       = "10.250.0.0/16"
 		internal    = "10.10.0.0/24"
 		invalidCIDR = "invalid-cidr"
+
+		fldPath *field.Path
 	)
 
 	BeforeEach(func() {
@@ -41,6 +43,9 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			Networks: apisgcp.NetworkConfig{
 				VPC: &apisgcp.VPC{
 					Name: "hugo",
+					CloudRouter: &apisgcp.CloudRouter{
+						Name: "hugo-cr",
+					},
 				},
 				Internal: &internal,
 				Workers:  "10.250.0.0/16",
@@ -53,7 +58,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid invalid worker CIDRs", func() {
 				infrastructureConfig.Networks.Workers = invalidCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -66,7 +71,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				invalidCIDR = "invalid-cidr"
 				infrastructureConfig.Networks.Internal = &invalidCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -78,7 +83,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid workers CIDR which are not in Nodes CIDR", func() {
 				infrastructureConfig.Networks.Workers = "1.1.1.1/32"
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -92,7 +97,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.Internal = &overlappingCIDR
 				infrastructureConfig.Networks.Workers = overlappingCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &overlappingCIDR, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &overlappingCIDR, &pods, &services, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -113,7 +118,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.Internal = &internal
 				infrastructureConfig.Networks.Workers = "10.250.3.8/24"
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodeCIDR, &podCIDR, &serviceCIDR)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodeCIDR, &podCIDR, &serviceCIDR, fldPath)
 
 				Expect(errorList).To(HaveLen(2))
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -126,11 +131,19 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					"Detail": Equal("must be valid canonical CIDR"),
 				}))
 			})
+		})
+		Context("VPC", func() {
+			var testInfrastructureConfig = &apisgcp.InfrastructureConfig{
+				Networks: apisgcp.NetworkConfig{
+					Internal: &internal,
+					Workers:  "10.250.0.0/16",
+				},
+			}
 			It("should forbid configuring CloudRouter if VPC name is not set", func() {
-				infrastructureConfig.Networks.VPC = &apisgcp.VPC{}
-				infrastructureConfig.Networks.VPC.CloudRouter = &apisgcp.CloudRouter{}
+				testInfrastructureConfig.Networks.VPC = &apisgcp.VPC{}
+				testInfrastructureConfig.Networks.VPC.CloudRouter = &apisgcp.CloudRouter{}
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.vpc.cloudRouter"),
@@ -144,7 +157,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid empty VPC flow log config", func() {
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{}
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeRequired),
 					"Field":  Equal("networks.flowLogs"),
@@ -157,7 +170,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				metadata := "foo"
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{AggregationInterval: &aggregationInterval, FlowSampling: &flowSampling, Metadata: &metadata}
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeNotSupported),
 					"Field":  Equal("networks.flowLogs.aggregationInterval"),
@@ -178,7 +191,98 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				metadata := "INCLUDE_ALL_METADATA"
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{AggregationInterval: &aggregationInterval, FlowSampling: &flowSampling, Metadata: &metadata}
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(BeEmpty())
+			})
+			It("should forbid reusing a VPC without specifying a CloudRouter", func() {
+				testInfrastructureConfig.Networks.VPC = &apisgcp.VPC{
+					Name: "test-vpc",
+				}
+
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vpc.cloudRouter"),
+					"Detail": Equal("cloud router must be defined when reusing a VPC"),
+				}))
+			})
+			It("should forbid reusing a VPC without specifying a CloudRouter name", func() {
+				testInfrastructureConfig.Networks.VPC = &apisgcp.VPC{
+					Name:        "test-vpc",
+					CloudRouter: &apisgcp.CloudRouter{},
+				}
+
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vpc.cloudRouter.name"),
+					"Detail": Equal("cloud router name must be specified when reusing a VPC"),
+				}))
+			})
+			It("should forbid reusing a VPC without specifying a CloudRouter", func() {
+				testInfrastructureConfig.Networks.VPC = &apisgcp.VPC{
+					Name: "test-vpc",
+				}
+
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vpc.cloudRouter"),
+					"Detail": Equal("cloud router must be defined when reusing a VPC"),
+				}))
+			})
+			It("should forbid reusing a VPC without specifying a CloudRouter name", func() {
+				testInfrastructureConfig.Networks.VPC = &apisgcp.VPC{
+					Name:        "test-vpc",
+					CloudRouter: &apisgcp.CloudRouter{},
+				}
+
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vpc.cloudRouter.name"),
+					"Detail": Equal("cloud router name must be specified when reusing a VPC"),
+				}))
+			})
+
+			It("should forbid empty VPC flow log config", func() {
+				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{}
+
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("networks.flowLogs"),
+					"Detail": Equal("at least one VPC flow log parameter must be specified when VPC flow log section is provided"),
+				}))
+			})
+			It("should forbid wrong VPC flow log config", func() {
+				aggregationInterval := "foo"
+				flowSampling := float32(1.2)
+				metadata := "foo"
+				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{AggregationInterval: &aggregationInterval, FlowSampling: &flowSampling, Metadata: &metadata}
+
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeNotSupported),
+					"Field":  Equal("networks.flowLogs.aggregationInterval"),
+					"Detail": Equal("supported values: \"INTERVAL_5_SEC\", \"INTERVAL_30_SEC\", \"INTERVAL_1_MIN\", \"INTERVAL_5_MIN\", \"INTERVAL_15_MIN\""),
+				}, Fields{
+					"Type":   Equal(field.ErrorTypeNotSupported),
+					"Field":  Equal("networks.flowLogs.metadata"),
+					"Detail": Equal("supported values: \"INCLUDE_ALL_METADATA\""),
+				}, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.flowLogs.flowSampling"),
+					"Detail": Equal("must contain a valid value"),
+				}))
+			})
+			It("should allow correct VPC flow log config", func() {
+				aggregationInterval := "INTERVAL_1_MIN"
+				flowSampling := float32(0.5)
+				metadata := "INCLUDE_ALL_METADATA"
+				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{AggregationInterval: &aggregationInterval, FlowSampling: &flowSampling, Metadata: &metadata}
+
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 				Expect(errorList).To(BeEmpty())
 			})
 		})
@@ -186,14 +290,14 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 	Describe("#ValidateInfrastructureConfigUpdate", func() {
 		It("should return no errors for an unchanged config", func() {
-			Expect(ValidateInfrastructureConfigUpdate(infrastructureConfig, infrastructureConfig, &nodes, &pods, &services)).To(BeEmpty())
+			Expect(ValidateInfrastructureConfigUpdate(infrastructureConfig, infrastructureConfig, fldPath)).To(BeEmpty())
 		})
 
 		It("should forbid changing the network section", func() {
 			newInfrastructureConfig := infrastructureConfig.DeepCopy()
 			newInfrastructureConfig.Networks.VPC = &apisgcp.VPC{Name: "name"}
 
-			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, &nodes, &pods, &services)
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
