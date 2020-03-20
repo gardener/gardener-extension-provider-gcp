@@ -12,7 +12,7 @@ gardener-extension-provider-gcp:
             image: 'eu.gcr.io/gardener-project/gardener/extensions/provider-gcp'
             dockerfile: 'Dockerfile'
             target: gardener-extension-provider-gcp
-          gardener-extension-provider-gcp:
+          gardener-extension-validator-gcp:
             registry: 'gcr-readwrite'
             image: 'eu.gcr.io/gardener-project/gardener/extensions/validator-gcp'
             dockerfile: 'Dockerfile'
