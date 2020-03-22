@@ -121,7 +121,7 @@ var _ = Describe("Ensurer", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			// Call EnsureKubeAPIServerDeployment method and check the result
-			err = ensurer.EnsureKubeAPIServerDeployment(context.TODO(), dummyContext, dep)
+			err = ensurer.EnsureKubeAPIServerDeployment(context.TODO(), dummyContext, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			checkKubeAPIServerDeployment(dep)
 		})
@@ -156,7 +156,7 @@ var _ = Describe("Ensurer", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			// Call EnsureKubeAPIServerDeployment method and check the result
-			err = ensurer.EnsureKubeAPIServerDeployment(context.TODO(), dummyContext, dep)
+			err = ensurer.EnsureKubeAPIServerDeployment(context.TODO(), dummyContext, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			checkKubeAPIServerDeployment(dep)
 		})
@@ -174,7 +174,7 @@ var _ = Describe("Ensurer", func() {
 			ensurer := NewEnsurer(etcdStorage, logger)
 
 			// Call EnsureETCDStatefulSet method and check the result
-			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd)
+			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			checkETCDMain(etcd)
 		})
@@ -194,7 +194,7 @@ var _ = Describe("Ensurer", func() {
 			ensurer := NewEnsurer(etcdStorage, logger)
 
 			// Call EnsureETCDStatefulSet method and check the result
-			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd)
+			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			checkETCDMain(etcd)
 		})
@@ -210,7 +210,7 @@ var _ = Describe("Ensurer", func() {
 			ensurer := NewEnsurer(etcdStorage, logger)
 
 			// Call EnsureETCDStatefulSet method and check the result
-			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd)
+			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			checkETCDEvents(etcd)
 		})
@@ -230,7 +230,7 @@ var _ = Describe("Ensurer", func() {
 			ensurer := NewEnsurer(etcdStorage, logger)
 
 			// Call EnsureETCDStatefulSet method and check the result
-			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd)
+			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			checkETCDEvents(etcd)
 		})
