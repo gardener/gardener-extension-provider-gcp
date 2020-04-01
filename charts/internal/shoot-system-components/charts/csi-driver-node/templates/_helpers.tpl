@@ -1,0 +1,11 @@
+{{- define "csi-driver-node.extensionsGroup" -}}
+extensions.gardener.cloud
+{{- end -}}
+
+{{- define "csi-driver-node.name" -}}
+provider-gcp
+{{- end -}}
+
+{{- define "csi-driver-node.provisioner" -}}
+pd.csi.storage.gke.io
+{{- end -}}
