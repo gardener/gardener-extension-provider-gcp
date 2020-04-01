@@ -4,7 +4,7 @@ The [`core.gardener.cloud/v1beta1.Shoot` resource](https://github.com/gardener/g
 
 In this document we are describing how this configuration looks like for GCP and provide an example `Shoot` manifest with minimal configuration that you can use to create an GCP cluster (modulo the landscape-specific information like cloud profile names, secret binding names, etc.).
 
-## Provider secret data
+## Provider Secret Data
 
 Every shoot cluster references a `SecretBinding` which itself references a `Secret`, and this `Secret` contains the provider credentials of your GCP project.
 This `Secret` must look as follows:
@@ -155,3 +155,10 @@ spec:
     nginx-ingress:
       enabled: true
 ```
+
+## CSI volume provisioners
+
+Every GCP shoot cluster that has at least Kubernetes v1.18 will be deployed with the GCP PD CSI driver.
+It is compatible with the legacy in-tree volume provisioner that was deprecated by the Kubernetes community and will be removed in future versions of Kubernetes.
+End-users might want to update their custom `StorageClass`es to the new `pd.csi.storage.gke.io` provisioner.
+Shoot clusters with Kubernetes v1.17 or less will use the in-tree `kubernetes.io/gce-pd` volume provisioner in the kube-controller-manager and the kubelet.

@@ -21,12 +21,14 @@ import (
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
-	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	"github.com/gardener/gardener/pkg/utils"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -38,17 +40,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
-const (
-	namespace = "test"
-)
+const namespace = "test"
 
 var _ = Describe("ValuesProvider", func() {
 	var (
 		ctrl *gomock.Controller
+		ctx  = context.TODO()
 
-		// Build scheme
 		scheme = runtime.NewScheme()
 		_      = apisgcp.AddToScheme(scheme)
+
+		vp genericactuator.ValuesProvider
+		c  *mockclient.MockClient
 
 		cp = &extensionsv1alpha1.ControlPlane{
 			ObjectMeta: metav1.ObjectMeta{
@@ -90,8 +93,8 @@ var _ = Describe("ValuesProvider", func() {
 			},
 		}
 
-		cidr    = "10.250.0.0/19"
-		cluster = &extensionscontroller.Cluster{
+		cidr                  = "10.250.0.0/19"
+		clusterK8sLessThan118 = &extensionscontroller.Cluster{
 			Shoot: &gardencorev1beta1.Shoot{
 				Spec: gardencorev1beta1.ShootSpec{
 					Networking: gardencorev1beta1.Networking{
@@ -103,6 +106,21 @@ var _ = Describe("ValuesProvider", func() {
 				},
 			},
 		}
+		clusterK8sAtLeast118 = &extensionscontroller.Cluster{
+			Shoot: &gardencorev1beta1.Shoot{
+				Spec: gardencorev1beta1.ShootSpec{
+					Networking: gardencorev1beta1.Networking{
+						Pods: &cidr,
+					},
+					Kubernetes: gardencorev1beta1.Kubernetes{
+						Version: "1.18.0",
+					},
+				},
+			},
+		}
+
+		projectID = "abc"
+		zone      = "europe-west1a"
 
 		cpSecretKey = client.ObjectKey{Namespace: namespace, Name: v1beta1constants.SecretNameCloudProvider}
 		cpSecret    = &corev1.Secret{
@@ -112,49 +130,38 @@ var _ = Describe("ValuesProvider", func() {
 			},
 			Type: corev1.SecretTypeOpaque,
 			Data: map[string][]byte{
-				gcp.ServiceAccountJSONField: []byte(`{"project_id":"abc"}`),
+				gcp.ServiceAccountJSONField: []byte(`{"project_id":"` + projectID + `"}`),
 			},
 		}
 
 		checksums = map[string]string{
-			v1beta1constants.SecretNameCloudProvider: "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
-			internal.CloudProviderConfigName:         "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
-			"cloud-controller-manager":               "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
-			"cloud-controller-manager-server":        "6dff2a2e6f14444b66d8e4a351c049f7e89ee24ba3eaab95dbec40ba6bdebb52",
+			v1beta1constants.SecretNameCloudProvider:   "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
+			internal.CloudProviderConfigName:           "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
+			gcp.CloudControllerManagerName:             "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
+			gcp.CloudControllerManagerName + "-server": "6dff2a2e6f14444b66d8e4a351c049f7e89ee24ba3eaab95dbec40ba6bdebb52",
+			gcp.CSIProvisionerName:                     "65b1dac6b50673535cff480564c2e5c71077ed19b1b6e0e2291207225bdf77d4",
+			gcp.CSIAttacherName:                        "3f22909841cdbb80e5382d689d920309c0a7d995128e52c79773f9608ed7c289",
+			gcp.CSISnapshotterName:                     "6a5bfc847638c499062f7fb44e31a30a9760bf4179e1dbf85e0ff4b4f162cd68",
+			gcp.CSIResizerName:                         "a77e663ba1af340fb3dd7f6f8a1be47c7aa9e658198695480641e6b934c0b9ed",
 		}
 
-		configChartValues = map[string]interface{}{
-			"projectID":      "abc",
-			"networkName":    "vpc-1234",
-			"subNetworkName": "subnet-acbd1234",
-			"zone":           "europe-west1a",
-			"nodeTags":       namespace,
-		}
-
-		ccmChartValues = map[string]interface{}{
-			"replicas":          1,
-			"kubernetesVersion": "1.13.4",
-			"clusterName":       namespace,
-			"podNetwork":        cidr,
-			"podAnnotations": map[string]interface{}{
-				"checksum/secret-cloud-controller-manager":        "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
-				"checksum/secret-cloud-controller-manager-server": "6dff2a2e6f14444b66d8e4a351c049f7e89ee24ba3eaab95dbec40ba6bdebb52",
-				"checksum/secret-cloudprovider":                   "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
-				"checksum/configmap-cloud-provider-config":        "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
-			},
-			"podLabels": map[string]interface{}{
-				"maintenance.gardener.cloud/restart": "true",
-			},
-			"featureGates": map[string]bool{
-				"CustomResourceValidation": true,
-			},
-		}
+		enabledTrue  = map[string]interface{}{"enabled": true}
+		enabledFalse = map[string]interface{}{"enabled": false}
 
 		logger = log.Log.WithName("test")
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
+
+		c = mockclient.NewMockClient(ctrl)
+
+		vp = NewValuesProvider(logger)
+		err := vp.(inject.Scheme).InjectScheme(scheme)
+		Expect(err).NotTo(HaveOccurred())
+		err = vp.(inject.Client).InjectClient(c)
+		Expect(err).NotTo(HaveOccurred())
+
 	})
 
 	AfterEach(func() {
@@ -163,35 +170,108 @@ var _ = Describe("ValuesProvider", func() {
 
 	Describe("#GetConfigChartValues", func() {
 		It("should return correct config chart values", func() {
-			// Create mock client
-			client := mockclient.NewMockClient(ctrl)
-			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			c.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
 
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
+			values, err := vp.GetConfigChartValues(ctx, cp, clusterK8sLessThan118)
 			Expect(err).NotTo(HaveOccurred())
-			err = vp.(inject.Client).InjectClient(client)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Call GetConfigChartValues method and check the result
-			values, err := vp.GetConfigChartValues(context.TODO(), cp, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(configChartValues))
+			Expect(values).To(Equal(map[string]interface{}{
+				"projectID":      projectID,
+				"networkName":    "vpc-1234",
+				"subNetworkName": "subnet-acbd1234",
+				"zone":           zone,
+				"nodeTags":       namespace,
+			}))
 		})
 	})
 
 	Describe("#GetControlPlaneChartValues", func() {
-		It("should return correct control plane chart values", func() {
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
-			Expect(err).NotTo(HaveOccurred())
+		ccmChartValues := utils.MergeMaps(enabledTrue, map[string]interface{}{
+			"replicas":    1,
+			"clusterName": namespace,
+			"podNetwork":  cidr,
+			"podAnnotations": map[string]interface{}{
+				"checksum/secret-" + gcp.CloudControllerManagerName:             "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
+				"checksum/secret-" + gcp.CloudControllerManagerName + "-server": "6dff2a2e6f14444b66d8e4a351c049f7e89ee24ba3eaab95dbec40ba6bdebb52",
+				"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:   "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
+				"checksum/configmap-" + internal.CloudProviderConfigName:        "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
+			},
+			"podLabels": map[string]interface{}{
+				"maintenance.gardener.cloud/restart": "true",
+			},
+			"featureGates": map[string]bool{
+				"CustomResourceValidation": true,
+			},
+		})
 
-			// Call GetControlPlaneChartValues method and check the result
-			values, err := vp.GetControlPlaneChartValues(context.TODO(), cp, cluster, checksums, false)
+		BeforeEach(func() {
+			c.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+		})
+
+		It("should return correct control plane chart values (k8s < 1.18)", func() {
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sLessThan118, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(ccmChartValues))
+			Expect(values).To(Equal(map[string]interface{}{
+				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
+					"kubernetesVersion": clusterK8sLessThan118.Shoot.Spec.Kubernetes.Version,
+				}),
+				gcp.CSIControllerName: enabledFalse,
+			}))
+		})
+
+		It("should return correct control plane chart values (k8s >= 1.18)", func() {
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast118, checksums, false)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
+					"kubernetesVersion": clusterK8sAtLeast118.Shoot.Spec.Kubernetes.Version,
+				}),
+				gcp.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"replicas":  1,
+					"projectID": projectID,
+					"zone":      zone,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + gcp.CSIProvisionerName:                   checksums[gcp.CSIProvisionerName],
+						"checksum/secret-" + gcp.CSIAttacherName:                      checksums[gcp.CSIAttacherName],
+						"checksum/secret-" + gcp.CSISnapshotterName:                   checksums[gcp.CSISnapshotterName],
+						"checksum/secret-" + gcp.CSIResizerName:                       checksums[gcp.CSIResizerName],
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+					},
+				}),
+			}))
+		})
+	})
+
+	Describe("#GetControlPlaneShootChartValues", func() {
+		It("should return correct shoot control plane chart values (k8s < 1.18)", func() {
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sLessThan118, nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				gcp.CloudControllerManagerName: enabledTrue,
+				gcp.CSINodeName:                enabledFalse,
+			}))
+		})
+
+		It("should return correct shoot control plane chart values (k8s >= 1.18)", func() {
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast118, nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				gcp.CloudControllerManagerName: enabledTrue,
+				gcp.CSINodeName:                enabledTrue,
+			}))
+		})
+	})
+
+	Describe("#GetStorageClassesChartValues()", func() {
+		It("should return correct storage class chart values (k8s < 1.18)", func() {
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, clusterK8sLessThan118)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{"useLegacyProvisioner": true}))
+		})
+
+		It("should return correct storage class chart values (k8s >= 1.18)", func() {
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, clusterK8sAtLeast118)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{"useLegacyProvisioner": false}))
 		})
 	})
 })
