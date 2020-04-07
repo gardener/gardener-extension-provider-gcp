@@ -15,7 +15,7 @@
 package app
 
 import (
-	np "github.com/gardener/gardener-extensions/test/e2e/framework/networkpolicies"
+	np "github.com/gardener/gardener/extensions/test/e2e/framework/networkpolicies"
 )
 
 // gcpNetworkPolicy holds GCP-specific network policy settings.

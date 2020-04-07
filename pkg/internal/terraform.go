@@ -21,7 +21,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/imagevector"
 
-	"github.com/gardener/gardener-extensions/pkg/terraformer"
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	"github.com/gardener/gardener/pkg/logger"
 	"k8s.io/client-go/rest"
 )

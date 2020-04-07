@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	extensionscontroller "github.com/gardener/gardener-extensions/pkg/controller"
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"

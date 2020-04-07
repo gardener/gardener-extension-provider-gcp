@@ -17,7 +17,6 @@ gardener-extension-provider-gcp:
             image: 'eu.gcr.io/gardener-project/gardener/extensions/validator-gcp'
             dockerfile: 'Dockerfile'
             target: gardener-extension-validator-gcp
-    steps: ~
   jobs:
     head-update:
       traits:
