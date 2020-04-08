@@ -20,8 +20,8 @@ import (
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
-	"github.com/gardener/gardener-extensions/pkg/controller"
-	mockterraformer "github.com/gardener/gardener-extensions/pkg/mock/gardener-extensions/terraformer"
+	"github.com/gardener/gardener/extensions/pkg/controller"
+	mockterraformer "github.com/gardener/gardener/pkg/mock/gardener/extensions/terraformer"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"

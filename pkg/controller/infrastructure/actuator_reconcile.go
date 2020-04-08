@@ -22,9 +22,9 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
 
-	"github.com/gardener/gardener-extensions/pkg/controller"
-	controllererrors "github.com/gardener/gardener-extensions/pkg/controller/error"
-	"github.com/gardener/gardener-extensions/pkg/terraformer"
+	"github.com/gardener/gardener/extensions/pkg/controller"
+	controllererrors "github.com/gardener/gardener/extensions/pkg/controller/error"
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 

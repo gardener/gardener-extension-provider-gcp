@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
-	"github.com/gardener/gardener-extensions/pkg/controller/backupentry/genericactuator"
+	"github.com/gardener/gardener/extensions/pkg/controller/backupentry/genericactuator"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"

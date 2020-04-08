@@ -163,7 +163,7 @@ var _ = Describe("Infrastructure", func() {
 				ctx       = context.TODO()
 				projectID = "foo"
 
-				routeName  = fmt.Sprintf("shoot--foobar--gcp-2690fa98-450f-11e9-8ebe-ce2a79d67b14")
+				routeName  = "shoot--foobar--gcp-2690fa98-450f-11e9-8ebe-ce2a79d67b14"
 				routeNames = []string{routeName}
 
 				client           = mockgcpclient.NewMockInterface(ctrl)
