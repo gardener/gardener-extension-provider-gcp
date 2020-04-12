@@ -33,7 +33,7 @@ var logger = log.Log.WithName("gcp-controlplane-webhook")
 func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	logger.Info("Adding webhook to manager")
 	fciCodec := controlplane.NewFileContentInlineCodec()
-	return controlplane.Add(mgr, controlplane.AddArgs{
+	return controlplane.New(mgr, controlplane.Args{
 		Kind:     controlplane.KindShoot,
 		Provider: gcp.Type,
 		Types:    []runtime.Object{&appsv1.Deployment{}, &extensionsv1alpha1.OperatingSystemConfig{}},
