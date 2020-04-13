@@ -256,7 +256,7 @@ var _ = Describe("Terraform", func() {
 			internalCIDR := "192.168.0.0/16"
 			ipName1 := "manualnat1"
 			ipName2 := "manualnat2"
-			natIPNamesInput := []api.NatIPName{{Name: ipName1}, api.NatIPName{Name: ipName2}}
+			natIPNamesInput := []api.NatIPName{{Name: ipName1}, {Name: ipName2}}
 			natIPNamesOutput := []string{ipName1, ipName2}
 
 			config = &api.InfrastructureConfig{
