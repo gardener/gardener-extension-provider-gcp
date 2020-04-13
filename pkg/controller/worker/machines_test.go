@@ -182,10 +182,10 @@ var _ = Describe("Machines", func() {
 						Kind:       "CloudProfileConfig",
 					},
 					MachineImages: []apiv1alpha1.MachineImages{
-						apiv1alpha1.MachineImages{
+						{
 							Name: machineImageName,
 							Versions: []apiv1alpha1.MachineImageVersion{
-								apiv1alpha1.MachineImageVersion{
+								{
 									Version: machineImageVersion,
 									Image:   machineImage,
 								},
