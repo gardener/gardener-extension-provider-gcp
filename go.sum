@@ -850,6 +850,8 @@ k8s.io/utils v0.0.0-20190801114015-581e00157fb1/go.mod h1:sZAwmy6armz5eXlNoLmJcl
 k8s.io/utils v0.0.0-20191218082557-f07c713de883 h1:TA8t8OLS8m3/0dtTckekO0pCQ7qMnD19fsZTQEgCSKQ=
 k8s.io/utils v0.0.0-20191218082557-f07c713de883/go.mod h1:sZAwmy6armz5eXlNoLmJcl4F1QuKu7sr+mFQ0byX7Ew=
 k8s.io/utils v0.0.0-20200327001022-6496210b90e8 h1:6JFbaLjRyBz8K2Jvt+pcT+N3vvwMZfg8MfVENwe9aag=
+k8s.io/utils v0.0.0-20200327001022-6496210b90e8 h1:6JFbaLjRyBz8K2Jvt+pcT+N3vvwMZfg8MfVENwe9aag=
+k8s.io/utils v0.0.0-20200327001022-6496210b90e8/go.mod h1:sZAwmy6armz5eXlNoLmJcl4F1QuKu7sr+mFQ0byX7Ew=
 k8s.io/utils v0.0.0-20200327001022-6496210b90e8/go.mod h1:sZAwmy6armz5eXlNoLmJcl4F1QuKu7sr+mFQ0byX7Ew=
 modernc.org/cc v1.0.0/go.mod h1:1Sk4//wdnYJiUIxnW8ddKpaOJCF37yAdqYnkxUpaYxw=
 modernc.org/golex v1.0.0/go.mod h1:b/QX9oBD/LhixY6NDh+IdGv17hgB+51fET1i2kPSmvk=

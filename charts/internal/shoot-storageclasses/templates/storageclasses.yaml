@@ -1,3 +1,4 @@
+{{- if not .Values.useLegacyProvisioner }}
 ---
 apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
@@ -5,15 +6,18 @@ metadata:
   name: default
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
-provisioner: kubernetes.io/gce-pd
+provisioner: pd.csi.storage.gke.io
 parameters:
   type: pd-standard
+volumeBindingMode: WaitForFirstConsumer
 
 ---
 apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
 metadata:
   name: gce-sc-fast
-provisioner: kubernetes.io/gce-pd
+provisioner: pd.csi.storage.gke.io
 parameters:
   type: pd-ssd
+volumeBindingMode: WaitForFirstConsumer
+{{- end }}

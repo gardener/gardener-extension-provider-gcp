@@ -24,6 +24,7 @@ import (
 	gcpbackupbucket "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupbucket"
 	gcpbackupentry "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupentry"
 	gcpcontrolplane "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/controlplane"
+	gcpcsimigration "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/csimigration"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/healthcheck"
 	gcpinfrastructure "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
 	gcpworker "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
@@ -39,6 +40,7 @@ import (
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	autoscalingv1beta2 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -75,6 +77,11 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			MaxConcurrentReconciles: 5,
 		}
 
+		// options for the csimigration controller
+		csiMigrationCtrlOpts = &controllercmd.ControllerOptions{
+			MaxConcurrentReconciles: 5,
+		}
+
 		// options for the infrastructure controller
 		infraCtrlOpts = &controllercmd.ControllerOptions{
 			MaxConcurrentReconciles: 5,
@@ -105,6 +112,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			controllercmd.PrefixOption("backupbucket-", backupBucketCtrlOpts),
 			controllercmd.PrefixOption("backupentry-", backupEntryCtrlOpts),
 			controllercmd.PrefixOption("controlplane-", controlPlaneCtrlOpts),
+			controllercmd.PrefixOption("csimigration-", csiMigrationCtrlOpts),
 			controllercmd.PrefixOption("infrastructure-", infraCtrlOpts),
 			controllercmd.PrefixOption("worker-", &workerCtrlOptsUnprefixed),
 			controllercmd.PrefixOption("healthcheck-", healthCheckCtrlOpts),
@@ -140,12 +148,13 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			if err := controller.AddToScheme(scheme); err != nil {
 				controllercmd.LogErrAndExit(err, "Could not update manager scheme")
 			}
-
 			if err := gcpinstall.AddToScheme(scheme); err != nil {
 				controllercmd.LogErrAndExit(err, "Could not update manager scheme")
 			}
-
 			if err := druidv1alpha1.AddToScheme(scheme); err != nil {
+				controllercmd.LogErrAndExit(err, "Could not update manager scheme")
+			}
+			if err := autoscalingv1beta2.AddToScheme(scheme); err != nil {
 				controllercmd.LogErrAndExit(err, "Could not update manager scheme")
 			}
 
@@ -162,6 +171,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			backupBucketCtrlOpts.Completed().Apply(&gcpbackupbucket.DefaultAddOptions.Controller)
 			backupEntryCtrlOpts.Completed().Apply(&gcpbackupentry.DefaultAddOptions.Controller)
 			controlPlaneCtrlOpts.Completed().Apply(&gcpcontrolplane.DefaultAddOptions.Controller)
+			csiMigrationCtrlOpts.Completed().Apply(&gcpcsimigration.DefaultAddOptions.Controller)
 			infraCtrlOpts.Completed().Apply(&gcpinfrastructure.DefaultAddOptions.Controller)
 			reconcileOpts.Completed().Apply(&gcpinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation)
 			reconcileOpts.Completed().Apply(&gcpcontrolplane.DefaultAddOptions.IgnoreOperationAnnotation)

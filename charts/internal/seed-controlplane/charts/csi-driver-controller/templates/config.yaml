@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: csi-driver-controller-config
+  namespace: {{ .Release.Namespace }}
+data:
+  cloudprovider.conf: |
+    [Global]
+    project-id="{{ .Values.projectID }}"
+    zone="{{ .Values.zone }}"

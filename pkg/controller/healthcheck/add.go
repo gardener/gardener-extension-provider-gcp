@@ -19,6 +19,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	genericcontrolplaneactuator "github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck"
 	healthcheckconfig "github.com/gardener/gardener/extensions/pkg/controller/healthcheck/config"
@@ -28,6 +29,7 @@ import (
 	extensionspredicate "github.com/gardener/gardener/extensions/pkg/predicate"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -43,7 +45,6 @@ var (
 )
 
 // RegisterHealthChecks registers health checks for each extension resource
-// HealthChecks are grouped by extension (e.g worker), extension.type (e.g aws) and  Health Check Type (e.g SystemComponentsHealthy)
 func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
 	if err := healthcheck.DefaultRegistration(
 		gcp.Type,
@@ -56,6 +57,17 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.CloudControllerManagerName),
+			},
+			{
+				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
+				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.CSIControllerName),
+				PreCheckFunc: func(_ runtime.Object, cluster *extensionscontroller.Cluster) bool {
+					k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.18")
+					if err != nil {
+						return false
+					}
+					return !k8sVersionLessThan118
+				},
 			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootSystemComponentsHealthy),

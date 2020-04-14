@@ -18,11 +18,11 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/imagevector"
+
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	"github.com/gardener/gardener/extensions/pkg/util"
-
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -47,7 +47,7 @@ type AddOptions struct {
 // The opts.Reconciler is being set with a newly instantiated actuator.
 func AddToManagerWithOptions(mgr manager.Manager, opts AddOptions) error {
 	return controlplane.Add(mgr, controlplane.AddArgs{
-		Actuator: genericactuator.NewActuator(gcp.Name, controlPlaneSecrets, nil, configChart, ccmChart, ccmShootChart,
+		Actuator: genericactuator.NewActuator(gcp.Name, controlPlaneSecrets, nil, configChart, controlPlaneChart, controlPlaneShootChart,
 			storageClassChart, nil, NewValuesProvider(logger), extensionscontroller.ChartRendererFactoryFunc(util.NewChartRendererForShoot),
 			imagevector.ImageVector(), internal.CloudProviderConfigName, nil, mgr.GetWebhookServer().Port, logger),
 		ControllerOptions: opts.Controller,

@@ -14,7 +14,11 @@
 
 package gcp
 
-import "path/filepath"
+import (
+	"path/filepath"
+
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+)
 
 const (
 	// Name is the name of the GCP provider.
@@ -24,30 +28,56 @@ const (
 
 	// CloudControllerManagerImageName is the name of the cloud-controller-manager image.
 	CloudControllerManagerImageName = "cloud-controller-manager"
+	// CSIDriverImageName is the name of the csi-driver image.
+	CSIDriverImageName = "csi-driver"
+	// CSIProvisionerImageName is the name of the csi-provisioner image.
+	CSIProvisionerImageName = "csi-provisioner"
+	// CSIAttacherImageName is the name of the csi-attacher image.
+	CSIAttacherImageName = "csi-attacher"
+	// CSISnapshotterImageName is the name of the csi-snapshotter image.
+	CSISnapshotterImageName = "csi-snapshotter"
+	// CSIResizerImageName is the name of the csi-resizer image.
+	CSIResizerImageName = "csi-resizer"
+	// CSINodeDriverRegistrarImageName is the name of the csi-node-driver-registrar image.
+	CSINodeDriverRegistrarImageName = "csi-node-driver-registrar"
+	// CSILivenessProbeImageName is the name of the csi-liveness-probe image.
+	CSILivenessProbeImageName = "csi-liveness-probe"
 	// MachineControllerManagerImageName is the name of the MachineControllerManager image.
 	MachineControllerManagerImageName = "machine-controller-manager"
 
 	// ServiceAccountJSONField is the field in a secret where the service account JSON is stored at.
 	ServiceAccountJSONField = "serviceaccount.json"
-
 	// ServiceAccountJSONMCM is the field in a machine class secret where the service account JSON is stored at.
 	ServiceAccountJSONMCM = "serviceAccountJSON"
 
-	// BucketName is a constant for the key in a backup secret that holds the bucket name.
-	// The bucket name is written to the backup secret by Gardener as a temporary solution.
-	// TODO In the future, the bucket name should come from a BackupBucket resource (see https://github.com/gardener/gardener/blob/master/docs/proposals/02-backupinfra.md)
-	BucketName = "bucketName"
-
+	// CloudControllerManagerName is a constant for the name of the CloudController deployed by the worker controller.
+	CloudControllerManagerName = "cloud-controller-manager"
+	// CSIControllerName is a constant for the name of the CSI controller deployment in the seed.
+	CSIControllerName = "csi-driver-controller"
+	// CSIControllerConfigName is a constant for the name of the CSI controller config in the seed.
+	CSIControllerConfigName = "csi-driver-controller-config"
+	// CSINodeName is a constant for the name of the CSI node deployment in the shoot.
+	CSINodeName = "csi-driver-node"
+	// CSIDriverName is a constant for the name of the csi-driver component.
+	CSIDriverName = "csi-driver"
+	// CSIProvisionerName is a constant for the name of the csi-provisioner component.
+	CSIProvisionerName = "csi-provisioner"
+	// CSIAttacherName is a constant for the name of the csi-attacher component.
+	CSIAttacherName = "csi-attacher"
+	// CSISnapshotterName is a constant for the name of the csi-snapshotter component.
+	CSISnapshotterName = "csi-snapshotter"
+	// CSIResizerName is a constant for the name of the csi-resizer component.
+	CSIResizerName = "csi-resizer"
+	// CSINodeDriverRegistrarName is a constant for the name of the csi-node-driver-registrar component.
+	CSINodeDriverRegistrarName = "csi-node-driver-registrar"
+	// CSILivenessProbeName is a constant for the name of the csi-liveness-probe component.
+	CSILivenessProbeName = "csi-liveness-probe"
 	// MachineControllerManagerName is a constant for the name of the machine-controller-manager.
 	MachineControllerManagerName = "machine-controller-manager"
 	// MachineControllerManagerVpaName is the name of the VerticalPodAutoscaler of the machine-controller-manager deployment.
 	MachineControllerManagerVpaName = "machine-controller-manager-vpa"
 	// MachineControllerManagerMonitoringConfigName is the name of the ConfigMap containing monitoring stack configurations for machine-controller-manager.
 	MachineControllerManagerMonitoringConfigName = "machine-controller-manager-monitoring-config"
-	// BackupSecretName is the name of the secret containing the credentials for storing the backups of Shoot clusters.
-	BackupSecretName = "etcd-backup"
-	// CloudControllerManagerName is a constant for the name of the CloudController deployed by the worker controller.
-	CloudControllerManagerName = "cloud-controller-manager"
 )
 
 var (
@@ -55,4 +85,7 @@ var (
 	ChartsPath = filepath.Join("charts")
 	// InternalChartsPath is the path to the internal charts
 	InternalChartsPath = filepath.Join(ChartsPath, "internal")
+
+	// UsernamePrefix is a constant for the username prefix of components deployed by AWS.
+	UsernamePrefix = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
 )
