@@ -23,6 +23,7 @@ machineImages:
 
 ## Example `CloudProfile` manifest
 
+If you want to allow that shoots can create VMs with local SSDs volumes then you have to specify the type of the disk with `SCRATCH` in the `.spec.volumeTypes[]` list.
 Please find below an example `CloudProfile` manifest:
 
 ```yaml
@@ -51,6 +52,8 @@ spec:
     class: standard
   - name: pd-ssd
     class: premium
+  - name: SCRATCH
+    class: standard
   regions:
   - region: europe-west1
     names:

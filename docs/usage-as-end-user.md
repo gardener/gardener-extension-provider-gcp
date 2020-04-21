@@ -104,6 +104,20 @@ The `cloudControllerManager.featureGates` contains a map of explicitly enabled o
 For production usage it's not recommend to use this field at all as you can enable alpha features or disable beta/stable features, potentially impacting the cluster stability.
 If you don't want to configure anything for the `cloudControllerManager` simply omit the key in the YAML specification.
 
+## WorkerConfig
+
+The worker configuration mainly contains Local SSD interface for the additional volumes attached to GCP worker machines.
+If you attach the disk with `SCRATCH` type, either an `NVMe` interface or a `SCSI` interface must be specified.
+It is only meaningful to provide this volume interface if only `SCRATCH` data volumes are used.
+An example `WorkerConfig` for the GCP looks as follows:
+
+```yaml
+apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+kind: WorkerConfig
+volume:
+  interface: NVME
+```
+
 ## Example `Shoot` manifest
 
 Please find below an example `Shoot` manifest:

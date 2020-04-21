@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/gardener/gardener/pkg/client/kubernetes"
+
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
@@ -32,7 +34,6 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/client/kubernetes"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	mockkubernetes "github.com/gardener/gardener/pkg/mock/gardener/client/kubernetes"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
@@ -101,6 +102,9 @@ var _ = Describe("Machines", func() {
 				volumeType string
 				volumeSize int
 
+				localVolumeType      string
+				localVolumeInterface string
+
 				namePool1           string
 				minPool1            int32
 				maxPool1            int32
@@ -147,6 +151,9 @@ var _ = Describe("Machines", func() {
 
 				volumeType = "normal"
 				volumeSize = 20
+
+				localVolumeType = "SCRATCH"
+				localVolumeInterface = "SCSI"
 
 				namePool1 = "pool-1"
 				minPool1 = 5
@@ -251,6 +258,19 @@ var _ = Describe("Machines", func() {
 									Type: &volumeType,
 									Size: fmt.Sprintf("%dGi", volumeSize),
 								},
+								DataVolumes: []extensionsv1alpha1.Volume{
+									extensionsv1alpha1.Volume{
+										Type: &localVolumeType,
+										Size: fmt.Sprintf("%dGi", volumeSize),
+									},
+								},
+								ProviderConfig: &runtime.RawExtension{
+									Raw: encode(&api.WorkerConfig{
+										Volume: &api.Volume{
+											LocalSSDInterface: &localVolumeInterface,
+										},
+									}),
+								},
 								Zones: []string{
 									zone1,
 									zone2,
@@ -267,10 +287,23 @@ var _ = Describe("Machines", func() {
 									Name:    machineImageName,
 									Version: machineImageVersion,
 								},
+								ProviderConfig: &runtime.RawExtension{
+									Raw: encode(&api.WorkerConfig{
+										Volume: &api.Volume{
+											LocalSSDInterface: &localVolumeInterface,
+										},
+									}),
+								},
 								UserData: userData,
 								Volume: &extensionsv1alpha1.Volume{
 									Type: &volumeType,
 									Size: fmt.Sprintf("%dGi", volumeSize),
+								},
+								DataVolumes: []extensionsv1alpha1.Volume{
+									extensionsv1alpha1.Volume{
+										Type: &localVolumeType,
+										Size: fmt.Sprintf("%dGi", volumeSize),
+									},
 								},
 								Zones: []string{
 									zone1,
@@ -312,6 +345,17 @@ var _ = Describe("Machines", func() {
 								"sizeGb":     volumeSize,
 								"type":       volumeType,
 								"image":      machineImage,
+								"labels": map[string]interface{}{
+									"name": name,
+								},
+							},
+							{
+								"autoDelete": true,
+								"boot":       false,
+								"sizeGb":     volumeSize,
+								"type":       localVolumeType,
+								"image":      machineImage,
+								"interface":  localVolumeInterface,
 								"labels": map[string]interface{}{
 									"name": name,
 								},

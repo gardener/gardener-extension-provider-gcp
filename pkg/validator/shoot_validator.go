@@ -87,6 +87,19 @@ func (v *Shoot) validateShoot(valContext *validationContext) field.ErrorList {
 	allErrors = append(allErrors, gcpvalidation.ValidateWorkers(valContext.shoot.Spec.Provider.Workers, workersPath)...)
 	allErrors = append(allErrors, gcpvalidation.ValidateControlPlaneConfig(valContext.controlPlaneConfig, allowedZones, workersZones(valContext.shoot.Spec.Provider.Workers), controlPlaneConfigPath)...)
 
+	// WorkerConfig
+	for i, worker := range valContext.shoot.Spec.Provider.Workers {
+		workerFldPath := workersPath.Index(i)
+		for _, volume := range worker.DataVolumes {
+			workerConfig, err := decodeWorkerConfig(v.decoder, worker.ProviderConfig)
+			if err != nil {
+				allErrors = append(allErrors, field.Invalid(workerFldPath.Child("providerConfig"), err, "invalid providerConfig"))
+			} else {
+				allErrors = append(allErrors, gcpvalidation.ValidateWorkerConfig(workerConfig, volume.Type)...)
+			}
+		}
+	}
+
 	return allErrors
 }
 

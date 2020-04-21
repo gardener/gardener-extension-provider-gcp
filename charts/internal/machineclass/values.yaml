@@ -15,6 +15,14 @@ machineClasses:
     image: projects/coreos-cloud/global/images/coreos-stable-1576-5-0-v20180105
     labels:
       name: my-disk
+#  local SSD
+#  - autoDelete: true
+#    boot: false
+#    type: SCRATCH
+#    interface: <localSSDInterface>
+#    image: projects/coreos-cloud/global/images/coreos-stable-1576-5-0-v20180105
+#    labels:
+#      name: my-disk
   labels:
     name: mcm
   machineType: n1-standard-4
