@@ -24,6 +24,7 @@ import (
 	workercontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
 	controlplanewebhook "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplane"
 	controlplaneexposurewebhook "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplaneexposure"
+	validatorwebhook "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/validator"
 
 	extensionsbackupbucketcontroller "github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	extensionsbackupentrycontroller "github.com/gardener/gardener/extensions/pkg/controller/backupentry"
@@ -33,6 +34,7 @@ import (
 	extensionshealthcheckcontroller "github.com/gardener/gardener/extensions/pkg/controller/healthcheck"
 	extensionsinfrastructurecontroller "github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	extensionsworkercontroller "github.com/gardener/gardener/extensions/pkg/controller/worker"
+	extensionwebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 	extensioncontrolplanewebhook "github.com/gardener/gardener/extensions/pkg/webhook/controlplane"
 )
@@ -53,7 +55,14 @@ func ControllerSwitchOptions() *controllercmd.SwitchOptions {
 // WebhookSwitchOptions are the webhookcmd.SwitchOptions for the provider webhooks.
 func WebhookSwitchOptions() *webhookcmd.SwitchOptions {
 	return webhookcmd.NewSwitchOptions(
-		webhookcmd.Switch(extensioncontrolplanewebhook.WebhookName, controlplanewebhook.AddToManager),
-		webhookcmd.Switch(extensioncontrolplanewebhook.ExposureWebhookName, controlplaneexposurewebhook.AddToManager),
+		webhookcmd.Switch(extensioncontrolplanewebhook.WebhookName, controlplanewebhook.New),
+		webhookcmd.Switch(extensioncontrolplanewebhook.ExposureWebhookName, controlplaneexposurewebhook.New),
+	)
+}
+
+// GardenWebhookSwitchOptions are the webhookcmd.SwitchOptions for the provider webhooks.
+func GardenWebhookSwitchOptions() *webhookcmd.SwitchOptions {
+	return webhookcmd.NewSwitchOptions(
+		webhookcmd.Switch(extensionwebhook.ValidatorName, validatorwebhook.New),
 	)
 }

@@ -19,17 +19,17 @@ import (
 	"fmt"
 
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
+	gcpcmd "github.com/gardener/gardener-extension-provider-gcp/pkg/cmd"
 	providergcp "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/validator"
+
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	"github.com/gardener/gardener/extensions/pkg/util"
+	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 	"github.com/gardener/gardener/pkg/apis/core/install"
-
 	"github.com/spf13/cobra"
 	componentbaseconfig "k8s.io/component-base/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 var log = logf.Log.WithName("gardener-extension-validator-gcp")
@@ -42,16 +42,20 @@ func NewValidatorCommand(ctx context.Context) *cobra.Command {
 			WebhookServerPort: 443,
 		}
 
+		webhookSwitches = gcpcmd.GardenWebhookSwitchOptions()
+		webhookOptions  = webhookcmd.NewAddToManagerSimpleOptions(webhookSwitches)
+
 		aggOption = controllercmd.NewOptionAggregator(
 			restOpts,
 			mgrOpts,
+			webhookOptions,
 		)
 	)
 
 	cmd := &cobra.Command{
 		Use: fmt.Sprintf("validator-%s", providergcp.Type),
 
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := aggOption.Complete(); err != nil {
 				controllercmd.LogErrAndExit(err, "Error completing options")
 			}
@@ -73,14 +77,15 @@ func NewValidatorCommand(ctx context.Context) *cobra.Command {
 			}
 
 			log.Info("Setting up webhook server")
-			hookServer := mgr.GetWebhookServer()
 
-			log.Info("Registering webhooks")
-			hookServer.Register("/webhooks/validate", &webhook.Admission{Handler: &validator.Shoot{Logger: log.WithName("validator-gcp")}})
+			if err := webhookOptions.Completed().AddToManager(mgr); err != nil {
+				return err
+			}
 
 			if err := mgr.Start(ctx.Done()); err != nil {
 				controllercmd.LogErrAndExit(err, "Error running manager")
 			}
+			return nil
 		},
 	}
 

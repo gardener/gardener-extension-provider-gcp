@@ -16,6 +16,7 @@ package validator
 
 import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+
 	"github.com/gardener/gardener/extensions/pkg/util"
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -54,6 +55,15 @@ func decodeInfrastructureConfig(decoder runtime.Decoder, infra *core.ProviderCon
 }
 
 func decodeCloudProfileConfig(decoder runtime.Decoder, config *gardencorev1beta1.ProviderConfig) (*gcp.CloudProfileConfig, error) {
+	cloudProfileConfig := &gcp.CloudProfileConfig{}
+	if err := util.Decode(decoder, config.Raw, cloudProfileConfig); err != nil {
+		return nil, err
+	}
+
+	return cloudProfileConfig, nil
+}
+
+func decodeCloudProfileConfigFromInternalProviderConfig(decoder runtime.Decoder, config *core.ProviderConfig) (*gcp.CloudProfileConfig, error) {
 	cloudProfileConfig := &gcp.CloudProfileConfig{}
 	if err := util.Decode(decoder, config.Raw, cloudProfileConfig); err != nil {
 		return nil, err

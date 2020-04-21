@@ -19,20 +19,59 @@ import (
 	"fmt"
 	"reflect"
 
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-
-	"k8s.io/apimachinery/pkg/util/sets"
-
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
+
+	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
+	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-
-	"github.com/gardener/gardener/pkg/apis/core"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type shootValidator struct {
+	client  client.Client
+	decoder runtime.Decoder
+}
+
+// NewShootValidator returns a new instance of a shoot validator.
+func NewShootValidator() extensionswebhook.Validator {
+	return &shootValidator{}
+}
+
+// InjectScheme injects the given scheme into the validator.
+func (s *shootValidator) InjectScheme(scheme *runtime.Scheme) error {
+	s.decoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
+	return nil
+}
+
+// InjectClient injects the given client into the validator.
+func (s *shootValidator) InjectClient(client client.Client) error {
+	s.client = client
+	return nil
+}
+
+// Validate validates the given shoot objects.
+func (s *shootValidator) Validate(ctx context.Context, new, old runtime.Object) error {
+	shoot, ok := new.(*core.Shoot)
+	if !ok {
+		return fmt.Errorf("wrong object type %q", reflect.TypeOf(new).Name())
+	}
+
+	if old != nil {
+		oldShoot, ok := old.(*core.Shoot)
+		if !ok {
+			return fmt.Errorf("wrong object type %q for old object", reflect.TypeOf(old).Name())
+		}
+		return s.validateShootUpdate(ctx, oldShoot, shoot)
+	}
+
+	return s.validateShootCreate(ctx, shoot)
+}
 
 var (
 	specPath = field.NewPath("spec")
@@ -47,10 +86,10 @@ var (
 
 type validationContext struct {
 	shoot                *core.Shoot
-	infrastructureConfig *gcp.InfrastructureConfig
-	controlPlaneConfig   *gcp.ControlPlaneConfig
+	infrastructureConfig *apisgcp.InfrastructureConfig
+	controlPlaneConfig   *apisgcp.ControlPlaneConfig
 	cloudProfile         *gardencorev1beta1.CloudProfile
-	cloudProfileConfig   *gcp.CloudProfileConfig
+	cloudProfileConfig   *apisgcp.CloudProfileConfig
 }
 
 func workersZones(workers []core.Worker) sets.String {
@@ -76,7 +115,7 @@ func getAllowedRegionZonesFromCloudProfile(shoot *core.Shoot, cloudProfile *gard
 	return nil
 }
 
-func (v *Shoot) validateShoot(valContext *validationContext) field.ErrorList {
+func (s *shootValidator) validateShoot(valContext *validationContext) field.ErrorList {
 	var (
 		allErrors    = field.ErrorList{}
 		allowedZones = getAllowedRegionZonesFromCloudProfile(valContext.shoot, valContext.cloudProfile)
@@ -91,7 +130,7 @@ func (v *Shoot) validateShoot(valContext *validationContext) field.ErrorList {
 	for i, worker := range valContext.shoot.Spec.Provider.Workers {
 		workerFldPath := workersPath.Index(i)
 		for _, volume := range worker.DataVolumes {
-			workerConfig, err := decodeWorkerConfig(v.decoder, worker.ProviderConfig)
+			workerConfig, err := decodeWorkerConfig(s.decoder, worker.ProviderConfig)
 			if err != nil {
 				allErrors = append(allErrors, field.Invalid(workerFldPath.Child("providerConfig"), err, "invalid providerConfig"))
 			} else {
@@ -103,22 +142,22 @@ func (v *Shoot) validateShoot(valContext *validationContext) field.ErrorList {
 	return allErrors
 }
 
-func (v *Shoot) validateShootCreate(ctx context.Context, shoot *core.Shoot) error {
-	validationContext, err := newValidationContext(ctx, v.decoder, v.client, shoot)
+func (s *shootValidator) validateShootCreate(ctx context.Context, shoot *core.Shoot) error {
+	validationContext, err := newValidationContext(ctx, s.decoder, s.client, shoot)
 	if err != nil {
 		return err
 	}
 
-	return v.validateShoot(validationContext).ToAggregate()
+	return s.validateShoot(validationContext).ToAggregate()
 }
 
-func (v *Shoot) validateShootUpdate(ctx context.Context, oldShoot, currentShoot *core.Shoot) error {
-	oldValContext, err := newValidationContext(ctx, v.decoder, v.client, oldShoot)
+func (s *shootValidator) validateShootUpdate(ctx context.Context, oldShoot, currentShoot *core.Shoot) error {
+	oldValContext, err := newValidationContext(ctx, s.decoder, s.client, oldShoot)
 	if err != nil {
 		return err
 	}
 
-	currentValContext, err := newValidationContext(ctx, v.decoder, v.client, currentShoot)
+	currentValContext, err := newValidationContext(ctx, s.decoder, s.client, currentShoot)
 	if err != nil {
 		return err
 	}
@@ -138,7 +177,7 @@ func (v *Shoot) validateShootUpdate(ctx context.Context, oldShoot, currentShoot 
 	}
 
 	allErrors = append(allErrors, gcpvalidation.ValidateWorkersUpdate(oldValContext.shoot.Spec.Provider.Workers, currentValContext.shoot.Spec.Provider.Workers, workersPath)...)
-	allErrors = append(allErrors, v.validateShoot(currentValContext)...)
+	allErrors = append(allErrors, s.validateShoot(currentValContext)...)
 
 	return allErrors.ToAggregate()
 

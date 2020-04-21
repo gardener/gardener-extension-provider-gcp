@@ -19,36 +19,49 @@ import (
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 
+	"github.com/gardener/gardener/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 // ValidateCloudProfileConfig validates a CloudProfileConfig object.
-func ValidateCloudProfileConfig(cloudProfile *apisgcp.CloudProfileConfig) field.ErrorList {
+func ValidateCloudProfileConfig(cpConfig *apisgcp.CloudProfileConfig, machineImages []core.MachineImage, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	machineImagesPath := fldPath.Child("machineImages")
+
+	for _, image := range machineImages {
+		var processed bool
+		for i, imageConfig := range cpConfig.MachineImages {
+			if image.Name == imageConfig.Name {
+				allErrs = append(allErrs, ValidateVersions(imageConfig.Versions, image.Versions, machineImagesPath.Index(i).Child("versions"))...)
+				processed = true
+				break
+			}
+		}
+		if !processed && len(image.Versions) > 0 {
+			allErrs = append(allErrs, field.Required(machineImagesPath, fmt.Sprintf("must provide an image mapping for image %q", image.Name)))
+		}
+	}
+
+	return allErrs
+}
+
+func ValidateVersions(versionsConfig []apisgcp.MachineImageVersion, versions []core.ExpirableVersion, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	machineImagesPath := field.NewPath("machineImages")
-	if len(cloudProfile.MachineImages) == 0 {
-		allErrs = append(allErrs, field.Required(machineImagesPath, "must provide at least one machine image"))
-	}
-	for i, machineImage := range cloudProfile.MachineImages {
-		idxPath := machineImagesPath.Index(i)
-
-		if len(machineImage.Name) == 0 {
-			allErrs = append(allErrs, field.Required(idxPath.Child("name"), "must provide a name"))
-		}
-
-		if len(machineImage.Versions) == 0 {
-			allErrs = append(allErrs, field.Required(idxPath.Child("versions"), fmt.Sprintf("must provide at least one version for machine image %q", machineImage.Name)))
-		}
-		for j, version := range machineImage.Versions {
-			jdxPath := idxPath.Child("versions").Index(j)
-
-			if len(version.Version) == 0 {
-				allErrs = append(allErrs, field.Required(jdxPath.Child("version"), "must provide a version"))
+	for _, version := range versions {
+		var processed bool
+		for j, versionConfig := range versionsConfig {
+			jdxPath := fldPath.Index(j)
+			if version.Version == versionConfig.Version {
+				if len(versionConfig.Image) == 0 {
+					allErrs = append(allErrs, field.Required(jdxPath.Child("image"), "must provide an image"))
+				}
+				processed = true
+				break
 			}
-			if len(version.Image) == 0 {
-				allErrs = append(allErrs, field.Required(jdxPath.Child("image"), "must provide an image"))
-			}
+		}
+		if !processed {
+			allErrs = append(allErrs, field.Required(fldPath, fmt.Sprintf("must provide an image mapping for version %q", version.Version)))
 		}
 	}
 
