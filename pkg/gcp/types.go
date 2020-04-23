@@ -38,6 +38,8 @@ const (
 	CSISnapshotterImageName = "csi-snapshotter"
 	// CSIResizerImageName is the name of the csi-resizer image.
 	CSIResizerImageName = "csi-resizer"
+	// CSISnapshotControllerImageName is the name of the csi-snapshot-controller image.
+	CSISnapshotControllerImageName = "csi-snapshot-controller"
 	// CSINodeDriverRegistrarImageName is the name of the csi-node-driver-registrar image.
 	CSINodeDriverRegistrarImageName = "csi-node-driver-registrar"
 	// CSILivenessProbeImageName is the name of the csi-liveness-probe image.
@@ -68,6 +70,8 @@ const (
 	CSISnapshotterName = "csi-snapshotter"
 	// CSIResizerName is a constant for the name of the csi-resizer component.
 	CSIResizerName = "csi-resizer"
+	// CSISnapshotController is a constant for the name of the csi-snapshot-controller component.
+	CSISnapshotController = "csi-snapshot-controller"
 	// CSINodeDriverRegistrarName is a constant for the name of the csi-node-driver-registrar component.
 	CSINodeDriverRegistrarName = "csi-node-driver-registrar"
 	// CSILivenessProbeName is a constant for the name of the csi-liveness-probe component.

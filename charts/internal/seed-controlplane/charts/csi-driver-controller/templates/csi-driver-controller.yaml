@@ -42,7 +42,7 @@ spec:
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
         - --run-node-service=false
         - --logtostderr
-        - --v=5
+        - --v=3
         env:
         - name: CSI_ENDPOINT
           value: unix://{{ .Values.socketPath }}/csi.sock
@@ -127,7 +127,7 @@ spec:
         - --kubeconfig=/var/lib/csi-snapshotter/kubeconfig
         - --leader-election
         - --leader-election-namespace=kube-system
-        - --snapshot-name-prefix={{ .Release.Namespace }}
+        - --snapshot-name-prefix=snapshot
         env:
         - name: CSI_ENDPOINT
           value: {{ .Values.socketPath }}/csi.sock
