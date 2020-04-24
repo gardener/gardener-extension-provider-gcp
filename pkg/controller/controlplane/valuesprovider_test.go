@@ -236,6 +236,11 @@ var _ = Describe("ValuesProvider", func() {
 						"checksum/secret-" + gcp.CSIResizerName:                       checksums[gcp.CSIResizerName],
 						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
 					},
+					"csiSnapshotController": map[string]interface{}{
+						"podAnnotations": map[string]interface{}{
+							"checksum/secret-" + gcp.CSISnapshotController: checksums[gcp.CSISnapshotController],
+						},
+					},
 				}),
 			}))
 		})
