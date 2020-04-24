@@ -23,8 +23,6 @@ import (
 const (
 	// Name is the name of the GCP provider.
 	Name = "provider-gcp"
-	// StorageProviderName is the name of the GCP storage provider.
-	StorageProviderName = "GCS"
 
 	// CloudControllerManagerImageName is the name of the cloud-controller-manager image.
 	CloudControllerManagerImageName = "cloud-controller-manager"
@@ -70,8 +68,8 @@ const (
 	CSISnapshotterName = "csi-snapshotter"
 	// CSIResizerName is a constant for the name of the csi-resizer component.
 	CSIResizerName = "csi-resizer"
-	// CSISnapshotController is a constant for the name of the csi-snapshot-controller component.
-	CSISnapshotController = "csi-snapshot-controller"
+	// CSISnapshotControllerName is a constant for the name of the csi-snapshot-controller component.
+	CSISnapshotControllerName = "csi-snapshot-controller"
 	// CSINodeDriverRegistrarName is a constant for the name of the csi-node-driver-registrar component.
 	CSINodeDriverRegistrarName = "csi-node-driver-registrar"
 	// CSILivenessProbeName is a constant for the name of the csi-liveness-probe component.

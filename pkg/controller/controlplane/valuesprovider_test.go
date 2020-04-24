@@ -143,6 +143,7 @@ var _ = Describe("ValuesProvider", func() {
 			gcp.CSIAttacherName:                        "3f22909841cdbb80e5382d689d920309c0a7d995128e52c79773f9608ed7c289",
 			gcp.CSISnapshotterName:                     "6a5bfc847638c499062f7fb44e31a30a9760bf4179e1dbf85e0ff4b4f162cd68",
 			gcp.CSIResizerName:                         "a77e663ba1af340fb3dd7f6f8a1be47c7aa9e658198695480641e6b934c0b9ed",
+			gcp.CSISnapshotControllerName:              "84cba346d2e2cf96c3811b55b01f57bdd9b9bcaed7065760470942d267984eaf",
 		}
 
 		enabledTrue  = map[string]interface{}{"enabled": true}
@@ -238,7 +239,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					"csiSnapshotController": map[string]interface{}{
 						"podAnnotations": map[string]interface{}{
-							"checksum/secret-" + gcp.CSISnapshotController: checksums[gcp.CSISnapshotController],
+							"checksum/secret-" + gcp.CSISnapshotControllerName: checksums[gcp.CSISnapshotControllerName],
 						},
 					},
 				}),
