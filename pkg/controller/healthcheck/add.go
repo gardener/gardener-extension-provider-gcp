@@ -46,6 +46,14 @@ var (
 
 // RegisterHealthChecks registers health checks for each extension resource
 func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
+	csiEnabledPreCheckFunc := func(_ runtime.Object, cluster *extensionscontroller.Cluster) bool {
+		csiEnabled, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, ">=", "1.18")
+		if err != nil {
+			return false
+		}
+		return csiEnabled
+	}
+
 	if err := healthcheck.DefaultRegistration(
 		gcp.Type,
 		extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.ControlPlaneResource),
@@ -61,13 +69,12 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.CSIControllerName),
-				PreCheckFunc: func(_ runtime.Object, cluster *extensionscontroller.Cluster) bool {
-					k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.18")
-					if err != nil {
-						return false
-					}
-					return !k8sVersionLessThan118
-				},
+				PreCheckFunc:  csiEnabledPreCheckFunc,
+			},
+			{
+				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
+				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.CSISnapshotControllerName),
+				PreCheckFunc:  csiEnabledPreCheckFunc,
 			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootSystemComponentsHealthy),

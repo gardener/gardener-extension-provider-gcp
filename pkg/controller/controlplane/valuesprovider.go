@@ -135,8 +135,8 @@ var (
 				},
 				&secrets.ControlPlaneSecretConfig{
 					CertificateSecretConfig: &secrets.CertificateSecretConfig{
-						Name:       gcp.CSISnapshotController,
-						CommonName: gcp.UsernamePrefix + gcp.CSISnapshotController,
+						Name:       gcp.CSISnapshotControllerName,
+						CommonName: gcp.UsernamePrefix + gcp.CSISnapshotControllerName,
 						CertType:   secrets.ClientCert,
 						SigningCA:  cas[v1beta1constants.SecretNameCACluster],
 					},
@@ -180,7 +180,7 @@ var (
 					gcp.CSISnapshotterImageName,
 					gcp.CSIResizerImageName,
 					gcp.CSILivenessProbeImageName,
-					gcp.CSISnapshotController,
+					gcp.CSISnapshotControllerImageName,
 				},
 				Objects: []*chart.Object{
 					// csi-driver-controller
@@ -188,8 +188,8 @@ var (
 					{Type: &corev1.ConfigMap{}, Name: gcp.CSIControllerConfigName},
 					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: gcp.CSIControllerName + "-vpa"},
 					// csi-snapshot-controller
-					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotController},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: gcp.CSISnapshotController + "-vpa"},
+					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotControllerName},
+					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: gcp.CSISnapshotControllerName + "-vpa"},
 				},
 			},
 		},
@@ -233,10 +233,10 @@ var (
 					{Type: &rbacv1.Role{}, Name: gcp.UsernamePrefix + gcp.CSIAttacherName},
 					{Type: &rbacv1.RoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIAttacherName},
 					// csi-snapshot-controller
-					{Type: &rbacv1.ClusterRole{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotController},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotController},
-					{Type: &rbacv1.Role{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotController},
-					{Type: &rbacv1.RoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotController},
+					{Type: &rbacv1.ClusterRole{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotControllerName},
+					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotControllerName},
+					{Type: &rbacv1.Role{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotControllerName},
+					{Type: &rbacv1.RoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotControllerName},
 					// csi-snapshotter
 					{Type: &apiextensionsv1beta1.CustomResourceDefinition{}, Name: "volumesnapshotclasses.snapshot.storage.k8s.io"},
 					{Type: &apiextensionsv1beta1.CustomResourceDefinition{}, Name: "volumesnapshotcontents.snapshot.storage.k8s.io"},
@@ -463,7 +463,7 @@ func getCSIControllerChartValues(
 		},
 		"csiSnapshotController": map[string]interface{}{
 			"podAnnotations": map[string]interface{}{
-				"checksum/secret-" + gcp.CSISnapshotController: checksums[gcp.CSISnapshotController],
+				"checksum/secret-" + gcp.CSISnapshotControllerName: checksums[gcp.CSISnapshotControllerName],
 			},
 		},
 	}, nil
