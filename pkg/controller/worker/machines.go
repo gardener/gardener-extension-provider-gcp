@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -114,23 +116,35 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			Image:   machineImage,
 		})
 
-		volumeSize, err := worker.DiskSize(pool.Volume.Size)
-		if err != nil {
-			return err
+		disks := make([]map[string]interface{}, 0)
+		// root volume
+		if pool.Volume != nil {
+			disk, err := createDiskSpec(*pool.Volume, w.worker.Name, machineImage, true)
+			if err != nil {
+				return err
+			}
+
+			disks = append(disks, disk)
 		}
 
-		disk := map[string]interface{}{
-			"autoDelete": true,
-			"boot":       true,
-			"sizeGb":     volumeSize,
-			"type":       pool.Volume.Type,
-			"image":      machineImage,
-			"labels": map[string]interface{}{
-				"name": w.worker.Name,
-			},
+		// additional volumes
+		workerConfig := &gcpapi.WorkerConfig{}
+		if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
+			if _, _, err := w.Decoder().Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
+				return fmt.Errorf("could not decode provider config: %+v", err)
+			}
 		}
-		if pool.Volume.Type != nil {
-			disk["type"] = *pool.Volume.Type
+		for _, volume := range pool.DataVolumes {
+			disk, err := createDiskSpec(volume, w.worker.Name, machineImage, false)
+			if err != nil {
+				return err
+			}
+
+			if volume.Type != nil && *volume.Type == "SCRATCH" && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
+				disk["interface"] = *workerConfig.Volume.LocalSSDInterface
+			}
+
+			disks = append(disks, disk)
 		}
 
 		for zoneIndex, zone := range pool.Zones {
@@ -141,7 +155,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				"canIpForward":       true,
 				"deletionProtection": false,
 				"description":        fmt.Sprintf("Machine of Shoot %s created by machine-controller-manager.", w.worker.Name),
-				"disks":              []map[string]interface{}{disk},
+				"disks":              disks,
 				"labels": map[string]interface{}{
 					"name": w.worker.Name,
 				},
@@ -208,4 +222,28 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	w.machineImages = machineImages
 
 	return nil
+}
+
+func createDiskSpec(volume v1alpha1.Volume, workerName string, machineImage string, boot bool) (map[string]interface{}, error) {
+	volumeSize, err := worker.DiskSize(volume.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	disk := map[string]interface{}{
+		"autoDelete": true,
+		"boot":       boot,
+		"sizeGb":     volumeSize,
+		"type":       volume.Type,
+		"image":      machineImage,
+		"labels": map[string]interface{}{
+			"name": workerName,
+		},
+	}
+
+	if volume.Type != nil {
+		disk["type"] = *volume.Type
+	}
+
+	return disk, nil
 }

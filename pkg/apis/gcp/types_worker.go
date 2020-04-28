@@ -21,6 +21,25 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// WorkerConfig contains configuration settings for the worker nodes.
+type WorkerConfig struct {
+	metav1.TypeMeta
+
+	// Volume contains configuration for the root disks attached to VMs.
+	// +optional
+	Volume *Volume
+}
+
+// Volume contains configuration for the additional disks attached to VMs.
+type Volume struct {
+	// LocalSSDInterface is the interface of that the local ssd disk supports.
+	// +optional
+	LocalSSDInterface *string
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // WorkerStatus contains information about created worker resources.
 type WorkerStatus struct {
 	metav1.TypeMeta

@@ -84,5 +84,8 @@ spec:
     volume:
       type: pd-standard
       size: 20Gi
+    # workerconfig is used to specify the interface of gcp local ssd
+    #dataVolumes:
+    #  - type: SCRATCH
     zones:
     - europe-west1-b

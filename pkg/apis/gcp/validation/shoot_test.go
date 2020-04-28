@@ -15,6 +15,7 @@
 package validation_test
 
 import (
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo"
@@ -81,6 +82,12 @@ var _ = Describe("Shoot validation", func() {
 						"zone1",
 						"zone2",
 					},
+					DataVolumes: []core.Volume{
+						core.Volume{
+							Type:       makeStringPointer("Volume"),
+							VolumeSize: "30G",
+						},
+					},
 				},
 				{
 					Volume: &core.Volume{
@@ -90,6 +97,12 @@ var _ = Describe("Shoot validation", func() {
 					Zones: []string{
 						"zone1",
 						"zone2",
+					},
+					DataVolumes: []core.Volume{
+						core.Volume{
+							Type:       makeStringPointer("SCRATCH"),
+							VolumeSize: "30G",
+						},
 					},
 				},
 			}
@@ -155,6 +168,40 @@ var _ = Describe("Shoot validation", func() {
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("workers[0].zones"),
+				})),
+			))
+		})
+
+		It("should pass because worker config is configured correctly", func() {
+			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
+				Volume: &gcp.Volume{
+					LocalSSDInterface: makeStringPointer("NVME"),
+				},
+			})
+			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should forbid because interface of worker config is misconfiguration", func() {
+			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
+				Volume: &gcp.Volume{
+					LocalSSDInterface: makeStringPointer("Interface"),
+				},
+			})
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeNotSupported),
+					"Field": Equal("volume.localSSDInterface"),
+				})),
+			))
+		})
+
+		It("should forbid because interface of worker config is not configured", func() {
+
+			errorList := validateWorkerConfig(workers, nil)
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("volume.localSSDInterface"),
 				})),
 			))
 		})
@@ -232,3 +279,15 @@ var _ = Describe("Shoot validation", func() {
 		})
 	})
 })
+
+func validateWorkerConfig(workers []core.Worker, workerConfig *gcp.WorkerConfig) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for _, worker := range workers {
+		for _, volume := range worker.DataVolumes {
+			allErrs = append(allErrs, ValidateWorkerConfig(workerConfig, volume.Type)...)
+
+		}
+	}
+
+	return allErrs
+}
