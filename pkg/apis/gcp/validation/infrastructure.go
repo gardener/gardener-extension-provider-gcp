@@ -17,9 +17,10 @@ package validation
 import (
 	"reflect"
 
+	apivalidation "k8s.io/apimachinery/pkg/api/validation"
+
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
-	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -121,8 +122,26 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 
 // ValidateInfrastructureConfigUpdate validates a InfrastructureConfig object.
 func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.InfrastructureConfig, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks, oldConfig.Networks, fldPath.Child("networks"))...)
+	var (
+		allErrs      = field.ErrorList{}
+		networksPath = fldPath.Child("networks")
+		vpcPath      = networksPath.Child("vpc")
+	)
+
+	oldVPC := oldConfig.Networks.VPC
+	newVPC := newConfig.Networks.VPC
+
+	if oldVPC != nil && newVPC == nil {
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newVPC, oldVPC, vpcPath)...)
+	}
+
+	if oldVPC != nil && newVPC != nil {
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newVPC.Name, oldVPC.Name, vpcPath.Child("name"))...)
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newVPC.CloudRouter, oldVPC.CloudRouter, vpcPath.Child("cloudRouter"))...)
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Internal, oldConfig.Networks.Internal, networksPath.Child("internal"))...)
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, networksPath.Child("workers"))...)
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Worker, oldConfig.Networks.Worker, networksPath.Child("worker"))...)
+	}
 
 	return allErrs
 }

@@ -17,6 +17,7 @@ package validation_test
 import (
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
+	"k8s.io/utils/pointer"
 
 	. "github.com/gardener/gardener/pkg/utils/validation/gomega"
 	. "github.com/onsi/ginkgo"
@@ -47,8 +48,20 @@ var _ = Describe("InfrastructureConfig validation", func() {
 						Name: "hugo-cr",
 					},
 				},
+				CloudNAT: &apisgcp.CloudNAT{
+					MinPortsPerVM: pointer.Int32Ptr(20),
+					NatIPNames: []apisgcp.NatIPName{{
+						Name: "test",
+					}},
+				},
+				FlowLogs: &apisgcp.FlowLogs{
+					AggregationInterval: pointer.StringPtr("INTERVAL_5_SEC"),
+					Metadata:            pointer.StringPtr("INCLUDE_ALL_METADATA"),
+					FlowSampling:        pointer.Float32Ptr(0.4),
+				},
 				Internal: &internal,
 				Workers:  "10.250.0.0/16",
+				Worker:   "10.250.0.0/16",
 			},
 		}
 	})
@@ -185,15 +198,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					"Detail": Equal("must contain a valid value"),
 				}))
 			})
-			It("should allow correct VPC flow log config", func() {
-				aggregationInterval := "INTERVAL_1_MIN"
-				flowSampling := float32(0.5)
-				metadata := "INCLUDE_ALL_METADATA"
-				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{AggregationInterval: &aggregationInterval, FlowSampling: &flowSampling, Metadata: &metadata}
-
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
-				Expect(errorList).To(BeEmpty())
-			})
 			It("should forbid reusing a VPC without specifying a CloudRouter", func() {
 				testInfrastructureConfig.Networks.VPC = &apisgcp.VPC{
 					Name: "test-vpc",
@@ -286,6 +290,19 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				Expect(errorList).To(BeEmpty())
 			})
 		})
+		Context("CloudNAT and Flowlogs", func() {
+			It("should allow correct flowlogs config", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{
+					AggregationInterval: pointer.StringPtr("INTERVAL_1_MIN"),
+					Metadata:            pointer.StringPtr("INCLUDE_ALL_METADATA"),
+					FlowSampling:        pointer.Float32Ptr(0.5),
+				}
+
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(BeEmpty())
+			})
+		})
 	})
 
 	Describe("#ValidateInfrastructureConfigUpdate", func() {
@@ -293,16 +310,62 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			Expect(ValidateInfrastructureConfigUpdate(infrastructureConfig, infrastructureConfig, fldPath)).To(BeEmpty())
 		})
 
-		It("should forbid changing the network section", func() {
+		It("should allow changing cloudNAT AND Flow-logs details", func() {
 			newInfrastructureConfig := infrastructureConfig.DeepCopy()
-			newInfrastructureConfig.Networks.VPC = &apisgcp.VPC{Name: "name"}
+			newInfrastructureConfig.Networks.CloudNAT = &apisgcp.CloudNAT{
+				MinPortsPerVM: pointer.Int32Ptr(30),
+				NatIPNames: []apisgcp.NatIPName{{
+					Name: "not-test",
+				}},
+			}
+			newInfrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{
+				AggregationInterval: pointer.StringPtr("INTERVAL_30_SEC"),
+			}
 
 			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+			Expect(errorList).To(BeEmpty())
+		})
 
-			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+		It("should forbid changing infrastructure network details", func() {
+			newInfrastructureConfig := infrastructureConfig.DeepCopy()
+			newInfrastructureConfig.Networks.VPC = &apisgcp.VPC{
+				Name: "not-hugo",
+				CloudRouter: &apisgcp.CloudRouter{
+					Name: "not-hugo-cr",
+				},
+			}
+			newInfrastructureConfig.Networks.Workers = "10.96.0.0/16"
+			newInfrastructureConfig.Networks.Worker = "10.96.0.0/16"
+			newInfrastructureConfig.Networks.Internal = pointer.StringPtr("10.96.0.0/16")
+
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+			Expect(errorList).To(ConsistOfFields(Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
-				"Field": Equal("networks"),
-			}))))
+				"Field": Equal("networks.vpc.name"),
+			}, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.vpc.cloudRouter"),
+			}, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.workers"),
+			}, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.worker"),
+			}, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.internal"),
+			}))
+		})
+
+		It("should forbid updating VPC value to nil", func() {
+			newInfrastructureConfig := infrastructureConfig.DeepCopy()
+			newInfrastructureConfig.Networks.VPC = nil
+
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+			Expect(errorList).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.vpc"),
+			}))
 		})
 	})
 })
