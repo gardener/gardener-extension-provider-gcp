@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
+	admissioncmd "github.com/gardener/gardener-extension-provider-gcp/pkg/admission/cmd"
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
-	gcpcmd "github.com/gardener/gardener-extension-provider-gcp/pkg/cmd"
 	providergcp "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
@@ -32,17 +32,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-var log = logf.Log.WithName("gardener-extension-validator-gcp")
+var log = logf.Log.WithName("gardener-extension-admission-gcp")
 
-// NewValidatorCommand creates a new command for running an GCP gardener-extension-validator-gcp.
-func NewValidatorCommand(ctx context.Context) *cobra.Command {
+// NewAdmissionCommand creates a new command for running a GCP gardener-extension-admission-gcp webhook.
+func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 	var (
 		restOpts = &controllercmd.RESTOptions{}
 		mgrOpts  = &controllercmd.ManagerOptions{
 			WebhookServerPort: 443,
 		}
 
-		webhookSwitches = gcpcmd.GardenWebhookSwitchOptions()
+		webhookSwitches = admissioncmd.GardenWebhookSwitchOptions()
 		webhookOptions  = webhookcmd.NewAddToManagerSimpleOptions(webhookSwitches)
 
 		aggOption = controllercmd.NewOptionAggregator(
@@ -53,11 +53,11 @@ func NewValidatorCommand(ctx context.Context) *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use: fmt.Sprintf("validator-%s", providergcp.Type),
+		Use: fmt.Sprintf("admission-%s", providergcp.Type),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := aggOption.Complete(); err != nil {
-				controllercmd.LogErrAndExit(err, "Error completing options")
+				return fmt.Errorf("error completing options: %v", err)
 			}
 
 			util.ApplyClientConnectionConfigurationToRESTConfig(&componentbaseconfig.ClientConnectionConfiguration{
@@ -67,13 +67,13 @@ func NewValidatorCommand(ctx context.Context) *cobra.Command {
 
 			mgr, err := manager.New(restOpts.Completed().Config, mgrOpts.Completed().Options())
 			if err != nil {
-				controllercmd.LogErrAndExit(err, "Could not instantiate manager")
+				return fmt.Errorf("could not instantiate manager: %v", err)
 			}
 
 			install.Install(mgr.GetScheme())
 
 			if err := gcpinstall.AddToScheme(mgr.GetScheme()); err != nil {
-				controllercmd.LogErrAndExit(err, "Could not update manager scheme")
+				return fmt.Errorf("could not update manager scheme: %v", err)
 			}
 
 			log.Info("Setting up webhook server")
@@ -82,10 +82,7 @@ func NewValidatorCommand(ctx context.Context) *cobra.Command {
 				return err
 			}
 
-			if err := mgr.Start(ctx.Done()); err != nil {
-				controllercmd.LogErrAndExit(err, "Error running manager")
-			}
-			return nil
+			return mgr.Start(ctx.Done())
 		},
 	}
 

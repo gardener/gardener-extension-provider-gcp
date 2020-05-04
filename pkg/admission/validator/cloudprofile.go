@@ -17,47 +17,46 @@ package validator
 import (
 	"context"
 	"fmt"
-	"reflect"
 
-	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
-
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 
+	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-type cloudProfileValidator struct {
+type cloudProfile struct {
 	decoder runtime.Decoder
 }
 
-// NewCloudProfileValidator returns a new instance of a shoot validator.
+// NewCloudProfileValidator returns a new instance of a cloud profile validator.
 func NewCloudProfileValidator() extensionswebhook.Validator {
-	return &cloudProfileValidator{}
+	return &cloudProfile{}
 }
 
 // InjectScheme injects the given scheme into the validator.
-func (cp *cloudProfileValidator) InjectScheme(scheme *runtime.Scheme) error {
+func (cp *cloudProfile) InjectScheme(scheme *runtime.Scheme) error {
 	cp.decoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
 	return nil
 }
 
 var cpProviderConfigPath = specPath.Child("providerConfig")
 
-// Validate validates the given shoot objects.
-func (cp *cloudProfileValidator) Validate(ctx context.Context, new, old runtime.Object) error {
+// Validate validates the given cloud profile objects.
+func (cp *cloudProfile) Validate(ctx context.Context, new, old runtime.Object) error {
 	cloudProfile, ok := new.(*core.CloudProfile)
 	if !ok {
-		return fmt.Errorf("wrong object type %q", reflect.TypeOf(new).Name())
+		return fmt.Errorf("wrong object type %T", new)
 	}
 
 	if cloudProfile.Spec.ProviderConfig == nil {
 		return field.Required(cpProviderConfigPath, "providerConfig must be set for GCP cloud profiles")
 	}
 
-	cpConfig, err := decodeCloudProfileConfigFromInternalProviderConfig(cp.decoder, cloudProfile.Spec.ProviderConfig)
+	cpConfig, err := admission.DecodeCloudProfileConfig(cp.decoder, cloudProfile.Spec.ProviderConfig)
 	if err != nil {
 		return err
 	}

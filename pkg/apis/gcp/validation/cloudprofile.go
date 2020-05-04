@@ -32,7 +32,7 @@ func ValidateCloudProfileConfig(cpConfig *apisgcp.CloudProfileConfig, machineIma
 		var processed bool
 		for i, imageConfig := range cpConfig.MachineImages {
 			if image.Name == imageConfig.Name {
-				allErrs = append(allErrs, ValidateVersions(imageConfig.Versions, image.Versions, machineImagesPath.Index(i).Child("versions"))...)
+				allErrs = append(allErrs, validateVersions(imageConfig.Versions, image.Versions, machineImagesPath.Index(i).Child("versions"))...)
 				processed = true
 				break
 			}
@@ -45,7 +45,7 @@ func ValidateCloudProfileConfig(cpConfig *apisgcp.CloudProfileConfig, machineIma
 	return allErrs
 }
 
-func ValidateVersions(versionsConfig []apisgcp.MachineImageVersion, versions []core.ExpirableVersion, fldPath *field.Path) field.ErrorList {
+func validateVersions(versionsConfig []apisgcp.MachineImageVersion, versions []core.ExpirableVersion, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	for _, version := range versions {

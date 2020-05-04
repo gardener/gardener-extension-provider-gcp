@@ -1,5 +1,5 @@
 {{- define "name" -}}
-gardener-extension-validator-gcp
+gardener-extension-admission-gcp
 {{- end -}}
 
 {{- define "labels.app.key" -}}

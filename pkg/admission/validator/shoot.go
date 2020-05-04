@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 
@@ -33,44 +34,44 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type shootValidator struct {
+type shoot struct {
 	client  client.Client
 	decoder runtime.Decoder
 }
 
 // NewShootValidator returns a new instance of a shoot validator.
 func NewShootValidator() extensionswebhook.Validator {
-	return &shootValidator{}
+	return &shoot{}
 }
 
 // InjectScheme injects the given scheme into the validator.
-func (s *shootValidator) InjectScheme(scheme *runtime.Scheme) error {
+func (s *shoot) InjectScheme(scheme *runtime.Scheme) error {
 	s.decoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
 	return nil
 }
 
 // InjectClient injects the given client into the validator.
-func (s *shootValidator) InjectClient(client client.Client) error {
+func (s *shoot) InjectClient(client client.Client) error {
 	s.client = client
 	return nil
 }
 
 // Validate validates the given shoot objects.
-func (s *shootValidator) Validate(ctx context.Context, new, old runtime.Object) error {
+func (s *shoot) Validate(ctx context.Context, new, old runtime.Object) error {
 	shoot, ok := new.(*core.Shoot)
 	if !ok {
-		return fmt.Errorf("wrong object type %q", reflect.TypeOf(new).Name())
+		return fmt.Errorf("wrong object type %T", new)
 	}
 
 	if old != nil {
 		oldShoot, ok := old.(*core.Shoot)
 		if !ok {
-			return fmt.Errorf("wrong object type %q for old object", reflect.TypeOf(old).Name())
+			return fmt.Errorf("wrong object type %T for old object", old)
 		}
-		return s.validateShootUpdate(ctx, oldShoot, shoot)
+		return s.validateUpdate(ctx, oldShoot, shoot)
 	}
 
-	return s.validateShootCreate(ctx, shoot)
+	return s.validateCreate(ctx, shoot)
 }
 
 var (
@@ -115,7 +116,7 @@ func getAllowedRegionZonesFromCloudProfile(shoot *core.Shoot, cloudProfile *gard
 	return nil
 }
 
-func (s *shootValidator) validateShoot(valContext *validationContext) field.ErrorList {
+func (s *shoot) validateContext(valContext *validationContext) field.ErrorList {
 	var (
 		allErrors    = field.ErrorList{}
 		allowedZones = getAllowedRegionZonesFromCloudProfile(valContext.shoot, valContext.cloudProfile)
@@ -130,7 +131,7 @@ func (s *shootValidator) validateShoot(valContext *validationContext) field.Erro
 	for i, worker := range valContext.shoot.Spec.Provider.Workers {
 		workerFldPath := workersPath.Index(i)
 		for _, volume := range worker.DataVolumes {
-			workerConfig, err := decodeWorkerConfig(s.decoder, worker.ProviderConfig)
+			workerConfig, err := admission.DecodeWorkerConfig(s.decoder, worker.ProviderConfig)
 			if err != nil {
 				allErrors = append(allErrors, field.Invalid(workerFldPath.Child("providerConfig"), err, "invalid providerConfig"))
 			} else {
@@ -142,16 +143,16 @@ func (s *shootValidator) validateShoot(valContext *validationContext) field.Erro
 	return allErrors
 }
 
-func (s *shootValidator) validateShootCreate(ctx context.Context, shoot *core.Shoot) error {
+func (s *shoot) validateCreate(ctx context.Context, shoot *core.Shoot) error {
 	validationContext, err := newValidationContext(ctx, s.decoder, s.client, shoot)
 	if err != nil {
 		return err
 	}
 
-	return s.validateShoot(validationContext).ToAggregate()
+	return s.validateContext(validationContext).ToAggregate()
 }
 
-func (s *shootValidator) validateShootUpdate(ctx context.Context, oldShoot, currentShoot *core.Shoot) error {
+func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core.Shoot) error {
 	oldValContext, err := newValidationContext(ctx, s.decoder, s.client, oldShoot)
 	if err != nil {
 		return err
@@ -177,7 +178,7 @@ func (s *shootValidator) validateShootUpdate(ctx context.Context, oldShoot, curr
 	}
 
 	allErrors = append(allErrors, gcpvalidation.ValidateWorkersUpdate(oldValContext.shoot.Spec.Provider.Workers, currentValContext.shoot.Spec.Provider.Workers, workersPath)...)
-	allErrors = append(allErrors, s.validateShoot(currentValContext)...)
+	allErrors = append(allErrors, s.validateContext(currentValContext)...)
 
 	return allErrors.ToAggregate()
 
@@ -187,7 +188,7 @@ func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client
 	if shoot.Spec.Provider.InfrastructureConfig == nil {
 		return nil, field.Required(infrastructureConfigPath, "infrastructureConfig must be set for GCP shoots")
 	}
-	infrastructureConfig, err := decodeInfrastructureConfig(decoder, shoot.Spec.Provider.InfrastructureConfig)
+	infrastructureConfig, err := admission.DecodeInfrastructureConfig(decoder, shoot.Spec.Provider.InfrastructureConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding infrastructureConfig: %v", err)
 	}
@@ -195,7 +196,7 @@ func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client
 	if shoot.Spec.Provider.ControlPlaneConfig == nil {
 		return nil, field.Required(controlPlaneConfigPath, "controlPlaneConfig must be set for GCP shoots")
 	}
-	controlPlaneConfig, err := decodeControlPlaneConfig(decoder, shoot.Spec.Provider.ControlPlaneConfig)
+	controlPlaneConfig, err := admission.DecodeControlPlaneConfig(decoder, shoot.Spec.Provider.ControlPlaneConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding controlPlaneConfig: %v", err)
 	}
@@ -208,7 +209,7 @@ func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client
 	if cloudProfile.Spec.ProviderConfig == nil {
 		return nil, fmt.Errorf("providerConfig is not given for cloud profile %q", cloudProfile.Name)
 	}
-	cloudProfileConfig, err := decodeCloudProfileConfig(decoder, cloudProfile.Spec.ProviderConfig)
+	cloudProfileConfig, err := admission.DecodeCloudProfileConfigFromExternalProviderConfig(decoder, cloudProfile.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("an error occurred while reading the cloud profile %q: %v", cloudProfile.Name, err)
 	}
