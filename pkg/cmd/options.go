@@ -53,7 +53,7 @@ func ControllerSwitchOptions() *controllercmd.SwitchOptions {
 // WebhookSwitchOptions are the webhookcmd.SwitchOptions for the provider webhooks.
 func WebhookSwitchOptions() *webhookcmd.SwitchOptions {
 	return webhookcmd.NewSwitchOptions(
-		webhookcmd.Switch(extensioncontrolplanewebhook.WebhookName, controlplanewebhook.AddToManager),
-		webhookcmd.Switch(extensioncontrolplanewebhook.ExposureWebhookName, controlplaneexposurewebhook.AddToManager),
+		webhookcmd.Switch(extensioncontrolplanewebhook.WebhookName, controlplanewebhook.New),
+		webhookcmd.Switch(extensioncontrolplanewebhook.ExposureWebhookName, controlplaneexposurewebhook.New),
 	)
 }

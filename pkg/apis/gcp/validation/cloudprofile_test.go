@@ -18,6 +18,7 @@ import (
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 
+	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -26,67 +27,87 @@ import (
 
 var _ = Describe("CloudProfileConfig validation", func() {
 	Describe("#ValidateCloudProfileConfig", func() {
-		var cloudProfileConfig *apisgcp.CloudProfileConfig
+		var (
+			cloudProfileConfig  *apisgcp.CloudProfileConfig
+			machineImages       []core.MachineImage
+			nilPath             *field.Path
+			machineImageName    string
+			machineImageVersion string
+		)
 
 		BeforeEach(func() {
+			machineImageName = "ubuntu"
+			machineImageVersion = "1.2.3"
 			cloudProfileConfig = &apisgcp.CloudProfileConfig{
 				MachineImages: []apisgcp.MachineImages{
 					{
-						Name: "ubuntu",
+						Name: machineImageName,
 						Versions: []apisgcp.MachineImageVersion{
 							{
-								Version: "1.2.3",
+								Version: machineImageVersion,
 								Image:   "path/to/gcp/image",
 							},
 						},
 					},
 				},
 			}
+			machineImages = []core.MachineImage{
+				{
+					Name:     machineImageName,
+					Versions: []core.ExpirableVersion{{Version: machineImageVersion}},
+				},
+			}
 		})
 
 		Context("machine image validation", func() {
-			It("should enforce that at least one machine image has been defined", func() {
-				cloudProfileConfig.MachineImages = []apisgcp.MachineImages{}
+			It("should pass validation", func() {
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, nilPath)
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig)
-
-				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages"),
-				}))))
+				Expect(errorList).To(BeEmpty())
 			})
 
-			It("should forbid unsupported machine image configuration", func() {
-				cloudProfileConfig.MachineImages = []apisgcp.MachineImages{{}}
+			It("should not require a machine image mapping because no versions are configured", func() {
+				machineImages = append(machineImages, core.MachineImage{
+					Name:     "suse",
+					Versions: nil,
+				})
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, nilPath)
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+				Expect(errorList).To(BeEmpty())
+			})
 
-				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].name"),
-				})), PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions"),
-				}))))
+			It("should require a machine image mapping to be configured", func() {
+				machineImages = append(machineImages, core.MachineImage{
+					Name: "suse",
+					Versions: []core.ExpirableVersion{
+						{Version: machineImageVersion},
+					},
+				})
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, nilPath)
+
+				Expect(errorList).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeRequired),
+						"Field": Equal("machineImages"),
+					})),
+				))
 			})
 
 			It("should forbid unsupported machine image version configuration", func() {
-				cloudProfileConfig.MachineImages = []apisgcp.MachineImages{
-					{
-						Name:     "abc",
-						Versions: []apisgcp.MachineImageVersion{{}},
-					},
-				}
+				cloudProfileConfig.MachineImages[0].Versions[0].Image = ""
+				machineImages[0].Versions = append(machineImages[0].Versions, core.ExpirableVersion{Version: "2.0.0"})
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, nilPath)
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig)
-
-				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions[0].version"),
-				})), PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions[0].image"),
-				}))))
+				Expect(errorList).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeRequired),
+						"Field": Equal("machineImages[0].versions"),
+					})),
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeRequired),
+						"Field": Equal("machineImages[0].versions[0].image"),
+					})),
+				))
 			})
 		})
 	})

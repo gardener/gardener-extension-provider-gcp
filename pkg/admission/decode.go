@@ -12,17 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package validator
+package admission
 
 import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+
 	"github.com/gardener/gardener/extensions/pkg/util"
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func decodeWorkerConfig(decoder runtime.Decoder, worker *core.ProviderConfig) (*gcp.WorkerConfig, error) {
+// DecodeWorkerConfig decodes the `WorkerConfig` from the given `ProviderConfig`.
+func DecodeWorkerConfig(decoder runtime.Decoder, worker *core.ProviderConfig) (*gcp.WorkerConfig, error) {
 	if worker == nil {
 		return nil, nil
 	}
@@ -35,7 +37,8 @@ func decodeWorkerConfig(decoder runtime.Decoder, worker *core.ProviderConfig) (*
 	return workerConfig, nil
 }
 
-func decodeControlPlaneConfig(decoder runtime.Decoder, cp *core.ProviderConfig) (*gcp.ControlPlaneConfig, error) {
+// DecodeControlPlaneConfig decodes the `ControlPlaneConfig` from the given `ProviderConfig`.
+func DecodeControlPlaneConfig(decoder runtime.Decoder, cp *core.ProviderConfig) (*gcp.ControlPlaneConfig, error) {
 	controlPlaneConfig := &gcp.ControlPlaneConfig{}
 	if err := util.Decode(decoder, cp.Raw, controlPlaneConfig); err != nil {
 		return nil, err
@@ -44,7 +47,8 @@ func decodeControlPlaneConfig(decoder runtime.Decoder, cp *core.ProviderConfig) 
 	return controlPlaneConfig, nil
 }
 
-func decodeInfrastructureConfig(decoder runtime.Decoder, infra *core.ProviderConfig) (*gcp.InfrastructureConfig, error) {
+// DecodeInfrastructureConfig decodes the `InfrastructureConfig` from the given `ProviderConfig`.
+func DecodeInfrastructureConfig(decoder runtime.Decoder, infra *core.ProviderConfig) (*gcp.InfrastructureConfig, error) {
 	infraConfig := &gcp.InfrastructureConfig{}
 	if err := util.Decode(decoder, infra.Raw, infraConfig); err != nil {
 		return nil, err
@@ -53,7 +57,18 @@ func decodeInfrastructureConfig(decoder runtime.Decoder, infra *core.ProviderCon
 	return infraConfig, nil
 }
 
-func decodeCloudProfileConfig(decoder runtime.Decoder, config *gardencorev1beta1.ProviderConfig) (*gcp.CloudProfileConfig, error) {
+// DecodeCloudProfileConfig decodes the `CloudProfileConfig` from the given `ProviderConfig`.
+func DecodeCloudProfileConfig(decoder runtime.Decoder, config *core.ProviderConfig) (*gcp.CloudProfileConfig, error) {
+	cloudProfileConfig := &gcp.CloudProfileConfig{}
+	if err := util.Decode(decoder, config.Raw, cloudProfileConfig); err != nil {
+		return nil, err
+	}
+
+	return cloudProfileConfig, nil
+}
+
+// DecodeCloudProfileConfigFromExternalProviderConfig decodes the `CloudProfileConfig` from the given `ProviderConfig`.
+func DecodeCloudProfileConfigFromExternalProviderConfig(decoder runtime.Decoder, config *gardencorev1beta1.ProviderConfig) (*gcp.CloudProfileConfig, error) {
 	cloudProfileConfig := &gcp.CloudProfileConfig{}
 	if err := util.Decode(decoder, config.Raw, cloudProfileConfig); err != nil {
 		return nil, err
