@@ -20,9 +20,3 @@ FROM base AS gardener-extension-admission-gcp
 
 COPY --from=builder /go/bin/gardener-extension-admission-gcp /gardener-extension-admission-gcp
 ENTRYPOINT ["/gardener-extension-admission-gcp"]
-
-############# gardener-extension-validator-gcp
-FROM base AS gardener-extension-validator-gcp
-
-COPY --from=builder /go/bin/gardener-extension-admission-gcp /gardener-extension-admission-gcp
-ENTRYPOINT ["/gardener-extension-admission-gcp"]
