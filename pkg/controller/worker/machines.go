@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 
@@ -34,6 +36,12 @@ import (
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
+
+var (
+	labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
+)
+
+const maxGcpLabelCharactersSize = 63
 
 // MachineClassKind yields the name of the GCP machine class.
 func (w *workerDelegate) MachineClassKind() string {
@@ -147,6 +155,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			disks = append(disks, disk)
 		}
 
+		gceInstanceLabels := getGceInstanceLabels(w.worker.Name, pool)
 		for zoneIndex, zone := range pool.Zones {
 			zoneIdx := int32(zoneIndex)
 			machineClassSpec := map[string]interface{}{
@@ -156,10 +165,8 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				"deletionProtection": false,
 				"description":        fmt.Sprintf("Machine of Shoot %s created by machine-controller-manager.", w.worker.Name),
 				"disks":              disks,
-				"labels": map[string]interface{}{
-					"name": w.worker.Name,
-				},
-				"machineType": pool.MachineType,
+				"labels":             gceInstanceLabels,
+				"machineType":        pool.MachineType,
 				"networkInterfaces": []map[string]interface{}{
 					{
 						"subnetwork":        nodesSubnet.Name,
@@ -246,4 +253,43 @@ func createDiskSpec(volume v1alpha1.Volume, workerName string, machineImage stri
 	}
 
 	return disk, nil
+}
+
+func getGceInstanceLabels(name string, pool v1alpha1.WorkerPool) map[string]interface{} {
+	gceInstanceLabels := map[string]interface{}{
+		"name": SanitizeGcpLabelValue(name),
+	}
+	for k, v := range pool.Labels {
+		if label := SanitizeGcpLabel(k); label != "" {
+			gceInstanceLabels[label] = SanitizeGcpLabelValue(v)
+		}
+	}
+	return gceInstanceLabels
+}
+
+// SanitizeGcpLabel will sanitize the label base on the gcp label Restrictions
+func SanitizeGcpLabel(label string) string {
+	return sanitizeGcpLabelOrValue(label, true)
+}
+
+// SanitizeGcpLabelValue will sanitize the value base on the gcp label Restrictions
+func SanitizeGcpLabelValue(value string) string {
+	return sanitizeGcpLabelOrValue(value, false)
+}
+
+// sanitizeGcpLabelOrValue will sanitize the label/value base on the gcp label Restrictions
+func sanitizeGcpLabelOrValue(label string, startWithCharacter bool) string {
+	v := labelRegex.ReplaceAllString(strings.ToLower(label), "_")
+	if startWithCharacter {
+		v = strings.TrimLeftFunc(v, func(r rune) bool {
+			if ('0' <= r && r <= '9') || r == '_' {
+				return true
+			}
+			return false
+		})
+	}
+	if len(v) > maxGcpLabelCharactersSize {
+		return v[0:maxGcpLabelCharactersSize]
+	}
+	return v
 }

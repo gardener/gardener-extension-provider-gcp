@@ -120,6 +120,8 @@ var _ = Describe("Machines", func() {
 				zone1 string
 				zone2 string
 
+				labels map[string]string
+
 				workerPoolHash1 string
 				workerPoolHash2 string
 
@@ -169,6 +171,8 @@ var _ = Describe("Machines", func() {
 
 				zone1 = region + "a"
 				zone2 = region + "b"
+
+				labels = map[string]string{"component": "TiDB"}
 
 				shootVersionMajorMinor = "1.2"
 				shootVersion = shootVersionMajorMinor + ".3"
@@ -275,6 +279,7 @@ var _ = Describe("Machines", func() {
 									zone1,
 									zone2,
 								},
+								Labels: labels,
 							},
 							{
 								Name:           namePool2,
@@ -309,6 +314,7 @@ var _ = Describe("Machines", func() {
 									zone1,
 									zone2,
 								},
+								Labels: labels,
 							},
 						},
 					},
@@ -333,6 +339,12 @@ var _ = Describe("Machines", func() {
 				)
 
 				setup := func(disableExternalIP bool) {
+					gceInstanceLabels := map[string]interface{}{
+						"name": name,
+					}
+					for k, v := range labels {
+						gceInstanceLabels[SanitizeGcpLabel(k)] = SanitizeGcpLabelValue(v)
+					}
 					defaultMachineClass = map[string]interface{}{
 						"region":             region,
 						"canIpForward":       true,
@@ -361,9 +373,7 @@ var _ = Describe("Machines", func() {
 								},
 							},
 						},
-						"labels": map[string]interface{}{
-							"name": name,
-						},
+						"labels":      gceInstanceLabels,
 						"machineType": machineType,
 						"networkInterfaces": []map[string]interface{}{
 							{
@@ -432,6 +442,7 @@ var _ = Describe("Machines", func() {
 							Maximum:        worker.DistributeOverZones(0, maxPool1, 2),
 							MaxSurge:       worker.DistributePositiveIntOrPercent(0, maxSurgePool1, 2, maxPool1),
 							MaxUnavailable: worker.DistributePositiveIntOrPercent(0, maxUnavailablePool1, 2, minPool1),
+							Labels:         labels,
 						},
 						{
 							Name:           machineClassNamePool1Zone2,
@@ -441,6 +452,7 @@ var _ = Describe("Machines", func() {
 							Maximum:        worker.DistributeOverZones(1, maxPool1, 2),
 							MaxSurge:       worker.DistributePositiveIntOrPercent(1, maxSurgePool1, 2, maxPool1),
 							MaxUnavailable: worker.DistributePositiveIntOrPercent(1, maxUnavailablePool1, 2, minPool1),
+							Labels:         labels,
 						},
 						{
 							Name:           machineClassNamePool2Zone1,
@@ -450,6 +462,7 @@ var _ = Describe("Machines", func() {
 							Maximum:        worker.DistributeOverZones(0, maxPool2, 2),
 							MaxSurge:       worker.DistributePositiveIntOrPercent(0, maxSurgePool2, 2, maxPool2),
 							MaxUnavailable: worker.DistributePositiveIntOrPercent(0, maxUnavailablePool2, 2, minPool2),
+							Labels:         labels,
 						},
 						{
 							Name:           machineClassNamePool2Zone2,
@@ -459,6 +472,7 @@ var _ = Describe("Machines", func() {
 							Maximum:        worker.DistributeOverZones(1, maxPool2, 2),
 							MaxSurge:       worker.DistributePositiveIntOrPercent(1, maxSurgePool2, 2, maxPool2),
 							MaxUnavailable: worker.DistributePositiveIntOrPercent(1, maxUnavailablePool2, 2, minPool2),
+							Labels:         labels,
 						},
 					}
 				}
@@ -595,6 +609,20 @@ var _ = Describe("Machines", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(result).To(BeNil())
 			})
+		})
+	})
+
+	Describe("sanitize gcp label/value ", func() {
+		It("gcp label must start with lowercase character", func() {
+			Expect(SanitizeGcpLabel("////Abcd-efg")).To(Equal("abcd-efg"))
+			Expect(SanitizeGcpLabel("1Abcd-efg")).To(Equal("abcd-efg"))
+		})
+		It("gcp label value can  start with '-' ", func() {
+			Expect(SanitizeGcpLabelValue("////Abcd-efg")).To(Equal("____abcd-efg"))
+			Expect(SanitizeGcpLabelValue("1Abcd-efg")).To(Equal("1abcd-efg"))
+		})
+		It("label can be at most 63 characters long", func() {
+			Expect(SanitizeGcpLabel("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz0123456789abcd")).To(Equal("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz0123456789a"))
 		})
 	})
 })
