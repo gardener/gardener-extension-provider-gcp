@@ -21,6 +21,12 @@ resource "google_service_account" "serviceaccount" {
 resource "google_compute_network" "network" {
   name                    = "{{ required "clusterName is required" .Values.clusterName }}"
   auto_create_subnetworks = "false"
+
+  timeouts {
+    create = "5m"
+    update = "5m"
+    delete = "5m"
+  }
 }
 {{- end}}
 
@@ -36,6 +42,12 @@ resource "google_compute_subnetwork" "subnetwork-nodes" {
     {{ if .Values.networks.flowLogs.metadata }}metadata             = "{{ .Values.networks.flowLogs.metadata }}"{{ end }}
   }
 {{- end }}
+
+  timeouts {
+    create = "5m"
+    update = "5m"
+    delete = "5m"
+  }
 }
 
 {{ if .Values.create.cloudRouter -}}
@@ -43,6 +55,12 @@ resource "google_compute_router" "router"{
   name    = "{{ required "clusterName is required" .Values.clusterName }}-cloud-router"
   region  = "{{ required "google.region is required" .Values.google.region }}"
   network = "{{ required "vpc.name is required" .Values.vpc.name }}"
+
+  timeouts {
+    create = "5m"
+    update = "5m"
+    delete = "5m"
+  }
 }
 {{- end }}
 
@@ -71,6 +89,12 @@ resource "google_compute_router_nat" "nat" {
     enable = true
     filter = "ERRORS_ONLY"
   }
+
+  timeouts {
+    create = "5m"
+    update = "5m"
+    delete = "5m"
+  }
 }
 {{- end}}
 
@@ -88,8 +112,15 @@ resource "google_compute_subnetwork" "subnetwork-internal" {
   ip_cidr_range = "{{ required "networks.internal is required" .Values.networks.internal }}"
   network       = "{{ required "vpc.name is required" .Values.vpc.name }}"
   region        = "{{ required "google.region is required" .Values.google.region }}"
+
+  timeouts {
+    create = "5m"
+    update = "5m"
+    delete = "5m"
+  }
 }
 {{- end}}
+
 //=====================================================================
 //= Firewall
 //=====================================================================
@@ -117,6 +148,12 @@ resource "google_compute_firewall" "rule-allow-internal-access" {
     protocol = "udp"
     ports    = ["1-65535"]
   }
+
+  timeouts {
+    create = "5m"
+    update = "5m"
+    delete = "5m"
+  }
 }
 
 resource "google_compute_firewall" "rule-allow-external-access" {
@@ -127,6 +164,12 @@ resource "google_compute_firewall" "rule-allow-external-access" {
   allow {
     protocol = "tcp"
     ports    = ["80", "443"] // Allow ingress
+  }
+
+  timeouts {
+    create = "5m"
+    update = "5m"
+    delete = "5m"
   }
 }
 
@@ -151,6 +194,12 @@ resource "google_compute_firewall" "rule-allow-health-checks" {
   allow {
     protocol = "udp"
     ports    = ["30000-32767"]
+  }
+
+  timeouts {
+    create = "5m"
+    update = "5m"
+    delete = "5m"
   }
 }
 
@@ -188,7 +237,7 @@ output "{{ .Values.outputKeys.cloudNAT }}" {
 
 {{ if .Values.networks.cloudNAT.natIPNames -}}
 output "{{ .Values.outputKeys.natIPs }}" {
-    value = "{{range $i, $name := .Values.networks.cloudNAT.natIPNames}}{{if $i}},{{end}}${data.google_compute_address.{{$name}}.address}{{end}}"
+  value = "{{range $i, $name := .Values.networks.cloudNAT.natIPNames}}{{if $i}},{{end}}${data.google_compute_address.{{$name}}.address}{{end}}"
 }
 {{- end }}
 
