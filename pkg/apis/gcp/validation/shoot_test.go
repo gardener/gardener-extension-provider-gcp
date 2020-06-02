@@ -207,6 +207,65 @@ var _ = Describe("Shoot validation", func() {
 			))
 		})
 
+		It("should forbid because service account's email is empty", func() {
+			errorList := ValidateWorkerConfig(&gcp.WorkerConfig{
+				ServiceAccount: &gcp.ServiceAccount{
+					Email:  "",
+					Scopes: []string{"scope-1"},
+				},
+			}, nil)
+
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("serviceAccount.email"),
+				})),
+			))
+		})
+
+		It("should forbid because service account scope is empty", func() {
+			errorList := ValidateWorkerConfig(&gcp.WorkerConfig{
+				ServiceAccount: &gcp.ServiceAccount{
+					Email:  "foo",
+					Scopes: []string{},
+				},
+			}, nil)
+
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("serviceAccount.scopes"),
+				})),
+			))
+		})
+
+		It("should forbid because service account scopes has an empty scope", func() {
+			errorList := ValidateWorkerConfig(&gcp.WorkerConfig{
+				ServiceAccount: &gcp.ServiceAccount{
+					Email:  "foo",
+					Scopes: []string{"baz", ""},
+				},
+			}, nil)
+
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("serviceAccount.scopes[1]"),
+				})),
+			))
+		})
+
+		It("should allow valid service account", func() {
+			errorList := ValidateWorkerConfig(&gcp.WorkerConfig{
+				ServiceAccount: &gcp.ServiceAccount{
+					Email:  "foo",
+					Scopes: []string{"baz"},
+				},
+			}, nil)
+
+			Expect(errorList).To(BeEmpty())
+		})
+
 		Describe("#ValidateWorkersUpdate", func() {
 			It("should pass because workers are unchanged", func() {
 				newWorkers := copyWorkers(workers)

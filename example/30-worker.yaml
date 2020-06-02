@@ -87,5 +87,9 @@ spec:
     # workerconfig is used to specify the interface of gcp local ssd
     #dataVolumes:
     #  - type: SCRATCH
+    # serviceAccount:
+    #   email: foo@bar.com
+    #   scopes:
+    #   - https://www.googleapis.com/auth/cloud-platform
     zones:
     - europe-west1-b

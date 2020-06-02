@@ -36,5 +36,34 @@ func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, volumeType *string) fi
 		}
 	}
 
+	if workerConfig != nil {
+		allErrs = append(allErrs, validateServiceAccount(workerConfig.ServiceAccount, field.NewPath("serviceAccount"))...)
+	}
+
 	return allErrs
+}
+
+func validateServiceAccount(sa *gcp.ServiceAccount, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if sa == nil {
+		return allErrs
+	}
+
+	if sa.Email == "" {
+		allErrs = append(allErrs, field.Required(fldPath.Child("email"), "must be set when providing service account"))
+	}
+
+	if len(sa.Scopes) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath.Child("scopes"), "must have at least one scope"))
+	} else {
+		for i, scope := range sa.Scopes {
+			if scope == "" {
+				allErrs = append(allErrs, field.Required(fldPath.Child("scopes").Index(i), "must not be empty"))
+			}
+		}
+	}
+
+	return allErrs
+
 }

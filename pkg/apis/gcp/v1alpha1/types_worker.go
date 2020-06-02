@@ -28,6 +28,14 @@ type WorkerConfig struct {
 	// Volume contains configuration for the root disks attached to VMs.
 	// +optional
 	Volume *Volume `json:"volume,omitempty"`
+
+	// Service account, with their specified scopes, authorized for this worker.
+	// Service accounts generate access tokens that can be accessed through
+	// the metadata server and used to authenticate applications on the
+	// instance.
+	// This service account should be created in advance.
+	// +optional
+	ServiceAccount *ServiceAccount `json:"serviceAccount,omitempty"`
 }
 
 // Volume contains configuration for the additional disks attached to VMs.
@@ -60,4 +68,14 @@ type MachineImage struct {
 	Version string `json:"version"`
 	// Image is the path to the image.
 	Image string `json:"image"`
+}
+
+// ServiceAccount is a GCP service account.
+type ServiceAccount struct {
+	// Email is the address of the service account.
+	Email string `json:"email"`
+
+	// Scopes is the list of scopes to be made available for this service.
+	// account.
+	Scopes []string `json:"scopes"`
 }

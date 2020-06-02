@@ -295,6 +295,10 @@ var _ = Describe("Machines", func() {
 										Volume: &api.Volume{
 											LocalSSDInterface: &localVolumeInterface,
 										},
+										ServiceAccount: &api.ServiceAccount{
+											Email:  "foo",
+											Scopes: []string{"bar"},
+										},
 									}),
 								},
 								UserData: userData,
@@ -403,10 +407,16 @@ var _ = Describe("Machines", func() {
 					}
 
 					var (
+						machineClassPool2 = useDefaultMachineClass(
+							defaultMachineClass,
+							"serviceAccounts",
+							[]map[string]interface{}{{"email": "foo", "scopes": []string{"bar"}}},
+						)
+
 						machineClassPool1Zone1 = useDefaultMachineClass(defaultMachineClass, "zone", zone1)
 						machineClassPool1Zone2 = useDefaultMachineClass(defaultMachineClass, "zone", zone2)
-						machineClassPool2Zone1 = useDefaultMachineClass(defaultMachineClass, "zone", zone1)
-						machineClassPool2Zone2 = useDefaultMachineClass(defaultMachineClass, "zone", zone2)
+						machineClassPool2Zone1 = useDefaultMachineClass(machineClassPool2, "zone", zone1)
+						machineClassPool2Zone2 = useDefaultMachineClass(machineClassPool2, "zone", zone2)
 
 						machineClassNamePool1Zone1 = fmt.Sprintf("%s-%s-z1", namespace, namePool1)
 						machineClassNamePool1Zone2 = fmt.Sprintf("%s-%s-z2", namespace, namePool1)
@@ -659,3 +669,8 @@ func addNameAndSecretToMachineClass(class map[string]interface{}, serviceAccount
 	}
 	class["secret"].(map[string]interface{})[gcp.ServiceAccountJSONMCM] = serviceAccountJSON
 }
+
+// func addServiceAccountToMachineClass(class map[string]interface{}, email string, scopes []string) {
+// 	return useDefaultMachineClass()
+// 	class["serviceAccounts"] = []map[string]interface{}{{"email": email, "scopes": scopes}}
+// }
