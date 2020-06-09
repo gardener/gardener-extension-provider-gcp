@@ -20,6 +20,9 @@ webhooks:
   objectSelector: {}
   namespaceSelector: {}
   sideEffects: None
+  {{- if semverCompare "<= 1.15-0" .Capabilities.KubeVersion.GitVersion -}}
+  timeoutSeconds: 10
+  {{- end -}}
   clientConfig:
     {{- if .Values.global.virtualGarden.enabled }}
     url: {{ printf "https://%s.%s/webhooks/validate" (include "name" .) (.Release.Namespace) }}
@@ -28,5 +31,32 @@ webhooks:
       namespace: {{ .Release.Namespace }}
       name: {{ include "name" . }}
       path: /webhooks/validate
+    {{- end }}
+    caBundle: {{ required ".Values.webhookConfig.caBundle is required" (b64enc .Values.global.webhookConfig.caBundle) }}
+- name: secrets.validation.gcp.provider.extensions.gardener.cloud
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - UPDATE
+    resources:
+    - secrets
+  failurePolicy: Fail
+  objectSelector: {}
+  namespaceSelector: {}
+  sideEffects: None
+  {{- if semverCompare "<= 1.15-0" .Capabilities.KubeVersion.GitVersion -}}
+  timeoutSeconds: 10
+  {{- end -}}
+  clientConfig:
+    {{- if .Values.global.virtualGarden.enabled }}
+    url: {{ printf "https://%s.%s/webhooks/validate/secrets" (include "name" .) (.Release.Namespace) }}
+    {{- else }}
+    service:
+      namespace: {{ .Release.Namespace }}
+      name: {{ include "name" . }}
+      path: /webhooks/validate/secrets
     {{- end }}
     caBundle: {{ required ".Values.webhookConfig.caBundle is required" (b64enc .Values.global.webhookConfig.caBundle) }}

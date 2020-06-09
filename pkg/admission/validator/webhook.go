@@ -20,17 +20,20 @@ import (
 	extensionspredicate "github.com/gardener/gardener/extensions/pkg/predicate"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+const SecretsValidatorName = "secrets." + extensionswebhook.ValidatorName
+
 var logger = log.Log.WithName("gcp-validator-webhook")
 
 // New creates a new validation webhook for `core.gardener.cloud` resources.
 func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
-	logger.Info("Setting up webhook")
+	logger.Info("Setting up webhook", "name", extensionswebhook.ValidatorName)
 
 	return extensionswebhook.New(mgr, extensionswebhook.Args{
 		Provider:   gcp.Type,
@@ -40,6 +43,20 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		Validators: map[extensionswebhook.Validator][]runtime.Object{
 			NewShootValidator():        {&core.Shoot{}},
 			NewCloudProfileValidator(): {&core.CloudProfile{}},
+		},
+	})
+}
+
+// NewSecretsWebhook creates a new validation webhook for Secrets.
+func NewSecretsWebhook(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
+	logger.Info("Setting up webhook", "name", SecretsValidatorName)
+
+	return extensionswebhook.New(mgr, extensionswebhook.Args{
+		Provider: gcp.Type,
+		Name:     SecretsValidatorName,
+		Path:     extensionswebhook.ValidatorPath + "/secrets",
+		Validators: map[extensionswebhook.Validator][]runtime.Object{
+			NewSecretValidator(): {&corev1.Secret{}},
 		},
 	})
 }

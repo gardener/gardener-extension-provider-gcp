@@ -27,6 +27,7 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -35,8 +36,9 @@ import (
 )
 
 type shoot struct {
-	client  client.Client
-	decoder runtime.Decoder
+	client    client.Client
+	apiReader client.Reader
+	decoder   runtime.Decoder
 }
 
 // NewShootValidator returns a new instance of a shoot validator.
@@ -53,6 +55,12 @@ func (s *shoot) InjectScheme(scheme *runtime.Scheme) error {
 // InjectClient injects the given client into the validator.
 func (s *shoot) InjectClient(client client.Client) error {
 	s.client = client
+	return nil
+}
+
+// InjectAPIReader injects the given apiReader into the validator.
+func (s *shoot) InjectAPIReader(apiReader client.Reader) error {
+	s.apiReader = apiReader
 	return nil
 }
 
@@ -149,7 +157,11 @@ func (s *shoot) validateCreate(ctx context.Context, shoot *core.Shoot) error {
 		return err
 	}
 
-	return s.validateContext(validationContext).ToAggregate()
+	if err := s.validateContext(validationContext).ToAggregate(); err != nil {
+		return err
+	}
+
+	return s.validateShootSecret(ctx, shoot)
 }
 
 func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core.Shoot) error {
@@ -221,4 +233,24 @@ func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client
 		cloudProfile:         cloudProfile,
 		cloudProfileConfig:   cloudProfileConfig,
 	}, nil
+}
+
+func (s *shoot) validateShootSecret(ctx context.Context, shoot *core.Shoot) error {
+	var (
+		secretBinding    = &gardencorev1beta1.SecretBinding{}
+		secretBindingKey = kutil.Key(shoot.Namespace, shoot.Spec.SecretBindingName)
+	)
+	if err := kutil.LookupObject(ctx, s.client, s.apiReader, secretBindingKey, secretBinding); err != nil {
+		return err
+	}
+
+	var (
+		secret    = &corev1.Secret{}
+		secretKey = kutil.Key(secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name)
+	)
+	if err := kutil.LookupObject(ctx, s.client, s.apiReader, secretKey, secret); client.IgnoreNotFound(err) != nil {
+		return err
+	}
+
+	return gcpvalidation.ValidateCloudProviderSecret(secret)
 }
