@@ -83,7 +83,7 @@ var _ = Describe("Shoot validation", func() {
 						"zone2",
 					},
 					DataVolumes: []core.Volume{
-						core.Volume{
+						{
 							Type:       makeStringPointer("Volume"),
 							VolumeSize: "30G",
 						},
@@ -99,7 +99,7 @@ var _ = Describe("Shoot validation", func() {
 						"zone2",
 					},
 					DataVolumes: []core.Volume{
-						core.Volume{
+						{
 							Type:       makeStringPointer("SCRATCH"),
 							VolumeSize: "30G",
 						},
