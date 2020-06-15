@@ -209,7 +209,7 @@ func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client
 	if cloudProfile.Spec.ProviderConfig == nil {
 		return nil, fmt.Errorf("providerConfig is not given for cloud profile %q", cloudProfile.Name)
 	}
-	cloudProfileConfig, err := admission.DecodeCloudProfileConfigFromExternalProviderConfig(decoder, cloudProfile.Spec.ProviderConfig)
+	cloudProfileConfig, err := admission.DecodeCloudProfileConfig(decoder, cloudProfile.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("an error occurred while reading the cloud profile %q: %v", cloudProfile.Name, err)
 	}

@@ -211,10 +211,8 @@ var _ = Describe("Machines", func() {
 							Name: cloudProfileName,
 						},
 						Spec: gardencorev1beta1.CloudProfileSpec{
-							ProviderConfig: &gardencorev1beta1.ProviderConfig{
-								RawExtension: runtime.RawExtension{
-									Raw: cloudProfileConfigJSON,
-								},
+							ProviderConfig: &runtime.RawExtension{
+								Raw: cloudProfileConfigJSON,
 							},
 						},
 					},
@@ -263,7 +261,7 @@ var _ = Describe("Machines", func() {
 									Size: fmt.Sprintf("%dGi", volumeSize),
 								},
 								DataVolumes: []extensionsv1alpha1.Volume{
-									extensionsv1alpha1.Volume{
+									{
 										Type: &localVolumeType,
 										Size: fmt.Sprintf("%dGi", volumeSize),
 									},
@@ -305,7 +303,7 @@ var _ = Describe("Machines", func() {
 									Size: fmt.Sprintf("%dGi", volumeSize),
 								},
 								DataVolumes: []extensionsv1alpha1.Volume{
-									extensionsv1alpha1.Volume{
+									{
 										Type: &localVolumeType,
 										Size: fmt.Sprintf("%dGi", volumeSize),
 									},
