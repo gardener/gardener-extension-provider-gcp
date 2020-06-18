@@ -25,7 +25,7 @@ import (
 // DefaultAddOptions are the default AddOptions for AddToManager.
 var DefaultAddOptions = AddOptions{}
 
-// AddOptions are options to apply when adding the AWS CSIMigration controller to the manager.
+// AddOptions are options to apply when adding the GCP CSIMigration controller to the manager.
 type AddOptions struct {
 	// Controller are the controller.Options.
 	Controller controller.Options

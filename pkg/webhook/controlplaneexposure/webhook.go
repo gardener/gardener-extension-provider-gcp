@@ -32,7 +32,7 @@ var (
 	DefaultAddOptions = AddOptions{}
 )
 
-// AddOptions are options to apply when adding the AWS exposure webhook to the manager.
+// AddOptions are options to apply when adding the GCP exposure webhook to the manager.
 type AddOptions struct {
 	// ETCDStorage is the etcd storage configuration.
 	ETCDStorage config.ETCDStorage
