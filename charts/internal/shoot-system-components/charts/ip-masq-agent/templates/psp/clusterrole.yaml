@@ -1,0 +1,15 @@
+---
+apiVersion:  rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: "{{ include "ip-masq-agent.extensionsGroup" . }}:psp:{{ include "ip-masq-agent.name" . }}"
+rules:
+  - apiGroups:
+      - policy
+      - extensions
+    resourceNames:
+      - {{ include "ip-masq-agent.extensionsGroup" . }}.{{ include "ip-masq-agent.name" . }}
+    resources:
+      - podsecuritypolicies
+    verbs:
+      - use

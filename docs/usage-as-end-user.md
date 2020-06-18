@@ -176,3 +176,45 @@ Every GCP shoot cluster that has at least Kubernetes v1.18 will be deployed with
 It is compatible with the legacy in-tree volume provisioner that was deprecated by the Kubernetes community and will be removed in future versions of Kubernetes.
 End-users might want to update their custom `StorageClass`es to the new `pd.csi.storage.gke.io` provisioner.
 Shoot clusters with Kubernetes v1.17 or less will use the in-tree `kubernetes.io/gce-pd` volume provisioner in the kube-controller-manager and the kubelet.
+
+
+## ip-masq-agent
+
+GCP blocks non-VM egress traffic by default in their infrastructures. As a result traffic to the outside needs 
+to be masqueraded to the node ip when egressing. The [ip-masq-agent](https://github.com/kubernetes-sigs/ip-masq-agent)  does 
+exactly that. 
+
+The `ip-masq-agent` [daemonset](charts/internal/shoot-system-components/charts/ip-masq-agent/templates/daemonset.yaml) mounts an optional configmap that can be configured post cluster creation. 
+
+```yaml
+volumes:
+# this configmap is optional, i.e., it does not have to exist at creation time. It can however be created
+# to reconfigure the default behavior of the ip-masq-agent on a live-cluster.
+- configMap:
+    defaultMode: 420
+    items:
+      - key: config
+        path: ip-masq-agent
+    name: ip-masq-agent
+    optional: true
+  name: config
+```
+
+```yaml
+apiVersion: v1
+data:
+  config: |-
+    nonMasqueradeCIDRs:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+    masqLinkLocal: false
+    masqLinkLocalIPv6: false
+    resyncInterval: 60s
+kind: ConfigMap
+metadata:
+  name: ip-masq-agent
+```
+
+The alternative to using the `ip-masq-agent` would be `Alias IPs`, however, `Alias IPs` requires additional configuration 
+on the machine level and manual IP address management and assignment for the secondary networks (the pod network).

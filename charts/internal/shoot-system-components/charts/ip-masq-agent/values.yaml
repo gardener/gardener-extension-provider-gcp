@@ -1,0 +1,10 @@
+images:
+  ip-masq-agent: image-repository:image-tag
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 20Mi
+  limits:
+    cpu: 30m
+    memory: 30Mi
