@@ -16,6 +16,7 @@ package infrastructure
 
 import (
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -32,7 +33,7 @@ import (
 
 const (
 	// DefaultVPCName is the default VPC terraform name.
-	DefaultVPCName = "${google_compute_network.network.name}"
+	DefaultVPCName = "google_compute_network.network.name"
 
 	// TerraformerPurpose is the terraformer infrastructure purpose.
 	TerraformerPurpose = "infra"
@@ -77,7 +78,7 @@ func ComputeTerraformerChartValues(
 	)
 
 	if config.Networks.VPC != nil {
-		vpcName = config.Networks.VPC.Name
+		vpcName = strconv.Quote(config.Networks.VPC.Name)
 		createVPC = false
 		createCloudRouter = false
 

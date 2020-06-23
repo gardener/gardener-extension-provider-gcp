@@ -1,4 +1,4 @@
 variable "SERVICEACCOUNT" {
   description = "ServiceAccount"
-  type        = "string"
+  type        = string
 }
