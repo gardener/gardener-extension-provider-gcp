@@ -16,6 +16,7 @@ package infrastructure
 
 import (
 	"fmt"
+	"strconv"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
@@ -224,7 +225,7 @@ var _ = Describe("Terraform", func() {
 					"cloudRouter": false,
 				},
 				"vpc": map[string]interface{}{
-					"name": config.Networks.VPC.Name,
+					"name": strconv.Quote(config.Networks.VPC.Name),
 					"cloudRouter": map[string]interface{}{
 						"name": "cloudrouter",
 					},
@@ -288,7 +289,7 @@ var _ = Describe("Terraform", func() {
 					"cloudRouter": false,
 				},
 				"vpc": map[string]interface{}{
-					"name": config.Networks.VPC.Name,
+					"name": strconv.Quote(config.Networks.VPC.Name),
 					"cloudRouter": map[string]interface{}{
 						"name": "cloudrouter",
 					},
@@ -350,7 +351,7 @@ var _ = Describe("Terraform", func() {
 					"cloudRouter": false,
 				},
 				"vpc": map[string]interface{}{
-					"name": config.Networks.VPC.Name,
+					"name": strconv.Quote(config.Networks.VPC.Name),
 					"cloudRouter": map[string]interface{}{
 						"name": "cloudrouter",
 					},

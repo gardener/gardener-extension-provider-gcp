@@ -7,7 +7,7 @@ create:
   cloudRouter: false
 
 vpc:
-  name: ${google_compute_network.network.name}
+  name: google_compute_network.network.name
 #  cloudRouter:
 #    name: "test"
 
