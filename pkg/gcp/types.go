@@ -44,6 +44,8 @@ const (
 	CSILivenessProbeImageName = "csi-liveness-probe"
 	// MachineControllerManagerImageName is the name of the MachineControllerManager image.
 	MachineControllerManagerImageName = "machine-controller-manager"
+	// IPMasqAgentImageName is the name of the ip-masq-image
+	IPMasqAgentImageName = "ip-masq-agent"
 
 	// ServiceAccountJSONField is the field in a secret where the service account JSON is stored at.
 	ServiceAccountJSONField = "serviceaccount.json"
@@ -74,12 +76,16 @@ const (
 	CSINodeDriverRegistrarName = "csi-node-driver-registrar"
 	// CSILivenessProbeName is a constant for the name of the csi-liveness-probe component.
 	CSILivenessProbeName = "csi-liveness-probe"
+
 	// MachineControllerManagerName is a constant for the name of the machine-controller-manager.
 	MachineControllerManagerName = "machine-controller-manager"
 	// MachineControllerManagerVpaName is the name of the VerticalPodAutoscaler of the machine-controller-manager deployment.
 	MachineControllerManagerVpaName = "machine-controller-manager-vpa"
 	// MachineControllerManagerMonitoringConfigName is the name of the ConfigMap containing monitoring stack configurations for machine-controller-manager.
 	MachineControllerManagerMonitoringConfigName = "machine-controller-manager-monitoring-config"
+
+	// IPMasqAgentName is a constant for the name of the ip-masq-agent
+	IPMasqAgentName = "ip-masq-agent"
 )
 
 var (
@@ -88,6 +94,6 @@ var (
 	// InternalChartsPath is the path to the internal charts
 	InternalChartsPath = filepath.Join(ChartsPath, "internal")
 
-	// UsernamePrefix is a constant for the username prefix of components deployed by AWS.
+	// UsernamePrefix is a constant for the username prefix of components deployed by GCP.
 	UsernamePrefix = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
 )

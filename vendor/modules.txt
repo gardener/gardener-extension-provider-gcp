@@ -105,6 +105,7 @@ github.com/gardener/gardener/extensions/pkg/webhook/cmd
 github.com/gardener/gardener/extensions/pkg/webhook/controlplane
 github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator
 github.com/gardener/gardener/extensions/pkg/webhook/controlplane/test
+github.com/gardener/gardener/extensions/pkg/webhook/network
 github.com/gardener/gardener/extensions/pkg/webhook/shoot
 github.com/gardener/gardener/extensions/test/e2e/framework/executor
 github.com/gardener/gardener/extensions/test/e2e/framework/networkpolicies
@@ -192,7 +193,14 @@ github.com/gardener/gardener/pkg/version
 github.com/gardener/gardener/test/framework
 github.com/gardener/gardener/test/framework/config
 github.com/gardener/gardener/test/framework/reporter
-# github.com/gardener/gardener-resource-manager v0.10.0
+# github.com/gardener/gardener-extension-networking-calico v1.8.1-0.20200618083450-4112b60d1bac
+## explicit
+github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico
+github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/install
+github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1
+github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1/helper
+github.com/gardener/gardener-extension-networking-calico/pkg/calico
+# github.com/gardener/gardener-resource-manager v0.12.0
 github.com/gardener/gardener-resource-manager/pkg/apis/resources
 github.com/gardener/gardener-resource-manager/pkg/apis/resources/v1alpha1
 github.com/gardener/gardener-resource-manager/pkg/apis/resources/v1alpha1/helper
