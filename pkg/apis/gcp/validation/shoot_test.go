@@ -17,6 +17,7 @@ package validation_test
 import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
+
 	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -82,7 +83,7 @@ var _ = Describe("Shoot validation", func() {
 						"zone1",
 						"zone2",
 					},
-					DataVolumes: []core.Volume{
+					DataVolumes: []core.DataVolume{
 						{
 							Type:       makeStringPointer("Volume"),
 							VolumeSize: "30G",
@@ -98,7 +99,7 @@ var _ = Describe("Shoot validation", func() {
 						"zone1",
 						"zone2",
 					},
-					DataVolumes: []core.Volume{
+					DataVolumes: []core.DataVolume{
 						{
 							Type:       makeStringPointer("SCRATCH"),
 							VolumeSize: "30G",

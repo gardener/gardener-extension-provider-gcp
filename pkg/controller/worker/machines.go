@@ -127,7 +127,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		disks := make([]map[string]interface{}, 0)
 		// root volume
 		if pool.Volume != nil {
-			disk, err := createDiskSpec(*pool.Volume, w.worker.Name, machineImage, true)
+			disk, err := createDiskSpecForVolume(*pool.Volume, w.worker.Name, machineImage, true)
 			if err != nil {
 				return err
 			}
@@ -143,7 +143,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 		}
 		for _, volume := range pool.DataVolumes {
-			disk, err := createDiskSpec(volume, w.worker.Name, machineImage, false)
+			disk, err := createDiskSpecForDataVolume(volume, w.worker.Name, machineImage, false)
 			if err != nil {
 				return err
 			}
@@ -231,8 +231,16 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	return nil
 }
 
-func createDiskSpec(volume v1alpha1.Volume, workerName string, machineImage string, boot bool) (map[string]interface{}, error) {
-	volumeSize, err := worker.DiskSize(volume.Size)
+func createDiskSpecForVolume(volume v1alpha1.Volume, workerName string, machineImage string, boot bool) (map[string]interface{}, error) {
+	return createDiskSpec(volume.Size, workerName, machineImage, boot, volume.Type)
+}
+
+func createDiskSpecForDataVolume(volume v1alpha1.DataVolume, workerName string, machineImage string, boot bool) (map[string]interface{}, error) {
+	return createDiskSpec(volume.Size, workerName, machineImage, boot, volume.Type)
+}
+
+func createDiskSpec(size, workerName, machineImage string, boot bool, volumeType *string) (map[string]interface{}, error) {
+	volumeSize, err := worker.DiskSize(size)
 	if err != nil {
 		return nil, err
 	}
@@ -241,15 +249,14 @@ func createDiskSpec(volume v1alpha1.Volume, workerName string, machineImage stri
 		"autoDelete": true,
 		"boot":       boot,
 		"sizeGb":     volumeSize,
-		"type":       volume.Type,
 		"image":      machineImage,
 		"labels": map[string]interface{}{
 			"name": workerName,
 		},
 	}
 
-	if volume.Type != nil {
-		disk["type"] = *volume.Type
+	if volumeType != nil {
+		disk["type"] = *volumeType
 	}
 
 	return disk, nil

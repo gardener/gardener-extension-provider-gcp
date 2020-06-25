@@ -260,7 +260,7 @@ var _ = Describe("Machines", func() {
 									Type: &volumeType,
 									Size: fmt.Sprintf("%dGi", volumeSize),
 								},
-								DataVolumes: []extensionsv1alpha1.Volume{
+								DataVolumes: []extensionsv1alpha1.DataVolume{
 									{
 										Type: &localVolumeType,
 										Size: fmt.Sprintf("%dGi", volumeSize),
@@ -302,7 +302,7 @@ var _ = Describe("Machines", func() {
 									Type: &volumeType,
 									Size: fmt.Sprintf("%dGi", volumeSize),
 								},
-								DataVolumes: []extensionsv1alpha1.Volume{
+								DataVolumes: []extensionsv1alpha1.DataVolume{
 									{
 										Type: &localVolumeType,
 										Size: fmt.Sprintf("%dGi", volumeSize),
