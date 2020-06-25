@@ -20,8 +20,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gardener/gardener/pkg/utils/version"
-
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
@@ -32,9 +30,11 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/chart"
 	"github.com/gardener/gardener/pkg/utils/secrets"
+	"github.com/gardener/gardener/pkg/utils/version"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
@@ -236,6 +236,7 @@ var (
 					{Type: &rbacv1.ClusterRole{}, Name: gcp.UsernamePrefix + gcp.CSIDriverName},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIDriverName},
 					{Type: &policyv1beta1.PodSecurityPolicy{}, Name: strings.Replace(gcp.UsernamePrefix+gcp.CSIDriverName, ":", ".", -1)},
+					{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: gcp.CSINodeName},
 					// csi-provisioner
 					{Type: &rbacv1.ClusterRole{}, Name: gcp.UsernamePrefix + gcp.CSIProvisionerName},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIProvisionerName},
@@ -495,7 +496,10 @@ func getControlPlaneShootChartValues(
 
 	return map[string]interface{}{
 		gcp.CloudControllerManagerName: map[string]interface{}{"enabled": true},
-		gcp.CSINodeName:                map[string]interface{}{"enabled": !k8sVersionLessThan118},
+		gcp.CSINodeName: map[string]interface{}{
+			"enabled":    !k8sVersionLessThan118,
+			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
+		},
 	}, nil
 }
 
