@@ -9,19 +9,14 @@ data:
   filter-kubernetes.conf: |
     [FILTER]
         Name                parser
-        Match               kubernetes.cloud-controller-manager*gcp-cloud-controller-manager*
+        Match               kubernetes.*cloud-controller-manager*gcp-cloud-controller-manager*
         Key_Name            log
         Parser              kubeapiserverParser
         Reserve_Data        True
 
     [FILTER]
         Name                parser
-        Match               kubernetes.machine-controller-manager*gcp-machine-controller-manager*
+        Match               kubernetes.*machine-controller-manager*gcp-machine-controller-manager*
         Key_Name            log
         Parser              kubeapiserverParser
         Reserve_Data        True
-
-    [FILTER]
-        Name record_modifier
-        Match *gcp-cloud-controller-manager*
-        Record type user
