@@ -669,8 +669,3 @@ func addNameAndSecretToMachineClass(class map[string]interface{}, serviceAccount
 	}
 	class["secret"].(map[string]interface{})[gcp.ServiceAccountJSONMCM] = serviceAccountJSON
 }
-
-// func addServiceAccountToMachineClass(class map[string]interface{}, email string, scopes []string) {
-// 	return useDefaultMachineClass()
-// 	class["serviceAccounts"] = []map[string]interface{}{{"email": email, "scopes": scopes}}
-// }

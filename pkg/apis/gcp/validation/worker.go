@@ -57,13 +57,19 @@ func validateServiceAccount(sa *gcp.ServiceAccount, fldPath *field.Path) field.E
 	if len(sa.Scopes) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("scopes"), "must have at least one scope"))
 	} else {
+		existingScopes := sets.NewString()
+
 		for i, scope := range sa.Scopes {
-			if scope == "" {
+			switch {
+			case scope == "":
 				allErrs = append(allErrs, field.Required(fldPath.Child("scopes").Index(i), "must not be empty"))
+			case existingScopes.Has(scope):
+				allErrs = append(allErrs, field.Duplicate(fldPath.Child("scopes").Index(i), scope))
+			default:
+				existingScopes.Insert(scope)
 			}
 		}
 	}
 
 	return allErrs
-
 }

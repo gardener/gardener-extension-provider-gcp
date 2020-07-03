@@ -26,7 +26,6 @@ type WorkerConfig struct {
 	metav1.TypeMeta
 
 	// Volume contains configuration for the root disks attached to VMs.
-	// +optional
 	Volume *Volume
 
 	// Service account, with their specified scopes, authorized for this worker.
@@ -34,14 +33,12 @@ type WorkerConfig struct {
 	// the metadata server and used to authenticate applications on the
 	// instance.
 	// This service account should be created in advance.
-	// +optional
 	ServiceAccount *ServiceAccount
 }
 
 // Volume contains configuration for the additional disks attached to VMs.
 type Volume struct {
 	// LocalSSDInterface is the interface of that the local ssd disk supports.
-	// +optional
 	LocalSSDInterface *string
 }
 
