@@ -114,6 +114,9 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
 						Version: "1.18.0",
+						VerticalPodAutoscaler: &gardencorev1beta1.VerticalPodAutoscaler{
+							Enabled: true,
+						},
 					},
 				},
 			},
@@ -254,7 +257,9 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				gcp.CloudControllerManagerName: enabledTrue,
-				gcp.CSINodeName:                enabledFalse,
+				gcp.CSINodeName: utils.MergeMaps(enabledFalse, map[string]interface{}{
+					"vpaEnabled": false,
+				}),
 			}))
 		})
 
@@ -263,12 +268,14 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				gcp.CloudControllerManagerName: enabledTrue,
-				gcp.CSINodeName:                enabledTrue,
+				gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"vpaEnabled": true,
+				}),
 			}))
 		})
 	})
 
-	Describe("#GetStorageClassesChartValues()", func() {
+	Describe("#GetStorageClassesChartValues", func() {
 		It("should return correct storage class chart values (k8s < 1.18)", func() {
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, clusterK8sLessThan118)
 			Expect(err).NotTo(HaveOccurred())
