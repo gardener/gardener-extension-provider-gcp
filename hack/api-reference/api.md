@@ -211,6 +211,24 @@ Volume
 <p>Volume contains configuration for the root disks attached to VMs.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.ServiceAccount">
+ServiceAccount
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Service account, with their specified scopes, authorized for this worker.
+Service accounts generate access tokens that can be accessed through
+the metadata server and used to authenticate applications on the
+instance.
+This service account should be created in advance.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CloudControllerManagerConfig">CloudControllerManagerConfig
@@ -761,6 +779,48 @@ VPC
 <td>
 <em>(Optional)</em>
 <p>NatIPs is a list of all user provided external premium ips which can be used by the nat gateway</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.ServiceAccount">ServiceAccount
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+</p>
+<p>
+<p>ServiceAccount is a GCP service account.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>email</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Email is the address of the service account.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scopes</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Scopes is the list of scopes to be made available for this service.
+account.</p>
 </td>
 </tr>
 </tbody>

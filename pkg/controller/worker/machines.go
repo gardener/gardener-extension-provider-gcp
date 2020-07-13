@@ -34,6 +34,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
+	computev1 "google.golang.org/api/compute/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -155,6 +156,20 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			disks = append(disks, disk)
 		}
 
+		serviceAccounts := make([]map[string]interface{}, 0)
+
+		if workerConfig.ServiceAccount != nil {
+			serviceAccounts = append(serviceAccounts, map[string]interface{}{
+				"email":  workerConfig.ServiceAccount.Email,
+				"scopes": workerConfig.ServiceAccount.Scopes,
+			})
+		} else {
+			serviceAccounts = append(serviceAccounts, map[string]interface{}{
+				"email":  infrastructureStatus.ServiceAccountEmail,
+				"scopes": []string{computev1.ComputeScope},
+			})
+		}
+
 		gceInstanceLabels := getGceInstanceLabels(w.worker.Name, pool)
 		for zoneIndex, zone := range pool.Zones {
 			zoneIdx := int32(zoneIndex)
@@ -181,14 +196,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				"secret": map[string]interface{}{
 					"cloudConfig": string(pool.UserData),
 				},
-				"serviceAccounts": []map[string]interface{}{
-					{
-						"email": infrastructureStatus.ServiceAccountEmail,
-						"scopes": []string{
-							"https://www.googleapis.com/auth/compute",
-						},
-					},
-				},
+				"serviceAccounts": serviceAccounts,
 				"tags": []string{
 					w.worker.Namespace,
 					fmt.Sprintf("kubernetes-io-cluster-%s", w.worker.Namespace),

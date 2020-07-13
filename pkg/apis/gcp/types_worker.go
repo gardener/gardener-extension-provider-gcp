@@ -26,14 +26,19 @@ type WorkerConfig struct {
 	metav1.TypeMeta
 
 	// Volume contains configuration for the root disks attached to VMs.
-	// +optional
 	Volume *Volume
+
+	// Service account, with their specified scopes, authorized for this worker.
+	// Service accounts generate access tokens that can be accessed through
+	// the metadata server and used to authenticate applications on the
+	// instance.
+	// This service account should be created in advance.
+	ServiceAccount *ServiceAccount
 }
 
 // Volume contains configuration for the additional disks attached to VMs.
 type Volume struct {
 	// LocalSSDInterface is the interface of that the local ssd disk supports.
-	// +optional
 	LocalSSDInterface *string
 }
 
@@ -60,4 +65,14 @@ type MachineImage struct {
 	Version string
 	// Image is the path to the image.
 	Image string
+}
+
+// ServiceAccount is a GCP service account.
+type ServiceAccount struct {
+	// Email is the email address of the service account.
+	Email string
+
+	// Scopes is the list of scopes to be made available for this service.
+	// account.
+	Scopes []string
 }

@@ -87,5 +87,12 @@ spec:
     # workerconfig is used to specify the interface of gcp local ssd
     #dataVolumes:
     #  - type: SCRATCH
+    # providerConfig:
+    #   apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+    #   kind: WorkerConfig
+    #   serviceAccount:
+    #     email: foo@bar.com
+    #     scopes:
+    #     - https://www.googleapis.com/auth/cloud-platform
     zones:
     - europe-west1-b

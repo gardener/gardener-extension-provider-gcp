@@ -106,9 +106,16 @@ If you don't want to configure anything for the `cloudControllerManager` simply 
 
 ## WorkerConfig
 
-The worker configuration mainly contains Local SSD interface for the additional volumes attached to GCP worker machines.
-If you attach the disk with `SCRATCH` type, either an `NVMe` interface or a `SCSI` interface must be specified.
-It is only meaningful to provide this volume interface if only `SCRATCH` data volumes are used.
+The worker configuration contains:
+
+* Local SSD interface for the additional volumes attached to GCP worker machines.
+
+  If you attach the disk with `SCRATCH` type, either an `NVMe` interface or a `SCSI` interface must be specified.
+  It is only meaningful to provide this volume interface if only `SCRATCH` data volumes are used.
+* Service Account with their specified scopes, authorized for this worker.
+
+  Service accounts created in advance that generate access tokens that can be accessed through the metadata server and used to authenticate applications on the instance.
+
 An example `WorkerConfig` for the GCP looks as follows:
 
 ```yaml
@@ -116,6 +123,10 @@ apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
 kind: WorkerConfig
 volume:
   interface: NVME
+  serviceAccount:
+    email: foo@bar.com
+    scopes:
+    - https://www.googleapis.com/auth/cloud-platform
 ```
 
 ## Example `Shoot` manifest
@@ -180,11 +191,11 @@ Shoot clusters with Kubernetes v1.17 or less will use the in-tree `kubernetes.io
 
 ## ip-masq-agent
 
-GCP blocks non-VM egress traffic by default in their infrastructures. As a result traffic to the outside needs 
-to be masqueraded to the node ip when egressing. The [ip-masq-agent](https://github.com/kubernetes-sigs/ip-masq-agent)  does 
-exactly that. 
+GCP blocks non-VM egress traffic by default in their infrastructures. As a result traffic to the outside needs
+to be masqueraded to the node ip when egressing. The [ip-masq-agent](https://github.com/kubernetes-sigs/ip-masq-agent)  does
+exactly that.
 
-The `ip-masq-agent` [daemonset](charts/internal/shoot-system-components/charts/ip-masq-agent/templates/daemonset.yaml) mounts an optional configmap that can be configured post cluster creation. 
+The `ip-masq-agent` [daemonset](charts/internal/shoot-system-components/charts/ip-masq-agent/templates/daemonset.yaml) mounts an optional configmap that can be configured post cluster creation.
 
 ```yaml
 volumes:
@@ -216,5 +227,5 @@ metadata:
   name: ip-masq-agent
 ```
 
-The alternative to using the `ip-masq-agent` would be `Alias IPs`, however, `Alias IPs` requires additional configuration 
+The alternative to using the `ip-masq-agent` would be `Alias IPs`, however, `Alias IPs` requires additional configuration
 on the machine level and manual IP address management and assignment for the secondary networks (the pod network).
