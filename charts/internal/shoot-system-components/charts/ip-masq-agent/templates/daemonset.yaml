@@ -26,7 +26,6 @@ spec:
       containers:
         - args:
             - --masq-chain=IP-MASQ
-            - --nomasq-all-reserved-ranges
           image: {{ index .Values.images "ip-masq-agent" }}
           imagePullPolicy: IfNotPresent
           name: ip-masq-agent
