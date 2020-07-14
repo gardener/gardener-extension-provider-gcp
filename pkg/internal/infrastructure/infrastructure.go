@@ -18,7 +18,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -126,6 +126,6 @@ func CleanupKubernetesRoutes(ctx context.Context, client gcpclient.Interface, pr
 }
 
 // GetServiceAccountFromInfrastructure retrieves the ServiceAccount from the Secret referenced in the given Infrastructure.
-func GetServiceAccountFromInfrastructure(ctx context.Context, c client.Client, config *extensionsv1alpha1.Infrastructure) (*internal.ServiceAccount, error) {
-	return internal.GetServiceAccount(ctx, c, config.Spec.SecretRef)
+func GetServiceAccountFromInfrastructure(ctx context.Context, c client.Client, config *extensionsv1alpha1.Infrastructure) (*gcp.ServiceAccount, error) {
+	return gcp.GetServiceAccount(ctx, c, config.Spec.SecretRef)
 }

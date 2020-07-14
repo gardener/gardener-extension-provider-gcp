@@ -20,6 +20,7 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
@@ -35,7 +36,7 @@ func (a *actuator) cleanupKubernetesFirewallRules(
 	config *api.InfrastructureConfig,
 	client gcpclient.Interface,
 	tf terraformer.Terraformer,
-	account *internal.ServiceAccount,
+	account *gcp.ServiceAccount,
 	shootSeedNamespace string,
 ) error {
 	state, err := infrastructure.ExtractTerraformState(tf, config)
@@ -54,7 +55,7 @@ func (a *actuator) cleanupKubernetesRoutes(
 	config *api.InfrastructureConfig,
 	client gcpclient.Interface,
 	tf terraformer.Terraformer,
-	account *internal.ServiceAccount,
+	account *gcp.ServiceAccount,
 	shootSeedNamespace string,
 ) error {
 	state, err := infrastructure.ExtractTerraformState(tf, config)
@@ -93,7 +94,7 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 		return err
 	}
 
-	serviceAccount, err := internal.GetServiceAccount(ctx, a.Client(), infra.Spec.SecretRef)
+	serviceAccount, err := gcp.GetServiceAccount(ctx, a.Client(), infra.Spec.SecretRef)
 	if err != nil {
 		return err
 	}

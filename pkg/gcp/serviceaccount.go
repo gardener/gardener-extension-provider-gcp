@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package internal
+package gcp
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 
 	corev1 "k8s.io/api/core/v1"
@@ -64,7 +63,7 @@ func GetServiceAccountData(ctx context.Context, c client.Client, secretRef corev
 
 // ReadServiceAccountSecret reads the ServiceAccount from the given secret.
 func ReadServiceAccountSecret(secret *corev1.Secret) ([]byte, error) {
-	data, ok := secret.Data[gcp.ServiceAccountJSONField]
+	data, ok := secret.Data[ServiceAccountJSONField]
 	if !ok {
 		return nil, fmt.Errorf("secret %s/%s doesn't have a service account json", secret.Namespace, secret.Name)
 	}

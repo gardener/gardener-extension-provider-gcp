@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/imagevector"
 
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
@@ -33,7 +34,7 @@ const (
 
 // TerraformerVariablesEnvironmentFromServiceAccount computes the Terraformer variables environment from the
 // given ServiceAccount.
-func TerraformerVariablesEnvironmentFromServiceAccount(account *ServiceAccount) (map[string]string, error) {
+func TerraformerVariablesEnvironmentFromServiceAccount(account *gcp.ServiceAccount) (map[string]string, error) {
 	var buf bytes.Buffer
 	if err := json.Compact(&buf, account.Raw); err != nil {
 		return nil, err
@@ -68,7 +69,7 @@ func NewTerraformerWithAuth(
 	purpose,
 	namespace,
 	name string,
-	serviceAccount *ServiceAccount,
+	serviceAccount *gcp.ServiceAccount,
 ) (terraformer.Terraformer, error) {
 	tf, err := NewTerraformer(restConfig, purpose, namespace, name)
 	if err != nil {
@@ -79,7 +80,7 @@ func NewTerraformerWithAuth(
 }
 
 // SetTerraformerVariablesEnvironment sets the environment variables based on the given service account.
-func SetTerraformerVariablesEnvironment(tf terraformer.Terraformer, serviceAccount *ServiceAccount) (terraformer.Terraformer, error) {
+func SetTerraformerVariablesEnvironment(tf terraformer.Terraformer, serviceAccount *gcp.ServiceAccount) (terraformer.Terraformer, error) {
 	variables, err := TerraformerVariablesEnvironmentFromServiceAccount(serviceAccount)
 	if err != nil {
 		return nil, err

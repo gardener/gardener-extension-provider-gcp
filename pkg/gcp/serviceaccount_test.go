@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package internal
+package gcp
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
@@ -42,7 +41,7 @@ var _ = Describe("Service Account", func() {
 		serviceAccount = &ServiceAccount{ProjectID: projectID, Raw: serviceAccountData}
 		secret = &corev1.Secret{
 			Data: map[string][]byte{
-				gcp.ServiceAccountJSONField: serviceAccountData,
+				ServiceAccountJSONField: serviceAccountData,
 			},
 		}
 	})
@@ -81,7 +80,7 @@ var _ = Describe("Service Account", func() {
 	Describe("#ReadServiceAccountSecret", func() {
 		It("should read the service account data from the secret", func() {
 			secret := &corev1.Secret{Data: map[string][]byte{
-				gcp.ServiceAccountJSONField: serviceAccountData,
+				ServiceAccountJSONField: serviceAccountData,
 			}}
 
 			actual, err := ReadServiceAccountSecret(secret)

@@ -27,7 +27,6 @@ import (
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
@@ -75,7 +74,7 @@ func (w *workerDelegate) GenerateMachineDeployments(ctx context.Context) (worker
 }
 
 func (w *workerDelegate) generateMachineClassSecretData(ctx context.Context) (map[string][]byte, error) {
-	serviceAccountJSON, err := internal.GetServiceAccountData(ctx, w.Client(), w.worker.Spec.SecretRef)
+	serviceAccountJSON, err := gcp.GetServiceAccountData(ctx, w.Client(), w.worker.Spec.SecretRef)
 	if err != nil {
 		return nil, err
 	}

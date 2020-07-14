@@ -310,7 +310,7 @@ func (vp *valuesProvider) GetConfigChartValues(
 	}
 
 	// Get service account
-	serviceAccount, err := internal.GetServiceAccount(ctx, vp.Client(), cp.Spec.SecretRef)
+	serviceAccount, err := gcp.GetServiceAccount(ctx, vp.Client(), cp.Spec.SecretRef)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get service account from secret '%s/%s'", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name)
 	}
@@ -335,7 +335,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	}
 
 	// Get service account
-	serviceAccount, err := internal.GetServiceAccount(ctx, vp.Client(), cp.Spec.SecretRef)
+	serviceAccount, err := gcp.GetServiceAccount(ctx, vp.Client(), cp.Spec.SecretRef)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get service account from secret '%s/%s'", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name)
 	}
@@ -374,7 +374,7 @@ func getConfigChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	infraStatus *apisgcp.InfrastructureStatus,
 	cp *extensionsv1alpha1.ControlPlane,
-	serviceAccount *internal.ServiceAccount,
+	serviceAccount *gcp.ServiceAccount,
 ) (map[string]interface{}, error) {
 	// Determine network names
 	networkName, subNetworkName := getNetworkNames(infraStatus, cp)
@@ -394,7 +394,7 @@ func getControlPlaneChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
-	serviceAccount *internal.ServiceAccount,
+	serviceAccount *gcp.ServiceAccount,
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
@@ -451,7 +451,7 @@ func getCSIControllerChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	_ *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
-	serviceAccount *internal.ServiceAccount,
+	serviceAccount *gcp.ServiceAccount,
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {

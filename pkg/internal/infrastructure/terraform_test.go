@@ -20,7 +20,7 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	mockterraformer "github.com/gardener/gardener/pkg/mock/gardener/extensions/terraformer"
 
@@ -41,7 +41,7 @@ var _ = Describe("Terraform", func() {
 		cluster            *controller.Cluster
 		projectID          string
 		serviceAccountData []byte
-		serviceAccount     *internal.ServiceAccount
+		serviceAccount     *gcp.ServiceAccount
 
 		minPortsPerVM = int32(2048)
 
@@ -116,7 +116,7 @@ var _ = Describe("Terraform", func() {
 
 		projectID = "project"
 		serviceAccountData = []byte(fmt.Sprintf(`{"project_id": "%s"}`, projectID))
-		serviceAccount = &internal.ServiceAccount{ProjectID: projectID, Raw: serviceAccountData}
+		serviceAccount = &gcp.ServiceAccount{ProjectID: projectID, Raw: serviceAccountData}
 	})
 
 	Describe("#ExtractTerraformState", func() {
