@@ -20,9 +20,9 @@ webhooks:
   objectSelector: {}
   namespaceSelector: {}
   sideEffects: None
-  {{- if semverCompare "<= 1.15-0" .Capabilities.KubeVersion.GitVersion -}}
+  {{- if semverCompare "<= 1.15-0" .Capabilities.KubeVersion.GitVersion }}
   timeoutSeconds: 10
-  {{- end -}}
+  {{- end }}
   clientConfig:
     {{- if .Values.global.virtualGarden.enabled }}
     url: {{ printf "https://%s.%s/webhooks/validate" (include "name" .) (.Release.Namespace) }}
@@ -47,9 +47,9 @@ webhooks:
   objectSelector: {}
   namespaceSelector: {}
   sideEffects: None
-  {{- if semverCompare "<= 1.15-0" .Capabilities.KubeVersion.GitVersion -}}
+  {{- if semverCompare "<= 1.15-0" .Capabilities.KubeVersion.GitVersion }}
   timeoutSeconds: 10
-  {{- end -}}
+  {{- end }}
   clientConfig:
     {{- if .Values.global.virtualGarden.enabled }}
     url: {{ printf "https://%s.%s/webhooks/validate/secrets" (include "name" .) (.Release.Namespace) }}
