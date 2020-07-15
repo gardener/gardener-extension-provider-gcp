@@ -22,7 +22,6 @@ import (
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 
@@ -65,7 +64,7 @@ var (
 // ComputeTerraformerChartValues computes the values for the GCP Terraformer chart.
 func ComputeTerraformerChartValues(
 	infra *extensionsv1alpha1.Infrastructure,
-	account *internal.ServiceAccount,
+	account *gcp.ServiceAccount,
 	config *api.InfrastructureConfig,
 	cluster *extensionscontroller.Cluster,
 ) map[string]interface{} {
@@ -169,7 +168,7 @@ func ComputeTerraformerChartValues(
 func RenderTerraformerChart(
 	renderer chartrenderer.Interface,
 	infra *extensionsv1alpha1.Infrastructure,
-	account *internal.ServiceAccount,
+	account *gcp.ServiceAccount,
 	config *api.InfrastructureConfig,
 	cluster *extensionscontroller.Cluster,
 ) (*TerraformFiles, error) {

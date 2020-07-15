@@ -17,7 +17,7 @@ package client
 import (
 	"context"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/googleapi"
@@ -41,11 +41,11 @@ type StorageClient interface {
 
 type storageClient struct {
 	client         *storage.Client
-	serviceAccount *internal.ServiceAccount
+	serviceAccount *gcp.ServiceAccount
 }
 
 // NewStorageClient creates a new storage client from the given  serviceAccount.
-func NewStorageClient(ctx context.Context, serviceAccount *internal.ServiceAccount) (StorageClient, error) {
+func NewStorageClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (StorageClient, error) {
 	client, err := storage.NewClient(ctx, option.WithCredentialsJSON(serviceAccount.Raw), option.WithScopes(storage.ScopeFullControl))
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func NewStorageClient(ctx context.Context, serviceAccount *internal.ServiceAccou
 
 // NewStorageClientFromSecretRef creates a new storage client from the given <secretRef>.
 func NewStorageClientFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (StorageClient, error) {
-	serviceAccount, err := internal.GetServiceAccount(ctx, c, secretRef)
+	serviceAccount, err := gcp.GetServiceAccount(ctx, c, secretRef)
 	if err != nil {
 		return nil, err
 	}

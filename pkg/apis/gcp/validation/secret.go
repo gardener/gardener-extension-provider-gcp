@@ -19,7 +19,6 @@ import (
 	"regexp"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -32,7 +31,7 @@ func ValidateCloudProviderSecret(secret *corev1.Secret) error {
 		return fmt.Errorf("missing %q field in secret", gcp.ServiceAccountJSONField)
 	}
 
-	projectID, err := internal.ExtractServiceAccountProjectID(serviceAccountJSON)
+	projectID, err := gcp.ExtractServiceAccountProjectID(serviceAccountJSON)
 	if err != nil {
 		return err
 	}

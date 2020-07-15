@@ -17,6 +17,8 @@ package internal
 import (
 	"fmt"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -25,12 +27,12 @@ var _ = Describe("Terraform", func() {
 	var (
 		projectID          string
 		serviceAccountData []byte
-		serviceAccount     *ServiceAccount
+		serviceAccount     *gcp.ServiceAccount
 	)
 	BeforeEach(func() {
 		projectID = "project"
 		serviceAccountData = []byte(fmt.Sprintf(`{"project_id": "%s"}`, projectID))
-		serviceAccount = &ServiceAccount{ProjectID: projectID, Raw: serviceAccountData}
+		serviceAccount = &gcp.ServiceAccount{ProjectID: projectID, Raw: serviceAccountData}
 	})
 
 	Describe("#TerraformerVariablesEnvironmentFromServiceAccount", func() {
