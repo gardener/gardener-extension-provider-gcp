@@ -6,6 +6,7 @@ metadata:
   name: default
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
+allowVolumeExpansion: true
 provisioner: pd.csi.storage.gke.io
 parameters:
   type: pd-standard
@@ -16,6 +17,7 @@ apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
 metadata:
   name: gce-sc-fast
+allowVolumeExpansion: true
 provisioner: pd.csi.storage.gke.io
 parameters:
   type: pd-ssd
