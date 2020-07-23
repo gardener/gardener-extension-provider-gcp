@@ -55,8 +55,3 @@ images:
   sourceRepository: github.com/kubernetes-csi/livenessprobe
   repository: quay.io/k8scsi/livenessprobe
   tag: "v2.0.0"
-
-- name: ip-masq-agent
-  sourceRepository: github.com/kubernetes-sigs/ip-masq-agent
-  repository: k8s.gcr.io/ip-masq-agent-amd64
-  tag: "v2.5.0"

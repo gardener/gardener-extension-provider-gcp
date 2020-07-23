@@ -16,7 +16,6 @@ package controlplane
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -206,19 +205,6 @@ var (
 				Objects: []*chart.Object{
 					{Type: &rbacv1.ClusterRole{}, Name: "system:controller:cloud-node-controller"},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: "system:controller:cloud-node-controller"},
-				},
-			},
-			{
-				Name: gcp.IPMasqAgentName,
-				Images: []string{
-					gcp.IPMasqAgentImageName,
-				},
-				Objects: []*chart.Object{
-					{Type: &appsv1.DaemonSet{}, Name: gcp.IPMasqAgentName},
-					{Type: &corev1.ServiceAccount{}, Name: gcp.IPMasqAgentName},
-					{Type: &rbacv1.ClusterRole{}, Name: fmt.Sprintf("%s:%s:%s", extensionsv1alpha1.SchemeGroupVersion.Group, "psp", gcp.IPMasqAgentName)},
-					{Type: &rbacv1.RoleBinding{}, Name: fmt.Sprintf("%s:%s:%s", extensionsv1alpha1.SchemeGroupVersion.Group, "psp", gcp.IPMasqAgentName)},
-					{Type: &policyv1beta1.PodSecurityPolicy{}, Name: fmt.Sprintf("%s.%s", extensionsv1alpha1.SchemeGroupVersion.Group, gcp.IPMasqAgentName)},
 				},
 			},
 			{
