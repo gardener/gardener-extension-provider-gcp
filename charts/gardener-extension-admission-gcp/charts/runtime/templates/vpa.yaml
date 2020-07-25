@@ -1,0 +1,19 @@
+{{- if .Values.global.vpa.enabled }}
+apiVersion: autoscaling.k8s.io/v1beta2
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ include "name" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  resourcePolicy:
+    containerPolicies:
+    - containerName: {{ include "name" . }}
+      minAllowed:
+        memory: 25Mi
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "name" . }}
+  updatePolicy:
+    updateMode: {{ .Values.global.vpa.updatePolicy.updateMode }}
+{{- end }}
