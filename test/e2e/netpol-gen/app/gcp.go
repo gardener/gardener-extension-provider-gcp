@@ -45,9 +45,8 @@ func (a *gcpNetworkPolicy) Rules() []np.Rule {
 		a.newSource(ag.EtcdEvents()).AllowHost(ag.External()).Build(),
 		a.newSource(ag.CloudControllerManagerNotSecured()).AllowPod(ag.KubeAPIServer()).AllowHost(ag.External()).Build(),
 		a.newSource(ag.CloudControllerManagerSecured()).AllowPod(ag.KubeAPIServer()).AllowHost(ag.External()).Build(),
-		a.newSource(ag.ElasticSearch()).Build(),
-		a.newSource(ag.Grafana()).AllowPod(ag.Prometheus()).Build(),
-		a.newSource(ag.Kibana()).AllowTargetPod(ag.ElasticSearch().FromPort("http")).Build(),
+		a.newSource(ag.Loki()).Build(),
+		a.newSource(ag.Grafana()).AllowPod(ag.Prometheus(), ag.Loki()).Build(),
 		a.newSource(ag.AddonManager()).AllowPod(ag.KubeAPIServer()).AllowHost(ag.SeedKubeAPIServer(), ag.External()).Build(),
 		a.newSource(ag.KubeControllerManagerNotSecured()).AllowPod(ag.KubeAPIServer()).AllowHost(a.metadata, ag.External()).Build(),
 		a.newSource(ag.KubeControllerManagerSecured()).AllowPod(ag.KubeAPIServer()).AllowHost(a.metadata, ag.External()).Build(),
@@ -69,7 +68,7 @@ func (a *gcpNetworkPolicy) Rules() []np.Rule {
 			ag.KubeStateMetricsSeed(),
 			ag.KubeStateMetricsShoot(),
 			ag.MachineControllerManager(),
-		).AllowTargetPod(ag.ElasticSearch().FromPort("metrics")).AllowHost(ag.SeedKubeAPIServer(), ag.External(), a.Agnostic.GardenPrometheus()).Build(),
+		).AllowTargetPod(ag.Loki().FromPort("metrics")).AllowHost(ag.SeedKubeAPIServer(), ag.External(), a.Agnostic.GardenPrometheus()).Build(),
 	}
 }
 
@@ -89,11 +88,10 @@ func (a *gcpNetworkPolicy) Sources() []*np.SourcePod {
 		ag.AddonManager(),
 		ag.CloudControllerManagerNotSecured(),
 		ag.CloudControllerManagerSecured(),
-		ag.ElasticSearch(),
+		ag.Loki(),
 		ag.EtcdEvents(),
 		ag.EtcdMain(),
 		ag.Grafana(),
-		ag.Kibana(),
 		ag.KubeAPIServer(),
 		ag.KubeControllerManagerNotSecured(),
 		ag.KubeControllerManagerSecured(),
