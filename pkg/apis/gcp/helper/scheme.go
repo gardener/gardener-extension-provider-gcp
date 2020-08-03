@@ -20,15 +20,13 @@ package helper
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
-	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/util"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
+	"github.com/gardener/gardener/extensions/pkg/controller"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -61,13 +59,13 @@ func InfrastructureConfigFromInfrastructure(infra *extensionsv1alpha1.Infrastruc
 	return nil, fmt.Errorf("provider config is not set on the infrastructure resource")
 }
 
-// CloudProfileConfigForCluster decodes the provider specific cloud profile configuration for a cluster
+// CloudProfileConfigFromCluster decodes the provider specific cloud profile configuration for a cluster
 func CloudProfileConfigFromCluster(cluster *controller.Cluster) (*api.CloudProfileConfig, error) {
 	var cloudProfileConfig *api.CloudProfileConfig
 	if cluster != nil && cluster.CloudProfile != nil && cluster.CloudProfile.Spec.ProviderConfig != nil && cluster.CloudProfile.Spec.ProviderConfig.Raw != nil {
 		cloudProfileConfig = &api.CloudProfileConfig{}
 		if _, _, err := decoder.Decode(cluster.CloudProfile.Spec.ProviderConfig.Raw, nil, cloudProfileConfig); err != nil {
-			return nil, errors.Wrapf(err, "could not decode providerConfig of cloudProfile for '%s'", util.ObjectName(cluster.CloudProfile))
+			return nil, errors.Wrapf(err, "could not decode providerConfig of cloudProfile for '%s'", kutil.ObjectName(cluster.CloudProfile))
 		}
 	}
 	return cloudProfileConfig, nil
