@@ -123,10 +123,10 @@ apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
 kind: WorkerConfig
 volume:
   interface: NVME
-  serviceAccount:
-    email: foo@bar.com
-    scopes:
-    - https://www.googleapis.com/auth/cloud-platform
+serviceAccount:
+  email: foo@bar.com
+  scopes:
+  - https://www.googleapis.com/auth/cloud-platform
 ```
 
 ## Example `Shoot` manifest
