@@ -204,6 +204,8 @@ var (
 				Objects: []*chart.Object{
 					{Type: &rbacv1.ClusterRole{}, Name: "system:controller:cloud-node-controller"},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: "system:controller:cloud-node-controller"},
+					{Type: &rbacv1.ClusterRole{}, Name: "gce:cloud-provider"},
+					{Type: &rbacv1.ClusterRoleBinding{}, Name: "gce:cloud-provider"},
 				},
 			},
 			{
