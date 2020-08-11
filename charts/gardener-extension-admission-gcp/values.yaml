@@ -21,6 +21,6 @@ global:
       key: |
         -----BEGIN RSA PRIVATE KEY-----
         ...
-        -----END RSA PRIVATE KEY-----  
+        -----END RSA PRIVATE KEY-----
   # Kubeconfig to the target cluster. In-cluster configuration will be used if not specified.
   kubeconfig:
