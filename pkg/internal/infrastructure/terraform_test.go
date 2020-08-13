@@ -21,10 +21,8 @@ import (
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/gardener/gardener/extensions/pkg/controller"
 	mockterraformer "github.com/gardener/gardener/pkg/mock/gardener/extensions/terraformer"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -38,15 +36,11 @@ var _ = Describe("Terraform", func() {
 	var (
 		infra              *extensionsv1alpha1.Infrastructure
 		config             *api.InfrastructureConfig
-		cluster            *controller.Cluster
 		projectID          string
 		serviceAccountData []byte
 		serviceAccount     *gcp.ServiceAccount
 
 		minPortsPerVM = int32(2048)
-
-		podsCIDR     = "11.0.0.0/16"
-		servicesCIDR = "12.0.0.0/16"
 
 		ctrl = gomock.NewController(GinkgoT())
 		tf   = mockterraformer.NewMockTerraformer(ctrl)
@@ -98,17 +92,6 @@ var _ = Describe("Terraform", func() {
 				DefaultSpec: extensionsv1alpha1.DefaultSpec{
 					ProviderConfig: &runtime.RawExtension{
 						Object: rawconfig,
-					},
-				},
-			},
-		}
-
-		cluster = &controller.Cluster{
-			Shoot: &gardencorev1beta1.Shoot{
-				Spec: gardencorev1beta1.ShootSpec{
-					Networking: gardencorev1beta1.Networking{
-						Pods:     &podsCIDR,
-						Services: &servicesCIDR,
 					},
 				},
 			},
@@ -213,7 +196,7 @@ var _ = Describe("Terraform", func() {
 
 	Describe("#ComputeTerraformerChartValues", func() {
 		It("should correctly compute the terraformer chart values", func() {
-			values := ComputeTerraformerChartValues(infra, serviceAccount, config, cluster)
+			values := ComputeTerraformerChartValues(infra, serviceAccount, config)
 
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -232,8 +215,6 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"pods":     podsCIDR,
-					"services": servicesCIDR,
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
@@ -277,7 +258,7 @@ var _ = Describe("Terraform", func() {
 				},
 			}
 
-			values := ComputeTerraformerChartValues(infra, serviceAccount, config, cluster)
+			values := ComputeTerraformerChartValues(infra, serviceAccount, config)
 
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -296,8 +277,6 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"pods":     podsCIDR,
-					"services": servicesCIDR,
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
@@ -339,7 +318,7 @@ var _ = Describe("Terraform", func() {
 				},
 			}
 
-			values := ComputeTerraformerChartValues(infra, serviceAccount, config, cluster)
+			values := ComputeTerraformerChartValues(infra, serviceAccount, config)
 
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -358,8 +337,6 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"pods":     podsCIDR,
-					"services": servicesCIDR,
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
@@ -384,7 +361,7 @@ var _ = Describe("Terraform", func() {
 
 		It("should correctly compute the terraformer chart values with vpc creation", func() {
 			config.Networks.VPC = nil
-			values := ComputeTerraformerChartValues(infra, serviceAccount, config, cluster)
+			values := ComputeTerraformerChartValues(infra, serviceAccount, config)
 
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -400,8 +377,6 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"pods":     podsCIDR,
-					"services": servicesCIDR,
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{

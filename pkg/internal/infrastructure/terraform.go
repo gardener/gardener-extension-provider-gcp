@@ -22,7 +22,6 @@ import (
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -66,7 +65,6 @@ func ComputeTerraformerChartValues(
 	infra *extensionsv1alpha1.Infrastructure,
 	account *gcp.ServiceAccount,
 	config *api.InfrastructureConfig,
-	cluster *extensionscontroller.Cluster,
 ) map[string]interface{} {
 	var (
 		vpcName           = DefaultVPCName
@@ -127,8 +125,6 @@ func ComputeTerraformerChartValues(
 		"vpc":         vpc,
 		"clusterName": infra.Namespace,
 		"networks": map[string]interface{}{
-			"pods":     extensionscontroller.GetPodNetwork(cluster),
-			"services": extensionscontroller.GetServiceNetwork(cluster),
 			"workers":  workersCIDR,
 			"internal": config.Networks.Internal,
 			"cloudNAT": cN,
@@ -170,10 +166,9 @@ func RenderTerraformerChart(
 	infra *extensionsv1alpha1.Infrastructure,
 	account *gcp.ServiceAccount,
 	config *api.InfrastructureConfig,
-	cluster *extensionscontroller.Cluster,
 ) (*TerraformFiles, error) {
 
-	values := ComputeTerraformerChartValues(infra, account, config, cluster)
+	values := ComputeTerraformerChartValues(infra, account, config)
 
 	release, err := renderer.Render(filepath.Join(gcp.InternalChartsPath, "gcp-infra"), "gcp-infra", infra.Namespace, values)
 	if err != nil {

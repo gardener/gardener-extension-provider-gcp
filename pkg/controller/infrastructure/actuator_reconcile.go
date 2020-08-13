@@ -32,7 +32,7 @@ func (a *actuator) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infr
 	return a.reconcile(ctx, infra, cluster, terraformer.StateConfigMapInitializerFunc(terraformer.CreateState))
 }
 
-func (a *actuator) reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, stateInitializer terraformer.StateConfigMapInitializer) error {
+func (a *actuator) reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, _ *controller.Cluster, stateInitializer terraformer.StateConfigMapInitializer) error {
 	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
 	if err != nil {
 		return err
@@ -43,7 +43,7 @@ func (a *actuator) reconcile(ctx context.Context, infra *extensionsv1alpha1.Infr
 		return err
 	}
 
-	terraformFiles, err := infrastructure.RenderTerraformerChart(a.ChartRenderer(), infra, serviceAccount, config, cluster)
+	terraformFiles, err := infrastructure.RenderTerraformerChart(a.ChartRenderer(), infra, serviceAccount, config)
 	if err != nil {
 		return err
 	}
