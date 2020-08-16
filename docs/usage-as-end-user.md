@@ -44,7 +44,7 @@ networks:
 #   - name: manualnat1
 #   - name: manualnat2
 # flowLogs:
-#   aggregationInterval: 0.5
+#   aggregationInterval: INTERVAL_5_SEC
 #   flowSampling: 0.2
 #   metadata: INCLUDE_ALL_METADATA
 ```
@@ -72,11 +72,11 @@ You can freely choose these CIDRs and it is your responsibility to properly desi
 
 The `networks.flowLogs` section describes the configuration for the VPC flow logs. In order to enable the VPC flow logs at least one of the following parameters needs to be specified in the flow log section:
 
-* `networks.flowLogs.aggregationInterval` an optional parameter describing the aggregation interval for collecting flow logs.
+* `networks.flowLogs.aggregationInterval` an optional parameter describing the aggregation interval for collecting flow logs. For more details, see [aggregation_interval reference](https://www.terraform.io/docs/providers/google/r/compute_subnetwork.html#aggregation_interval).
 
-* `networks.flowLogs.flowSampling` an optional parameter describing the sampling rate of VPC flow logs within the subnetwork where 1.0 means all collected logs are reported and 0.0 means no logs are reported.
+* `networks.flowLogs.flowSampling` an optional parameter describing the sampling rate of VPC flow logs within the subnetwork where 1.0 means all collected logs are reported and 0.0 means no logs are reported. For more details, see [flow_sampling reference](https://www.terraform.io/docs/providers/google/r/compute_subnetwork.html#flow_sampling).
 
-* `networks.flowLogs.metadata` an optional parameter describing whether metadata fields should be added to the reported VPC flow logs.
+* `networks.flowLogs.metadata` an optional parameter describing whether metadata fields should be added to the reported VPC flow logs. For more details, see [metadata reference](https://www.terraform.io/docs/providers/google/r/compute_subnetwork.html#metadata).
 
 Apart from the VPC and the subnets the GCP extension will also create a dedicated service account for this shoot, and firewall rules.
 

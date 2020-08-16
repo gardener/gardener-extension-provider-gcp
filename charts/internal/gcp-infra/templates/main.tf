@@ -51,7 +51,7 @@ resource "google_compute_subnetwork" "subnetwork-nodes" {
 }
 
 {{ if .Values.create.cloudRouter -}}
-resource "google_compute_router" "router"{
+resource "google_compute_router" "router" {
   name    = "{{ required "clusterName is required" .Values.clusterName }}-cloud-router"
   region  = "{{ required "google.region is required" .Values.google.region }}"
   network = {{ required "vpc.name is required" .Values.vpc.name }}
