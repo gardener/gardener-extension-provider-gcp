@@ -63,6 +63,6 @@ spec:
     #   - name: manualnat1
     #   - name: manualnat2
     # flowLogs:
-    #   aggregationInterval: 0.5
+    #   aggregationInterval: INTERVAL_5_SEC
     #   flowSampling: 0.2
     #   metadata: INCLUDE_ALL_METADATA
