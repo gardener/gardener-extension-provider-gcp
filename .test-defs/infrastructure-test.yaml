@@ -1,0 +1,18 @@
+kind: TestDefinition
+metadata:
+  name: infrastructure-test
+spec:
+  owner: gardener-oq@listserv.sap.com
+  description: Integration test for infrastructure creation and deletion
+  activeDeadlineSeconds: 1800
+
+  command: [bash, -c]
+  args:
+  - >-
+    go test -timeout=0 -mod=vendor ./test/integration/infrastructure
+    --v -ginkgo.v -ginkgo.progress -ginkgo.noColor
+    --kubeconfig=$TM_KUBECONFIG_PATH/testmachinery.config
+    --service-account="${SERVICEACCOUNT_JSON}"
+    --region=$REGION
+
+  image: golang:1.14

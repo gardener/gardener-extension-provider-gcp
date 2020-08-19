@@ -34,6 +34,9 @@ ifeq ($(WEBHOOK_CONFIG_MODE), service)
   WEBHOOK_PARAM := --webhook-config-namespace=$(EXTENSION_NAMESPACE)
 endif
 
+REGION               := europe-west1
+SERVICE_ACCOUNT_FILE := .kube-secrets/gcp/serviceaccount.json
+
 #########################################
 # Rules for local development scenarios #
 #########################################
@@ -138,3 +141,11 @@ verify: check format test
 
 .PHONY: verify-extended
 verify-extended: install-requirements check-generate check format test-cov test-clean
+
+.PHONY: integration-test-infra
+integration-test-infra:
+	@go test -timeout=0 -mod=vendor ./test/integration/infrastructure \
+		--v -ginkgo.v -ginkgo.progress \
+		--kubeconfig=${KUBECONFIG} \
+		--service-account='$(shell cat $(SERVICE_ACCOUNT_FILE))' \
+		--region=$(REGION)

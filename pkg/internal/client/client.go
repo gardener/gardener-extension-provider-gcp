@@ -60,7 +60,7 @@ func NewFromServiceAccount(ctx context.Context, serviceAccount []byte) (Interfac
 	}
 
 	httpClient := oauth2.NewClient(ctx, jwt.TokenSource(ctx))
-	service, err := compute.NewService(context.TODO(), option.WithHTTPClient(httpClient))
+	service, err := compute.NewService(ctx, option.WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, err
 	}
