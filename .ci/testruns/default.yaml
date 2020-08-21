@@ -1,0 +1,25 @@
+apiVersion: testmachinery.sapcloud.io/v1beta1
+kind: Testrun
+metadata:
+  generateName: tm-extension-gcp-
+  namespace: default
+spec:
+
+  ttlSecondsAfterFinished: 172800 # 2 days
+
+  config:
+  - name: SERVICEACCOUNT_JSON
+    type: env
+    valueFrom:
+      secretKeyRef:
+        name: shoot-operator-gcp
+        key: serviceaccount.json
+
+  testflow:
+  - name: infrastructure-test
+    definition:
+      name: infrastructure-test
+      config:
+      - name: REGION
+        type: env
+        value: europe-west1
