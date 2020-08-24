@@ -2,11 +2,29 @@
 
 The [`core.gardener.cloud/v1beta1.Shoot` resource](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) declares a few fields that are meant to contain provider-specific configuration.
 
-In this document we are describing how this configuration looks like for GCP and provide an example `Shoot` manifest with minimal configuration that you can use to create an GCP cluster (modulo the landscape-specific information like cloud profile names, secret binding names, etc.).
+This document describes the configurable options for GCP and provides an example `Shoot` manifest with minimal configuration that can be used to create a GCP cluster (modulo the landscape-specific information like cloud profile names, secret binding names, etc.).
 
-## Provider Secret Data
+## GCP Provider Credentials
 
-Every shoot cluster references a `SecretBinding` which itself references a `Secret`, and this `Secret` contains the provider credentials of your GCP project.
+In order for Gardener to create a Kubernetes cluster using GCP infrastructure components, a Shoot has to provide credentials with sufficient permissions to the desired GCP project.
+Every shoot cluster references a `SecretBinding` which itself references a `Secret`, and this `Secret` contains the provider credentials of the GCP project.
+The `SecretBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`.
+
+The required credentials for the GCP project are a [Service Account Key](https://cloud.google.com/iam/docs/service-accounts#service_account_keys)) to authenticate as a [GCP Service Account](https://cloud.google.com/compute/docs/access/service-accounts).
+A service account is a special account that can be used by services and applications to interact with Google Cloud Platform APIs. 
+Applications can use service account credentials to authorize themselves to a set of APIs and perform actions within the permissions granted to the service account.
+
+Make sure to [enable the Google Identity and Access Management (IAM) API](https://cloud.google.com/service-usage/docs/enable-disable).
+[Create a Service Account](https://cloud.google.com/iam/docs/creating-managing-service-accounts) that shall be used for the Shoot cluster.
+[Grant at least the following IAM roles](https://cloud.google.com/iam/docs/granting-changing-revoking-access) to the Service Account.
+- Service Account Admin
+- Service Account Token Creator
+- Service Account User
+- Compute Admin
+
+Create a [JSON Service Account key](https://cloud.google.com/iam/docs/creating-managing-service-account-keys#creating_service_account_keys) for the Service Account.
+Provide it in the `Secret` (base64 encoded for field `serviceaccount.json`), that is being referenced by the `SecretBinding` in the Shoot cluster configuration.
+
 This `Secret` must look as follows:
 
 ```yaml
@@ -19,8 +37,6 @@ type: Opaque
 data:
   serviceaccount.json: base64(serviceaccount-json)
 ```
-
-Please look up https://cloud.google.com/iam/docs/creating-managing-service-accounts as well.
 
 ## `InfrastructureConfig`
 
