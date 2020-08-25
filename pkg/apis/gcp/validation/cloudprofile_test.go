@@ -53,8 +53,12 @@ var _ = Describe("CloudProfileConfig validation", func() {
 			}
 			machineImages = []core.MachineImage{
 				{
-					Name:     machineImageName,
-					Versions: []core.ExpirableVersion{{Version: machineImageVersion}},
+					Name: machineImageName,
+					Versions: []core.MachineImageVersion{
+						{
+							ExpirableVersion: core.ExpirableVersion{Version: machineImageVersion},
+						},
+					},
 				},
 			}
 		})
@@ -79,8 +83,12 @@ var _ = Describe("CloudProfileConfig validation", func() {
 			It("should require a machine image mapping to be configured", func() {
 				machineImages = append(machineImages, core.MachineImage{
 					Name: "suse",
-					Versions: []core.ExpirableVersion{
-						{Version: machineImageVersion},
+					Versions: []core.MachineImageVersion{
+						{
+							ExpirableVersion: core.ExpirableVersion{
+								Version: machineImageVersion,
+							},
+						},
 					},
 				})
 				errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, nilPath)
@@ -95,7 +103,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 			It("should forbid unsupported machine image version configuration", func() {
 				cloudProfileConfig.MachineImages[0].Versions[0].Image = ""
-				machineImages[0].Versions = append(machineImages[0].Versions, core.ExpirableVersion{Version: "2.0.0"})
+				machineImages[0].Versions = append(machineImages[0].Versions, core.MachineImageVersion{ExpirableVersion: core.ExpirableVersion{Version: "2.0.0"}})
 				errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, nilPath)
 
 				Expect(errorList).To(ConsistOf(
