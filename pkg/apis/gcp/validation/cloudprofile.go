@@ -20,6 +20,7 @@ import (
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 
 	"github.com/gardener/gardener/pkg/apis/core"
+	"github.com/gardener/gardener/pkg/apis/core/helper"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -32,7 +33,7 @@ func ValidateCloudProfileConfig(cpConfig *apisgcp.CloudProfileConfig, machineIma
 		var processed bool
 		for i, imageConfig := range cpConfig.MachineImages {
 			if image.Name == imageConfig.Name {
-				allErrs = append(allErrs, validateVersions(imageConfig.Versions, image.Versions, machineImagesPath.Index(i).Child("versions"))...)
+				allErrs = append(allErrs, validateVersions(imageConfig.Versions, helper.ToExpirableVersions(image.Versions), machineImagesPath.Index(i).Child("versions"))...)
 				processed = true
 				break
 			}
