@@ -1,10 +1,16 @@
 # Using the GCP provider extension with Gardener as operator
 
-The [`core.gardener.cloud/v1alpha1.CloudProfile` resource](https://github.com/gardener/gardener/blob/master/example/30-cloudprofile.yaml) declares a `providerConfig` field that is meant to contain provider-specific configuration.
+The [`core.gardener.cloud/v1beta1.CloudProfile` resource](https://github.com/gardener/gardener/blob/master/example/30-cloudprofile.yaml) declares a `providerConfig` field that is meant to contain provider-specific configuration.
+The [`core.gardener.cloud/v1beta1.Seed` resource](https://github.com/gardener/gardener/blob/master/example/50-seed.yaml) is structured similarly.
+Additionally, it allows configuring settings for the backups of the main etcds' data of shoot clusters control planes running in this seed cluster.
 
-In this document we are describing how this configuration looks like for GCP and provide an example `CloudProfile` manifest with minimal configuration that you can use to allow creating GCP shoot clusters.
+This document explains the necessary configuration for this provider extension.
 
-## `CloudProfileConfig`
+## `CloudProfile` resource
+
+This section describes, how the configuration for `CloudProfile`s looks like for GCP by providing an example `CloudProfile` manifest with minimal configuration that can be used to allow the creation of GCP shoot clusters.
+
+### `CloudProfileConfig`
 
 The cloud profile configuration contains information about the real machine image IDs in the GCP environment (image URLs).
 You have to map every version that you specify in `.spec.machineImages[].versions` here such that the GCP extension knows the image URL for every version you want to offer.
@@ -21,7 +27,7 @@ machineImages:
     image: projects/coreos-cloud/global/images/coreos-stable-2135-6-0-v20190801
 ```
 
-## Example `CloudProfile` manifest
+### Example `CloudProfile` manifest
 
 If you want to allow that shoots can create VMs with local SSDs volumes then you have to specify the type of the disk with `SCRATCH` in the `.spec.volumeTypes[]` list.
 Please find below an example `CloudProfile` manifest:
@@ -69,3 +75,44 @@ spec:
       - version: 2135.6.0
         image: projects/coreos-cloud/global/images/coreos-stable-2135-6-0-v20190801
 ```
+
+## `Seed` resource
+
+This provider extension does not support any provider configuration for the `Seed`'s `.spec.provider.providerConfig` field.
+However, it supports to managing of backup infrastructure, i.e., you can specify a configuration for the `.spec.backup` field.
+
+### Backup configuration
+
+A Seed of type `gcp` can be configured to perform backups for the main etcds' of the shoot clusters control planes using Google Cloud Storage buckets.
+
+The location/region where the backups will be stored defaults to the region of the Seed (`spec.provider.region`), but can also be explicitly configured via the field `spec.backup.region`.
+The region of the backup can be different from where the seed cluster is running.
+However, usually it makes sense to pick the same region for the backup bucket as used for the Seed cluster.
+
+Please find below an example `Seed` manifest (partly) that configures backups using Google Cloud Storage buckets. 
+
+```yaml
+---
+apiVersion: core.gardener.cloud/v1beta1
+kind: Seed
+metadata:
+  name: my-seed
+spec:
+  provider:
+    type: gcp
+    region: europe-west1
+  backup:
+    provider: gcp
+    region: europe-west1 # default region
+    secretRef:
+      name: backup-credentials
+      namespace: garden
+  ...
+```
+An example of the referenced secret containing the credentials for the GCP Cloud storage can be found in the [example folder](https://github.com/gardener/gardener-extension-provider-gcp/blob/master/example/30-etcd-backup-secret.yaml).
+
+#### Permissions for GCP Cloud Storage
+
+Please make sure the service account associated with the provided credentials has the following IAM roles. 
+- [Storage Admin](https://cloud.google.com/storage/docs/access-control/iam-roles)
+
