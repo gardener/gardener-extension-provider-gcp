@@ -19,6 +19,8 @@ import (
 	"testing"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
+
+	"github.com/coreos/go-systemd/unit"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
@@ -28,8 +30,6 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	"github.com/gardener/gardener/pkg/utils/version"
-
-	"github.com/coreos/go-systemd/unit"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -579,7 +579,6 @@ var _ = Describe("Ensurer", func() {
 })
 
 func checkKubeAPIServerDeployment(dep *appsv1.Deployment, annotations map[string]string, k8sVersion string, needsCSIMigrationCompletedFeatureGates bool) {
-	k8sVersionLessThan117, _ := version.CompareVersions(k8sVersion, "<", "1.17")
 	k8sVersionAtLeast118, _ := version.CompareVersions(k8sVersion, ">=", "1.18")
 
 	// Check that the kube-apiserver container still exists and contains all needed command line args,
@@ -598,10 +597,6 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, annotations map[string
 		Expect(dep.Spec.Template.Annotations).To(Equal(annotations))
 		Expect(dep.Spec.Template.Spec.Volumes).To(ContainElement(cloudProviderConfigVolume))
 		Expect(dep.Spec.Template.Spec.Volumes).To(ContainElement(cloudProviderSecretVolume))
-		if !k8sVersionLessThan117 {
-			Expect(c.VolumeMounts).To(ContainElement(etcSSLVolumeMount))
-			Expect(dep.Spec.Template.Spec.Volumes).To(ContainElement(etcSSLVolume))
-		}
 		if k8sVersionAtLeast118 {
 			Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationGCE=true"))
 		}
@@ -615,8 +610,6 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, annotations map[string
 		Expect(dep.Spec.Template.Annotations).To(BeNil())
 		Expect(c.VolumeMounts).NotTo(ContainElement(cloudProviderConfigVolumeMount))
 		Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(cloudProviderConfigVolume))
-		Expect(c.VolumeMounts).NotTo(ContainElement(etcSSLVolumeMount))
-		Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(etcSSLVolume))
 		Expect(dep.Spec.Template.Annotations).To(BeNil())
 	}
 
@@ -645,6 +638,8 @@ func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, annotations, l
 		if !k8sVersionLessThan117 {
 			Expect(c.VolumeMounts).To(ContainElement(etcSSLVolumeMount))
 			Expect(dep.Spec.Template.Spec.Volumes).To(ContainElement(etcSSLVolume))
+			Expect(c.VolumeMounts).To(ContainElement(usrShareCaCertsVolumeMount))
+			Expect(dep.Spec.Template.Spec.Volumes).To(ContainElement(usrShareCaCertsVolume))
 		}
 		if k8sVersionAtLeast118 {
 			Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationGCE=true"))
@@ -661,6 +656,8 @@ func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, annotations, l
 		Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(cloudProviderConfigVolume))
 		Expect(c.VolumeMounts).NotTo(ContainElement(etcSSLVolumeMount))
 		Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(etcSSLVolume))
+		Expect(c.VolumeMounts).NotTo(ContainElement(usrShareCaCertsVolumeMount))
+		Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(usrShareCaCertsVolume))
 	}
 }
 

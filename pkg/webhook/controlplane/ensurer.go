@@ -77,10 +77,10 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, ectx generi
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "kube-apiserver"); c != nil {
 		ensureKubeAPIServerCommandLineArgs(c, csiEnabled, csiMigrationComplete)
 		ensureEnvVars(c, csiEnabled, csiMigrationComplete)
-		ensureVolumeMounts(c, cluster.Shoot.Spec.Kubernetes.Version, csiEnabled, csiMigrationComplete)
+		ensureKubeAPIServerVolumeMounts(c, csiEnabled, csiMigrationComplete)
 	}
 
-	ensureVolumes(ps, cluster.Shoot.Spec.Kubernetes.Version, csiEnabled, csiMigrationComplete)
+	ensureKubeAPIServerVolumes(ps, csiEnabled, csiMigrationComplete)
 	return e.ensureChecksumAnnotations(ctx, &new.Spec.Template, new.Namespace, csiEnabled, csiMigrationComplete)
 }
 
@@ -102,11 +102,11 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, ect
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "kube-controller-manager"); c != nil {
 		ensureKubeControllerManagerCommandLineArgs(c, csiEnabled, csiMigrationComplete)
 		ensureEnvVars(c, csiEnabled, csiMigrationComplete)
-		ensureVolumeMounts(c, cluster.Shoot.Spec.Kubernetes.Version, csiEnabled, csiMigrationComplete)
+		ensureKubeControllerManagerVolumeMounts(c, cluster.Shoot.Spec.Kubernetes.Version, csiEnabled, csiMigrationComplete)
 	}
 
 	ensureKubeControllerManagerLabels(template, csiEnabled, csiMigrationComplete)
-	ensureVolumes(ps, cluster.Shoot.Spec.Kubernetes.Version, csiEnabled, csiMigrationComplete)
+	ensureKubeControllerManagerVolumes(ps, cluster.Shoot.Spec.Kubernetes.Version, csiEnabled, csiMigrationComplete)
 	return e.ensureChecksumAnnotations(ctx, &new.Spec.Template, new.Namespace, csiEnabled, csiMigrationComplete)
 }
 
@@ -244,6 +244,23 @@ var (
 		ReadOnly:  true,
 	}
 
+	usrShareCaCerts            = "usr-share-cacerts"
+	directoryOrCreate          = corev1.HostPathDirectoryOrCreate
+	usrShareCaCertsVolumeMount = corev1.VolumeMount{
+		Name:      usrShareCaCerts,
+		MountPath: "/usr/share/ca-certificates",
+		ReadOnly:  true,
+	}
+	usrShareCaCertsVolume = corev1.Volume{
+		Name: usrShareCaCerts,
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: "/usr/share/ca-certificates",
+				Type: &directoryOrCreate,
+			},
+		},
+	}
+
 	cloudProviderConfigVolume = corev1.Volume{
 		Name: internal.CloudProviderConfigName,
 		VolumeSource: corev1.VolumeSource{
@@ -265,16 +282,29 @@ var (
 		VolumeSource: corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{
 				Path: "/etc/ssl",
+				Type: &directoryOrCreate,
 			},
 		},
 	}
 )
 
-func ensureVolumeMounts(c *corev1.Container, version string, csiEnabled, csiMigrationComplete bool) {
+func ensureKubeAPIServerVolumeMounts(c *corev1.Container, csiEnabled, csiMigrationComplete bool) {
+	if csiEnabled && csiMigrationComplete {
+		c.VolumeMounts = extensionswebhook.EnsureNoVolumeMountWithName(c.VolumeMounts, cloudProviderConfigVolumeMount.Name)
+		c.VolumeMounts = extensionswebhook.EnsureNoVolumeMountWithName(c.VolumeMounts, cloudProviderSecretVolumeMount.Name)
+		return
+	}
+
+	c.VolumeMounts = extensionswebhook.EnsureVolumeMountWithName(c.VolumeMounts, cloudProviderConfigVolumeMount)
+	c.VolumeMounts = extensionswebhook.EnsureVolumeMountWithName(c.VolumeMounts, cloudProviderSecretVolumeMount)
+}
+
+func ensureKubeControllerManagerVolumeMounts(c *corev1.Container, version string, csiEnabled, csiMigrationComplete bool) {
 	if csiEnabled && csiMigrationComplete {
 		c.VolumeMounts = extensionswebhook.EnsureNoVolumeMountWithName(c.VolumeMounts, cloudProviderConfigVolumeMount.Name)
 		c.VolumeMounts = extensionswebhook.EnsureNoVolumeMountWithName(c.VolumeMounts, cloudProviderSecretVolumeMount.Name)
 		c.VolumeMounts = extensionswebhook.EnsureNoVolumeMountWithName(c.VolumeMounts, etcSSLVolumeMount.Name)
+		c.VolumeMounts = extensionswebhook.EnsureNoVolumeMountWithName(c.VolumeMounts, usrShareCaCertsVolumeMount.Name)
 		return
 	}
 
@@ -283,14 +313,28 @@ func ensureVolumeMounts(c *corev1.Container, version string, csiEnabled, csiMigr
 
 	if mustMountEtcSSLFolder(version) {
 		c.VolumeMounts = extensionswebhook.EnsureVolumeMountWithName(c.VolumeMounts, etcSSLVolumeMount)
+		// some distros have symlinks from /etc/ssl/certs to /usr/share/ca-certificates
+		c.VolumeMounts = extensionswebhook.EnsureVolumeMountWithName(c.VolumeMounts, usrShareCaCertsVolumeMount)
 	}
 }
 
-func ensureVolumes(ps *corev1.PodSpec, version string, csiEnabled, csiMigrationComplete bool) {
+func ensureKubeAPIServerVolumes(ps *corev1.PodSpec, csiEnabled, csiMigrationComplete bool) {
+	if csiEnabled && csiMigrationComplete {
+		ps.Volumes = extensionswebhook.EnsureNoVolumeWithName(ps.Volumes, cloudProviderConfigVolume.Name)
+		ps.Volumes = extensionswebhook.EnsureNoVolumeWithName(ps.Volumes, cloudProviderSecretVolume.Name)
+		return
+	}
+
+	ps.Volumes = extensionswebhook.EnsureVolumeWithName(ps.Volumes, cloudProviderConfigVolume)
+	ps.Volumes = extensionswebhook.EnsureVolumeWithName(ps.Volumes, cloudProviderSecretVolume)
+}
+
+func ensureKubeControllerManagerVolumes(ps *corev1.PodSpec, version string, csiEnabled, csiMigrationComplete bool) {
 	if csiEnabled && csiMigrationComplete {
 		ps.Volumes = extensionswebhook.EnsureNoVolumeWithName(ps.Volumes, cloudProviderConfigVolume.Name)
 		ps.Volumes = extensionswebhook.EnsureNoVolumeWithName(ps.Volumes, cloudProviderSecretVolume.Name)
 		ps.Volumes = extensionswebhook.EnsureNoVolumeWithName(ps.Volumes, etcSSLVolume.Name)
+		ps.Volumes = extensionswebhook.EnsureNoVolumeWithName(ps.Volumes, usrShareCaCertsVolume.Name)
 		return
 	}
 
@@ -299,6 +343,8 @@ func ensureVolumes(ps *corev1.PodSpec, version string, csiEnabled, csiMigrationC
 
 	if mustMountEtcSSLFolder(version) {
 		ps.Volumes = extensionswebhook.EnsureVolumeWithName(ps.Volumes, etcSSLVolume)
+		// some distros have symlinks from /etc/ssl/certs to /usr/share/ca-certificates
+		ps.Volumes = extensionswebhook.EnsureVolumeWithName(ps.Volumes, usrShareCaCertsVolume)
 	}
 }
 
