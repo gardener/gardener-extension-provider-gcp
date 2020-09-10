@@ -15,11 +15,15 @@ data:
   serviceAccountJSON: {{ $machineClass.secret.serviceAccountJSON | b64enc }}
 ---
 apiVersion: machine.sapcloud.io/v1alpha1
-kind: GCPMachineClass
+kind: MachineClass
 metadata:
   name: {{ $machineClass.name }}
   namespace: {{ $.Release.Namespace }}
-spec:
+{{- if $machineClass.labels }}
+  labels:
+{{ toYaml $machineClass.labels | indent 4 }}
+{{- end }}
+providerSpec:
   canIpForward: {{ $machineClass.canIpForward }}
   deletionProtection: {{ $machineClass.deletionProtection }}
   description: {{ $machineClass.description }}
@@ -40,9 +44,6 @@ spec:
     automaticRestart: {{ $machineClass.scheduling.automaticRestart }}
     onHostMaintenance: {{ $machineClass.scheduling.onHostMaintenance }}
     preemptible: {{ $machineClass.scheduling.preemptible }}
-  secretRef:
-    name: {{ $machineClass.name }}
-    namespace: {{ $.Release.Namespace }}
   serviceAccounts:
 {{ toYaml $machineClass.serviceAccounts | indent 2 }}
 {{- if $machineClass.tags }}
@@ -51,4 +52,8 @@ spec:
 {{- end }}
   region: {{ $machineClass.region }}
   zone: {{ $machineClass.zone }}
+secretRef:
+  name: {{ $machineClass.name }}
+  namespace: {{ $.Release.Namespace }}
+provider: "GCP"
 {{- end }}

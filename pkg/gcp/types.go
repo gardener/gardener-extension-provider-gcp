@@ -44,6 +44,8 @@ const (
 	CSILivenessProbeImageName = "csi-liveness-probe"
 	// MachineControllerManagerImageName is the name of the MachineControllerManager image.
 	MachineControllerManagerImageName = "machine-controller-manager"
+	// MachineControllerManagerProviderGCPImageName is the name of the MachineController GCP image.
+	MachineControllerManagerProviderGCPImageName = "machine-controller-manager-provider-gcp"
 
 	// ServiceAccountJSONField is the field in a secret where the service account JSON is stored at.
 	ServiceAccountJSONField = "serviceaccount.json"

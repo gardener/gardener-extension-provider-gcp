@@ -73,13 +73,13 @@ var _ = Describe("Machines", func() {
 
 		Describe("#MachineClassKind", func() {
 			It("should return the correct kind of the machine class", func() {
-				Expect(workerDelegate.MachineClassKind()).To(Equal("GCPMachineClass"))
+				Expect(workerDelegate.MachineClassKind()).To(Equal("MachineClass"))
 			})
 		})
 
 		Describe("#MachineClassList", func() {
 			It("should return the correct type for the machine class list", func() {
-				Expect(workerDelegate.MachineClassList()).To(Equal(&machinev1alpha1.GCPMachineClassList{}))
+				Expect(workerDelegate.MachineClassList()).To(Equal(&machinev1alpha1.MachineClassList{}))
 			})
 		})
 
@@ -496,6 +496,7 @@ var _ = Describe("Machines", func() {
 				}
 				It("should return the expected machine deployments when disableExternal IP is true with profile image types", func() {
 					expectGetSecretCallToWork(c, serviceAccountJSON)
+					expectListGCPMachineClassCallToWork(c, &machinev1alpha1.GCPMachineClassList{})
 
 					setup(true)
 					workerCloudRouter := w
@@ -556,6 +557,49 @@ var _ = Describe("Machines", func() {
 					result, err := workerDelegateCloudRouter.GenerateMachineDeployments(context.TODO())
 					Expect(err).NotTo(HaveOccurred())
 					Expect(result).To(Equal(machineDeployments))
+				})
+				It("should delete the any old GCPMachineClasses", func() {
+					// mockGCPMachineClassList is the mocking object used to track the
+					// list of GCPMachineClass objects
+					mockGCPMachineClassList := machinev1alpha1.GCPMachineClassList{
+						Items: []machinev1alpha1.GCPMachineClass{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "test-gcp-machine-class-0",
+								},
+							},
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "test-gcp-machine-class-1",
+								},
+							},
+						},
+					}
+
+					// Initialize mocking functions
+					expectGetSecretCallToWork(c, serviceAccountJSON)
+					expectListGCPMachineClassCallToWork(c, &mockGCPMachineClassList)
+					expectDeleteGCPMachineClassCallToWork(c, &mockGCPMachineClassList)
+
+					setup(true)
+					workerCloudRouter := w
+					workerDelegateCloudRouter, _ := NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", workerCloudRouter, cluster)
+					chartApplier.
+						EXPECT().
+						Apply(
+							context.TODO(),
+							filepath.Join(gcp.InternalChartsPath, "machineclass"),
+							namespace,
+							"machineclass",
+							kubernetes.Values(machineClasses),
+						).
+						Return(nil)
+
+					err := workerDelegateCloudRouter.DeployMachineClasses(context.TODO())
+					Expect(err).NotTo(HaveOccurred())
+
+					// Should have cleaned up all the old GCPMachineClasses
+					Expect(len(mockGCPMachineClassList.Items)).To(Equal(0))
 				})
 			})
 
@@ -689,6 +733,34 @@ func expectGetSecretCallToWork(c *mockclient.MockClient, serviceAccountJSON stri
 			}
 			return nil
 		})
+}
+
+// expectListGCPMachineClassCallToWork is the intialization methods which mocks the
+// list method to return the gcpMachineClassList as its result
+func expectListGCPMachineClassCallToWork(c *mockclient.MockClient, gcpMachineClassList *machinev1alpha1.GCPMachineClassList) {
+	c.EXPECT().List(context.TODO(), gomock.AssignableToTypeOf(&machinev1alpha1.GCPMachineClassList{}), gomock.Any()).SetArg(1, *gcpMachineClassList)
+}
+
+// expectDeleteGCPMachineClassCallToWork is the ntialization methods which mocks the
+// delete call to delete the gcpMachineClass from gcpMachineClassList
+func expectDeleteGCPMachineClassCallToWork(c *mockclient.MockClient, gcpMachineClassList *machinev1alpha1.GCPMachineClassList) {
+	c.EXPECT().
+		Delete(context.TODO(), gomock.AssignableToTypeOf(&machinev1alpha1.GCPMachineClass{})).
+		AnyTimes().Do(func(_ context.Context, gcpMachineClass *machinev1alpha1.GCPMachineClass) error {
+		index := -1
+		mockObject := machinev1alpha1.GCPMachineClass{}
+		for index, mockObject = range gcpMachineClassList.Items {
+			if mockObject.Name == gcpMachineClass.Name {
+				break
+			}
+		}
+
+		if index != -1 {
+			gcpMachineClassList.Items = append(gcpMachineClassList.Items[:index], gcpMachineClassList.Items[index+1:]...)
+		}
+
+		return nil
+	})
 }
 
 func useDefaultMachineClass(def map[string]interface{}, key string, value interface{}) map[string]interface{} {
