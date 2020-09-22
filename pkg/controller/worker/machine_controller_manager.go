@@ -34,7 +34,7 @@ var (
 	mcmChart = &chart.Chart{
 		Name:   gcp.MachineControllerManagerName,
 		Path:   filepath.Join(gcp.InternalChartsPath, gcp.MachineControllerManagerName, "seed"),
-		Images: []string{gcp.MachineControllerManagerImageName},
+		Images: []string{gcp.MachineControllerManagerImageName, gcp.MachineControllerManagerProviderGCPImageName},
 		Objects: []*chart.Object{
 			{Type: &appsv1.Deployment{}, Name: gcp.MachineControllerManagerName},
 			{Type: &corev1.Service{}, Name: gcp.MachineControllerManagerName},

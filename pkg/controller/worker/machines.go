@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/pkg/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -34,6 +36,7 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	computev1 "google.golang.org/api/compute/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -43,14 +46,25 @@ var (
 
 const maxGcpLabelCharactersSize = 63
 
-// MachineClassKind yields the name of the GCP machine class.
+// MachineClassKind yields the name of the machine class kind used by GCP provider.
 func (w *workerDelegate) MachineClassKind() string {
-	return "GCPMachineClass"
+	return "MachineClass"
 }
 
-// MachineClassList yields a newly initialized GCPMachineClassList object.
+// MachineClassList yields a newly initialized MachineClassList object.
 func (w *workerDelegate) MachineClassList() runtime.Object {
-	return &machinev1alpha1.GCPMachineClassList{}
+	return &machinev1alpha1.MachineClassList{}
+}
+
+// cleanupOldMachineClasses sets deletionTimestamp on any older version machine class CRs.
+func (w *workerDelegate) cleanupOldMachineClasses(ctx context.Context, namespace string, machineClassList runtime.Object, wantedMachineDeployments worker.MachineDeployments) error {
+	if err := w.Client().List(ctx, machineClassList, client.InNamespace(namespace)); err != nil {
+		return err
+	}
+
+	return meta.EachListItem(machineClassList, func(machineClass runtime.Object) error {
+		return w.Client().Delete(ctx, machineClass)
+	})
 }
 
 // DeployMachineClasses generates and creates the GCP specific machine classes.
@@ -60,6 +74,12 @@ func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
 			return err
 		}
 	}
+
+	// Delete any older version machine class CRs.
+	if err := w.cleanupOldMachineClasses(ctx, w.worker.Namespace, &machinev1alpha1.GCPMachineClassList{}, nil); err != nil {
+		return errors.Wrapf(err, "cleaning up older version of GCP machine class CRs failed")
+	}
+
 	return w.seedChartApplier.Apply(ctx, filepath.Join(gcp.InternalChartsPath, "machineclass"), w.worker.Namespace, "machineclass", kubernetes.Values(map[string]interface{}{"machineClasses": w.machineClasses}))
 }
 
