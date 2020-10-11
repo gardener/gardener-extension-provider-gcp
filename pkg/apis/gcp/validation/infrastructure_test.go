@@ -19,7 +19,7 @@ import (
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 	"k8s.io/utils/pointer"
 
-	. "github.com/gardener/gardener/pkg/utils/validation/gomega"
+	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
