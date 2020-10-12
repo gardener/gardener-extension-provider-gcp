@@ -19,45 +19,29 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 
 	"github.com/pkg/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// GetMachineImages returns the used machine images for the `Worker` resource.
-func (w *workerDelegate) GetMachineImages(ctx context.Context) (runtime.Object, error) {
+// UpdateMachineImagesStatus updates the machine image status
+// with the used machine images for the `Worker` resource.
+func (w *workerDelegate) UpdateMachineImagesStatus(ctx context.Context) error {
 	if w.machineImages == nil {
 		if err := w.generateMachineConfig(ctx); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	var (
-		workerStatus = &api.WorkerStatus{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: api.SchemeGroupVersion.String(),
-				Kind:       "WorkerStatus",
-			},
-			MachineImages: w.machineImages,
-		}
-
-		workerStatusV1alpha1 = &v1alpha1.WorkerStatus{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: v1alpha1.SchemeGroupVersion.String(),
-				Kind:       "WorkerStatus",
-			},
-		}
-	)
-
-	if err := w.Scheme().Convert(workerStatus, workerStatusV1alpha1, nil); err != nil {
-		return nil, err
+	// Decode the current worker provider status.
+	workerStatus, err := w.decodeWorkerProviderStatus()
+	if err != nil {
+		return err
 	}
 
-	return workerStatusV1alpha1, nil
+	workerStatus.MachineImages = w.machineImages
+	return w.updateWorkerProviderStatus(ctx, workerStatus)
 }
 
 func (w *workerDelegate) findMachineImage(name, version string) (string, error) {
