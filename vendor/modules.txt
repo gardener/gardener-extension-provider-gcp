@@ -27,8 +27,6 @@ github.com/ahmetb/gen-crd-api-reference-docs
 # github.com/beorn7/perks v1.0.1
 ## explicit
 github.com/beorn7/perks/quantile
-# github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
-## explicit
 # github.com/coreos/go-systemd/v22 v22.1.0
 ## explicit
 github.com/coreos/go-systemd/v22/unit
@@ -61,7 +59,7 @@ github.com/gardener/etcd-druid/api/v1alpha1
 # github.com/gardener/external-dns-management v0.7.18
 github.com/gardener/external-dns-management/pkg/apis/dns
 github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1
-# github.com/gardener/gardener v1.11.1
+# github.com/gardener/gardener v1.11.1-0.20201023143915-25f26100b83b
 ## explicit
 github.com/gardener/gardener/.github
 github.com/gardener/gardener/.github/ISSUE_TEMPLATE
@@ -141,6 +139,7 @@ github.com/gardener/gardener/pkg/client/kubernetes
 github.com/gardener/gardener/pkg/client/kubernetes/clientmap
 github.com/gardener/gardener/pkg/client/kubernetes/clientmap/internal
 github.com/gardener/gardener/pkg/client/kubernetes/clientmap/keys
+github.com/gardener/gardener/pkg/client/kubernetes/utils
 github.com/gardener/gardener/pkg/controllerutils
 github.com/gardener/gardener/pkg/controllerutils/metrics
 github.com/gardener/gardener/pkg/extensions
@@ -154,6 +153,7 @@ github.com/gardener/gardener/pkg/mock/gardener/extensions/terraformer
 github.com/gardener/gardener/pkg/mock/go/context
 github.com/gardener/gardener/pkg/operation
 github.com/gardener/gardener/pkg/operation/botanist
+github.com/gardener/gardener/pkg/operation/botanist/addons/networkpolicy
 github.com/gardener/gardener/pkg/operation/botanist/clusteridentity
 github.com/gardener/gardener/pkg/operation/botanist/component
 github.com/gardener/gardener/pkg/operation/botanist/controlplane
@@ -295,7 +295,8 @@ github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/golang/snappy v0.0.1
+# github.com/golang/snappy v0.0.2
+## explicit
 github.com/golang/snappy
 # github.com/google/go-cmp v0.4.1
 ## explicit
@@ -854,6 +855,7 @@ k8s.io/apimachinery/pkg/types
 k8s.io/apimachinery/pkg/util/cache
 k8s.io/apimachinery/pkg/util/clock
 k8s.io/apimachinery/pkg/util/diff
+k8s.io/apimachinery/pkg/util/duration
 k8s.io/apimachinery/pkg/util/errors
 k8s.io/apimachinery/pkg/util/framer
 k8s.io/apimachinery/pkg/util/httpstream
@@ -888,6 +890,7 @@ k8s.io/apiserver/pkg/apis/audit/validation
 k8s.io/apiserver/pkg/apis/config
 k8s.io/apiserver/pkg/apis/config/v1
 k8s.io/apiserver/pkg/authentication/user
+k8s.io/apiserver/pkg/util/feature
 # k8s.io/autoscaler v0.0.0-20190805135949-100e91ba756e
 ## explicit
 k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2
