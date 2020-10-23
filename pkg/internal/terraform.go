@@ -58,6 +58,8 @@ func NewTerraformer(
 	}
 
 	return tf.
+		UseV2(true).
+		SetLogLevel("debug").
 		SetTerminationGracePeriodSeconds(630).
 		SetDeadlineCleaning(5 * time.Minute).
 		SetDeadlinePod(15 * time.Minute), nil
