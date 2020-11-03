@@ -1,6 +1,6 @@
 module github.com/gardener/gardener-extension-provider-gcp
 
-go 1.14
+go 1.15
 
 require (
 	cloud.google.com/go/storage v1.0.0
@@ -9,7 +9,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/frankban/quicktest v1.9.0 // indirect
 	github.com/gardener/etcd-druid v0.3.0
-	github.com/gardener/gardener v1.11.1-0.20201023143915-25f26100b83b
+	github.com/gardener/gardener v1.12.3
 	github.com/gardener/machine-controller-manager v0.33.0
 	github.com/go-logr/logr v0.1.0
 	github.com/gobuffalo/packr/v2 v2.8.0

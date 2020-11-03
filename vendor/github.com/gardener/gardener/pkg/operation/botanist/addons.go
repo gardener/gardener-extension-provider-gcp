@@ -56,13 +56,15 @@ const (
 func (b *Botanist) GenerateKubernetesDashboardConfig() (map[string]interface{}, error) {
 	var (
 		enabled = b.Shoot.KubernetesDashboardEnabled()
-		values  map[string]interface{}
+		values  = map[string]interface{}{}
 	)
 
+	if b.APIServerSNIEnabled() {
+		values["kubeAPIServerHost"] = b.outOfClusterAPIServerFQDN()
+	}
+
 	if enabled && b.Shoot.Info.Spec.Addons.KubernetesDashboard.AuthenticationMode != nil {
-		values = map[string]interface{}{
-			"authenticationMode": *b.Shoot.Info.Spec.Addons.KubernetesDashboard.AuthenticationMode,
-		}
+		values["authenticationMode"] = *b.Shoot.Info.Spec.Addons.KubernetesDashboard.AuthenticationMode
 	}
 
 	return common.GenerateAddonConfig(values, enabled), nil
@@ -184,6 +186,10 @@ func (b *Botanist) GenerateNginxIngressConfig() (map[string]interface{}, error) 
 					"externalTrafficPolicy":    *b.Shoot.Info.Spec.Addons.NginxIngress.ExternalTrafficPolicy,
 				},
 			},
+		}
+
+		if b.APIServerSNIEnabled() {
+			values["kubeAPIServerHost"] = b.outOfClusterAPIServerFQDN()
 		}
 	}
 
@@ -319,6 +325,7 @@ func (b *Botanist) deleteStaleSecretsMatchLabel(ctx context.Context, labels map[
 // creates a ManagedResource CRD that references the rendered manifests and creates it.
 func (b *Botanist) generateCoreAddonsChart() (*chartrenderer.RenderedChart, error) {
 	var (
+		kasFQDN         = b.outOfClusterAPIServerFQDN()
 		kubeProxySecret = b.Secrets["kube-proxy"]
 		global          = map[string]interface{}{
 			"kubernetesVersion": b.Shoot.Info.Spec.Kubernetes.Version,
@@ -398,6 +405,17 @@ func (b *Botanist) generateCoreAddonsChart() (*chartrenderer.RenderedChart, erro
 		networkPolicyConfig.NodeLocalDNS.KubeDNSClusterIP = NodeLocalIPVSAddress
 	}
 
+	if b.APIServerSNIEnabled() {
+		coreDNSConfig["kubeAPIServerHost"] = kasFQDN
+		metricsServerConfig["kubeAPIServerHost"] = kasFQDN
+		nodeProblemDetectorConfig["env"] = []interface{}{
+			map[string]interface{}{
+				"name":  "KUBERNETES_SERVICE_HOST",
+				"value": kasFQDN,
+			},
+		}
+	}
+
 	if _, ok := b.Secrets[common.VPASecretName]; ok {
 		verticalPodAutoscaler["admissionController"].(map[string]interface{})["caCert"] = b.Secrets[common.VPASecretName].Data[secrets.DataKeyCertificateCA]
 	}
@@ -460,7 +478,10 @@ func (b *Botanist) generateCoreAddonsChart() (*chartrenderer.RenderedChart, erro
 
 	apiserverProxyConfig := map[string]interface{}{
 		"advertiseIPAddress": b.APIServerClusterIP,
-		"proxySeedServer":    fmt.Sprintf("%s:8443", b.Shoot.ComputeOutOfClusterAPIServerAddress(b.APIServerAddress, true)),
+		"proxySeedServer": map[string]interface{}{
+			"host": kasFQDN,
+			"port": "8443",
+		},
 	}
 
 	apiserverProxy, err := b.InjectShootShootImages(apiserverProxyConfig, common.APIServerPorxySidecarImageName, common.APIServerProxyImageName)
@@ -473,14 +494,13 @@ func (b *Botanist) generateCoreAddonsChart() (*chartrenderer.RenderedChart, erro
 	}
 
 	values := map[string]interface{}{
-		"global":                  global,
-		"coredns":                 coreDNS,
-		"node-local-dns":          common.GenerateAddonConfig(nodelocalDNS, b.Shoot.NodeLocalDNSEnabled),
-		"kube-apiserver-kubelet":  common.GenerateAddonConfig(nil, true),
-		"apiserver-proxy":         common.GenerateAddonConfig(apiserverProxy, b.APIServerSNIEnabled()),
-		"kube-controller-manager": common.GenerateAddonConfig(nil, true),
-		"kube-proxy":              common.GenerateAddonConfig(kubeProxy, true),
-		"metrics-server":          common.GenerateAddonConfig(metricsServer, true),
+		"global":                 global,
+		"coredns":                coreDNS,
+		"node-local-dns":         common.GenerateAddonConfig(nodelocalDNS, b.Shoot.NodeLocalDNSEnabled),
+		"kube-apiserver-kubelet": common.GenerateAddonConfig(nil, true),
+		"apiserver-proxy":        common.GenerateAddonConfig(apiserverProxy, b.APIServerSNIEnabled()),
+		"kube-proxy":             common.GenerateAddonConfig(kubeProxy, true),
+		"metrics-server":         common.GenerateAddonConfig(metricsServer, true),
 		"monitoring": common.GenerateAddonConfig(map[string]interface{}{
 			"node-exporter":     nodeExporter,
 			"blackbox-exporter": blackboxExporter,
@@ -611,4 +631,11 @@ func (b *Botanist) generateOptionalAddonsChart() (*chartrenderer.RenderedChart, 
 		"kubernetes-dashboard": kubernetesDashboard,
 		"nginx-ingress":        nginxIngress,
 	})
+}
+
+// outOfClusterAPIServerFQDN returns the Fully Qualified Domain Name of the apiserver
+// with dot "." suffix. It'll prevent extra requests to the DNS in case the record is not
+// available.
+func (b *Botanist) outOfClusterAPIServerFQDN() string {
+	return fmt.Sprintf("%s.", b.Shoot.ComputeOutOfClusterAPIServerAddress(b.APIServerAddress, true))
 }
