@@ -129,7 +129,11 @@ resource "google_compute_subnetwork" "subnetwork-internal" {
 resource "google_compute_firewall" "rule-allow-internal-access" {
   name          = "{{ required "clusterName is required" .Values.clusterName }}-allow-internal-access"
   network       = {{ required "vpc.name is required" .Values.vpc.name }}
+  {{ if .Values.networks.internal -}}
   source_ranges = ["{{ required "networks.workers is required" .Values.networks.workers }}", "{{ required "networks.internal is required" .Values.networks.internal }}"]
+  {{ else -}}
+  source_ranges = ["{{ required "networks.workers is required" .Values.networks.workers }}"]
+  {{ end -}}
 
   allow {
     protocol = "icmp"
