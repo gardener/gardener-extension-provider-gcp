@@ -10,7 +10,7 @@ In order for Gardener to create a Kubernetes cluster using GCP infrastructure co
 Every shoot cluster references a `SecretBinding` which itself references a `Secret`, and this `Secret` contains the provider credentials of the GCP project.
 The `SecretBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`.
 
-The required credentials for the GCP project are a [Service Account Key](https://cloud.google.com/iam/docs/service-accounts#service_account_keys)) to authenticate as a [GCP Service Account](https://cloud.google.com/compute/docs/access/service-accounts).
+The required credentials for the GCP project are a [Service Account Key](https://cloud.google.com/iam/docs/service-accounts#service_account_keys) to authenticate as a [GCP Service Account](https://cloud.google.com/compute/docs/access/service-accounts).
 A service account is a special account that can be used by services and applications to interact with Google Cloud Platform APIs. 
 Applications can use service account credentials to authorize themselves to a set of APIs and perform actions within the permissions granted to the service account.
 
@@ -37,6 +37,9 @@ type: Opaque
 data:
   serviceaccount.json: base64(serviceaccount-json)
 ```
+
+⚠️ Depending on your API usage it can be problematic to reuse the same Service Account Key for different Shoot clusters due to rate limits.
+Please consider spreading your Shoots over multiple Service Accounts on different GCP projects if you are hitting those limits, see https://cloud.google.com/compute/docs/api-rate-limits.
 
 ## `InfrastructureConfig`
 
