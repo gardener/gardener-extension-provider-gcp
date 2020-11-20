@@ -51,6 +51,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
+const (
+	workersSubnetCIDR  = "10.250.0.0/19"
+	internalSubnetCIDR = "10.250.112.0/22"
+)
+
 var (
 	serviceAccount = flag.String("service-account", "", "Service account containing credentials for the GCP API")
 	region         = flag.String("region", "", "GCP region")
@@ -327,8 +332,8 @@ func newProviderConfig(vpc *gcpv1alpha1.VPC) *gcpv1alpha1.InfrastructureConfig {
 		},
 		Networks: gcpv1alpha1.NetworkConfig{
 			VPC:      vpc,
-			Workers:  "10.250.0.0/19",
-			Internal: pointer.StringPtr("10.250.112.0/22"),
+			Workers:  workersSubnetCIDR,
+			Internal: pointer.StringPtr(internalSubnetCIDR),
 			FlowLogs: &gcpv1alpha1.FlowLogs{
 				AggregationInterval: pointer.StringPtr("INTERVAL_5_SEC"),
 				FlowSampling:        pointer.Float32Ptr(0.2),
@@ -497,7 +502,7 @@ func verifyCreation(
 	subnetInternal, err := computeService.Subnetworks.Get(project, *region, infra.Namespace+"-internal").Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(subnetInternal.Network).To(Equal(network.SelfLink))
-	Expect(subnetInternal.IpCidrRange).To(Equal("10.250.112.0/22"))
+	Expect(subnetInternal.IpCidrRange).To(Equal(internalSubnetCIDR))
 
 	// router
 
@@ -523,7 +528,8 @@ func verifyCreation(
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(allowInternalAccess.Network).To(Equal(network.SelfLink))
-	Expect(allowInternalAccess.SourceRanges).To(Equal([]string{"10.0.0.0/8"}))
+	Expect(allowInternalAccess.SourceRanges).To(HaveLen(2))
+	Expect(allowInternalAccess.SourceRanges).To(ConsistOf(workersSubnetCIDR, internalSubnetCIDR))
 	Expect(allowInternalAccess.Allowed).To(ConsistOf([]*compute.FirewallAllowed{
 		{
 			IPProtocol: "icmp",
