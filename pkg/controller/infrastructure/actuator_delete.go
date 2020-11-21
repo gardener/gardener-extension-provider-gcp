@@ -71,7 +71,7 @@ func (a *actuator) cleanupKubernetesRoutes(
 
 // Delete implements infrastructure.Actuator.
 func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	tf, err := internal.NewTerraformer(a.RESTConfig(), infrastructure.TerraformerPurpose, infra.Namespace, infra.Name)
+	tf, err := internal.NewTerraformer(a.RESTConfig(), infrastructure.TerraformerPurpose, infra)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 		return err
 	}
 
-	tf, err = internal.SetTerraformerVariablesEnvironment(tf, serviceAccount)
+	tf, err = internal.SetTerraformerEnvVars(tf, infra.Spec.SecretRef)
 	if err != nil {
 		return err
 	}

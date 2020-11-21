@@ -23,7 +23,9 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/imagevector"
 
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/logger"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -48,11 +50,10 @@ func TerraformerVariablesEnvironmentFromServiceAccount(account *gcp.ServiceAccou
 // NewTerraformer initializes a new Terraformer.
 func NewTerraformer(
 	restConfig *rest.Config,
-	purpose,
-	namespace,
-	name string,
+	purpose string,
+	infra *extensionsv1alpha1.Infrastructure,
 ) (terraformer.Terraformer, error) {
-	tf, err := terraformer.NewForConfig(logger.NewLogger("info"), restConfig, purpose, namespace, name, imagevector.TerraformerImage())
+	tf, err := terraformer.NewForConfig(logger.NewLogger("info"), restConfig, purpose, infra.Namespace, infra.Name, imagevector.TerraformerImage())
 	if err != nil {
 		return nil, err
 	}
@@ -68,25 +69,26 @@ func NewTerraformer(
 // NewTerraformerWithAuth initializes a new Terraformer that has the ServiceAccount credentials.
 func NewTerraformerWithAuth(
 	restConfig *rest.Config,
-	purpose,
-	namespace,
-	name string,
-	serviceAccount *gcp.ServiceAccount,
+	purpose string,
+	infra *extensionsv1alpha1.Infrastructure,
 ) (terraformer.Terraformer, error) {
-	tf, err := NewTerraformer(restConfig, purpose, namespace, name)
+	tf, err := NewTerraformer(restConfig, purpose, infra)
 	if err != nil {
 		return nil, err
 	}
 
-	return SetTerraformerVariablesEnvironment(tf, serviceAccount)
+	return SetTerraformerEnvVars(tf, infra.Spec.SecretRef)
 }
 
-// SetTerraformerVariablesEnvironment sets the environment variables based on the given service account.
-func SetTerraformerVariablesEnvironment(tf terraformer.Terraformer, serviceAccount *gcp.ServiceAccount) (terraformer.Terraformer, error) {
-	variables, err := TerraformerVariablesEnvironmentFromServiceAccount(serviceAccount)
-	if err != nil {
-		return nil, err
-	}
-
-	return tf.SetVariablesEnvironment(variables), nil
+// SetTerraformerEnvVars sets the environment variables based on the given secret reference.
+func SetTerraformerEnvVars(tf terraformer.Terraformer, secretRef corev1.SecretReference) (terraformer.Terraformer, error) {
+	return tf.SetEnvVars(corev1.EnvVar{
+		Name: TerraformVarServiceAccount,
+		ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: secretRef.Name,
+			},
+			Key: gcp.ServiceAccountJSONField,
+		}},
+	}), nil
 }
