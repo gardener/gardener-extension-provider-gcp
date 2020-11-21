@@ -51,6 +51,11 @@ func (w *workerDelegate) MachineClassKind() string {
 	return "MachineClass"
 }
 
+// MachineClass yields a newly initialized machine class object.
+func (w *workerDelegate) MachineClass() runtime.Object {
+	return &machinev1alpha1.MachineClass{}
+}
+
 // MachineClassList yields a newly initialized MachineClassList object.
 func (w *workerDelegate) MachineClassList() runtime.Object {
 	return &machinev1alpha1.MachineClassList{}
