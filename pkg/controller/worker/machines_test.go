@@ -79,6 +79,12 @@ var _ = Describe("Machines", func() {
 			})
 		})
 
+		Describe("#MachineClass", func() {
+			It("should return the correct type for the machine class", func() {
+				Expect(workerDelegate.MachineClass()).To(Equal(&machinev1alpha1.MachineClass{}))
+			})
+		})
+
 		Describe("#MachineClassList", func() {
 			It("should return the correct type for the machine class list", func() {
 				Expect(workerDelegate.MachineClassList()).To(Equal(&machinev1alpha1.MachineClassList{}))

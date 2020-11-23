@@ -118,7 +118,9 @@ var _ = Describe("Infrastructure tests", func() {
 		Expect(cfg).NotTo(BeNil())
 
 		By("setup manager")
-		mgr, err := manager.New(cfg, manager.Options{})
+		mgr, err := manager.New(cfg, manager.Options{
+			MetricsBindAddress: "0",
+		})
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
