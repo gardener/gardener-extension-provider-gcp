@@ -39,7 +39,7 @@ func (a *actuator) cleanupKubernetesFirewallRules(
 	account *gcp.ServiceAccount,
 	shootSeedNamespace string,
 ) error {
-	state, err := infrastructure.ExtractTerraformState(tf, config)
+	state, err := infrastructure.ExtractTerraformState(ctx, tf, config)
 	if err != nil {
 		if terraformer.IsVariablesNotFoundError(err) {
 			return nil
@@ -58,7 +58,7 @@ func (a *actuator) cleanupKubernetesRoutes(
 	account *gcp.ServiceAccount,
 	shootSeedNamespace string,
 ) error {
-	state, err := infrastructure.ExtractTerraformState(tf, config)
+	state, err := infrastructure.ExtractTerraformState(ctx, tf, config)
 	if err != nil {
 		if terraformer.IsVariablesNotFoundError(err) {
 			return nil
@@ -83,7 +83,7 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 
 	// If the Terraform state is empty then we can exit early as we didn't create anything. Though, we clean up potentially
 	// created configmaps/secrets related to the Terraformer.
-	stateIsEmpty := tf.IsStateEmpty()
+	stateIsEmpty := tf.IsStateEmpty(ctx)
 	if stateIsEmpty {
 		a.logger.Info("exiting early as infrastructure state is empty - nothing to do")
 		return tf.CleanupConfiguration(ctx)
@@ -109,7 +109,7 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 		return err
 	}
 
-	configExists, err := tf.ConfigExists()
+	configExists, err := tf.ConfigExists(ctx)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 
 		_ = g.Add(flow.Task{
 			Name:         "Destroying Shoot infrastructure",
-			Fn:           flow.SimpleTaskFn(tf.Destroy),
+			Fn:           tf.Destroy,
 			Dependencies: flow.NewTaskIDs(destroyKubernetesFirewallRules, destroyKubernetesRoutes),
 		})
 

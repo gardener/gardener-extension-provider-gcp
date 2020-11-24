@@ -15,6 +15,7 @@
 package infrastructure
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -44,10 +45,12 @@ var _ = Describe("Terraform", func() {
 
 		ctrl = gomock.NewController(GinkgoT())
 		tf   = mockterraformer.NewMockTerraformer(ctrl)
+		ctx  context.Context
 	)
 
 	BeforeEach(func() {
 		tf = mockterraformer.NewMockTerraformer(ctrl)
+		ctx = context.Background()
 
 		internalCIDR := "192.168.0.0/16"
 
@@ -132,7 +135,7 @@ var _ = Describe("Terraform", func() {
 				cloudNATName        = "cloudnat"
 			)
 
-			tf.EXPECT().GetStateOutputVariables(outputKeys).DoAndReturn(func(_ ...string) (map[string]string, error) {
+			tf.EXPECT().GetStateOutputVariables(ctx, outputKeys).DoAndReturn(func(_ context.Context, _ ...string) (map[string]string, error) {
 				return map[string]string{
 					TerraformerOutputKeyVPCName:             vpcName,
 					TerraformerOutputKeySubnetNodes:         subnetNodes,
@@ -142,7 +145,7 @@ var _ = Describe("Terraform", func() {
 				}, nil
 			})
 
-			state, err := ExtractTerraformState(tf, vpcWithoutCloudRouterConfig)
+			state, err := ExtractTerraformState(ctx, tf, vpcWithoutCloudRouterConfig)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(state).To(Equal(&TerraformState{
 				VPCName:             vpcName,
@@ -176,7 +179,7 @@ var _ = Describe("Terraform", func() {
 				serviceAccountEmail = "email"
 			)
 
-			tf.EXPECT().GetStateOutputVariables(outputKeys).DoAndReturn(func(_ ...string) (map[string]string, error) {
+			tf.EXPECT().GetStateOutputVariables(ctx, outputKeys).DoAndReturn(func(_ context.Context, _ ...string) (map[string]string, error) {
 				return map[string]string{
 					TerraformerOutputKeyVPCName:             vpcName,
 					TerraformerOutputKeySubnetNodes:         subnetNodes,
@@ -184,7 +187,7 @@ var _ = Describe("Terraform", func() {
 				}, nil
 			})
 
-			state, err := ExtractTerraformState(tf, vpcWithoutCloudRouterConfig)
+			state, err := ExtractTerraformState(ctx, tf, vpcWithoutCloudRouterConfig)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(state).To(Equal(&TerraformState{
 				VPCName:             vpcName,

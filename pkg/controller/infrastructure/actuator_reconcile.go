@@ -54,8 +54,8 @@ func (a *actuator) reconcile(ctx context.Context, infra *extensionsv1alpha1.Infr
 	}
 
 	if err := tf.
-		InitializeWith(terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
-		Apply(); err != nil {
+		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
+		Apply(ctx); err != nil {
 
 		return errors.Wrap(err, "failed to apply the terraform config")
 	}
