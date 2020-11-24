@@ -20,3 +20,16 @@ data:
         Key_Name            log
         Parser              kubeapiserverParser
         Reserve_Data        True
+
+    [FILTER]
+        Name                parser
+        Match               kubernetes.*csi-driver-controller*gcp-csi*
+        Key_Name            log
+        Parser              kubeapiserverParser
+        Reserve_Data        True
+
+    [FILTER]
+        Name                rewrite_tag
+        Match               kubernetes.*
+        Rule                $tag ^kubernetes\.var\.log\.containers\.(cloud-controller-manager-.+?_.+?_gcp-cloud-controller-manager|csi-driver-controller-.+?_.+?_gcp-csi) user-exposed.$TAG true
+        Emitter_Name        re_emitted-provider-gcp

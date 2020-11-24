@@ -166,7 +166,7 @@ var (
 				Objects: []*chart.Object{
 					{Type: &corev1.Service{}, Name: "cloud-controller-manager"},
 					{Type: &appsv1.Deployment{}, Name: "cloud-controller-manager"},
-					{Type: &corev1.ConfigMap{}, Name: "cloud-controller-manager-monitoring-config"},
+					{Type: &corev1.ConfigMap{}, Name: "cloud-controller-manager-observability-config"},
 					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: "cloud-controller-manager-vpa"},
 				},
 			},
@@ -185,6 +185,7 @@ var (
 					// csi-driver-controller
 					{Type: &appsv1.Deployment{}, Name: gcp.CSIControllerName},
 					{Type: &corev1.ConfigMap{}, Name: gcp.CSIControllerConfigName},
+					{Type: &corev1.ConfigMap{}, Name: gcp.CSIControllerObservabilityConfigName},
 					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: gcp.CSIControllerName + "-vpa"},
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotControllerName},
@@ -325,6 +326,11 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	serviceAccount, err := gcp.GetServiceAccount(ctx, vp.Client(), cp.Spec.SecretRef)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get service account from secret '%s/%s'", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name)
+	}
+
+	// TODO: Remove this code in next version. Delete old config
+	if err := vp.deleteCCMMonitoringConfig(ctx, cp.Namespace); err != nil {
+		return nil, err
 	}
 
 	return getControlPlaneChartValues(cpConfig, cp, cluster, serviceAccount, checksums, scaledDown)
