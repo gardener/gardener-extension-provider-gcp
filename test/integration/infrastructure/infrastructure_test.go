@@ -23,21 +23,16 @@ import (
 	"strings"
 	"time"
 
-	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
-	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	. "github.com/gardener/gardener-extension-provider-gcp/test/integration/infrastructure"
-
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/operation/common"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/test/framework"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
-	compute "google.golang.org/api/compute/v1"
-	iam "google.golang.org/api/iam/v1"
+	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,9 +41,15 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
+	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	. "github.com/gardener/gardener-extension-provider-gcp/test/integration/infrastructure"
 )
 
 const (
@@ -70,99 +71,100 @@ func validateFlags() {
 	}
 }
 
-var _ = Describe("Infrastructure tests", func() {
+var (
+	ctx = context.Background()
 
-	var (
-		ctx    = context.Background()
-		logger *logrus.Entry
+	log         logr.Logger
+	gardenerlog *logrus.Entry
 
-		testEnv   *envtest.Environment
-		mgrCancel context.CancelFunc
-		c         client.Client
+	testEnv   *envtest.Environment
+	mgrCancel context.CancelFunc
+	c         client.Client
 
-		project        string
-		computeService *compute.Service
-		iamService     *iam.Service
+	project        string
+	computeService *compute.Service
+	iamService     *iam.Service
 
-		internalChartsPath string
-	)
+	internalChartsPath string
+)
 
-	BeforeSuite(func() {
-		flag.Parse()
-		validateFlags()
+var _ = BeforeSuite(func() {
+	flag.Parse()
+	validateFlags()
 
-		internalChartsPath = gcp.InternalChartsPath
-		repoRoot := filepath.Join("..", "..", "..")
-		gcp.InternalChartsPath = filepath.Join(repoRoot, gcp.InternalChartsPath)
+	internalChartsPath = gcp.InternalChartsPath
+	repoRoot := filepath.Join("..", "..", "..")
+	gcp.InternalChartsPath = filepath.Join(repoRoot, gcp.InternalChartsPath)
 
-		// enable manager logs
-		logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
+	runtimelog.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
+	log = runtimelog.Log.WithName("infrastructure-test")
 
-		log := logrus.New()
-		log.SetOutput(GinkgoWriter)
-		logger = logrus.NewEntry(log)
+	gardenerlogger := logrus.New()
+	gardenerlogger.SetOutput(GinkgoWriter)
+	gardenerlog = logrus.NewEntry(gardenerlogger)
 
-		By("starting test environment")
-		testEnv = &envtest.Environment{
-			UseExistingCluster: pointer.BoolPtr(true),
-			CRDInstallOptions: envtest.CRDInstallOptions{
-				Paths: []string{
-					filepath.Join(repoRoot, "example", "20-crd-cluster.yaml"),
-					filepath.Join(repoRoot, "example", "20-crd-infrastructure.yaml"),
-				},
+	By("starting test environment")
+	testEnv = &envtest.Environment{
+		UseExistingCluster: pointer.BoolPtr(true),
+		CRDInstallOptions: envtest.CRDInstallOptions{
+			Paths: []string{
+				filepath.Join(repoRoot, "example", "20-crd-cluster.yaml"),
+				filepath.Join(repoRoot, "example", "20-crd-infrastructure.yaml"),
 			},
-		}
+		},
+	}
 
-		cfg, err := testEnv.Start()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(cfg).NotTo(BeNil())
+	cfg, err := testEnv.Start()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(cfg).NotTo(BeNil())
 
-		By("setup manager")
-		mgr, err := manager.New(cfg, manager.Options{
-			MetricsBindAddress: "0",
-		})
-		Expect(err).NotTo(HaveOccurred())
-
-		Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
-		Expect(gcpinstall.AddToScheme(mgr.GetScheme())).To(Succeed())
-
-		Expect(infrastructure.AddToManager(mgr)).To(Succeed())
-
-		var mgrContext context.Context
-		mgrContext, mgrCancel = context.WithCancel(ctx)
-
-		By("start manager")
-		go func() {
-			err := mgr.Start(mgrContext.Done())
-			Expect(err).NotTo(HaveOccurred())
-		}()
-
-		c = mgr.GetClient()
-		Expect(c).NotTo(BeNil())
-
-		project, err = gcp.ExtractServiceAccountProjectID([]byte(*serviceAccount))
-		Expect(err).NotTo(HaveOccurred())
-		computeService, err = compute.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(compute.CloudPlatformScope))
-		Expect(err).NotTo(HaveOccurred())
-		iamService, err = iam.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)))
-		Expect(err).NotTo(HaveOccurred())
+	By("setup manager")
+	mgr, err := manager.New(cfg, manager.Options{
+		MetricsBindAddress: "0",
 	})
+	Expect(err).NotTo(HaveOccurred())
 
-	AfterSuite(func() {
-		defer func() {
-			By("stopping manager")
-			mgrCancel()
-		}()
+	Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
+	Expect(gcpinstall.AddToScheme(mgr.GetScheme())).To(Succeed())
 
-		By("running cleanup actions")
-		framework.RunCleanupActions()
+	Expect(infrastructure.AddToManager(mgr)).To(Succeed())
 
-		By("stopping test environment")
-		Expect(testEnv.Stop()).To(Succeed())
+	var mgrContext context.Context
+	mgrContext, mgrCancel = context.WithCancel(ctx)
 
-		gcp.InternalChartsPath = internalChartsPath
-	})
+	By("start manager")
+	go func() {
+		err := mgr.Start(mgrContext.Done())
+		Expect(err).NotTo(HaveOccurred())
+	}()
 
+	c = mgr.GetClient()
+	Expect(c).NotTo(BeNil())
+
+	project, err = gcp.ExtractServiceAccountProjectID([]byte(*serviceAccount))
+	Expect(err).NotTo(HaveOccurred())
+	computeService, err = compute.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(compute.CloudPlatformScope))
+	Expect(err).NotTo(HaveOccurred())
+	iamService, err = iam.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)))
+	Expect(err).NotTo(HaveOccurred())
+})
+
+var _ = AfterSuite(func() {
+	defer func() {
+		By("stopping manager")
+		mgrCancel()
+	}()
+
+	By("running cleanup actions")
+	framework.RunCleanupActions()
+
+	By("stopping test environment")
+	Expect(testEnv.Stop()).To(Succeed())
+
+	gcp.InternalChartsPath = internalChartsPath
+})
+
+var _ = Describe("Infrastructure tests", func() {
 	Context("with infrastructure that requests new vpc", func() {
 		AfterEach(func() {
 			framework.RunCleanupActions()
@@ -174,7 +176,7 @@ var _ = Describe("Infrastructure tests", func() {
 			namespace, err := generateNamespaceName()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = runTest(ctx, logger, c, namespace, providerConfig, project, computeService, iamService)
+			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -191,12 +193,12 @@ var _ = Describe("Infrastructure tests", func() {
 			networkName := namespace
 			cloudRouterName := networkName + "-cloud-router"
 
-			err = prepareNewNetwork(ctx, logger, project, computeService, networkName, cloudRouterName)
+			err = prepareNewNetwork(ctx, log, project, computeService, networkName, cloudRouterName)
 			Expect(err).NotTo(HaveOccurred())
 
 			var cleanupHandle framework.CleanupActionHandle
 			cleanupHandle = framework.AddCleanupAction(func() {
-				err := teardownNetwork(ctx, logger, project, computeService, networkName, cloudRouterName)
+				err := teardownNetwork(ctx, log, project, computeService, networkName, cloudRouterName)
 				Expect(err).NotTo(HaveOccurred())
 
 				framework.RemoveCleanupAction(cleanupHandle)
@@ -209,7 +211,7 @@ var _ = Describe("Infrastructure tests", func() {
 				},
 			})
 
-			err = runTest(ctx, logger, c, namespace, providerConfig, project, computeService, iamService)
+			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -217,7 +219,6 @@ var _ = Describe("Infrastructure tests", func() {
 
 func runTest(
 	ctx context.Context,
-	logger *logrus.Entry,
 	c client.Client,
 	namespaceName string,
 	providerConfig *gcpv1alpha1.InfrastructureConfig,
@@ -240,7 +241,7 @@ func runTest(
 		err := common.WaitUntilExtensionCRDeleted(
 			ctx,
 			c,
-			logger,
+			gardenerlog,
 			func() extensionsv1alpha1.Object { return &extensionsv1alpha1.Infrastructure{} },
 			"Infrastructure",
 			infra.Namespace,
@@ -307,7 +308,7 @@ func runTest(
 	if err := common.WaitUntilExtensionCRReady(
 		ctx,
 		c,
-		logger,
+		gardenerlog,
 		func() runtime.Object { return &extensionsv1alpha1.Infrastructure{} },
 		"Infrastucture",
 		infra.Namespace,
@@ -384,7 +385,9 @@ func generateNamespaceName() (string, error) {
 	return "gcp-infrastructure-it--" + suffix, nil
 }
 
-func prepareNewNetwork(ctx context.Context, logger *logrus.Entry, project string, computeService *compute.Service, networkName, routerName string) error {
+func prepareNewNetwork(ctx context.Context, logger logr.Logger, project string, computeService *compute.Service, networkName, routerName string) error {
+	logger = logger.WithValues("project", project)
+
 	network := &compute.Network{
 		Name:                  networkName,
 		AutoCreateSubnetworks: false,
@@ -397,7 +400,7 @@ func prepareNewNetwork(ctx context.Context, logger *logrus.Entry, project string
 	if err != nil {
 		return err
 	}
-	logger.Infof("Waiting until network '%s' is created...", networkName)
+	logger.Info("Waiting until network is created...", "network", networkName)
 	if err := waitForOperation(ctx, project, computeService, networkOp); err != nil {
 		return err
 	}
@@ -410,7 +413,7 @@ func prepareNewNetwork(ctx context.Context, logger *logrus.Entry, project string
 	if err != nil {
 		return err
 	}
-	logger.Infof("Waiting until router '%s' is created...", routerName)
+	logger.Info("Waiting until router is created...", "router", routerName)
 	if err := waitForOperation(ctx, project, computeService, routerOp); err != nil {
 		return err
 	}
@@ -418,13 +421,15 @@ func prepareNewNetwork(ctx context.Context, logger *logrus.Entry, project string
 	return nil
 }
 
-func teardownNetwork(ctx context.Context, logger *logrus.Entry, project string, computeService *compute.Service, networkName, routerName string) error {
+func teardownNetwork(ctx context.Context, logger logr.Logger, project string, computeService *compute.Service, networkName, routerName string) error {
+	logger = logger.WithValues("project", project)
+
 	routerOp, err := computeService.Routers.Delete(project, *region, routerName).Context(ctx).Do()
 	if err != nil {
 		return err
 	}
 
-	logger.Infof("Waiting until router '%s' is deleted...", routerName)
+	logger.Info("Waiting until router is deleted...", "router", routerName)
 	if err := waitForOperation(ctx, project, computeService, routerOp); err != nil {
 		return err
 	}
@@ -434,7 +439,7 @@ func teardownNetwork(ctx context.Context, logger *logrus.Entry, project string, 
 		return err
 	}
 
-	logger.Infof("Waiting until network '%s' is deleted...", networkName)
+	logger.Info("Waiting until network is deleted...", "network", networkName)
 	if err := waitForOperation(ctx, project, computeService, networkOp); err != nil {
 		return err
 	}

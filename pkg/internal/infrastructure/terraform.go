@@ -15,6 +15,7 @@
 package infrastructure
 
 import (
+	"context"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -208,7 +209,7 @@ type TerraformState struct {
 }
 
 // ExtractTerraformState extracts the TerraformState from the given Terraformer.
-func ExtractTerraformState(tf terraformer.Terraformer, config *api.InfrastructureConfig) (*TerraformState, error) {
+func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, config *api.InfrastructureConfig) (*TerraformState, error) {
 	var (
 		outputKeys = []string{
 			TerraformerOutputKeyVPCName,
@@ -232,7 +233,7 @@ func ExtractTerraformState(tf terraformer.Terraformer, config *api.Infrastructur
 		outputKeys = append(outputKeys, TerraformerOutputKeySubnetInternal)
 	}
 
-	vars, err := tf.GetStateOutputVariables(outputKeys...)
+	vars, err := tf.GetStateOutputVariables(ctx, outputKeys...)
 	if err != nil {
 		return nil, err
 	}
@@ -306,8 +307,8 @@ func StatusFromTerraformState(state *TerraformState) *apiv1alpha1.Infrastructure
 }
 
 // ComputeStatus computes the status based on the Terraformer and the given InfrastructureConfig.
-func ComputeStatus(tf terraformer.Terraformer, config *api.InfrastructureConfig) (*apiv1alpha1.InfrastructureStatus, error) {
-	state, err := ExtractTerraformState(tf, config)
+func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, config *api.InfrastructureConfig) (*apiv1alpha1.InfrastructureStatus, error) {
+	state, err := ExtractTerraformState(ctx, tf, config)
 	if err != nil {
 		return nil, err
 	}
