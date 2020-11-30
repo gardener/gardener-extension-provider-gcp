@@ -138,9 +138,8 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "cloud-controller-manager-http",
 				Labels: labels.Set{
-					"app":                     "kubernetes",
-					"garden.sapcloud.io/role": "controlplane",
-					"role":                    "cloud-controller-manager"},
+					"app":  "kubernetes",
+					"role": "cloud-controller-manager"},
 				ShootVersionConstraint: "< 1.13",
 				SeedClusterConstraints: sets.String(nil)},
 			Ports: []networkpolicies.Port{
@@ -157,9 +156,8 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "cloud-controller-manager-http",
 				Labels: labels.Set{
-					"app":                     "kubernetes",
-					"garden.sapcloud.io/role": "controlplane",
-					"role":                    "cloud-controller-manager"},
+					"app":  "kubernetes",
+					"role": "cloud-controller-manager"},
 				ShootVersionConstraint: "< 1.13",
 				SeedClusterConstraints: sets.String(nil)},
 			Port: networkpolicies.Port{
@@ -169,9 +167,8 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "cloud-controller-manager-https",
 				Labels: labels.Set{
-					"app":                     "kubernetes",
-					"garden.sapcloud.io/role": "controlplane",
-					"role":                    "cloud-controller-manager"},
+					"app":  "kubernetes",
+					"role": "cloud-controller-manager"},
 				ShootVersionConstraint: ">= 1.13",
 				SeedClusterConstraints: sets.String(nil)},
 			Ports: []networkpolicies.Port{
@@ -188,9 +185,8 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "cloud-controller-manager-https",
 				Labels: labels.Set{
-					"app":                     "kubernetes",
-					"garden.sapcloud.io/role": "controlplane",
-					"role":                    "cloud-controller-manager"},
+					"app":  "kubernetes",
+					"role": "cloud-controller-manager"},
 				ShootVersionConstraint: ">= 1.13",
 				SeedClusterConstraints: sets.String(nil)},
 			Port: networkpolicies.Port{
@@ -538,9 +534,8 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "machine-controller-manager",
 				Labels: labels.Set{
-					"app":                     "kubernetes",
-					"garden.sapcloud.io/role": "controlplane",
-					"role":                    "machine-controller-manager"},
+					"app":  "kubernetes",
+					"role": "machine-controller-manager"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Ports: []networkpolicies.Port{
@@ -559,9 +554,8 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "machine-controller-manager",
 				Labels: labels.Set{
-					"app":                     "kubernetes",
-					"garden.sapcloud.io/role": "controlplane",
-					"role":                    "machine-controller-manager"},
+					"app":  "kubernetes",
+					"role": "machine-controller-manager"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Port: networkpolicies.Port{
