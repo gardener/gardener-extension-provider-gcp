@@ -58,6 +58,8 @@ const (
 	CSIControllerName = "csi-driver-controller"
 	// CSIControllerConfigName is a constant for the name of the CSI controller config in the seed.
 	CSIControllerConfigName = "csi-driver-controller-config"
+	// CSIControllerObservabilityConfigName is the name of the ConfigMap containing monitoring and logging stack configurations for csi-driver.
+	CSIControllerObservabilityConfigName = "csi-driver-controller-observability-config"
 	// CSINodeName is a constant for the name of the CSI node deployment in the shoot.
 	CSINodeName = "csi-driver-node"
 	// CSIDriverName is a constant for the name of the csi-driver component.
