@@ -40,7 +40,7 @@ const (
 	DefaultSevereThreshold = 30 * time.Second
 	// DefaultTimeout is the default timeout and defines how long Gardener should wait
 	// for a successful reconciliation of an infrastructure resource.
-	DefaultTimeout = 5 * time.Minute
+	DefaultTimeout = 10 * time.Minute
 )
 
 // TimeNow returns the current time. Exposed for testing.
@@ -60,10 +60,6 @@ type Values struct {
 	Region string
 	// SSHPublicKey is the to-be-used SSH public key of the shoot.
 	SSHPublicKey []byte
-	// IsInCreationPhase indicates if the Shoot is in the creation phase.
-	IsInCreationPhase bool
-	// IsWakingUp indicates if the Shoot is being waked up.
-	IsWakingUp bool
 	// IsInRestorePhaseOfControlPlaneMigration indicates if the Shoot is in the restoration
 	// phase of the ControlPlane migration.
 	IsInRestorePhaseOfControlPlaneMigration bool
@@ -72,12 +68,12 @@ type Values struct {
 	DeploymentRequested bool
 }
 
-// New creates a new instance of an Infrastructure deployer.
+// New creates a new instance of an ExtensionInfrastructure deployer.
 func New(
 	logger logrus.FieldLogger,
 	client client.Client,
 	values *Values,
-) shoot.Infrastructure {
+) shoot.ExtensionInfrastructure {
 	return &infrastructure{
 		client:              client,
 		logger:              logger,
@@ -105,7 +101,7 @@ func (i *infrastructure) Deploy(ctx context.Context) error {
 	var (
 		operation        = v1beta1constants.GardenerOperationReconcile
 		restorePhase     = i.values.IsInRestorePhaseOfControlPlaneMigration
-		requestOperation = i.values.IsInCreationPhase || i.values.IsWakingUp || i.values.IsInRestorePhaseOfControlPlaneMigration || i.values.DeploymentRequested
+		requestOperation = i.values.DeploymentRequested || restorePhase
 		infrastructure   = &extensionsv1alpha1.Infrastructure{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      i.values.Name,
@@ -166,7 +162,7 @@ func (i *infrastructure) Wait(ctx context.Context) error {
 		i.client,
 		i.logger,
 		func() runtime.Object { return &extensionsv1alpha1.Infrastructure{} },
-		"Infrastructure",
+		extensionsv1alpha1.InfrastructureResource,
 		i.values.Namespace,
 		i.values.Name,
 		i.waitInterval,
@@ -192,7 +188,7 @@ func (i *infrastructure) WaitCleanup(ctx context.Context) error {
 		i.client,
 		i.logger,
 		func() extensionsv1alpha1.Object { return &extensionsv1alpha1.Infrastructure{} },
-		"Infrastructure",
+		extensionsv1alpha1.InfrastructureResource,
 		i.values.Namespace,
 		i.values.Name,
 		i.waitInterval,
