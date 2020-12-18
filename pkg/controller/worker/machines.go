@@ -21,10 +21,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/pkg/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -33,11 +29,14 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
+	"github.com/pkg/errors"
 	computev1 "google.golang.org/api/compute/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -98,28 +97,12 @@ func (w *workerDelegate) GenerateMachineDeployments(ctx context.Context) (worker
 	return w.machineDeployments, nil
 }
 
-func (w *workerDelegate) generateMachineClassSecretData(ctx context.Context) (map[string][]byte, error) {
-	serviceAccountJSON, err := gcp.GetServiceAccountData(ctx, w.Client(), w.worker.Spec.SecretRef)
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string][]byte{
-		machinev1alpha1.GCPServiceAccountJSON: serviceAccountJSON,
-	}, nil
-}
-
 func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	var (
 		machineDeployments = worker.MachineDeployments{}
 		machineClasses     []map[string]interface{}
 		machineImages      []apisgcp.MachineImage
 	)
-
-	machineClassSecretData, err := w.generateMachineClassSecretData(ctx)
-	if err != nil {
-		return err
-	}
 
 	infrastructureStatus := &gcpapi.InfrastructureStatus{}
 	if _, _, err := w.Decoder().Decode(w.worker.Spec.InfrastructureProviderStatus.Raw, nil, infrastructureStatus); err != nil {
@@ -220,6 +203,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				"secret": map[string]interface{}{
 					"cloudConfig": string(pool.UserData),
 				},
+				"credentialsSecretRef": map[string]interface{}{
+					"name":      w.worker.Spec.SecretRef.Name,
+					"namespace": w.worker.Spec.SecretRef.Namespace,
+				},
 				"serviceAccounts": serviceAccounts,
 				"tags": []string{
 					w.worker.Namespace,
@@ -251,7 +238,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			machineClassSpec["resourceLabels"] = map[string]string{
 				v1beta1constants.GardenerPurpose: genericworkeractuator.GardenPurposeMachineClass,
 			}
-			machineClassSpec["secret"].(map[string]interface{})[gcp.ServiceAccountJSONMCM] = string(machineClassSecretData[machinev1alpha1.GCPServiceAccountJSON])
 
 			machineClasses = append(machineClasses, machineClassSpec)
 		}

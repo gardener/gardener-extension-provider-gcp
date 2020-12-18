@@ -12,7 +12,6 @@ metadata:
 type: Opaque
 data:
   userData: {{ $machineClass.secret.cloudConfig | b64enc }}
-  serviceAccountJSON: {{ $machineClass.secret.serviceAccountJSON | b64enc }}
 ---
 apiVersion: machine.sapcloud.io/v1alpha1
 kind: MachineClass
@@ -55,5 +54,8 @@ providerSpec:
 secretRef:
   name: {{ $machineClass.name }}
   namespace: {{ $.Release.Namespace }}
+credentialsSecretRef:
+  name: {{ $machineClass.credentialsSecretRef.name }}
+  namespace: {{ $machineClass.credentialsSecretRef.namespace }}
 provider: "GCP"
 {{- end }}

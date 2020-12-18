@@ -10,7 +10,7 @@ require (
 	github.com/frankban/quicktest v1.9.0 // indirect
 	github.com/gardener/etcd-druid v0.3.0
 	github.com/gardener/gardener v1.15.0
-	github.com/gardener/machine-controller-manager v0.33.0
+	github.com/gardener/machine-controller-manager v0.36.0
 	github.com/go-logr/logr v0.1.0
 	github.com/gobuffalo/packr/v2 v2.8.1
 	github.com/golang/mock v1.4.4-0.20200731163441-8734ec565a4d
