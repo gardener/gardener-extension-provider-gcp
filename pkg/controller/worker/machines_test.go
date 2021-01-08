@@ -22,8 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gardener/gardener/pkg/client/kubernetes"
-
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
@@ -36,6 +34,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/client/kubernetes"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	mockkubernetes "github.com/gardener/gardener/pkg/mock/gardener/client/kubernetes"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
@@ -47,7 +46,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Machines", func() {
@@ -97,8 +95,7 @@ var _ = Describe("Machines", func() {
 				namespace        string
 				cloudProfileName string
 
-				serviceAccountJSON string
-				region             string
+				region string
 
 				machineImageName    string
 				machineImageVersion string
@@ -152,7 +149,6 @@ var _ = Describe("Machines", func() {
 				cloudProfileName = "gcp"
 
 				region = "eu-west-1"
-				serviceAccountJSON = "some-json-doc"
 
 				machineImageName = "my-os"
 				machineImageVersion = "123"
@@ -443,10 +439,10 @@ var _ = Describe("Machines", func() {
 						machineClassWithHashPool2Zone2 = fmt.Sprintf("%s-%s", machineClassNamePool2Zone2, workerPoolHash2)
 					)
 
-					addNameAndSecretToMachineClass(machineClassPool1Zone1, serviceAccountJSON, machineClassWithHashPool1Zone1)
-					addNameAndSecretToMachineClass(machineClassPool1Zone2, serviceAccountJSON, machineClassWithHashPool1Zone2)
-					addNameAndSecretToMachineClass(machineClassPool2Zone1, serviceAccountJSON, machineClassWithHashPool2Zone1)
-					addNameAndSecretToMachineClass(machineClassPool2Zone2, serviceAccountJSON, machineClassWithHashPool2Zone2)
+					addNameAndSecretToMachineClass(machineClassPool1Zone1, machineClassWithHashPool1Zone1, w.Spec.SecretRef)
+					addNameAndSecretToMachineClass(machineClassPool1Zone2, machineClassWithHashPool1Zone2, w.Spec.SecretRef)
+					addNameAndSecretToMachineClass(machineClassPool2Zone1, machineClassWithHashPool2Zone1, w.Spec.SecretRef)
+					addNameAndSecretToMachineClass(machineClassPool2Zone2, machineClassWithHashPool2Zone2, w.Spec.SecretRef)
 
 					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
 						machineClassPool1Zone1,
@@ -503,7 +499,6 @@ var _ = Describe("Machines", func() {
 					}
 				}
 				It("should return the expected machine deployments when disableExternal IP is true with profile image types", func() {
-					expectGetSecretCallToWork(c, serviceAccountJSON)
 					expectListGCPMachineClassCallToWork(c, &machinev1alpha1.GCPMachineClassList{})
 
 					setup(true)
@@ -594,7 +589,6 @@ var _ = Describe("Machines", func() {
 					}
 
 					// Initialize mocking functions
-					expectGetSecretCallToWork(c, serviceAccountJSON)
 					expectListGCPMachineClassCallToWork(c, &mockGCPMachineClassList)
 					expectDeleteGCPMachineClassCallToWork(c, &mockGCPMachineClassList)
 
@@ -620,19 +614,7 @@ var _ = Describe("Machines", func() {
 				})
 			})
 
-			It("should fail because the secret cannot be read", func() {
-				c.EXPECT().
-					Get(context.TODO(), gomock.Any(), gomock.AssignableToTypeOf(&corev1.Secret{})).
-					Return(fmt.Errorf("error"))
-
-				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
-				Expect(err).To(HaveOccurred())
-				Expect(result).To(BeNil())
-			})
-
 			It("should fail because the version is invalid", func() {
-				expectGetSecretCallToWork(c, serviceAccountJSON)
-
 				clusterWithoutImages.Shoot.Spec.Kubernetes.Version = "invalid"
 				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
 
@@ -642,8 +624,6 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the infrastructure status cannot be decoded", func() {
-				expectGetSecretCallToWork(c, serviceAccountJSON)
-
 				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{}
 
 				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
@@ -654,8 +634,6 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the nodes subnet cannot be found", func() {
-				expectGetSecretCallToWork(c, serviceAccountJSON)
-
 				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
 					Raw: encode(&api.InfrastructureStatus{}),
 				}
@@ -668,8 +646,6 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the machine image cannot be found", func() {
-				expectGetSecretCallToWork(c, serviceAccountJSON)
-
 				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, clusterWithoutImages)
 
 				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
@@ -678,8 +654,6 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the volume size cannot be decoded", func() {
-				expectGetSecretCallToWork(c, serviceAccountJSON)
-
 				w.Spec.Pools[0].Volume.Size = "not-decodeable"
 
 				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
@@ -690,8 +664,6 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should set expected machineControllerManager settings on machine deployment", func() {
-				expectGetSecretCallToWork(c, serviceAccountJSON)
-
 				testDrainTimeout := metav1.Duration{Duration: 10 * time.Minute}
 				testHealthTimeout := metav1.Duration{Duration: 20 * time.Minute}
 				testCreationTimeout := metav1.Duration{Duration: 30 * time.Minute}
@@ -741,17 +713,6 @@ func encode(obj runtime.Object) []byte {
 	return data
 }
 
-func expectGetSecretCallToWork(c *mockclient.MockClient, serviceAccountJSON string) {
-	c.EXPECT().
-		Get(context.TODO(), gomock.Any(), gomock.AssignableToTypeOf(&corev1.Secret{})).
-		DoAndReturn(func(_ context.Context, _ client.ObjectKey, secret *corev1.Secret) error {
-			secret.Data = map[string][]byte{
-				gcp.ServiceAccountJSONField: []byte(serviceAccountJSON),
-			}
-			return nil
-		})
-}
-
 // expectListGCPMachineClassCallToWork is the intialization methods which mocks the
 // list method to return the gcpMachineClassList as its result
 func expectListGCPMachineClassCallToWork(c *mockclient.MockClient, gcpMachineClassList *machinev1alpha1.GCPMachineClassList) {
@@ -791,10 +752,13 @@ func useDefaultMachineClass(def map[string]interface{}, key string, value interf
 	return out
 }
 
-func addNameAndSecretToMachineClass(class map[string]interface{}, serviceAccountJSON, name string) {
+func addNameAndSecretToMachineClass(class map[string]interface{}, name string, credentialsSecretRef corev1.SecretReference) {
 	class["name"] = name
 	class["resourceLabels"] = map[string]string{
 		v1beta1constants.GardenerPurpose: genericworkeractuator.GardenPurposeMachineClass,
 	}
-	class["secret"].(map[string]interface{})[gcp.ServiceAccountJSONMCM] = serviceAccountJSON
+	class["credentialsSecretRef"] = map[string]interface{}{
+		"name":      credentialsSecretRef.Name,
+		"namespace": credentialsSecretRef.Namespace,
+	}
 }

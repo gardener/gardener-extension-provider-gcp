@@ -34,8 +34,10 @@ machineClasses:
     onHostMaintenance: MIGRATE
     preemptible: false
   secret:
-    serviceAccountJSON: "{}"
     cloudConfig: abc
+  credentialsSecretRef:
+    name: cloudprovider
+    namespace: shoot-namespace
   serviceAccounts:
   - email: serviceaccount@my-project.iam.gserviceaccount.com
     scopes:
