@@ -24,6 +24,7 @@ import (
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
+	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/test"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -55,8 +56,8 @@ var _ = Describe("Ensurer", func() {
 		ctrl *gomock.Controller
 		ctx  = context.TODO()
 
-		dummyContext   = genericmutator.NewEnsurerContext(nil, nil)
-		eContextK8s116 = genericmutator.NewInternalEnsurerContext(
+		dummyContext   = gcontext.NewGardenContext(nil, nil)
+		eContextK8s116 = gcontext.NewInternalGardenContext(
 			&extensionscontroller.Cluster{
 				Shoot: &gardencorev1beta1.Shoot{
 					Spec: gardencorev1beta1.ShootSpec{
@@ -67,7 +68,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			},
 		)
-		eContextK8s117 = genericmutator.NewInternalEnsurerContext(
+		eContextK8s117 = gcontext.NewInternalGardenContext(
 			&extensionscontroller.Cluster{
 				Shoot: &gardencorev1beta1.Shoot{
 					Spec: gardencorev1beta1.ShootSpec{
@@ -78,7 +79,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			},
 		)
-		eContextK8s118 = genericmutator.NewInternalEnsurerContext(
+		eContextK8s118 = gcontext.NewInternalGardenContext(
 			&extensionscontroller.Cluster{
 				Shoot: &gardencorev1beta1.Shoot{
 					Spec: gardencorev1beta1.ShootSpec{
@@ -89,7 +90,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			},
 		)
-		eContextK8s118WithCSIAnnotation = genericmutator.NewInternalEnsurerContext(
+		eContextK8s118WithCSIAnnotation = gcontext.NewInternalGardenContext(
 			&extensionscontroller.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
