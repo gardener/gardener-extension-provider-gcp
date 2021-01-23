@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type cloudProfile struct {
@@ -46,7 +47,7 @@ func (cp *cloudProfile) InjectScheme(scheme *runtime.Scheme) error {
 var cpProviderConfigPath = specPath.Child("providerConfig")
 
 // Validate validates the given cloud profile objects.
-func (cp *cloudProfile) Validate(ctx context.Context, new, old runtime.Object) error {
+func (cp *cloudProfile) Validate(ctx context.Context, new, old client.Object) error {
 	cloudProfile, ok := new.(*core.CloudProfile)
 	if !ok {
 		return fmt.Errorf("wrong object type %T", new)

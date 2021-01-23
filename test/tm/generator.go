@@ -21,9 +21,9 @@ import (
 	"reflect"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
-	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener/extensions/test/tm/generator"
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -59,7 +59,7 @@ func addFlags() {
 func main() {
 	addFlags()
 	flag.Parse()
-	log.SetLogger(zap.Logger(false))
+	log.SetLogger(zap.New(zap.UseDevMode(false)))
 	logger = log.Log.WithName("gcp-generator")
 	if err := validate(); err != nil {
 		logger.Error(err, "error validating input flags")

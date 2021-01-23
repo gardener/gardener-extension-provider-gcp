@@ -25,7 +25,6 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -46,7 +45,7 @@ func (s *secret) InjectClient(client client.Client) error {
 
 // Validate checks whether the given new secret is in use by Shoot with provider.type=gcp
 // and if yes, it check whether the new secret contains a valid GCP service account.
-func (s *secret) Validate(ctx context.Context, newObj, oldObj runtime.Object) error {
+func (s *secret) Validate(ctx context.Context, newObj, oldObj client.Object) error {
 	secret, ok := newObj.(*corev1.Secret)
 	if !ok {
 		return fmt.Errorf("wrong object type %T", newObj)

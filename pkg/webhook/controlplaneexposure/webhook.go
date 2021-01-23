@@ -22,7 +22,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -46,7 +46,7 @@ func NewWithOptions(mgr manager.Manager, opts AddOptions) (*extensionswebhook.We
 	return controlplane.New(mgr, controlplane.Args{
 		Kind:     controlplane.KindSeed,
 		Provider: gcp.Type,
-		Types:    []runtime.Object{&appsv1.Deployment{}, &druidv1alpha1.Etcd{}},
+		Types:    []client.Object{&appsv1.Deployment{}, &druidv1alpha1.Etcd{}},
 		Mutator:  genericmutator.NewMutator(NewEnsurer(&opts.ETCDStorage, logger), nil, nil, nil, logger),
 	})
 }

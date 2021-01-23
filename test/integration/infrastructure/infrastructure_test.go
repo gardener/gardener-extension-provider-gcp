@@ -134,7 +134,7 @@ var _ = BeforeSuite(func() {
 
 	By("start manager")
 	go func() {
-		err := mgr.Start(mgrContext.Done())
+		err := mgr.Start(mgrContext)
 		Expect(err).NotTo(HaveOccurred())
 	}()
 
@@ -309,8 +309,8 @@ func runTest(
 		ctx,
 		c,
 		gardenerlog,
-		func() runtime.Object { return &extensionsv1alpha1.Infrastructure{} },
-		"Infrastucture",
+		func() client.Object { return &extensionsv1alpha1.Infrastructure{} },
+		extensionsv1alpha1.InfrastructureResource,
 		infra.Namespace,
 		infra.Name,
 		10*time.Second,

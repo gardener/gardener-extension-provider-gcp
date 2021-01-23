@@ -34,8 +34,6 @@ import (
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/pkg/errors"
 	computev1 "google.golang.org/api/compute/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -51,24 +49,13 @@ func (w *workerDelegate) MachineClassKind() string {
 }
 
 // MachineClass yields a newly initialized machine class object.
-func (w *workerDelegate) MachineClass() runtime.Object {
+func (w *workerDelegate) MachineClass() client.Object {
 	return &machinev1alpha1.MachineClass{}
 }
 
 // MachineClassList yields a newly initialized MachineClassList object.
-func (w *workerDelegate) MachineClassList() runtime.Object {
+func (w *workerDelegate) MachineClassList() client.ObjectList {
 	return &machinev1alpha1.MachineClassList{}
-}
-
-// cleanupOldMachineClasses sets deletionTimestamp on any older version machine class CRs.
-func (w *workerDelegate) cleanupOldMachineClasses(ctx context.Context, namespace string, machineClassList runtime.Object, wantedMachineDeployments worker.MachineDeployments) error {
-	if err := w.Client().List(ctx, machineClassList, client.InNamespace(namespace)); err != nil {
-		return err
-	}
-
-	return meta.EachListItem(machineClassList, func(machineClass runtime.Object) error {
-		return w.Client().Delete(ctx, machineClass)
-	})
 }
 
 // DeployMachineClasses generates and creates the GCP specific machine classes.
@@ -80,7 +67,7 @@ func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
 	}
 
 	// Delete any older version machine class CRs.
-	if err := w.cleanupOldMachineClasses(ctx, w.worker.Namespace, &machinev1alpha1.GCPMachineClassList{}, nil); err != nil {
+	if err := w.Client().DeleteAllOf(ctx, &machinev1alpha1.GCPMachineClass{}, client.InNamespace(w.worker.Namespace)); err != nil {
 		return errors.Wrapf(err, "cleaning up older version of GCP machine class CRs failed")
 	}
 

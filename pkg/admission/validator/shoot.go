@@ -65,7 +65,7 @@ func (s *shoot) InjectAPIReader(apiReader client.Reader) error {
 }
 
 // Validate validates the given shoot objects.
-func (s *shoot) Validate(ctx context.Context, new, old runtime.Object) error {
+func (s *shoot) Validate(ctx context.Context, new, old client.Object) error {
 	shoot, ok := new.(*core.Shoot)
 	if !ok {
 		return fmt.Errorf("wrong object type %T", new)
