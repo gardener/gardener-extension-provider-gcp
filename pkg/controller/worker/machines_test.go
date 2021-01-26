@@ -46,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Machines", func() {
@@ -499,8 +500,6 @@ var _ = Describe("Machines", func() {
 					}
 				}
 				It("should return the expected machine deployments when disableExternal IP is true with profile image types", func() {
-					expectListGCPMachineClassCallToWork(c, &machinev1alpha1.GCPMachineClassList{})
-
 					setup(true)
 					workerCloudRouter := w
 					workerCloudRouter.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
@@ -521,19 +520,23 @@ var _ = Describe("Machines", func() {
 							},
 						}),
 					}
+
 					workerDelegateCloudRouter, _ := NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", workerCloudRouter, cluster)
 					// Test workerDelegate.DeployMachineClasses()
 
-					chartApplier.
-						EXPECT().
-						Apply(
-							context.TODO(),
-							filepath.Join(gcp.InternalChartsPath, "machineclass"),
-							namespace,
-							"machineclass",
-							kubernetes.Values(machineClasses),
-						).
-						Return(nil)
+					gomock.InOrder(
+						c.EXPECT().
+							DeleteAllOf(context.TODO(), &machinev1alpha1.GCPMachineClass{}, client.InNamespace(namespace)),
+						chartApplier.
+							EXPECT().
+							Apply(
+								context.TODO(),
+								filepath.Join(gcp.InternalChartsPath, "machineclass"),
+								namespace,
+								"machineclass",
+								kubernetes.Values(machineClasses),
+							),
+					)
 
 					err := workerDelegateCloudRouter.DeployMachineClasses(context.TODO())
 					Expect(err).NotTo(HaveOccurred())
@@ -570,47 +573,28 @@ var _ = Describe("Machines", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(result).To(Equal(machineDeployments))
 				})
-				It("should delete the any old GCPMachineClasses", func() {
-					// mockGCPMachineClassList is the mocking object used to track the
-					// list of GCPMachineClass objects
-					mockGCPMachineClassList := machinev1alpha1.GCPMachineClassList{
-						Items: []machinev1alpha1.GCPMachineClass{
-							{
-								ObjectMeta: metav1.ObjectMeta{
-									Name: "test-gcp-machine-class-0",
-								},
-							},
-							{
-								ObjectMeta: metav1.ObjectMeta{
-									Name: "test-gcp-machine-class-1",
-								},
-							},
-						},
-					}
 
-					// Initialize mocking functions
-					expectListGCPMachineClassCallToWork(c, &mockGCPMachineClassList)
-					expectDeleteGCPMachineClassCallToWork(c, &mockGCPMachineClassList)
-
+				It("should delete all old GCPMachineClasses", func() {
 					setup(true)
 					workerCloudRouter := w
 					workerDelegateCloudRouter, _ := NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", workerCloudRouter, cluster)
-					chartApplier.
-						EXPECT().
-						Apply(
-							context.TODO(),
-							filepath.Join(gcp.InternalChartsPath, "machineclass"),
-							namespace,
-							"machineclass",
-							kubernetes.Values(machineClasses),
-						).
-						Return(nil)
+
+					gomock.InOrder(
+						c.EXPECT().
+							DeleteAllOf(context.TODO(), &machinev1alpha1.GCPMachineClass{}, client.InNamespace(namespace)),
+						chartApplier.
+							EXPECT().
+							Apply(
+								context.TODO(),
+								filepath.Join(gcp.InternalChartsPath, "machineclass"),
+								namespace,
+								"machineclass",
+								kubernetes.Values(machineClasses),
+							),
+					)
 
 					err := workerDelegateCloudRouter.DeployMachineClasses(context.TODO())
 					Expect(err).NotTo(HaveOccurred())
-
-					// Should have cleaned up all the old GCPMachineClasses
-					Expect(len(mockGCPMachineClassList.Items)).To(Equal(0))
 				})
 			})
 
@@ -711,34 +695,6 @@ var _ = Describe("Machines", func() {
 func encode(obj runtime.Object) []byte {
 	data, _ := json.Marshal(obj)
 	return data
-}
-
-// expectListGCPMachineClassCallToWork is the intialization methods which mocks the
-// list method to return the gcpMachineClassList as its result
-func expectListGCPMachineClassCallToWork(c *mockclient.MockClient, gcpMachineClassList *machinev1alpha1.GCPMachineClassList) {
-	c.EXPECT().List(context.TODO(), gomock.AssignableToTypeOf(&machinev1alpha1.GCPMachineClassList{}), gomock.Any()).SetArg(1, *gcpMachineClassList)
-}
-
-// expectDeleteGCPMachineClassCallToWork is the ntialization methods which mocks the
-// delete call to delete the gcpMachineClass from gcpMachineClassList
-func expectDeleteGCPMachineClassCallToWork(c *mockclient.MockClient, gcpMachineClassList *machinev1alpha1.GCPMachineClassList) {
-	c.EXPECT().
-		Delete(context.TODO(), gomock.AssignableToTypeOf(&machinev1alpha1.GCPMachineClass{})).
-		AnyTimes().Do(func(_ context.Context, gcpMachineClass *machinev1alpha1.GCPMachineClass) error {
-		index := -1
-		mockObject := machinev1alpha1.GCPMachineClass{}
-		for index, mockObject = range gcpMachineClassList.Items {
-			if mockObject.Name == gcpMachineClass.Name {
-				break
-			}
-		}
-
-		if index != -1 {
-			gcpMachineClassList.Items = append(gcpMachineClassList.Items[:index], gcpMachineClassList.Items[index+1:]...)
-		}
-
-		return nil
-	})
 }
 
 func useDefaultMachineClass(def map[string]interface{}, key string, value interface{}) map[string]interface{} {

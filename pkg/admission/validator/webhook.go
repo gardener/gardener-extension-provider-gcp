@@ -21,7 +21,7 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -40,7 +40,7 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		Name:       extensionswebhook.ValidatorName,
 		Path:       extensionswebhook.ValidatorPath,
 		Predicates: []predicate.Predicate{extensionspredicate.GardenCoreProviderType(gcp.Type)},
-		Validators: map[extensionswebhook.Validator][]runtime.Object{
+		Validators: map[extensionswebhook.Validator][]client.Object{
 			NewShootValidator():        {&core.Shoot{}},
 			NewCloudProfileValidator(): {&core.CloudProfile{}},
 		},
@@ -55,7 +55,7 @@ func NewSecretsWebhook(mgr manager.Manager) (*extensionswebhook.Webhook, error) 
 		Provider: gcp.Type,
 		Name:     SecretsValidatorName,
 		Path:     extensionswebhook.ValidatorPath + "/secrets",
-		Validators: map[extensionswebhook.Validator][]runtime.Object{
+		Validators: map[extensionswebhook.Validator][]client.Object{
 			NewSecretValidator(): {&corev1.Secret{}},
 		},
 	})
