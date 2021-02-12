@@ -29,6 +29,7 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core/install"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	componentbaseconfig "k8s.io/component-base/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -91,6 +92,16 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 				return err
 			}
 
+			// List all secrets to implicitly start a WATCH. This will fill up the webhook server's caches (hence, increasing
+			// its memory usage) right at the start-up. This is done to prevent unpredictable load spikes when the server receives
+			// its first request (without this list it would only then start the WATCH, leading to a huge memory increase on large
+			// landscapes. Hence, this "early listing" should prevent the server from being OOMKilled and (potentially multiple times)
+			// scaled by VPA (we have observed too "optimistic" up-scaling behavior of VPA in such cases).
+			// See https://github.com/gardener/gardener-extension-provider-gcp/pull/234 for more details.
+			if err := mgr.Add(&secretLister{mgr}); err != nil {
+				return err
+			}
+
 			return mgr.Start(ctx)
 		},
 	}
@@ -98,4 +109,11 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 	aggOption.AddFlags(cmd.Flags())
 
 	return cmd
+}
+
+// secretLister implements the manager.Runnable interface.
+type secretLister struct{ mgr manager.Manager }
+
+func (s *secretLister) Start(ctx context.Context) error {
+	return s.mgr.GetClient().List(ctx, &corev1.SecretList{})
 }
