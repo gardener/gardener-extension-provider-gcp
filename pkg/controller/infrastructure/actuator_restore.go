@@ -20,12 +20,12 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	kutils "github.com/gardener/gardener/pkg/utils/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Restore implements infrastructure.Actuator.
 func (a *actuator) Restore(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	logger := a.logger.WithValues("infrastructure", kutils.KeyFromObject(infra), "operation", "restore")
+	logger := a.logger.WithValues("infrastructure", client.ObjectKeyFromObject(infra), "operation", "restore")
 
 	terraformState, err := terraformer.UnmarshalRawState(infra.Status.State)
 	if err != nil {

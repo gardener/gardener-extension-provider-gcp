@@ -19,7 +19,7 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	kutils "github.com/gardener/gardener/pkg/utils/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
@@ -27,12 +27,16 @@ import (
 
 // Migrate implements infrastructure.Actuator.
 func (a *actuator) Migrate(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	logger := a.logger.WithValues("infrastructure", kutils.KeyFromObject(infra), "operation", "migrate")
+	logger := a.logger.WithValues("infrastructure", client.ObjectKeyFromObject(infra), "operation", "migrate")
 
 	tf, err := internal.NewTerraformer(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra)
 	if err != nil {
 		return err
 	}
 
-	return tf.CleanupConfiguration(ctx)
+	if err := tf.CleanupConfiguration(ctx); err != nil {
+		return err
+	}
+
+	return tf.RemoveTerraformerFinalizerFromConfig(ctx) //Explicitly clean up the terraformer finalizers
 }
