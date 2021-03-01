@@ -8,9 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gcp "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
+	client "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 	gomock "github.com/golang/mock/gomock"
-	compute "google.golang.org/api/compute/v1"
+	v1 "google.golang.org/api/compute/v1"
 	googleapi "google.golang.org/api/googleapi"
 )
 
@@ -38,10 +38,10 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // Firewalls mocks base method.
-func (m *MockInterface) Firewalls() gcp.FirewallsService {
+func (m *MockInterface) Firewalls() client.FirewallsService {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Firewalls")
-	ret0, _ := ret[0].(gcp.FirewallsService)
+	ret0, _ := ret[0].(client.FirewallsService)
 	return ret0
 }
 
@@ -52,10 +52,10 @@ func (mr *MockInterfaceMockRecorder) Firewalls() *gomock.Call {
 }
 
 // Routes mocks base method.
-func (m *MockInterface) Routes() gcp.RoutesService {
+func (m *MockInterface) Routes() client.RoutesService {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Routes")
-	ret0, _ := ret[0].(gcp.RoutesService)
+	ret0, _ := ret[0].(client.RoutesService)
 	return ret0
 }
 
@@ -89,10 +89,10 @@ func (m *MockFirewallsService) EXPECT() *MockFirewallsServiceMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockFirewallsService) Delete(arg0, arg1 string) gcp.FirewallsDeleteCall {
+func (m *MockFirewallsService) Delete(arg0, arg1 string) client.FirewallsDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
-	ret0, _ := ret[0].(gcp.FirewallsDeleteCall)
+	ret0, _ := ret[0].(client.FirewallsDeleteCall)
 	return ret0
 }
 
@@ -103,10 +103,10 @@ func (mr *MockFirewallsServiceMockRecorder) Delete(arg0, arg1 interface{}) *gomo
 }
 
 // List mocks base method.
-func (m *MockFirewallsService) List(arg0 string) gcp.FirewallsListCall {
+func (m *MockFirewallsService) List(arg0 string) client.FirewallsListCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0)
-	ret0, _ := ret[0].(gcp.FirewallsListCall)
+	ret0, _ := ret[0].(client.FirewallsListCall)
 	return ret0
 }
 
@@ -140,10 +140,10 @@ func (m *MockRoutesService) EXPECT() *MockRoutesServiceMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockRoutesService) Delete(arg0, arg1 string) gcp.RoutesDeleteCall {
+func (m *MockRoutesService) Delete(arg0, arg1 string) client.RoutesDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
-	ret0, _ := ret[0].(gcp.RoutesDeleteCall)
+	ret0, _ := ret[0].(client.RoutesDeleteCall)
 	return ret0
 }
 
@@ -154,10 +154,10 @@ func (mr *MockRoutesServiceMockRecorder) Delete(arg0, arg1 interface{}) *gomock.
 }
 
 // List mocks base method.
-func (m *MockRoutesService) List(arg0 string) gcp.RoutesListCall {
+func (m *MockRoutesService) List(arg0 string) client.RoutesListCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0)
-	ret0, _ := ret[0].(gcp.RoutesListCall)
+	ret0, _ := ret[0].(client.RoutesListCall)
 	return ret0
 }
 
@@ -191,7 +191,7 @@ func (m *MockFirewallsListCall) EXPECT() *MockFirewallsListCallMockRecorder {
 }
 
 // Pages mocks base method.
-func (m *MockFirewallsListCall) Pages(arg0 context.Context, arg1 func(*compute.FirewallList) error) error {
+func (m *MockFirewallsListCall) Pages(arg0 context.Context, arg1 func(*v1.FirewallList) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Pages", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -228,7 +228,7 @@ func (m *MockRoutesListCall) EXPECT() *MockRoutesListCallMockRecorder {
 }
 
 // Pages mocks base method.
-func (m *MockRoutesListCall) Pages(arg0 context.Context, arg1 func(*compute.RouteList) error) error {
+func (m *MockRoutesListCall) Pages(arg0 context.Context, arg1 func(*v1.RouteList) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Pages", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -265,10 +265,10 @@ func (m *MockFirewallsDeleteCall) EXPECT() *MockFirewallsDeleteCallMockRecorder 
 }
 
 // Context mocks base method.
-func (m *MockFirewallsDeleteCall) Context(arg0 context.Context) gcp.FirewallsDeleteCall {
+func (m *MockFirewallsDeleteCall) Context(arg0 context.Context) client.FirewallsDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(gcp.FirewallsDeleteCall)
+	ret0, _ := ret[0].(client.FirewallsDeleteCall)
 	return ret0
 }
 
@@ -279,14 +279,14 @@ func (mr *MockFirewallsDeleteCallMockRecorder) Context(arg0 interface{}) *gomock
 }
 
 // Do mocks base method.
-func (m *MockFirewallsDeleteCall) Do(arg0 ...googleapi.CallOption) (*compute.Operation, error) {
+func (m *MockFirewallsDeleteCall) Do(arg0 ...googleapi.CallOption) (*v1.Operation, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*compute.Operation)
+	ret0, _ := ret[0].(*v1.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -321,10 +321,10 @@ func (m *MockRoutesDeleteCall) EXPECT() *MockRoutesDeleteCallMockRecorder {
 }
 
 // Context mocks base method.
-func (m *MockRoutesDeleteCall) Context(arg0 context.Context) gcp.RoutesDeleteCall {
+func (m *MockRoutesDeleteCall) Context(arg0 context.Context) client.RoutesDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(gcp.RoutesDeleteCall)
+	ret0, _ := ret[0].(client.RoutesDeleteCall)
 	return ret0
 }
 
@@ -335,14 +335,14 @@ func (mr *MockRoutesDeleteCallMockRecorder) Context(arg0 interface{}) *gomock.Ca
 }
 
 // Do mocks base method.
-func (m *MockRoutesDeleteCall) Do(arg0 ...googleapi.CallOption) (*compute.Operation, error) {
+func (m *MockRoutesDeleteCall) Do(arg0 ...googleapi.CallOption) (*v1.Operation, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*compute.Operation)
+	ret0, _ := ret[0].(*v1.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gardener/gardener-resource-manager/pkg/apis/resources/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorelisters "github.com/gardener/gardener/pkg/client/core/listers/core/v1beta1"
@@ -37,6 +38,7 @@ import (
 	"github.com/gardener/gardener/pkg/operation/botanist/controlplane/etcd"
 	"github.com/gardener/gardener/pkg/operation/botanist/controlplane/kubecontrollermanager"
 	"github.com/gardener/gardener/pkg/operation/botanist/controlplane/kubescheduler"
+	"github.com/gardener/gardener/pkg/operation/botanist/controlplane/resourcemanager"
 	"github.com/gardener/gardener/pkg/operation/botanist/extensions/dns"
 	"github.com/gardener/gardener/pkg/operation/botanist/seedsystemcomponents/seedadmission"
 	"github.com/gardener/gardener/pkg/operation/botanist/systemcomponents/metricsserver"
@@ -44,13 +46,11 @@ import (
 	"github.com/gardener/gardener/pkg/operation/seed/istio"
 	"github.com/gardener/gardener/pkg/operation/seed/scheduler"
 	"github.com/gardener/gardener/pkg/utils"
-	"github.com/gardener/gardener/pkg/utils/chart"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/gardener/gardener/pkg/utils/imagevector"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	secretsutils "github.com/gardener/gardener/pkg/utils/secrets"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
-	"github.com/gardener/gardener/pkg/version"
 
 	"github.com/Masterminds/semver"
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -70,6 +70,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	autoscalingv1beta2 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/component-base/version"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -243,7 +245,7 @@ func BootstrapCluster(ctx context.Context, k8sGardenClient, k8sSeedClient kubern
 	vpaEnabled := seed.Info.Spec.Settings == nil || seed.Info.Spec.Settings.VerticalPodAutoscaler == nil || seed.Info.Spec.Settings.VerticalPodAutoscaler.Enabled
 	if !vpaEnabled {
 		// VPA is a prerequisite. If it's not enabled via the seed spec it must be provided through some other mechanism.
-		if _, err := k8sSeedClient.RESTMapper().RESTMapping(vpaGK); err != nil {
+		if _, err := k8sSeedClient.Client().RESTMapper().RESTMapping(vpaGK); err != nil {
 			return fmt.Errorf("VPA is required for seed cluster: %s", err)
 		}
 
@@ -305,6 +307,7 @@ func BootstrapCluster(ctx context.Context, k8sGardenClient, k8sSeedClient kubern
 			common.AlpineImageName,
 			common.ConfigMapReloaderImageName,
 			common.LokiImageName,
+			common.CuratorImageName,
 			common.FluentBitImageName,
 			common.FluentBitPluginInstaller,
 			common.GardenerResourceManagerImageName,
@@ -383,9 +386,6 @@ func BootstrapCluster(ctx context.Context, k8sGardenClient, k8sSeedClient kubern
 
 	if loggingEnabled {
 		lokiValues["authEnabled"] = false
-		lokiValues["hvpa"] = map[string]interface{}{
-			"enabled": hvpaEnabled,
-		}
 
 		lokiVpa := &autoscalingv1beta2.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: "loki-vpa", Namespace: v1beta1constants.GardenNamespace}}
 		if err := k8sSeedClient.Client().Delete(ctx, lokiVpa); client.IgnoreNotFound(err) != nil && !meta.IsNoMatchError(err) {
@@ -393,18 +393,41 @@ func BootstrapCluster(ctx context.Context, k8sGardenClient, k8sSeedClient kubern
 		}
 
 		if hvpaEnabled {
+			shootInfo := &corev1.ConfigMap{}
+			maintenanceBegin := "220000-0000"
+			maintenanceEnd := "230000-0000"
+			if err := k8sSeedClient.Client().Get(ctx, kutil.Key(metav1.NamespaceSystem, "shoot-info"), shootInfo); err != nil {
+				if !apierrors.IsNotFound(err) {
+					return err
+				}
+			} else {
+				maintenanceBegin = shootInfo.Data["maintenanceBegin"]
+				maintenanceEnd = shootInfo.Data["maintenanceEnd"]
+			}
+
+			lokiValues["hvpa"] = map[string]interface{}{
+				"enabled": true,
+				"maintenanceTimeWindow": map[string]interface{}{
+					"begin": maintenanceBegin,
+					"end":   maintenanceEnd,
+				},
+			}
+
 			currentResources, err := common.GetContainerResourcesInStatefulSet(ctx, k8sSeedClient.Client(), kutil.Key(v1beta1constants.GardenNamespace, "loki"))
 			if err != nil {
 				return err
 			}
-			if len(currentResources) != 0 && currentResources[0] != nil {
-				lokiValues["resources"] = currentResources[0]
+			if len(currentResources) != 0 && currentResources["loki"] != nil {
+				lokiValues["resources"] = map[string]interface{}{
+					"loki": currentResources["loki"],
+				}
 			}
 		}
 
 		componentsFunctions := []component.CentralLoggingConfiguration{
 			// seed system components
 			seedadmission.CentralLoggingConfiguration,
+			resourcemanager.CentralLoggingConfiguration,
 			// shoot control plane components
 			etcd.CentralLoggingConfiguration,
 			clusterautoscaler.CentralLoggingConfiguration,
@@ -413,9 +436,11 @@ func BootstrapCluster(ctx context.Context, k8sGardenClient, k8sSeedClient kubern
 			// shoot system components
 			metricsserver.CentralLoggingConfiguration,
 		}
-		userAllowedComponents := []string{v1beta1constants.DeploymentNameKubeAPIServer,
+		userAllowedComponents := []string{
+			v1beta1constants.DeploymentNameKubeAPIServer,
 			v1beta1constants.DeploymentNameVPAExporter, v1beta1constants.DeploymentNameVPARecommender,
-			v1beta1constants.DeploymentNameVPAAdmissionController}
+			v1beta1constants.DeploymentNameVPAAdmissionController,
+		}
 
 		// Fetch component specific logging configurations
 		for _, componentFn := range componentsFunctions {
@@ -633,14 +658,11 @@ func BootstrapCluster(ctx context.Context, k8sGardenClient, k8sSeedClient kubern
 				igwConfig.Ports,
 				corev1.ServicePort{Name: "proxy", Port: 8443, TargetPort: intstr.FromInt(8443)},
 				corev1.ServicePort{Name: "tcp", Port: 443, TargetPort: intstr.FromInt(9443)},
+				// The KonnectivityTunnel feature can be enabled with annotation
+				// and it requires have this port open, even if the feature is disabled in
+				// gardenlet.
+				corev1.ServicePort{Name: "tls-tunnel", Port: 8132, TargetPort: intstr.FromInt(8132)},
 			)
-
-			if gardenletfeatures.FeatureGate.Enabled(features.KonnectivityTunnel) {
-				igwConfig.Ports = append(
-					igwConfig.Ports,
-					corev1.ServicePort{Name: "tls-tunnel", Port: 8132, TargetPort: intstr.FromInt(8132)},
-				)
-			}
 		}
 
 		igw := istio.NewIngressGateway(
@@ -674,8 +696,10 @@ func BootstrapCluster(ctx context.Context, k8sGardenClient, k8sSeedClient kubern
 			return err
 		}
 
+		seedCopy := seed.Info.DeepCopy()
 		seed.Info.Status.ClusterIdentity = &seedClusterIdentity
-		if err := k8sGardenClient.Client().Status().Update(ctx, seed.Info); err != nil {
+
+		if err := k8sGardenClient.Client().Status().Patch(ctx, seed.Info, client.MergeFrom(seedCopy)); err != nil {
 			return err
 		}
 	}
@@ -701,7 +725,7 @@ func BootstrapCluster(ctx context.Context, k8sGardenClient, k8sSeedClient kubern
 		"priorityClassName": v1beta1constants.PriorityClassNameShootControlPlane,
 		"global": map[string]interface{}{
 			"ingressClass": getIngressClass(managedIngress(seed)),
-			"images":       chart.ImageMapToValues(images),
+			"images":       imagevector.ImageMapToValues(images),
 		},
 		"reserveExcessCapacity": seed.Info.Spec.Settings.ExcessCapacityReservation.Enabled,
 		"replicas": map[string]interface{}{
@@ -762,9 +786,6 @@ func BootstrapCluster(ctx context.Context, k8sGardenClient, k8sSeedClient kubern
 			"privateNetworks": privateNetworks,
 			"sniEnabled":      gardenletfeatures.FeatureGate.Enabled(features.APIServerSNI) || anySNI,
 		},
-		"gardenerResourceManager": map[string]interface{}{
-			"resourceClass": v1beta1constants.SeedResourceManagerClass,
-		},
 		"ingress": map[string]interface{}{
 			"basicAuthSecret": monitoringBasicAuth,
 		},
@@ -794,6 +815,10 @@ func BootstrapCluster(ctx context.Context, k8sGardenClient, k8sSeedClient kubern
 		}
 	}
 	if err := migrateIngressClassForShootIngresses(ctx, k8sGardenClient.Client(), k8sSeedClient.Client(), seed, ingressClass); err != nil {
+		return err
+	}
+
+	if err := deployGardenerResourceManager(ctx, k8sSeedClient, v1beta1constants.GardenNamespace, imageVector); err != nil {
 		return err
 	}
 
@@ -830,7 +855,39 @@ func DebootstrapCluster(ctx context.Context, k8sSeedClient kubernetes.Interface)
 		})
 	}
 
-	return flow.Parallel(debootstrapFunctions...)(ctx)
+	if err = flow.Parallel(debootstrapFunctions...)(ctx); err != nil {
+		return err
+	}
+
+	return destroyGardenerResourceManager(ctx, k8sSeedClient)
+}
+
+func destroyGardenerResourceManager(ctx context.Context, c kubernetes.Interface) error {
+	managedResources := &v1alpha1.ManagedResourceList{}
+	if err := c.Client().List(ctx, managedResources, client.InNamespace(v1beta1constants.GardenNamespace)); err != nil {
+		return err
+	}
+	if len(managedResources.Items) == 0 {
+		rm := resourcemanager.New(c.Client(), v1beta1constants.GardenNamespace, "", 0, resourcemanager.Values{})
+		return rm.Destroy(ctx)
+	}
+	return errors.New("cannot delete gardener-resource-manager there are managed resources in the garden namespace left")
+}
+
+func deployGardenerResourceManager(ctx context.Context, c kubernetes.Interface, namespace string, imageVector imagevector.ImageVector) error {
+	image, err := imageVector.FindImage(common.GardenerResourceManagerImageName, imagevector.RuntimeVersion(c.Version()), imagevector.TargetVersion(c.Version()))
+	if err != nil {
+		return err
+	}
+	cfg := resourcemanager.Values{
+		ConcurrentSyncs:  pointer.Int32Ptr(20),
+		HealthSyncPeriod: utils.DurationPtr(time.Minute),
+		ResourceClass:    pointer.StringPtr(v1beta1constants.SeedResourceManagerClass),
+
+		SyncPeriod: utils.DurationPtr(time.Hour),
+	}
+	rm := resourcemanager.New(c.Client(), namespace, image.String(), 1, cfg)
+	return rm.Deploy(ctx)
 }
 
 func bootstrapComponents(c kubernetes.Interface, namespace string, imageVector imagevector.ImageVector, imageVectorOverwrites map[string]string) ([]component.DeployWaiter, error) {
@@ -1159,8 +1216,10 @@ func migrateIngressClassForShootIngresses(ctx context.Context, gardenClient, see
 		}
 	}
 
+	seedCopy := seed.Info.DeepCopy()
 	metav1.SetMetaDataAnnotation(&seed.Info.ObjectMeta, annotationSeedIngressClass, newClass)
-	return gardenClient.Update(ctx, seed.Info)
+
+	return gardenClient.Patch(ctx, seed.Info, client.MergeFrom(seedCopy))
 }
 
 func switchIngressClass(ctx context.Context, seedClient client.Client, ingressKey types.NamespacedName, newClass string) error {
@@ -1180,10 +1239,6 @@ func copySecretFromGardenerToSeed(ctx context.Context, gardenClient, seedClient 
 	gardenSecret := &corev1.Secret{}
 	if err := gardenClient.Get(ctx, secretKey, gardenSecret); err != nil {
 		return err
-	}
-
-	if gardenSecret == nil {
-		return errors.New("error during seed bootstrap: secret referenced in dns.provider.SecretRef not found")
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, seedClient, targetSecret, func() error {
