@@ -36,9 +36,10 @@ import (
 )
 
 type shoot struct {
-	client    client.Client
-	apiReader client.Reader
-	decoder   runtime.Decoder
+	client         client.Client
+	apiReader      client.Reader
+	decoder        runtime.Decoder
+	lenientDecoder runtime.Decoder
 }
 
 // NewShootValidator returns a new instance of a shoot validator.
@@ -48,7 +49,8 @@ func NewShootValidator() extensionswebhook.Validator {
 
 // InjectScheme injects the given scheme into the validator.
 func (s *shoot) InjectScheme(scheme *runtime.Scheme) error {
-	s.decoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
+	s.decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
+	s.lenientDecoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
 	return nil
 }
 
@@ -165,7 +167,7 @@ func (s *shoot) validateCreate(ctx context.Context, shoot *core.Shoot) error {
 }
 
 func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core.Shoot) error {
-	oldValContext, err := newValidationContext(ctx, s.decoder, s.client, oldShoot)
+	oldValContext, err := newValidationContext(ctx, s.lenientDecoder, s.client, oldShoot)
 	if err != nil {
 		return err
 	}
