@@ -40,7 +40,7 @@ func NewCloudProfileValidator() extensionswebhook.Validator {
 
 // InjectScheme injects the given scheme into the validator.
 func (cp *cloudProfile) InjectScheme(scheme *runtime.Scheme) error {
-	cp.decoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
+	cp.decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
 	return nil
 }
 
