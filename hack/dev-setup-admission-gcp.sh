@@ -25,7 +25,6 @@ IP_ADDRESS=$(echo ${IP_ROUTE#*src} | awk '{print $1}')
 
 ADMISSION_SERVICE_NAME="gardener-extension-admission-gcp"
 ADMISSION_ENDPOINT_NAME="gardener-extension-admission-gcp"
-APISERVER_SERVICE_PORT=443
 
 if kubectl -n garden get service "$ADMISSION_SERVICE_NAME" &> /dev/null; then
   kubectl -n garden delete service $ADMISSION_SERVICE_NAME
