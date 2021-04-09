@@ -6,6 +6,7 @@ gardener-extension-provider-gcp:
       version:
         preprocess: 'inject-commit-hash'
       publish:
+        oci-builder: 'kaniko'
         dockerimages:
           gardener-extension-provider-gcp:
             registry: 'gcr-readwrite'
@@ -35,7 +36,7 @@ gardener-extension-provider-gcp:
         test-integration:
           execute:
           - test-integration.sh
-          depends:
+          trait_depends:
           - publish
           image: 'eu.gcr.io/gardener-project/gardener/testmachinery/testmachinery-run:stable'
       traits:
@@ -53,6 +54,7 @@ gardener-extension-provider-gcp:
               slack_cfg_name: 'scp_workspace'
         component_descriptor: ~
         publish:
+          oci-builder: 'kaniko'
           dockerimages:
             gardener-extension-provider-gcp:
               tag_as_latest: true
