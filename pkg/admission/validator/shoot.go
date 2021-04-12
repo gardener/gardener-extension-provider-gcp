@@ -250,7 +250,9 @@ func (s *shoot) validateShootSecret(ctx context.Context, shoot *core.Shoot) erro
 		secret    = &corev1.Secret{}
 		secretKey = kutil.Key(secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name)
 	)
-	if err := kutil.LookupObject(ctx, s.client, s.apiReader, secretKey, secret); client.IgnoreNotFound(err) != nil {
+	// Explicitly use the client.Reader to prevent controller-runtime to start Informer for Secrets
+	// under the hood. The latter increases the memory usage of the component.
+	if err := s.apiReader.Get(ctx, secretKey, secret); err != nil {
 		return err
 	}
 
