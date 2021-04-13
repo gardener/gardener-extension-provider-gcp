@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//go:generate packr2
 
 package imagevector
 
@@ -19,8 +18,9 @@ import (
 	"strings"
 
 	"github.com/gardener/gardener/pkg/utils/imagevector"
-	"github.com/gobuffalo/packr/v2"
 	"k8s.io/apimachinery/pkg/util/runtime"
+
+	"github.com/gardener/gardener-extension-provider-gcp/charts"
 )
 
 const (
@@ -31,12 +31,9 @@ const (
 var imageVector imagevector.ImageVector
 
 func init() {
-	box := packr.New("charts", "../../../charts")
+	var err error
 
-	imagesYaml, err := box.FindString("images.yaml")
-	runtime.Must(err)
-
-	imageVector, err = imagevector.Read(strings.NewReader(imagesYaml))
+	imageVector, err = imagevector.Read(strings.NewReader(charts.ImagesYAML))
 	runtime.Must(err)
 
 	imageVector, err = imagevector.WithEnvOverride(imageVector)
