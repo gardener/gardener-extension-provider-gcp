@@ -24,7 +24,7 @@ import (
 	"time"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/operation/common"
+	"github.com/gardener/gardener/pkg/extensions"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/test/framework"
 	"github.com/go-logr/logr"
@@ -238,7 +238,7 @@ func runTest(
 		Expect(client.IgnoreNotFound(c.Delete(ctx, infra))).To(Succeed())
 
 		By("wait until infrastructure is deleted")
-		err := common.WaitUntilExtensionCRDeleted(
+		err := extensions.WaitUntilExtensionCRDeleted(
 			ctx,
 			c,
 			gardenerlog,
@@ -305,7 +305,7 @@ func runTest(
 	}
 
 	By("wait until infrastructure is created")
-	if err := common.WaitUntilExtensionCRReady(
+	if err := extensions.WaitUntilExtensionCRReady(
 		ctx,
 		c,
 		gardenerlog,
