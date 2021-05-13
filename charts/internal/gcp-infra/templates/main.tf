@@ -241,7 +241,7 @@ output "{{ .Values.outputKeys.cloudNAT }}" {
 
 {{ if .Values.networks.cloudNAT.natIPNames -}}
 output "{{ .Values.outputKeys.natIPs }}" {
-  value = {{range $i, $name := .Values.networks.cloudNAT.natIPNames}}{{if $i}},{{end}}data.google_compute_address.{{$name}}.address{{end}}
+  value = "{{range $i, $name := .Values.networks.cloudNAT.natIPNames}}{{if $i}},{{end}}${data.google_compute_address.{{$name}}.address}{{end}}"
 }
 {{- end }}
 
