@@ -197,9 +197,9 @@ var _ = Describe("Terraform", func() {
 		})
 	})
 
-	Describe("#ComputeTerraformerChartValues", func() {
+	Describe("#ComputeTerraformerTemplateValues", func() {
 		It("should correctly compute the terraformer chart values", func() {
-			values := ComputeTerraformerChartValues(infra, serviceAccount, config)
+			values := ComputeTerraformerTemplateValues(infra, serviceAccount, config)
 
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -261,7 +261,7 @@ var _ = Describe("Terraform", func() {
 				},
 			}
 
-			values := ComputeTerraformerChartValues(infra, serviceAccount, config)
+			values := ComputeTerraformerTemplateValues(infra, serviceAccount, config)
 
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -294,6 +294,7 @@ var _ = Describe("Terraform", func() {
 					"serviceAccountEmail": TerraformerOutputKeyServiceAccountEmail,
 					"subnetNodes":         TerraformerOutputKeySubnetNodes,
 					"subnetInternal":      TerraformerOutputKeySubnetInternal,
+					"natIPs":              TerraformOutputKeyNATIPs,
 				},
 			}))
 		})
@@ -321,7 +322,7 @@ var _ = Describe("Terraform", func() {
 				},
 			}
 
-			values := ComputeTerraformerChartValues(infra, serviceAccount, config)
+			values := ComputeTerraformerTemplateValues(infra, serviceAccount, config)
 
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -364,7 +365,7 @@ var _ = Describe("Terraform", func() {
 
 		It("should correctly compute the terraformer chart values with vpc creation", func() {
 			config.Networks.VPC = nil
-			values := ComputeTerraformerChartValues(infra, serviceAccount, config)
+			values := ComputeTerraformerTemplateValues(infra, serviceAccount, config)
 
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{

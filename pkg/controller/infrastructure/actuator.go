@@ -35,7 +35,7 @@ import (
 
 type actuator struct {
 	logger logr.Logger
-	common.ChartRendererContext
+	common.RESTConfigContext
 }
 
 // NewActuator creates a new infrastructure.Actuator.
