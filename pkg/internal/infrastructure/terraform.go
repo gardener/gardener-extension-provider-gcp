@@ -15,8 +15,9 @@
 package infrastructure
 
 import (
+	"bytes"
 	"context"
-	"path/filepath"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -26,7 +27,6 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/chartrenderer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -61,8 +61,8 @@ var (
 	}
 )
 
-// ComputeTerraformerChartValues computes the values for the GCP Terraformer chart.
-func ComputeTerraformerChartValues(
+// ComputeTerraformerTemplateValues computes the values for the GCP Terraformer chart.
+func ComputeTerraformerTemplateValues(
 	infra *extensionsv1alpha1.Infrastructure,
 	account *gcp.ServiceAccount,
 	config *api.InfrastructureConfig,
@@ -114,6 +114,18 @@ func ComputeTerraformerChartValues(
 		workersCIDR = config.Networks.Worker
 	}
 
+	outputKeys := map[string]interface{}{
+		"vpcName":             TerraformerOutputKeyVPCName,
+		"cloudNAT":            TerraformOutputKeyCloudNAT,
+		"cloudRouter":         TerraformOutputKeyCloudRouter,
+		"serviceAccountEmail": TerraformerOutputKeyServiceAccountEmail,
+		"subnetNodes":         TerraformerOutputKeySubnetNodes,
+		"subnetInternal":      TerraformerOutputKeySubnetInternal,
+	}
+	if manualNatIPsSet(config) {
+		outputKeys["natIPs"] = TerraformOutputKeyNATIPs
+	}
+
 	values := map[string]interface{}{
 		"google": map[string]interface{}{
 			"region":  infra.Spec.Region,
@@ -130,14 +142,7 @@ func ComputeTerraformerChartValues(
 			"internal": config.Networks.Internal,
 			"cloudNAT": cN,
 		},
-		"outputKeys": map[string]interface{}{
-			"vpcName":             TerraformerOutputKeyVPCName,
-			"cloudNAT":            TerraformOutputKeyCloudNAT,
-			"cloudRouter":         TerraformOutputKeyCloudRouter,
-			"serviceAccountEmail": TerraformerOutputKeyServiceAccountEmail,
-			"subnetNodes":         TerraformerOutputKeySubnetNodes,
-			"subnetInternal":      TerraformerOutputKeySubnetInternal,
-		},
+		"outputKeys": outputKeys,
 	}
 
 	if config.Networks.FlowLogs != nil {
@@ -162,24 +167,23 @@ func ComputeTerraformerChartValues(
 }
 
 // RenderTerraformerChart renders the gcp-infra chart with the given values.
-func RenderTerraformerChart(
-	renderer chartrenderer.Interface,
+func RenderTerraformerTemplate(
 	infra *extensionsv1alpha1.Infrastructure,
 	account *gcp.ServiceAccount,
 	config *api.InfrastructureConfig,
 ) (*TerraformFiles, error) {
 
-	values := ComputeTerraformerChartValues(infra, account, config)
+	values := ComputeTerraformerTemplateValues(infra, account, config)
 
-	release, err := renderer.Render(filepath.Join(gcp.InternalChartsPath, "gcp-infra"), "gcp-infra", infra.Namespace, values)
-	if err != nil {
-		return nil, err
+	var mainTF bytes.Buffer
+	if err := mainTemplate.Execute(&mainTF, values); err != nil {
+		return nil, fmt.Errorf("could not render Terraform template: %+v", err)
 	}
 
 	return &TerraformFiles{
-		Main:      release.FileContent("main.tf"),
-		Variables: release.FileContent("variables.tf"),
-		TFVars:    []byte(release.FileContent("terraform.tfvars")),
+		Main:      mainTF.String(),
+		Variables: variablesTF,
+		TFVars:    terraformTFVars,
 	}, nil
 }
 
@@ -216,7 +220,6 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, conf
 			TerraformerOutputKeySubnetNodes,
 			TerraformerOutputKeyServiceAccountEmail,
 		}
-		manualNatIPsSet                = config.Networks.CloudNAT != nil && config.Networks.CloudNAT.NatIPNames != nil
 		vpcSpecifiedWithoutCloudRouter = config.Networks.VPC != nil && config.Networks.VPC.CloudRouter == nil
 	)
 
@@ -224,7 +227,7 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, conf
 		outputKeys = append(outputKeys, TerraformOutputKeyCloudRouter, TerraformOutputKeyCloudNAT)
 	}
 
-	if manualNatIPsSet {
+	if manualNatIPsSet(config) {
 		outputKeys = append(outputKeys, TerraformOutputKeyNATIPs)
 	}
 
@@ -244,7 +247,7 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, conf
 		ServiceAccountEmail: vars[TerraformerOutputKeyServiceAccountEmail],
 	}
 
-	if manualNatIPsSet {
+	if manualNatIPsSet(config) {
 		state.NatIPs = []apiv1alpha1.NatIP{}
 		for _, ip := range strings.Split(vars[TerraformOutputKeyNATIPs], ",") {
 			state.NatIPs = append(state.NatIPs, apiv1alpha1.NatIP{IP: ip})
@@ -314,4 +317,8 @@ func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, config *api.
 	}
 
 	return StatusFromTerraformState(state), nil
+}
+
+func manualNatIPsSet(config *api.InfrastructureConfig) bool {
+	return config.Networks.CloudNAT != nil && config.Networks.CloudNAT.NatIPNames != nil
 }
