@@ -16,14 +16,15 @@ package validation
 
 import (
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	"k8s.io/apimachinery/pkg/util/sets"
 
+	corevalidation "github.com/gardener/gardener/pkg/apis/core/validation"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 // ValidateControlPlaneConfig validates a ControlPlaneConfig object.
-func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, allowedZones, workerZones sets.String, fldPath *field.Path) field.ErrorList {
+func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, allowedZones, workerZones sets.String, version string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(controlPlaneConfig.Zone) == 0 {
@@ -35,6 +36,11 @@ func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, 
 	if !workerZones.Has(controlPlaneConfig.Zone) {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("zone"), controlPlaneConfig.Zone, "must be part of at least one worker zone"))
 	}
+
+	if controlPlaneConfig.CloudControllerManager != nil {
+		allErrs = append(allErrs, corevalidation.ValidateFeatureGates(controlPlaneConfig.CloudControllerManager.FeatureGates, version, fldPath.Child("cloudControllerManager", "featureGates"))...)
+	}
+
 	return allErrs
 }
 

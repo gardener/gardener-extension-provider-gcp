@@ -42,13 +42,13 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 
 	Describe("#ValidateControlPlaneConfig", func() {
 		It("should return no errors for a valid configuration", func() {
-			Expect(ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, fldPath)).To(BeEmpty())
+			Expect(ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "", fldPath)).To(BeEmpty())
 		})
 
 		It("should require that the control-plane config zone be part of the worker pool zone configuration", func() {
 			controlPlane.Zone = ""
 			workerZonesNotSupported := sets.NewString("zone3", "zone4")
-			errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZonesNotSupported, fldPath)
+			errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZonesNotSupported, "", fldPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
@@ -62,7 +62,7 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 		It("should require the name of a zone", func() {
 			controlPlane.Zone = ""
 
-			errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, fldPath)
+			errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "", fldPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
@@ -76,7 +76,7 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 		It("should require a name of a zone that is part of the regions", func() {
 			controlPlane.Zone = "bar"
 
-			errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, fldPath)
+			errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "", fldPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeNotSupported),
@@ -85,6 +85,29 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 				"Type":  Equal(field.ErrorTypeInvalid),
 				"Field": Equal("zone"),
 			}))))
+		})
+
+		It("should fail with invalid CCM feature gates", func() {
+			controlPlane.CloudControllerManager = &apisgcp.CloudControllerManagerConfig{
+				FeatureGates: map[string]bool{
+					"AnyVolumeDataSource":      true,
+					"CustomResourceValidation": true,
+					"Foo":                      true,
+				},
+			}
+
+			errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "1.18.14", fldPath)
+
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeForbidden),
+					"Field": Equal("cloudControllerManager.featureGates.CustomResourceValidation"),
+				})),
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("cloudControllerManager.featureGates.Foo"),
+				})),
+			))
 		})
 	})
 
