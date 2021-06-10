@@ -1,15 +1,15 @@
 kind: TestDefinition
 metadata:
-  name: infrastructure-test
+  name: bastion-test
 spec:
   owner: gardener-oq@listserv.sap.com
-  description: Integration test for infrastructure creation and deletion
+  description: Integration test for bastion creation and deletion
   activeDeadlineSeconds: 1800
 
   command: [bash, -c]
   args:
   - >-
-    go test -timeout=25m -mod=vendor ./test/integration/infrastructure
+    go test -timeout=25m -mod=vendor ./test/integration/bastion
     --v -ginkgo.v -ginkgo.progress -ginkgo.noColor
     --kubeconfig=$TM_KUBECONFIG_PATH/testmachinery.config
     --service-account="${SERVICEACCOUNT_JSON}"

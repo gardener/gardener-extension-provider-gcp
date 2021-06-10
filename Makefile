@@ -150,3 +150,11 @@ integration-test-infra:
 		--kubeconfig=${KUBECONFIG} \
 		--service-account='$(shell cat $(SERVICE_ACCOUNT_FILE))' \
 		--region=$(REGION)
+
+.PHONY: integration-test-bastion
+integration-test-bastion:
+	@go test -timeout=0 -mod=vendor ./test/integration/bastion \
+		--v -ginkgo.v -ginkgo.progress \
+		--kubeconfig=${KUBECONFIG} \
+		--service-account='$(shell cat $(SERVICE_ACCOUNT_FILE))' \
+		--region=$(REGION)
