@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   name: volumesnapshotclasses.snapshot.storage.k8s.io
   annotations:
-    resources.gardener.cloud/mode: Ignore
+    resources.gardener.cloud/keep-object: "true"
     api-approved.kubernetes.io: "https://github.com/kubernetes-csi/external-snapshotter/pull/260"
 spec:
   additionalPrinterColumns:
