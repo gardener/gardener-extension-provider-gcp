@@ -16,7 +16,6 @@ package bastion
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -53,7 +52,7 @@ func DetermineOptions(ctx context.Context, bastion *extensionsv1alpha1.Bastion, 
 	firewallName := fmt.Sprintf("%s-allow-ssh-access", bastionInstanceName)
 	diskName := fmt.Sprintf("%s-%s-disk", name, bastion.Name)
 	publicIP := bastion.Spec.Ingress[0].IPBlock.CIDR
-	userData := base64.StdEncoding.EncodeToString((bastion.Spec.UserData))
+	userData := string(bastion.Spec.UserData)
 	subnetwork := cluster.Shoot.Name + "-nodes"
 	zone := strings.Join(cluster.Shoot.Spec.Provider.Workers[0].Zones, " ")
 
