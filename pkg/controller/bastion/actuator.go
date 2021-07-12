@@ -32,6 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// SSHPort is the SSH Port use in createFirewallRule
 const (
 	SSHPort = 22
 )
