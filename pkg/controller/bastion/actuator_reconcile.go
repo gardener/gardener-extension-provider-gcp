@@ -133,7 +133,7 @@ func ensureBastionInstance(ctx context.Context, logger logr.Logger, gcpclient gc
 
 	network := &compute.NetworkInterface{
 		Network:       "projects/" + opt.ProjectID + "/global/networks/" + opt.Shoot.Name,
-		Subnetwork:    "regions/" + opt.Shoot.Spec.Region + "/subnetworks/" + opt.SubnetWork,
+		Subnetwork:    "regions/" + opt.Shoot.Spec.Region + "/subnetworks/" + opt.Subnetwork,
 		AccessConfigs: []*compute.AccessConfig{{Name: "External NAT", Type: "ONE_TO_ONE_NAT"}},
 	}
 	networkArr := make([]*compute.NetworkInterface, 1)

@@ -40,7 +40,7 @@ type Options struct {
 	UserData            string
 	Zone                string
 	Region              string
-	SubnetWork          string
+	Subnetwork          string
 	ProjectID           string
 }
 
@@ -75,7 +75,7 @@ func DetermineOptions(ctx context.Context, bastion *extensionsv1alpha1.Bastion, 
 		DiskName:            diskName,
 		PublicIP:            publicIP,
 		UserData:            userData,
-		SubnetWork:          subnetwork,
+		Subnetwork:          subnetwork,
 		ProjectID:           projectID,
 	}, nil
 }
