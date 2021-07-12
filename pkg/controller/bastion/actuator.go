@@ -16,9 +16,9 @@ package bastion
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
@@ -26,7 +26,6 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 	corev1 "k8s.io/api/core/v1"
@@ -54,7 +53,7 @@ func (a *actuator) getGCPClient(ctx context.Context, bastion *extensionsv1alpha1
 	key := kubernetes.Key(bastion.Namespace, v1beta1constants.SecretNameCloudProvider)
 
 	if err := a.Client().Get(ctx, key, secret); err != nil {
-		return nil, errors.Wrapf(err, "failed to find %q Secret", v1beta1constants.SecretNameCloudProvider)
+		return nil, fmt.Errorf("failed to find %q Secret: %w", v1beta1constants.SecretNameCloudProvider, err)
 	}
 
 	gcpClient, err := gcpclient.NewFromServiceAccount(ctx, secret.Data[gcp.ServiceAccountJSONField])
@@ -72,7 +71,7 @@ func getBastionInstance(ctx context.Context, gcpclient gcpclient.Interface, opt 
 			logger.Info("Instance not found,", "instance_name", opt.BastionInstanceName)
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, "failed to get Instance")
+		return nil, fmt.Errorf("failed to get Instance: %w", err)
 	}
 	return instance, nil
 }
@@ -85,7 +84,7 @@ func getFirewallRule(ctx context.Context, gcpclient gcpclient.Interface, opt *Op
 			logger.Info("Firewall rule not found,", "firewall_rule_name", opt.FirewallName)
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, "failed to get Firewall")
+		return nil, fmt.Errorf("failed to get Firewall: %w", err)
 	}
 
 	return firewall, nil

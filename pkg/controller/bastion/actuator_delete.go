@@ -64,7 +64,6 @@ func (a *actuator) Delete(ctx context.Context, bastion *extensionsv1alpha1.Basti
 }
 
 func removeFirewallRule(ctx context.Context, logger logr.Logger, bastion *extensionsv1alpha1.Bastion, gcpclient gcpclient.Interface, opt *Options) error {
-
 	firewall, err := getFirewallRule(ctx, gcpclient, opt)
 
 	if err != nil {
