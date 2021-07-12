@@ -17,9 +17,8 @@ package bastion
 import (
 	"context"
 
-	"google.golang.org/api/googleapi"
-
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
@@ -29,6 +28,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/googleapi"
 	corev1 "k8s.io/api/core/v1"
 )
 
