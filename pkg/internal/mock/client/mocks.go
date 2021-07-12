@@ -37,6 +37,20 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
+// Disks mocks base method.
+func (m *MockInterface) Disks() client.DisksService {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Disks")
+	ret0, _ := ret[0].(client.DisksService)
+	return ret0
+}
+
+// Disks indicates an expected call of Disks.
+func (mr *MockInterfaceMockRecorder) Disks() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Disks", reflect.TypeOf((*MockInterface)(nil).Disks))
+}
+
 // Firewalls mocks base method.
 func (m *MockInterface) Firewalls() client.FirewallsService {
 	m.ctrl.T.Helper()
@@ -49,6 +63,20 @@ func (m *MockInterface) Firewalls() client.FirewallsService {
 func (mr *MockInterfaceMockRecorder) Firewalls() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Firewalls", reflect.TypeOf((*MockInterface)(nil).Firewalls))
+}
+
+// Instances mocks base method.
+func (m *MockInterface) Instances() client.InstancesService {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Instances")
+	ret0, _ := ret[0].(client.InstancesService)
+	return ret0
+}
+
+// Instances indicates an expected call of Instances.
+func (mr *MockInterfaceMockRecorder) Instances() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Instances", reflect.TypeOf((*MockInterface)(nil).Instances))
 }
 
 // Routes mocks base method.
@@ -100,6 +128,34 @@ func (m *MockFirewallsService) Delete(arg0, arg1 string) client.FirewallsDeleteC
 func (mr *MockFirewallsServiceMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockFirewallsService)(nil).Delete), arg0, arg1)
+}
+
+// Get mocks base method.
+func (m *MockFirewallsService) Get(arg0, arg1 string) client.FirewallsGetCall {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", arg0, arg1)
+	ret0, _ := ret[0].(client.FirewallsGetCall)
+	return ret0
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockFirewallsServiceMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockFirewallsService)(nil).Get), arg0, arg1)
+}
+
+// Insert mocks base method.
+func (m *MockFirewallsService) Insert(arg0 string, arg1 *v1.Firewall) client.FirewallsInsertCall {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Insert", arg0, arg1)
+	ret0, _ := ret[0].(client.FirewallsInsertCall)
+	return ret0
+}
+
+// Insert indicates an expected call of Insert.
+func (mr *MockFirewallsServiceMockRecorder) Insert(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Insert", reflect.TypeOf((*MockFirewallsService)(nil).Insert), arg0, arg1)
 }
 
 // List mocks base method.
