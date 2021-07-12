@@ -54,7 +54,7 @@ func getBastionInstance(ctx context.Context, gcpclient gcpclient.Interface, opt 
 	if err != nil {
 		googleError := err.(*googleapi.Error)
 		if googleError.Code == 404 {
-			logger.Info("instance not found,", "instance_name", opt.BastionInstanceName)
+			logger.Info("Instance not found,", "instance_name", opt.BastionInstanceName)
 			return nil, nil
 		}
 		return nil, errors.Wrap(err, "failed to get Instance")
@@ -67,7 +67,7 @@ func getFirewallRule(ctx context.Context, gcpclient gcpclient.Interface, opt *Op
 	if err != nil {
 		var googleError = err.(*googleapi.Error)
 		if googleError.Code == 404 {
-			logger.Info("firewall rule not found,", "firewall_rule_name", opt.FirewallName)
+			logger.Info("Firewall rule not found,", "firewall_rule_name", opt.FirewallName)
 			return nil, nil
 		}
 		return nil, errors.Wrap(err, "failed to get Firewall")

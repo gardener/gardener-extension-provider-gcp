@@ -87,7 +87,7 @@ func createFirewallRule(ctx context.Context, bastion *extensionsv1alpha1.Bastion
 		return errors.Wrap(err, "could not create firewall rule")
 	}
 
-	logger.Info("firewall created", "firewall", opt.FirewallName)
+	logger.Info("Firewall created", "firewall", opt.FirewallName)
 	return nil
 }
 
@@ -118,7 +118,7 @@ func ensureBastionInstance(ctx context.Context, logger logr.Logger, gcpclient gc
 		return nil, errors.Wrap(err, "failed to create disk")
 	}
 
-	logger.Info("disk created", "disk", opt.DiskName)
+	logger.Info("Disk created", "disk", opt.DiskName)
 
 	attachedDisk := &compute.AttachedDisk{
 		AutoDelete: true,
@@ -154,7 +154,7 @@ func ensureBastionInstance(ctx context.Context, logger logr.Logger, gcpclient gc
 	})
 
 	if insta != nil {
-		logger.Info("existing bastion compute instance found", "compute_instance_name", insta.Name)
+		logger.Info("Existing bastion compute instance found", "compute_instance_name", insta.Name)
 	} else {
 		instance := &compute.Instance{
 			Disks:              arr,

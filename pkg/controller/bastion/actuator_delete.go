@@ -79,7 +79,7 @@ func removeFirewallRule(ctx context.Context, logger logr.Logger, bastion *extens
 		return errors.Wrap(err, "failed to delete firewall rule")
 	}
 
-	logger.Info("firewall rule removed", "rule", opt.FirewallName)
+	logger.Info("Firewall rule removed", "rule", opt.FirewallName)
 	return nil
 }
 
@@ -90,7 +90,7 @@ func removeBastionInstance(ctx context.Context, logger logr.Logger, gcpclient gc
 	}
 
 	if instance == nil {
-		logger.Info("no bastion instance found, nothing to terminate")
+		logger.Info("No bastion instance found, nothing to terminate")
 		return nil
 	}
 
