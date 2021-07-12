@@ -32,7 +32,7 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 		return errors.Wrap(err, "failed to setup GCP options")
 	}
 
-	err = ensureFirewallRule(ctx, logger, bastion, gcpclient, opt)
+	err = ensureFirewallRule(ctx, bastion, gcpclient, opt)
 	if err != nil {
 		return errors.Wrap(err, "failed to ensure firewall rule")
 	}
@@ -58,7 +58,7 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 
 }
 
-func ensureFirewallRule(ctx context.Context, logger logr.Logger, bastion *extensionsv1alpha1.Bastion, gcpclient gcpclient.Interface, opt *Options) error {
+func ensureFirewallRule(ctx context.Context, bastion *extensionsv1alpha1.Bastion, gcpclient gcpclient.Interface, opt *Options) error {
 	firewall, err := getFirewallRule(ctx, gcpclient, opt)
 	if err != nil {
 		return errors.Wrap(err, "could not get firewall rule")
