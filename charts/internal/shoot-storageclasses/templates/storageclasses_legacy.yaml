@@ -9,11 +9,7 @@ metadata:
     resources.gardener.cloud/delete-on-invalid-update: "true"
 allowVolumeExpansion: true
 provisioner: kubernetes.io/gce-pd
-{{- if semverCompare ">= 1.12-0" .Capabilities.KubeVersion.GitVersion }}
 volumeBindingMode: WaitForFirstConsumer
-{{- else }}
-volumeBindingMode: Immediate
-{{- end }}
 parameters:
   type: pd-standard
 
@@ -26,11 +22,7 @@ metadata:
     resources.gardener.cloud/delete-on-invalid-update: "true"
 allowVolumeExpansion: true
 provisioner: kubernetes.io/gce-pd
-{{- if semverCompare ">= 1.12-0" .Capabilities.KubeVersion.GitVersion }}
 volumeBindingMode: WaitForFirstConsumer
-{{- else }}
-volumeBindingMode: Immediate
-{{- end }}
 parameters:
   type: pd-ssd
 {{- end }}
