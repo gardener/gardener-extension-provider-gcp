@@ -12,9 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package konnectivity
+package dnsrecord
 
-const (
-	// AgentName is the name of kubernetes resources associated with konnectivity-agent.
-	AgentName = "konnectivity-agent"
+import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	extensionshandler "github.com/gardener/gardener/extensions/pkg/handler"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
+
+// ClusterToDNSRecordMapper returns a mapper that returns requests for DNSRecords whose
+// referenced clusters have been modified.
+func ClusterToDNSRecordMapper(predicates []predicate.Predicate) extensionshandler.Mapper {
+	return extensionshandler.ClusterToObjectMapper(func() client.ObjectList { return &extensionsv1alpha1.DNSRecordList{} }, predicates)
+}
