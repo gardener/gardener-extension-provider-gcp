@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate mockgen -package client -destination=mocks.go github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client Factory,DNS
+//go:generate mockgen -package client -destination=mocks.go github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client Factory,DNSClient
 
 package client

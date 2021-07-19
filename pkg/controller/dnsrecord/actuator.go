@@ -55,23 +55,24 @@ func NewActuator(gcpClientFactory gcpclient.Factory, logger logr.Logger) dnsreco
 
 // Reconcile reconciles the DNSRecord.
 func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+	// Create GCP DNS client
 	dnsClient, err := a.gcpClientFactory.NewDNSClient(ctx, a.Client(), dns.Spec.SecretRef)
 	if err != nil {
 		return err
 	}
 
-	// Determine DNS hosted zone ID
-	zone, err := a.getZone(ctx, dns, dnsClient)
+	// Determine DNS managed zone
+	managedZone, err := a.getManagedZone(ctx, dns, dnsClient)
 	if err != nil {
 		return err
 	}
 
-	// Create or update DNS record
+	// Create or update DNS recordset
 	ttl := extensionsv1alpha1helper.GetDNSRecordTTL(dns.Spec.TTL)
-	a.logger.Info("Creating or updating DNS record", "zone", zone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "values", dns.Spec.Values, "dnsrecord", kutil.ObjectName(dns))
-	if err := dnsClient.CreateOrUpdateRecordSet(ctx, zone, dns.Spec.Name, string(dns.Spec.RecordType), dns.Spec.Values, ttl); err != nil {
+	a.logger.Info("Creating or updating DNS recordset", "managedZone", managedZone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "rrdatas", dns.Spec.Values, "dnsrecord", kutil.ObjectName(dns))
+	if err := dnsClient.CreateOrUpdateRecordSet(ctx, managedZone, dns.Spec.Name, string(dns.Spec.RecordType), dns.Spec.Values, ttl); err != nil {
 		return &controllererror.RequeueAfterError{
-			Cause:        fmt.Errorf("could not create or update DNS record in zone %s with name %s, type %s, and values %v: %+v", zone, dns.Spec.Name, dns.Spec.RecordType, dns.Spec.Values, err),
+			Cause:        fmt.Errorf("could not create or update DNS recordset in managed zone %s with name %s, type %s, and rrdatas %v: %+v", managedZone, dns.Spec.Name, dns.Spec.RecordType, dns.Spec.Values, err),
 			RequeueAfter: requeueAfterOnProviderError,
 		}
 	}
@@ -79,10 +80,10 @@ func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRec
 	// Delete meta DNS recordset if exists
 	if dns.Status.LastOperation == nil || dns.Status.LastOperation.Type == gardencorev1beta1.LastOperationTypeCreate {
 		name, recordType := dnsrecord.GetMetaRecordName(dns.Spec.Name), "TXT"
-		a.logger.Info("Deleting meta DNS recordset", "zone", zone, "name", name, "type", recordType, "dnsrecord", kutil.ObjectName(dns))
-		if err := dnsClient.DeleteRecordSet(ctx, zone, name, recordType); err != nil {
+		a.logger.Info("Deleting meta DNS recordset", "managedZone", managedZone, "name", name, "type", recordType, "dnsrecord", kutil.ObjectName(dns))
+		if err := dnsClient.DeleteRecordSet(ctx, managedZone, name, recordType); err != nil {
 			return &controllererror.RequeueAfterError{
-				Cause:        fmt.Errorf("could not delete meta DNS recordset in zone %s with name %s and type %s: %+v", zone, name, recordType, err),
+				Cause:        fmt.Errorf("could not delete meta DNS recordset in managed zone %s with name %s and type %s: %+v", managedZone, name, recordType, err),
 				RequeueAfter: requeueAfterOnProviderError,
 			}
 		}
@@ -90,29 +91,30 @@ func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRec
 
 	// Update resource status
 	return extensionscontroller.TryUpdateStatus(ctx, retry.DefaultBackoff, a.Client(), dns, func() error {
-		dns.Status.Zone = &zone
+		dns.Status.Zone = &managedZone
 		return nil
 	})
 }
 
 // Delete deletes the DNSRecord.
 func (a *actuator) Delete(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+	// Create GCP DNS client
 	dnsClient, err := a.gcpClientFactory.NewDNSClient(ctx, a.Client(), dns.Spec.SecretRef)
 	if err != nil {
 		return err
 	}
 
-	// Determine DNS hosted zone ID
-	zone, err := a.getZone(ctx, dns, dnsClient)
+	// Determine DNS managed zone
+	managedZone, err := a.getManagedZone(ctx, dns, dnsClient)
 	if err != nil {
 		return err
 	}
 
-	// Delete DNS record
-	a.logger.Info("Deleting DNS record", "zone", zone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "values", dns.Spec.Values, "dnsrecord", kutil.ObjectName(dns))
-	if err := dnsClient.DeleteRecordSet(ctx, zone, dns.Spec.Name, string(dns.Spec.RecordType)); err != nil {
+	// Delete DNS recordset
+	a.logger.Info("Deleting DNS recordset", "managedZone", managedZone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "dnsrecord", kutil.ObjectName(dns))
+	if err := dnsClient.DeleteRecordSet(ctx, managedZone, dns.Spec.Name, string(dns.Spec.RecordType)); err != nil {
 		return &controllererror.RequeueAfterError{
-			Cause:        fmt.Errorf("could not delete DNS record in zone %s with name %s, type %s, and values %v: %+v", zone, dns.Spec.Name, dns.Spec.RecordType, dns.Spec.Values, err),
+			Cause:        fmt.Errorf("could not delete DNS recordset in managed zone %s with name %s and type %s: %+v", managedZone, dns.Spec.Name, dns.Spec.RecordType, err),
 			RequeueAfter: requeueAfterOnProviderError,
 		}
 	}
@@ -129,7 +131,7 @@ func (a *actuator) Migrate(context.Context, *extensionsv1alpha1.DNSRecord, *exte
 	return nil
 }
 
-func (a *actuator) getZone(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, dnsClient gcpclient.DNS) (string, error) {
+func (a *actuator) getManagedZone(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, dnsClient gcpclient.DNSClient) (string, error) {
 	switch {
 	case dns.Spec.Zone != nil && *dns.Spec.Zone != "":
 		return *dns.Spec.Zone, nil
@@ -137,18 +139,18 @@ func (a *actuator) getZone(ctx context.Context, dns *extensionsv1alpha1.DNSRecor
 		return *dns.Status.Zone, nil
 	default:
 		// The zone is not specified in the resource status or spec. Try to determine the zone by
-		// getting all hosted zones of the account and searching for the longest zone name that is a suffix of dns.spec.Name
-		zones, err := dnsClient.GetHostedZones(ctx)
+		// getting all managed zones of the account and searching for the longest zone name that is a suffix of dns.spec.Name
+		zones, err := dnsClient.GetManagedZones(ctx)
 		if err != nil {
 			return "", &controllererror.RequeueAfterError{
-				Cause:        fmt.Errorf("could not get DNS hosted zones: %+v", err),
+				Cause:        fmt.Errorf("could not get DNS managed zones: %+v", err),
 				RequeueAfter: requeueAfterOnProviderError,
 			}
 		}
-		a.logger.Info("Got DNS hosted zones", "zones", zones, "dnsrecord", kutil.ObjectName(dns))
+		a.logger.Info("Got DNS managed zones", "zones", zones, "dnsrecord", kutil.ObjectName(dns))
 		zone := dnsrecord.FindZoneForName(zones, dns.Spec.Name)
 		if zone == "" {
-			return "", fmt.Errorf("could not find DNS hosted zone for name %s", dns.Spec.Name)
+			return "", fmt.Errorf("could not find DNS managed zone for name %s", dns.Spec.Name)
 		}
 		return zone, nil
 	}

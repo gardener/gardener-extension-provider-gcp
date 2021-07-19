@@ -21,14 +21,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// NewGCPFactory returns a new factory to produce clients for various GCP services.
+// Factory is a factory that can produce clients for various GCP Services.
+type Factory interface {
+	NewDNSClient(context.Context, client.Client, corev1.SecretReference) (DNSClient, error)
+	NewStorageClient(context.Context, client.Client, corev1.SecretReference) (StorageClient, error)
+}
+
+type factory struct{}
+
+// NewFactory returns a new factory to produce clients for various GCP services.
 func NewFactory() Factory {
 	return factory{}
 }
 
 // NewDNSClient reads the secret from the passed reference and returns a GCP cloud DNS service client.
-func (f factory) NewDNSClient(ctx context.Context, client client.Client, secretRef corev1.SecretReference) (DNS, error) {
-	return newDNSServiceFromSecretRef(ctx, client, secretRef)
+func (f factory) NewDNSClient(ctx context.Context, client client.Client, secretRef corev1.SecretReference) (DNSClient, error) {
+	return NewDNSClientFromSecretRef(ctx, client, secretRef)
 }
 
 // NewStorageClient reads the secret from the passed reference and returns a GCP (blob) storage client.

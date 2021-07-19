@@ -28,7 +28,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func newDNSService(ctx context.Context, serviceAccount *gcp.ServiceAccount) (DNS, error) {
+// DNSClient is an interface which must be implemented by GCP DNS clients.
+type DNSClient interface {
+	GetManagedZones(ctx context.Context) (map[string]string, error)
+	CreateOrUpdateRecordSet(ctx context.Context, managedZone, name, recordType string, rrdatas []string, ttl int64) error
+	DeleteRecordSet(ctx context.Context, managedZone, name, recordType string) error
+}
+
+type dnsClient struct {
+	service   *googledns.Service
+	projectID string
+}
+
+func newDNSService(ctx context.Context, serviceAccount *gcp.ServiceAccount) (DNSClient, error) {
 	credentials, err := google.CredentialsFromJSON(ctx, serviceAccount.Raw, googledns.NdevClouddnsReadwriteScope)
 	if err != nil {
 		return nil, err
@@ -45,7 +57,7 @@ func newDNSService(ctx context.Context, serviceAccount *gcp.ServiceAccount) (DNS
 	}, nil
 }
 
-func newDNSServiceFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (DNS, error) {
+func NewDNSClientFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (DNSClient, error) {
 	serviceAccount, err := gcp.GetServiceAccount(ctx, c, secretRef)
 	if err != nil {
 		return nil, err
@@ -54,8 +66,8 @@ func newDNSServiceFromSecretRef(ctx context.Context, c client.Client, secretRef 
 	return newDNSService(ctx, serviceAccount)
 }
 
-// GetHostedZones returns a map of all zone DNS names mapped to their user assigned resource names.
-func (s *dnsClient) GetHostedZones(ctx context.Context) (map[string]string, error) {
+// GetManagedZones returns a map of all managed zone DNS names mapped to their user assigned resource names.
+func (s *dnsClient) GetManagedZones(ctx context.Context) (map[string]string, error) {
 	zones := make(map[string]string)
 	f := func(resp *googledns.ManagedZonesListResponse) error {
 		for _, zone := range resp.ManagedZones {
@@ -70,31 +82,31 @@ func (s *dnsClient) GetHostedZones(ctx context.Context) (map[string]string, erro
 	return zones, nil
 }
 
-// CreateOrUpdateRecordSet creates or updates the ResourceRecordSet with the given name, record type, records, and ttl
-// in the zone with the given zone ID.
-func (s *dnsClient) CreateOrUpdateRecordSet(ctx context.Context, zoneId, name, recordType string, records []string, ttl int64) error {
+// CreateOrUpdateRecordSet creates or updates the resource recordset with the given name, record type, rrdatas, and ttl
+// in the managed zone with the given name.
+func (s *dnsClient) CreateOrUpdateRecordSet(ctx context.Context, managedZone, name, recordType string, rrdatas []string, ttl int64) error {
 	name = ensureTrailingDot(name)
-	rrs, err := s.getResourceRecordSet(ctx, zoneId, name, recordType)
+	rrs, err := s.getResourceRecordSet(ctx, managedZone, name, recordType)
 	if err != nil {
 		return err
 	}
-	records = formatRecords(recordType, records)
+	rrdatas = formatRrdatas(recordType, rrdatas)
 	change := &googledns.Change{}
 	if rrs != nil {
-		if reflect.DeepEqual(rrs.Rrdatas, records) && rrs.Ttl == ttl {
+		if reflect.DeepEqual(rrs.Rrdatas, rrdatas) && rrs.Ttl == ttl {
 			return nil
 		}
 		change.Deletions = append(change.Deletions, rrs)
 	}
-	change.Additions = append(change.Additions, &googledns.ResourceRecordSet{Name: name, Type: recordType, Rrdatas: records, Ttl: ttl})
-	_, err = s.service.Changes.Create(s.projectID, zoneId, change).Do()
+	change.Additions = append(change.Additions, &googledns.ResourceRecordSet{Name: name, Type: recordType, Rrdatas: rrdatas, Ttl: ttl})
+	_, err = s.service.Changes.Create(s.projectID, managedZone, change).Context(ctx).Do()
 	return err
 }
 
-// DeleteRecordSet deletes the recordset with the given name and record type in the zone with the given zone ID.
-func (s *dnsClient) DeleteRecordSet(ctx context.Context, zoneId, name, recordType string) error {
+// DeleteRecordSet deletes the resource recordset with the given name and record type in the managed zone with the given name.
+func (s *dnsClient) DeleteRecordSet(ctx context.Context, managedZone, name, recordType string) error {
 	name = ensureTrailingDot(name)
-	rrs, err := s.getResourceRecordSet(ctx, zoneId, name, recordType)
+	rrs, err := s.getResourceRecordSet(ctx, managedZone, name, recordType)
 	if err != nil {
 		return err
 	}
@@ -102,14 +114,14 @@ func (s *dnsClient) DeleteRecordSet(ctx context.Context, zoneId, name, recordTyp
 		return nil
 	}
 	change := &googledns.Change{
-		Deletions: []*googledns.ResourceRecordSet{{Name: rrs.Name, Type: rrs.Type, Rrdatas: rrs.Rrdatas, Ttl: rrs.Ttl}},
+		Deletions: []*googledns.ResourceRecordSet{rrs},
 	}
-	_, err = s.service.Changes.Create(s.projectID, zoneId, change).Do()
+	_, err = s.service.Changes.Create(s.projectID, managedZone, change).Context(ctx).Do()
 	return err
 }
 
-func (s *dnsClient) getResourceRecordSet(ctx context.Context, zoneId, name, recordType string) (*googledns.ResourceRecordSet, error) {
-	resp, err := s.service.ResourceRecordSets.List(s.projectID, zoneId).Name(name).Type(recordType).Do()
+func (s *dnsClient) getResourceRecordSet(ctx context.Context, managedZone, name, recordType string) (*googledns.ResourceRecordSet, error) {
+	resp, err := s.service.ResourceRecordSets.List(s.projectID, managedZone).Context(ctx).Name(name).Type(recordType).Do()
 	if err != nil {
 		return nil, err
 	}
@@ -129,16 +141,16 @@ func normalizeZoneName(zoneName string) string {
 	return zoneName
 }
 
-func formatRecords(recordType string, values []string) []string {
-	records := make([]string, len(values))
-	for i, val := range values {
+func formatRrdatas(recordType string, values []string) []string {
+	rrdatas := make([]string, len(values))
+	for i, value := range values {
 		if recordType == "CNAME" {
-			records[i] = ensureTrailingDot(val)
+			rrdatas[i] = ensureTrailingDot(value)
 		} else {
-			records[i] = val
+			rrdatas[i] = value
 		}
 	}
-	return records
+	return rrdatas
 }
 
 func ensureTrailingDot(host string) string {

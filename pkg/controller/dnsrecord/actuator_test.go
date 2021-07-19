@@ -52,13 +52,12 @@ var _ = Describe("Actuator", func() {
 		c                *mockclient.MockClient
 		sw               *mockclient.MockStatusWriter
 		gcpClientFactory *mockgcpclient.MockFactory
-		gcpDNSClient     *mockgcpclient.MockDNS
+		gcpDNSClient     *mockgcpclient.MockDNSClient
 		ctx              context.Context
 		logger           logr.Logger
 		a                dnsrecord.Actuator
 		dns              *extensionsv1alpha1.DNSRecord
-		//secret           *corev1.Secret
-		zones map[string]string
+		zones            map[string]string
 	)
 
 	BeforeEach(func() {
@@ -67,7 +66,7 @@ var _ = Describe("Actuator", func() {
 		c = mockclient.NewMockClient(ctrl)
 		sw = mockclient.NewMockStatusWriter(ctrl)
 		gcpClientFactory = mockgcpclient.NewMockFactory(ctrl)
-		gcpDNSClient = mockgcpclient.NewMockDNS(ctrl)
+		gcpDNSClient = mockgcpclient.NewMockDNSClient(ctrl)
 
 		c.EXPECT().Status().Return(sw).AnyTimes()
 
@@ -96,16 +95,6 @@ var _ = Describe("Actuator", func() {
 				Values:     []string{address},
 			},
 		}
-		// secret = &corev1.Secret{
-		// 	ObjectMeta: metav1.ObjectMeta{
-		// 		Name:      name,
-		// 		Namespace: namespace,
-		// 	},
-		// 	Type: corev1.SecretTypeOpaque,
-		// 	Data: map[string][]byte{
-		// 		gcp.ServiceAccountJSONField: []byte(serviceAccount),
-		// 	},
-		// }
 
 		zones = map[string]string{
 			shootDomain:   zone,
@@ -121,7 +110,7 @@ var _ = Describe("Actuator", func() {
 	Describe("#Reconcile", func() {
 		It("should reconcile the DNSRecord", func() {
 			gcpClientFactory.EXPECT().NewDNSClient(ctx, c, dns.Spec.SecretRef).Return(gcpDNSClient, nil)
-			gcpDNSClient.EXPECT().GetHostedZones(ctx).Return(zones, nil)
+			gcpDNSClient.EXPECT().GetManagedZones(ctx).Return(zones, nil)
 			gcpDNSClient.EXPECT().CreateOrUpdateRecordSet(ctx, zone, domainName, string(extensionsv1alpha1.DNSRecordTypeA), []string{address}, int64(120)).Return(nil)
 			gcpDNSClient.EXPECT().DeleteRecordSet(ctx, zone, "comment-"+domainName, "TXT").Return(nil)
 			c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&extensionsv1alpha1.DNSRecord{})).DoAndReturn(

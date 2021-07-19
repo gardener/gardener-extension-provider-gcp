@@ -16,4 +16,6 @@ package gcp
 
 // Type is the type of resources managed by the GCP actuator.
 const Type = "gcp"
+
+// DNSType is the type of resources managed by the GCP DNS actuator.
 const DNSType = "gcp-dns"
