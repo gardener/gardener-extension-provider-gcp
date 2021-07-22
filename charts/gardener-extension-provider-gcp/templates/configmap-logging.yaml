@@ -23,6 +23,13 @@ data:
 
     [FILTER]
         Name                parser
+        Match               kubernetes.*machine-controller-manager*machine-controller-manager-provider-gcp*
+        Key_Name            log
+        Parser              kubeapiserverParser
+        Reserve_Data        True
+
+    [FILTER]
+        Name                parser
         Match               kubernetes.*csi-driver-controller*gcp-csi*
         Key_Name            log
         Parser              kubeapiserverParser
@@ -33,3 +40,9 @@ data:
         Match               kubernetes.*
         Rule                $tag ^kubernetes\.var\.log\.containers\.(cloud-controller-manager-.+?_.+?_gcp-cloud-controller-manager|csi-driver-controller-.+?_.+?_gcp-csi) user-exposed.$TAG true
         Emitter_Name        re_emitted-provider-gcp
+
+    [FILTER]
+        Name                rewrite_tag
+        Match               kubernetes.*
+        Rule                $tag ^kubernetes\.var\.log\.containers\.machine-controller-manager-.+?_.+?_(gcp-machine-controller-manager|machine-controller-manager-provider-gcp) user-exposed.$TAG true
+        Emitter_Name        re_emitted-provider-gcp-mcm
