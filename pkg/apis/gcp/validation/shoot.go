@@ -15,6 +15,8 @@
 package validation
 
 import (
+	"fmt"
+
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/validation"
 
@@ -73,13 +75,19 @@ func validateVolume(vol *core.Volume, fldPath *field.Path) field.ErrorList {
 func ValidateWorkersUpdate(oldWorkers, newWorkers []core.Worker, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	for i, newWorker := range newWorkers {
+
+		workerFldPath := fldPath.Index(i)
 		for _, oldWorker := range oldWorkers {
 			if newWorker.Name == oldWorker.Name {
 				if validation.ShouldEnforceImmutability(newWorker.Zones, oldWorker.Zones) {
-					allErrs = append(allErrs, apivalidation.ValidateImmutableField(newWorker.Zones, oldWorker.Zones, fldPath.Index(i).Child("zones"))...)
+					allErrs = append(allErrs, apivalidation.ValidateImmutableField(newWorker.Zones, oldWorker.Zones, workerFldPath.Child("zones"))...)
 				}
 				break
 			}
+		}
+
+		if newWorker.Minimum < int32(len(newWorker.Zones)) {
+			allErrs = append(allErrs, field.Forbidden(workerFldPath.Child("minimum"), fmt.Sprintf("minimum value must be >= %d if maximum value > 0 (auto scaling to 0 & from 0 is not supported", len(newWorker.Zones))))
 		}
 	}
 	return allErrs

@@ -15,6 +15,8 @@
 package validation_test
 
 import (
+	"fmt"
+
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 
@@ -23,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/pointer"
 )
 
 func copyWorkers(workers []core.Worker) []core.Worker {
@@ -66,6 +69,113 @@ var _ = Describe("Shoot validation", func() {
 		})
 	})
 
+	Describe("#ValidateWorkersUpdate", func() {
+		var workerPath = field.NewPath("spec", "workers")
+
+		It("should not return any error because new worker pool added honors having min workers >= number of zones", func() {
+			newWorkers := []core.Worker{
+				{
+					Name: "worker-test",
+					Machine: core.Machine{
+						Type: "n1-standard-2",
+						Image: &core.ShootMachineImage{
+							Name:    "gardenlinux",
+							Version: "318.8.0",
+						},
+					},
+					Maximum: 6,
+					Minimum: 3,
+					Zones: []string{
+						"europe-west1-b",
+						"europe-west1-c",
+						"europe-west1-d",
+					},
+					Volume: &core.Volume{
+						Type:       pointer.StringPtr("pd-standard"),
+						VolumeSize: "50Gi",
+					},
+				},
+			}
+
+			oldWorkers := []core.Worker{
+				{
+					Name: "worker-test",
+					Machine: core.Machine{
+						Type: "n1-standard-2",
+						Image: &core.ShootMachineImage{
+							Name:    "gardenlinux",
+							Version: "318.8.0",
+						},
+					},
+					Maximum: 6,
+					Minimum: 1,
+					Zones: []string{
+						"europe-west1-b",
+					},
+					Volume: &core.Volume{
+						Type:       pointer.StringPtr("pd-standard"),
+						VolumeSize: "50Gi",
+					},
+				},
+			}
+
+			errorList := ValidateWorkersUpdate(oldWorkers, newWorkers, workerPath)
+
+			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should return an error because new worker pool added does not honor having min workers >= number of zones", func() {
+			newWorkers := []core.Worker{
+				{
+					Name: "worker-test",
+					Machine: core.Machine{
+						Type: "n1-standard-2",
+						Image: &core.ShootMachineImage{
+							Name:    "gardenlinux",
+							Version: "318.8.0",
+						},
+					},
+					Maximum: 6,
+					Minimum: 2,
+					Zones: []string{
+						"europe-west1-b",
+						"europe-west1-c",
+						"europe-west1-d",
+					},
+					Volume: &core.Volume{
+						Type:       pointer.StringPtr("pd-standard"),
+						VolumeSize: "50Gi",
+					},
+				},
+			}
+
+			oldWorkers := []core.Worker{
+				{
+					Name: "worker-test",
+					Machine: core.Machine{
+						Type: "n1-standard-2",
+						Image: &core.ShootMachineImage{
+							Name:    "gardenlinux",
+							Version: "318.8.0",
+						},
+					},
+					Maximum: 6,
+					Minimum: 1,
+					Zones: []string{
+						"europe-west1-b",
+					},
+					Volume: &core.Volume{
+						Type:       pointer.StringPtr("pd-standard"),
+						VolumeSize: "50Gi",
+					},
+				},
+			}
+
+			errorList := ValidateWorkersUpdate(oldWorkers, newWorkers, workerPath)
+
+			Expect(errorList[0].Error()).To(Equal("spec.workers[0].minimum: Forbidden: minimum value must be >= " + fmt.Sprint(len(newWorkers[0].Zones)) + " if maximum value > 0 (auto scaling to 0 & from 0 is not supported"))
+		})
+	})
 })
 
 func validateWorkerConfig(workers []core.Worker, workerConfig *gcp.WorkerConfig) field.ErrorList {

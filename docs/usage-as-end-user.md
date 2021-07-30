@@ -125,6 +125,36 @@ If you don't want to configure anything for the `cloudControllerManager` simply 
 
 ## WorkerConfig
 
+Multiple zones can be configured for a worker group of a GCP Shoot. The minimum number of machines in every worker group should be equal to the number of zones configured for that worker-group.
+
+> The predicate is - A worker group with N zones configured should have minimum N machines.
+
+⚠️ This is important because, as of today, Cluster Autoscaler does not support scale-from-zero on GCP.
+
+The following YAML is a snippet of a `Shoot` resource:
+
+```
+workers:
+  - name: worker-vezh0
+    machine:
+      type: n1-standard-2
+      image:
+        name: gardenlinux
+        version: 318.8.0
+    maximum: 6
+    minimum: 2 # the value should be equal to or greater than the number of zones
+    maxSurge: 1
+    maxUnavailable: 0
+    volume:
+      type: pd-standard
+      size: 50Gi
+    zones:
+      - europe-west1-c
+      - europe-west1-d
+    systemComponents:
+      allow: true
+```
+
 The worker configuration contains:
 
 * Local SSD interface for the additional volumes attached to GCP worker machines.
@@ -147,7 +177,6 @@ serviceAccount:
   scopes:
   - https://www.googleapis.com/auth/cloud-platform
 ```
-
 ## Example `Shoot` manifest
 
 Please find below an example `Shoot` manifest:
