@@ -125,7 +125,7 @@ If you don't want to configure anything for the `cloudControllerManager` simply 
 
 ## WorkerConfig
 
-Multiple zones can be configured for a worker group of a GCP Shoot. The minimum number of machines in every worker group should be equal to the number of zones configured for that worker-group.
+Multiple zones can be configured for a worker group of a GCP Shoot. The minimum number of machines in every worker group should be equal to or greater than the number of zones configured for that worker-group.
 
 > The predicate is - A worker group with N zones configured should have minimum N machines.
 
