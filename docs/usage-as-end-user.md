@@ -123,6 +123,9 @@ The `cloudControllerManager.featureGates` contains a map of explicitly enabled o
 For production usage it's not recommend to use this field at all as you can enable alpha features or disable beta/stable features, potentially impacting the cluster stability.
 If you don't want to configure anything for the `cloudControllerManager` simply omit the key in the YAML specification.
 
+The `cloudControllerManager.alphaFeatureGates` contains a map of enabled or disabled feature gates.
+The alpha features can only be enabled in when the `AllAlpha` feature gate is enabled.
+
 ## WorkerConfig
 
 Multiple zones can be configured for a worker group of a GCP Shoot. The minimum number of machines in every worker group should be equal to or greater than the number of zones configured for that worker-group.

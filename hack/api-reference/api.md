@@ -260,6 +260,18 @@ map[string]bool
 <p>FeatureGates contains information about enabled feature gates.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>alphaFeatureGates</code></br>
+<em>
+map[string]bool
+</em>
+</td>
+<td>
+<p>AlphaFeatureGates contains information about enabled alpha feature gates.
+Alpha Features require the &ldquo;AllAlpha&rdquo; feature gate enabled on the Cloud Controller Manager.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CloudNAT">CloudNAT

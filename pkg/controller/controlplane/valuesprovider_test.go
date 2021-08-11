@@ -71,6 +71,9 @@ var _ = Describe("ValuesProvider", func() {
 								FeatureGates: map[string]bool{
 									"CustomResourceValidation": true,
 								},
+								AlphaFeatureGates: map[string]bool{
+									"Test": true,
+								},
 							},
 						}),
 					},
@@ -184,6 +187,7 @@ var _ = Describe("ValuesProvider", func() {
 				"subNetworkName": "subnet-acbd1234",
 				"zone":           zone,
 				"nodeTags":       namespace,
+				"alphaFeatures":  []string{"Test"},
 			}))
 		})
 	})

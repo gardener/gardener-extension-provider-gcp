@@ -38,4 +38,7 @@ type CloudControllerManagerConfig struct {
 	// FeatureGates contains information about enabled feature gates.
 	// +optional
 	FeatureGates map[string]bool `json:"featureGates,omitempty"`
+	// AlphaFeatureGates contains information about enabled alpha feature gates.
+	// Alpha Features require the "AllAlpha" feature gate enabled on the Cloud Controller Manager.
+	AlphaFeatureGates map[string]bool `json:"alphaFeatureGates,omitempty"`
 }

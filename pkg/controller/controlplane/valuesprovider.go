@@ -417,7 +417,22 @@ func getConfigChartValues(
 		"subNetworkName": subNetworkName,
 		"zone":           cpConfig.Zone,
 		"nodeTags":       cp.Namespace,
+		"alphaFeatures":  getAlphaFeatuesValues(cpConfig.CloudControllerManager),
 	}, nil
+}
+
+func getAlphaFeatuesValues(ccmConfig *apisgcp.CloudControllerManagerConfig) []string {
+	var alphaFeatues = []string{}
+
+	if ccmConfig == nil {
+		return alphaFeatues
+	}
+	for feature, enabled := range ccmConfig.AlphaFeatureGates {
+		if enabled {
+			alphaFeatues = append(alphaFeatues, feature)
+		}
+	}
+	return alphaFeatues
 }
 
 // getControlPlaneChartValues collects and returns the control plane chart values.

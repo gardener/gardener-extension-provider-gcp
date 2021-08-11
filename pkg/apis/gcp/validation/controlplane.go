@@ -15,6 +15,8 @@
 package validation
 
 import (
+	"fmt"
+
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 
 	corevalidation "github.com/gardener/gardener/pkg/apis/core/validation"
@@ -39,6 +41,7 @@ func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, 
 
 	if controlPlaneConfig.CloudControllerManager != nil {
 		allErrs = append(allErrs, corevalidation.ValidateFeatureGates(controlPlaneConfig.CloudControllerManager.FeatureGates, version, fldPath.Child("cloudControllerManager", "featureGates"))...)
+		allErrs = append(allErrs, validateAlphaFeatures(controlPlaneConfig.CloudControllerManager.FeatureGates, controlPlaneConfig.CloudControllerManager.AlphaFeatureGates, fldPath.Child("cloudControllerManager", "alphaFeatures"))...)
 	}
 
 	return allErrs
@@ -59,4 +62,18 @@ func validateZoneConstraints(allowedZones sets.String, zone string) (bool, []str
 	}
 
 	return false, allowedZones.UnsortedList()
+}
+
+func validateAlphaFeatures(featureGates, alphaFeatures map[string]bool, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if len(alphaFeatures) == 0 {
+		return allErrs
+	}
+
+	if enabled, ok := featureGates[apisgcp.FeatureGateAllAlpha]; !ok || !enabled {
+		allErrs = append(allErrs, field.Invalid(fldPath, alphaFeatures, fmt.Sprintf("not allowed to specify cloud controller manager alpha features when %q feature gate is not active", apisgcp.FeatureGateAllAlpha)))
+	}
+
+	return allErrs
 }

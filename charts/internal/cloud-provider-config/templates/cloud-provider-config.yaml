@@ -15,3 +15,6 @@ data:
     local-zone="{{ .Values.zone }}"
     token-url=nil
     node-tags="{{ .Values.nodeTags }}"
+    {{- if .Values.alphaFeatures }}
+    alpha-features="{{range $index, $feature := .Values.alphaFeatures}}{{if $index}},{{end}}{{$feature}}{{end}}"
+    {{- end }}

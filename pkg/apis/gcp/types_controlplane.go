@@ -36,4 +36,10 @@ type ControlPlaneConfig struct {
 type CloudControllerManagerConfig struct {
 	// FeatureGates contains information about enabled feature gates.
 	FeatureGates map[string]bool
+	// AlphaFeatureGates contains information about enabled alpha feature gates.
+	// Alpha Features require the "AllAlpha" feature gate enabled on the Cloud Controller Manager.
+	AlphaFeatureGates map[string]bool
 }
+
+// FeatureGateAllAlpha reflect the "AllAlpha" feature gate.
+const FeatureGateAllAlpha = "AllAlpha"

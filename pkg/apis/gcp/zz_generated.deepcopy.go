@@ -34,6 +34,13 @@ func (in *CloudControllerManagerConfig) DeepCopyInto(out *CloudControllerManager
 			(*out)[key] = val
 		}
 	}
+	if in.AlphaFeatureGates != nil {
+		in, out := &in.AlphaFeatureGates, &out.AlphaFeatureGates
+		*out = make(map[string]bool, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 

@@ -109,6 +109,44 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 				})),
 			))
 		})
+
+		Context("alphaFeatures", func() {
+			It("should allow alpha features", func() {
+				controlPlane.CloudControllerManager = &apisgcp.CloudControllerManagerConfig{
+					FeatureGates: map[string]bool{
+						"AllAlpha": true,
+					},
+					AlphaFeatureGates: map[string]bool{
+						"xyz": true,
+						"abc": true,
+					},
+				}
+
+				errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "1.18.14", fldPath)
+
+				Expect(errorList).To(HaveLen(0))
+			})
+
+			It("should not allow alpha features", func() {
+				controlPlane.CloudControllerManager = &apisgcp.CloudControllerManagerConfig{
+					FeatureGates: map[string]bool{},
+					AlphaFeatureGates: map[string]bool{
+						"xyz": true,
+						"abc": true,
+					},
+				}
+
+				errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "1.18.14", fldPath)
+
+				Expect(errorList).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeInvalid),
+						"Field": Equal("cloudControllerManager.alphaFeatures"),
+					})),
+				))
+			})
+		})
+
 	})
 
 	Describe("#ValidateControlPlaneConfigUpdate", func() {
