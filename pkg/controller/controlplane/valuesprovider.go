@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Masterminds/semver"
+
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
@@ -453,6 +455,11 @@ func getCCMChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
+	kubeVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
+	if err != nil {
+		return nil, err
+	}
+
 	values := map[string]interface{}{
 		"enabled":           true,
 		"replicas":          extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
@@ -468,6 +475,7 @@ func getCCMChartValues(
 		"podLabels": map[string]interface{}{
 			v1beta1constants.LabelPodMaintenanceRestart: "true",
 		},
+		"tlsCipherSuites": kutil.TLSCipherSuites(kubeVersion),
 	}
 
 	if cpConfig.CloudControllerManager != nil {
