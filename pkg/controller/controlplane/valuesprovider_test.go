@@ -258,7 +258,8 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values).To(Equal(map[string]interface{}{
 				gcp.CloudControllerManagerName: enabledTrue,
 				gcp.CSINodeName: utils.MergeMaps(enabledFalse, map[string]interface{}{
-					"vpaEnabled": false,
+					"kubernetesVersion": "1.15.4",
+					"vpaEnabled":        false,
 				}),
 			}))
 		})
@@ -269,7 +270,8 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values).To(Equal(map[string]interface{}{
 				gcp.CloudControllerManagerName: enabledTrue,
 				gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-					"vpaEnabled": true,
+					"kubernetesVersion": "1.18.0",
+					"vpaEnabled":        true,
 				}),
 			}))
 		})

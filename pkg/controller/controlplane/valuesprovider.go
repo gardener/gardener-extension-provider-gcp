@@ -39,7 +39,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	storagev1beta1 "k8s.io/api/storage/v1beta1"
+	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apiserver/pkg/authentication/user"
 	autoscalingv1beta2 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2"
@@ -231,7 +231,7 @@ var (
 				Objects: []*chart.Object{
 					// csi-driver
 					{Type: &appsv1.DaemonSet{}, Name: gcp.CSINodeName},
-					{Type: &storagev1beta1.CSIDriver{}, Name: "pd.csi.storage.gke.io"},
+					{Type: &storagev1.CSIDriver{}, Name: "pd.csi.storage.gke.io"},
 					{Type: &corev1.ServiceAccount{}, Name: gcp.CSIDriverName},
 					{Type: &rbacv1.ClusterRole{}, Name: gcp.UsernamePrefix + gcp.CSIDriverName},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIDriverName},
@@ -520,7 +520,8 @@ func getCSIControllerChartValues(
 func getControlPlaneShootChartValues(
 	cluster *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
-	k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.18")
+	kubernetesVersion := cluster.Shoot.Spec.Kubernetes.Version
+	k8sVersionLessThan118, err := version.CompareVersions(kubernetesVersion, "<", "1.18")
 	if err != nil {
 		return nil, err
 	}
@@ -528,8 +529,9 @@ func getControlPlaneShootChartValues(
 	return map[string]interface{}{
 		gcp.CloudControllerManagerName: map[string]interface{}{"enabled": true},
 		gcp.CSINodeName: map[string]interface{}{
-			"enabled":    !k8sVersionLessThan118,
-			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
+			"enabled":           !k8sVersionLessThan118,
+			"kubernetesVersion": kubernetesVersion,
+			"vpaEnabled":        gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 		},
 	}, nil
 }
