@@ -12,6 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate mockgen -package client -destination=mocks.go github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client Factory,DNSClient,ComputeClient
+package infrastructure_test
 
-package client
+import (
+	"testing"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+)
+
+func TestInfrastructure(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Infrastructure Suite")
+}
