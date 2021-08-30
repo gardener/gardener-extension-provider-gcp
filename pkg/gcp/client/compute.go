@@ -55,6 +55,7 @@ func newComputeClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (
 	}, nil
 }
 
+// NewComputeClientFromSecretRef creates a new compute client from the given client and secret reference.
 func NewComputeClientFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (ComputeClient, error) {
 	serviceAccount, err := gcp.GetServiceAccount(ctx, c, secretRef)
 	if err != nil {
