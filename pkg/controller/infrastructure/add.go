@@ -16,9 +16,11 @@ package infrastructure
 
 import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 
+	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -40,6 +42,7 @@ type AddOptions struct {
 func AddToManagerWithOptions(mgr manager.Manager, options AddOptions) error {
 	return infrastructure.Add(mgr, infrastructure.AddArgs{
 		Actuator:          NewActuator(),
+		ConfigValidator:   NewConfigValidator(gcpclient.NewFactory(), log.Log),
 		ControllerOptions: options.Controller,
 		Predicates:        infrastructure.DefaultPredicates(options.IgnoreOperationAnnotation),
 		Type:              gcp.Type,

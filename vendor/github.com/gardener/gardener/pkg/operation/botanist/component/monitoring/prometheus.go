@@ -12,6 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate mockgen -package client -destination=mocks.go github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client Factory,DNSClient,ComputeClient
+package monitoring
 
-package client
+import (
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+)
+
+// GetPrometheusLabels returns the labels for the Prometheus.
+func GetPrometheusLabels() map[string]string {
+	return map[string]string{
+		v1beta1constants.DeprecatedGardenRole: "monitoring",
+		v1beta1constants.LabelApp:             "prometheus",
+		v1beta1constants.LabelRole:            "monitoring",
+	}
+}

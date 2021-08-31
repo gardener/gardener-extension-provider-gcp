@@ -40,7 +40,7 @@ type dnsClient struct {
 	projectID string
 }
 
-func newDNSService(ctx context.Context, serviceAccount *gcp.ServiceAccount) (DNSClient, error) {
+func newDNSClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (DNSClient, error) {
 	credentials, err := google.CredentialsFromJSON(ctx, serviceAccount.Raw, googledns.NdevClouddnsReadwriteScope)
 	if err != nil {
 		return nil, err
@@ -57,13 +57,14 @@ func newDNSService(ctx context.Context, serviceAccount *gcp.ServiceAccount) (DNS
 	}, nil
 }
 
+// NewDNSClientFromSecretRef creates a new DNS client from the given client and secret reference.
 func NewDNSClientFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (DNSClient, error) {
 	serviceAccount, err := gcp.GetServiceAccount(ctx, c, secretRef)
 	if err != nil {
 		return nil, err
 	}
 
-	return newDNSService(ctx, serviceAccount)
+	return newDNSClient(ctx, serviceAccount)
 }
 
 // GetManagedZones returns a map of all managed zone DNS names mapped to their user assigned resource names.
