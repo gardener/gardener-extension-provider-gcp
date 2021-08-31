@@ -16,12 +16,12 @@ package infrastructure
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -60,7 +60,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
 		Apply(ctx); err != nil {
 
-		return errors.Wrap(err, "failed to apply the terraform config")
+		return fmt.Errorf("failed to apply the terraform config: %w", err)
 	}
 
 	return a.updateProviderStatus(ctx, tf, infra, config)
