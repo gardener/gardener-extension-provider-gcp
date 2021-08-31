@@ -32,7 +32,6 @@ import (
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
-	"github.com/pkg/errors"
 	computev1 "google.golang.org/api/compute/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -68,7 +67,7 @@ func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
 
 	// Delete any older version machine class CRs.
 	if err := w.Client().DeleteAllOf(ctx, &machinev1alpha1.GCPMachineClass{}, client.InNamespace(w.worker.Namespace)); err != nil {
-		return errors.Wrapf(err, "cleaning up older version of GCP machine class CRs failed")
+		return fmt.Errorf("cleaning up older version of GCP machine class CRs failed: %w", err)
 	}
 
 	return w.seedChartApplier.Apply(ctx, filepath.Join(gcp.InternalChartsPath, "machineclass"), w.worker.Namespace, "machineclass", kubernetes.Values(map[string]interface{}{"machineClasses": w.machineClasses}))
