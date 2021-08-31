@@ -5,3 +5,11 @@ run:
 linters:
   disable:
   - unused
+  enable:
+  - golint
+
+issues:
+  exclude-use-default: false
+  exclude:
+  # golint:
+  - (don't use underscores in Go names;|var `.*` should be `.*`|a blank import should be only in a main or test package|package comment should be of the form)

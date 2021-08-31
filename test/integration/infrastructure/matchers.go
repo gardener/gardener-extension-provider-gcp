@@ -23,13 +23,14 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
-type BeNotFoundErrorMatcher struct{}
+type beNotFoundErrorMatcher struct{}
 
+// BeNotFoundError returns a matcher that checks if an error is a googleapi.Error with Code http.StatusNotFound.
 func BeNotFoundError() types.GomegaMatcher {
-	return &BeNotFoundErrorMatcher{}
+	return &beNotFoundErrorMatcher{}
 }
 
-func (m *BeNotFoundErrorMatcher) Match(actual interface{}) (success bool, err error) {
+func (m *beNotFoundErrorMatcher) Match(actual interface{}) (success bool, err error) {
 	if actual == nil {
 		return false, nil
 	}
@@ -42,9 +43,10 @@ func (m *BeNotFoundErrorMatcher) Match(actual interface{}) (success bool, err er
 	return actualErr.Code == http.StatusNotFound, nil
 }
 
-func (k *BeNotFoundErrorMatcher) FailureMessage(actual interface{}) (message string) {
+func (m *beNotFoundErrorMatcher) FailureMessage(actual interface{}) (message string) {
 	return format.Message(actual, "to be not found error")
 }
-func (k *BeNotFoundErrorMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+
+func (m *beNotFoundErrorMatcher) NegatedFailureMessage(actual interface{}) (message string) {
 	return format.Message(actual, "to not be not found error")
 }
