@@ -35,11 +35,11 @@ const (
 )
 
 var (
-	cfg    *GeneratorConfig
+	cfg    *generatorConfig
 	logger logr.Logger
 )
 
-type GeneratorConfig struct {
+type generatorConfig struct {
 	infrastructureProviderConfigPath string
 	controlplaneProviderConfigPath   string
 	networkWorkerCidr                string
@@ -47,7 +47,7 @@ type GeneratorConfig struct {
 }
 
 func addFlags() {
-	cfg = &GeneratorConfig{}
+	cfg = &generatorConfig{}
 	flag.StringVar(&cfg.infrastructureProviderConfigPath, "infrastructure-provider-config-filepath", "", "filepath to the provider specific infrastructure config")
 	flag.StringVar(&cfg.controlplaneProviderConfigPath, "controlplane-provider-config-filepath", "", "filepath to the provider specific controlplane config")
 

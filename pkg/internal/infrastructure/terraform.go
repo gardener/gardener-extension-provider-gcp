@@ -166,7 +166,7 @@ func ComputeTerraformerTemplateValues(
 	return values
 }
 
-// RenderTerraformerChart renders the gcp-infra chart with the given values.
+// RenderTerraformerTemplate renders the gcp-infra chart with the given values.
 func RenderTerraformerTemplate(
 	infra *extensionsv1alpha1.Infrastructure,
 	account *gcp.ServiceAccount,
