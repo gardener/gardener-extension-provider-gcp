@@ -237,8 +237,8 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "gardener-resource-manager",
 				Labels: labels.Set{
-					"app":                     "gardener-resource-manager",
-					"garden.sapcloud.io/role": "controlplane"},
+					"app":                 "gardener-resource-manager",
+					"gardener.cloud/role": "controlplane"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Ports: []networkpolicies.Port(nil),
@@ -251,8 +251,8 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "gardener-resource-manager",
 				Labels: labels.Set{
-					"app":                     "gardener-resource-manager",
-					"garden.sapcloud.io/role": "controlplane"},
+					"app":                 "gardener-resource-manager",
+					"gardener.cloud/role": "controlplane"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Port: networkpolicies.Port{
@@ -262,8 +262,8 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "grafana",
 				Labels: labels.Set{
-					"component":               "grafana",
-					"garden.sapcloud.io/role": "monitoring"},
+					"component":           "grafana",
+					"gardener.cloud/role": "monitoring"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Ports: []networkpolicies.Port{
@@ -278,8 +278,8 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "grafana",
 				Labels: labels.Set{
-					"component":               "grafana",
-					"garden.sapcloud.io/role": "monitoring"},
+					"component":           "grafana",
+					"gardener.cloud/role": "monitoring"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Port: networkpolicies.Port{
@@ -320,9 +320,9 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "kube-controller-manager-https",
 				Labels: labels.Set{
-					"app":                     "kubernetes",
-					"garden.sapcloud.io/role": "controlplane",
-					"role":                    "controller-manager"},
+					"app":                 "kubernetes",
+					"gardener.cloud/role": "controlplane",
+					"role":                "controller-manager"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Ports: []networkpolicies.Port{
@@ -341,9 +341,9 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "kube-controller-manager-https",
 				Labels: labels.Set{
-					"app":                     "kubernetes",
-					"garden.sapcloud.io/role": "controlplane",
-					"role":                    "controller-manager"},
+					"app":                 "kubernetes",
+					"gardener.cloud/role": "controlplane",
+					"role":                "controller-manager"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Port: networkpolicies.Port{
@@ -353,9 +353,9 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "kube-scheduler-https",
 				Labels: labels.Set{
-					"app":                     "kubernetes",
-					"garden.sapcloud.io/role": "controlplane",
-					"role":                    "scheduler"},
+					"app":                 "kubernetes",
+					"gardener.cloud/role": "controlplane",
+					"role":                "scheduler"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Ports: []networkpolicies.Port{
@@ -371,9 +371,9 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "kube-scheduler-https",
 				Labels: labels.Set{
-					"app":                     "kubernetes",
-					"garden.sapcloud.io/role": "controlplane",
-					"role":                    "scheduler"},
+					"app":                 "kubernetes",
+					"gardener.cloud/role": "controlplane",
+					"role":                "scheduler"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Port: networkpolicies.Port{
@@ -383,9 +383,9 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "kube-state-metrics-shoot",
 				Labels: labels.Set{
-					"component":               "kube-state-metrics",
-					"garden.sapcloud.io/role": "monitoring",
-					"type":                    "shoot"},
+					"component":           "kube-state-metrics",
+					"gardener.cloud/role": "monitoring",
+					"type":                "shoot"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Ports: []networkpolicies.Port{
@@ -401,9 +401,9 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "kube-state-metrics-shoot",
 				Labels: labels.Set{
-					"component":               "kube-state-metrics",
-					"garden.sapcloud.io/role": "monitoring",
-					"type":                    "shoot"},
+					"component":           "kube-state-metrics",
+					"gardener.cloud/role": "monitoring",
+					"type":                "shoot"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Port: networkpolicies.Port{
@@ -477,9 +477,9 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "prometheus",
 				Labels: labels.Set{
-					"app":                     "prometheus",
-					"garden.sapcloud.io/role": "monitoring",
-					"role":                    "monitoring"},
+					"app":                 "prometheus",
+					"gardener.cloud/role": "monitoring",
+					"role":                "monitoring"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Ports: []networkpolicies.Port{
@@ -498,9 +498,9 @@ var _ = Describe("Network Policy Testing", func() {
 			Pod: networkpolicies.Pod{
 				Name: "prometheus",
 				Labels: labels.Set{
-					"app":                     "prometheus",
-					"garden.sapcloud.io/role": "monitoring",
-					"role":                    "monitoring"},
+					"app":                 "prometheus",
+					"gardener.cloud/role": "monitoring",
+					"role":                "monitoring"},
 				ShootVersionConstraint: "",
 				SeedClusterConstraints: sets.String(nil)},
 			Port: networkpolicies.Port{
