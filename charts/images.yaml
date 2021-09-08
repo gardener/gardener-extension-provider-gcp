@@ -50,6 +50,7 @@ images:
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: k8s.gcr.io/sig-storage/csi-provisioner
   tag: "v3.0.0"
+  targetVersion: ">= 1.20"
 - name: csi-attacher
   sourceRepository: github.com/kubernetes-csi/external-attacher
   repository: k8s.gcr.io/sig-storage/csi-attacher
