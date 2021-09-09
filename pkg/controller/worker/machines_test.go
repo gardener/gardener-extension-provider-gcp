@@ -379,7 +379,6 @@ var _ = Describe("Machines", func() {
 								"boot":       false,
 								"sizeGb":     volumeSize,
 								"type":       localVolumeType,
-								"image":      machineImage,
 								"interface":  localVolumeInterface,
 								"labels": map[string]interface{}{
 									"name": name,
