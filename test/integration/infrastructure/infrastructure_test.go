@@ -410,11 +410,7 @@ func prepareNewNetwork(ctx context.Context, logger logr.Logger, project string, 
 		return err
 	}
 	logger.Info("Waiting until router is created...", "router", routerName)
-	if err := waitForOperation(ctx, project, computeService, routerOp); err != nil {
-		return err
-	}
-
-	return nil
+	return waitForOperation(ctx, project, computeService, routerOp)
 }
 
 func teardownNetwork(ctx context.Context, logger logr.Logger, project string, computeService *compute.Service, networkName, routerName string) error {
@@ -436,11 +432,7 @@ func teardownNetwork(ctx context.Context, logger logr.Logger, project string, co
 	}
 
 	logger.Info("Waiting until network is deleted...", "network", networkName)
-	if err := waitForOperation(ctx, project, computeService, networkOp); err != nil {
-		return err
-	}
-
-	return nil
+	return waitForOperation(ctx, project, computeService, networkOp)
 }
 
 func waitForOperation(ctx context.Context, project string, computeService *compute.Service, op *compute.Operation) error {

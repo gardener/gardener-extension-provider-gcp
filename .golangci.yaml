@@ -6,10 +6,12 @@ linters:
   disable:
   - unused
   enable:
-  - golint
+  - revive
 
 issues:
   exclude-use-default: false
   exclude:
-  # golint:
-  - (don't use underscores in Go names;|var `.*` should be `.*`|a blank import should be only in a main or test package|package comment should be of the form)
+  # revive
+  - var-naming # ((var|const|struct field|func) .* should be .*
+  - package-comments # package comment should be of the form
+
