@@ -137,7 +137,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 		}
 		for _, volume := range pool.DataVolumes {
-			disk, err := createDiskSpecForDataVolume(volume, w.worker.Name, machineImage, false)
+			disk, err := createDiskSpecForDataVolume(volume, w.worker.Name, false)
 			if err != nil {
 				return err
 			}
@@ -237,14 +237,16 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 }
 
 func createDiskSpecForVolume(volume v1alpha1.Volume, workerName string, machineImage string, boot bool) (map[string]interface{}, error) {
-	return createDiskSpec(volume.Size, workerName, machineImage, boot, volume.Type)
+	return createDiskSpec(volume.Size, workerName, boot, &machineImage, volume.Type)
 }
 
-func createDiskSpecForDataVolume(volume v1alpha1.DataVolume, workerName string, machineImage string, boot bool) (map[string]interface{}, error) {
-	return createDiskSpec(volume.Size, workerName, machineImage, boot, volume.Type)
+func createDiskSpecForDataVolume(volume v1alpha1.DataVolume, workerName string, boot bool) (map[string]interface{}, error) {
+	// Don't set machine image for data volumes. Any pre-existing data on the disk can interfere with the boot disk.
+	// See https://github.com/gardener/gardener-extension-provider-gcp/issues/323
+	return createDiskSpec(volume.Size, workerName, boot, nil, volume.Type)
 }
 
-func createDiskSpec(size, workerName, machineImage string, boot bool, volumeType *string) (map[string]interface{}, error) {
+func createDiskSpec(size, workerName string, boot bool, machineImage, volumeType *string) (map[string]interface{}, error) {
 	volumeSize, err := worker.DiskSize(size)
 	if err != nil {
 		return nil, err
@@ -254,10 +256,13 @@ func createDiskSpec(size, workerName, machineImage string, boot bool, volumeType
 		"autoDelete": true,
 		"boot":       boot,
 		"sizeGb":     volumeSize,
-		"image":      machineImage,
 		"labels": map[string]interface{}{
 			"name": workerName,
 		},
+	}
+
+	if machineImage != nil {
+		disk["image"] = *machineImage
 	}
 
 	if volumeType != nil {
