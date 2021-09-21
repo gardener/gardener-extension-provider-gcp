@@ -146,7 +146,7 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 		f = g.Compile()
 	)
 
-	if err := f.Run(flow.Opts{Context: ctx}); err != nil {
+	if err := f.Run(ctx, flow.Opts{}); err != nil {
 		return flow.Causes(err)
 	}
 	return nil
