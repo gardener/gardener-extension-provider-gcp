@@ -1,0 +1,490 @@
+deployItems:
+- name: manifests
+  type: landscaper.gardener.cloud/kubernetes-manifest
+  target:
+    name: {{ .imports.cluster.metadata.name }}
+    namespace: {{ .imports.cluster.metadata.namespace }}
+  config:
+    apiVersion: manifest.deployer.landscaper.gardener.cloud/v1alpha2
+    kind: ProviderConfiguration
+    updateStrategy: update
+    manifests:
+    - policy: manage
+      manifest:
+        apiVersion: core.gardener.cloud/v1beta1
+        kind: ControllerDeployment
+        metadata:
+          name: provider-gcp
+          namespace: garden
+        type: helm
+        providerConfig:
+          {{- $chart := getResource .cd "name" "gardener-extension-provider-gcp-chart" }}
+          chart: {{ resolve ( $chart.access ) | toString | b64enc }}
+          values:
+            image:
+              {{- $image := getResource .cd "name" "gardener-extension-provider-gcp" }}
+              repository: {{ ociRefRepo ( $image.access.imageReference ) }}
+              tag: {{ ociRefVersion ( $image.access.imageReference ) }}
+            replicaCount: 3
+            resources:
+              {{- if .imports.controllerRegistration.resources }}
+              {{- toYaml .imports.controllerRegistration.resources | nindent 16 }}
+              {{- else }}
+              requests:
+                cpu: "20m"
+                memory: "64Mi"
+              limits:
+                cpu: "100m"
+                memory: "256Mi"
+              {{- end }}
+            vpa:
+              {{- if .imports.controllerRegistration.vpa }}
+              {{- toYaml .imports.controllerRegistration.vpa | nindent 16}}
+              {{- else }}
+              enabled: true
+              updatePolicy:
+                updateMode: "Auto"
+              {{- end }}
+            controllers:
+              {{- if .imports.controllerRegistration.concurrentSyncs }}
+              backupentry:
+                concurrentSyncs: {{ .imports.controllerRegistration.concurrentSyncs }}
+              controlplane:
+                concurrentSyncs: {{ .imports.controllerRegistration.concurrentSyncs }}
+              dnsrecord:
+                concurrentSyncs: {{ .imports.controllerRegistration.concurrentSyncs }}
+              healthcheck:
+                concurrentSyncs: {{ .imports.controllerRegistration.concurrentSyncs }}
+              infrastructure:
+                concurrentSyncs: {{ .imports.controllerRegistration.concurrentSyncs }}
+              worker:
+                concurrentSyncs: {{ .imports.controllerRegistration.concurrentSyncs }}
+              {{- else }}
+              backupentry:
+                concurrentSyncs: 20
+              controlplane:
+                concurrentSyncs: 20
+              dnsrecord:
+                concurrentSyncs: 20
+              healthcheck:
+                concurrentSyncs: 20
+              infrastructure:
+                concurrentSyncs: 20
+              worker:
+                concurrentSyncs: 20
+              {{- end }}
+            config:
+              etcd:
+                storage:
+                  className: gardener.cloud-fast
+                  capacity: 25Gi
+            {{- if .imports.imageVectorOverwrite }}
+            imageVectorOverwrite: |
+              {{- toYaml .imports.imageVectorOverwrite | nindent 16 }}
+            {{- end }}
+
+    - policy: manage
+      manifest:
+        apiVersion: core.gardener.cloud/v1beta1
+        kind: ControllerRegistration
+        metadata:
+          name: provider-gcp
+        spec:
+          resources:
+            - kind: BackupBucket
+              type: gcp
+            - kind: BackupEntry
+              type: gcp
+            - kind: ControlPlane
+              type: gcp
+            - kind: DNSRecord
+              type: google-clouddns
+            - kind: Infrastructure
+              type: gcp
+            - kind: Worker
+              type: gcp
+          deployment:
+            deploymentRefs:
+              - name: provider-gcp
+
+    - policy: manage
+      manifest:
+        apiVersion: core.gardener.cloud/v1beta1
+        kind: CloudProfile
+        metadata:
+          name: gcp
+        spec:
+          type: gcp
+          providerConfig:
+            apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+            kind: CloudProfileConfig
+            machineImages:
+            {{- range $i, $machineImage := .imports.cloudProfile.machineImages }}
+            - name: {{ $machineImage.name }}
+              versions:
+              {{- range $i, $version := $machineImage.versions }}
+              - version: {{ $version.version }}
+                image: {{ $version.image }}
+              {{- end }}
+            {{- end }}
+          machineImages:
+          {{- toYaml .imports.cloudProfile.machineImages | nindent 10 }}
+          kubernetes:
+            versions:
+            {{- toYaml .imports.kubernetesVersions | nindent 12 }}
+          # Note:
+          # - Please don't add machine types that don't have at least 2 CPU cores and 3Gi of memory.
+          #   The allocatable resources on such "small" machines are not enough to run the system components
+          #   and addons without disruptions.
+          machineTypes:
+            - name: n1-standard-2
+              cpu: "2"
+              gpu: "0"
+              memory: 7500Mi
+            - name: n1-standard-4
+              cpu: "4"
+              gpu: "0"
+              memory: 15Gi
+            - name: n1-standard-8
+              cpu: "8"
+              gpu: "0"
+              memory: 30Gi
+            - name: n1-standard-16
+              cpu: "16"
+              gpu: "0"
+              memory: 60Gi
+            - name: n1-standard-32
+              cpu: "32"
+              gpu: "0"
+              memory: 120Gi
+            - name: n1-standard-64
+              cpu: "64"
+              gpu: "0"
+              memory: 240Gi
+            - name: n1-highmem-2
+              cpu: "2"
+              gpu: "0"
+              memory: 13Gi
+            - name: n1-highmem-4
+              cpu: "4"
+              gpu: "0"
+              memory: 26Gi
+            - name: n1-highmem-8
+              cpu: "8"
+              gpu: "0"
+              memory: 52Gi
+            - name: n1-highmem-16
+              cpu: "16"
+              gpu: "0"
+              memory: 104Gi
+            - name: n1-highmem-32
+              cpu: "32"
+              gpu: "0"
+              memory: 208Gi
+            - name: n1-highmem-64
+              cpu: "64"
+              gpu: "0"
+              memory: 416Gi
+            - name: n1-highmem-96
+              cpu: "96"
+              gpu: "0"
+              memory: 624Gi
+            - name: n2-standard-2
+              cpu: "2"
+              gpu: "0"
+              memory: 8Gi
+            - name: n2-standard-4
+              cpu: "4"
+              gpu: "0"
+              memory: 16Gi
+            - name: n2-standard-8
+              cpu: "8"
+              gpu: "0"
+              memory: 32Gi
+            - name: n2-standard-16
+              cpu: "16"
+              gpu: "0"
+              memory: 64Gi
+            - name: n2-standard-32
+              cpu: "32"
+              gpu: "0"
+              memory: 128Gi
+            - name: n2-standard-64
+              cpu: "64"
+              gpu: "0"
+              memory: 256Gi
+            - name: n2-standard-80
+              cpu: "80"
+              gpu: "0"
+              memory: 320Gi
+            - name: n2-highmem-2
+              cpu: "2"
+              gpu: "0"
+              memory: 16Gi
+            - name: n2-highmem-4
+              cpu: "4"
+              gpu: "0"
+              memory: 32Gi
+            - name: n2-highmem-8
+              cpu: "8"
+              gpu: "0"
+              memory: 64Gi
+            - name: n2-highmem-16
+              cpu: "16"
+              gpu: "0"
+              memory: 128Gi
+            - name: n2-highmem-32
+              cpu: "32"
+              gpu: "0"
+              memory: 256Gi
+            - name: n2-highmem-64
+              cpu: "64"
+              gpu: "0"
+              memory: 512Gi
+            - name: n2-highmem-80
+              cpu: "80"
+              gpu: "0"
+              memory: 640Gi
+            - name: n2d-standard-2
+              cpu: "2"
+              gpu: "0"
+              memory: 8Gi
+            - name: n2d-standard-4
+              cpu: "4"
+              gpu: "0"
+              memory: 16Gi
+            - name: n2d-standard-8
+              cpu: "8"
+              gpu: "0"
+              memory: 32Gi
+            - name: n2d-standard-16
+              cpu: "16"
+              gpu: "0"
+              memory: 64Gi
+            - name: n2d-highmem-2
+              cpu: "2"
+              gpu: "0"
+              memory: 16Gi
+            - name: n2d-highmem-4
+              cpu: "4"
+              gpu: "0"
+              memory: 32Gi
+            - name: n2d-highmem-8
+              cpu: "8"
+              gpu: "0"
+              memory: 64Gi
+            - name: n2d-highmem-16
+              cpu: "16"
+              gpu: "0"
+              memory: 128Gi
+            - name: m1-megamem-96
+              cpu: "96"
+              gpu: "0"
+              memory: 1434Gi
+            - name: m1-ultramem-40
+              cpu: "40"
+              gpu: "0"
+              memory: 961Gi
+            - name: m1-ultramem-80
+              cpu: "80"
+              gpu: "0"
+              memory: 1922Gi
+            - name: m1-ultramem-160
+              cpu: "160"
+              gpu: "0"
+              memory: 3844Gi
+            - name: m2-ultramem-208
+              cpu: "208"
+              gpu: "0"
+              memory: 5888Gi
+            - name: m2-ultramem-416
+              cpu: "416"
+              gpu: "0"
+              memory: 11776Gi
+            - name: m2-megamem-416
+              cpu: "416"
+              gpu: "0"
+              memory: 5888Gi
+            - name: e2-standard-2
+              cpu: "2"
+              gpu: "0"
+              memory: 8Gi
+            - name: e2-standard-4
+              cpu: "4"
+              gpu: "0"
+              memory: 16Gi
+            - name: e2-standard-8
+              cpu: "8"
+              gpu: "0"
+              memory: 32Gi
+            - name: e2-standard-16
+              cpu: "16"
+              gpu: "0"
+              memory: 64Gi
+            - name: e2-standard-32
+              cpu: "32"
+              gpu: "0"
+              memory: 128Gi
+            - name: e2-highcpu-2
+              cpu: "2"
+              gpu: "0"
+              memory: 2Gi
+            - name: e2-highcpu-4
+              cpu: "4"
+              gpu: "0"
+              memory: 4Gi
+            - name: e2-highcpu-8
+              cpu: "8"
+              gpu: "0"
+              memory: 8Gi
+            - name: e2-highcpu-16
+              cpu: "16"
+              gpu: "0"
+              memory: 16Gi
+            - name: e2-highcpu-32
+              cpu: "32"
+              gpu: "0"
+              memory: 32Gi
+            - name: e2-highmem-2
+              cpu: "2"
+              gpu: "0"
+              memory: 16Gi
+            - name: e2-highmem-4
+              cpu: "4"
+              gpu: "0"
+              memory: 32Gi
+            - name: e2-highmem-8
+              cpu: "8"
+              gpu: "0"
+              memory: 64Gi
+            - name: e2-highmem-16
+              cpu: "16"
+              gpu: "0"
+              memory: 128Gi
+          volumeTypes:
+            - name: pd-standard
+              class: standard
+              minSize: 20Gi
+            - name: pd-balanced
+              class: balanced
+              minSize: 20Gi
+            - name: pd-ssd
+              class: premium
+              minSize: 20Gi
+          regions:
+            - name: asia-east1
+              zones:
+                - name: asia-east1-a
+                - name: asia-east1-b
+                - name: asia-east1-c
+            - name: asia-east2
+              zones:
+                - name: asia-east2-c
+                - name: asia-east2-b
+                - name: asia-east2-a
+            - name: asia-northeast1
+              zones:
+                - name: asia-northeast1-a
+                - name: asia-northeast1-b
+                - name: asia-northeast1-c
+            - name: asia-northeast2
+              zones:
+                - name: asia-northeast2-a
+                - name: asia-northeast2-b
+                - name: asia-northeast2-c
+            - name: asia-northeast3
+              zones:
+                - name: asia-northeast3-a
+                - name: asia-northeast3-b
+                - name: asia-northeast3-c
+            - name: asia-south1
+              zones:
+                - name: asia-south1-b
+                - name: asia-south1-a
+                - name: asia-south1-c
+            - name: asia-southeast1
+              zones:
+                - name: asia-southeast1-a
+                - name: asia-southeast1-b
+                - name: asia-southeast1-c
+            - name: australia-southeast1
+              zones:
+                - name: australia-southeast1-c
+                - name: australia-southeast1-a
+                - name: australia-southeast1-b
+            - name: europe-north1
+              zones:
+                - name: europe-north1-b
+                - name: europe-north1-c
+                - name: europe-north1-a
+            - name: europe-west1
+              zones:
+                - name: europe-west1-b
+                - name: europe-west1-c
+                - name: europe-west1-d
+            - name: europe-west2
+              zones:
+                - name: europe-west2-a
+                - name: europe-west2-b
+                - name: europe-west2-c
+            - name: europe-west3
+              zones:
+                - name: europe-west3-c
+                - name: europe-west3-a
+                - name: europe-west3-b
+            - name: europe-west4
+              zones:
+                - name: europe-west4-c
+                - name: europe-west4-b
+                - name: europe-west4-a
+            - name: europe-west5
+              zones:
+                - name: europe-west5-a
+                - name: europe-west5-b
+                - name: europe-west5-c
+            - name: europe-west6
+              zones:
+                - name: europe-west6-b
+                - name: europe-west6-c
+                - name: europe-west6-a
+            - name: northamerica-northeast1
+              zones:
+                - name: northamerica-northeast1-a
+                - name: northamerica-northeast1-b
+                - name: northamerica-northeast1-c
+            - name: southamerica-east1
+              zones:
+                - name: southamerica-east1-a
+                - name: southamerica-east1-b
+                - name: southamerica-east1-c
+            - name: us-central1
+              zones:
+                - name: us-central1-a
+                - name: us-central1-b
+                - name: us-central1-c
+                - name: us-central1-f
+            - name: us-east1
+              zones:
+                - name: us-east1-b
+                - name: us-east1-c
+                - name: us-east1-d
+            - name: us-east4
+              zones:
+                - name: us-east4-a
+                - name: us-east4-b
+                - name: us-east4-c
+            - name: us-west1
+              zones:
+                - name: us-west1-a
+                - name: us-west1-b
+                - name: us-west1-c
+            - name: us-west2
+              zones:
+                - name: us-west2-c
+                - name: us-west2-b
+                - name: us-west2-a
+            - name: us-west3
+              zones:
+                - name: us-west3-a
+                - name: us-west3-b
+                - name: us-west3-c
