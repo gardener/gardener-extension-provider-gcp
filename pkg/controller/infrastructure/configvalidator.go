@@ -17,6 +17,7 @@ package infrastructure
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -66,35 +67,39 @@ func (c *configValidator) Validate(ctx context.Context, infra *extensionsv1alpha
 	}
 
 	// Validate infrastructure config
-	if config.Networks.CloudNAT != nil {
-		logger.Info("Validating infrastructure networks.cloudNAT configuration")
-		allErrs = append(allErrs, c.validateCloudNAT(ctx, computeClient, infra.Spec.Region, config.Networks.CloudNAT, field.NewPath("networks", "cloudNAT"))...)
-	}
+	logger.Info("Validating infrastructure networks configuration")
+	allErrs = append(allErrs, c.validateNetworks(ctx, computeClient, infra.Namespace, infra.Spec.Region, config.Networks, field.NewPath("networks"))...)
 
 	return allErrs
 }
 
-func (c *configValidator) validateCloudNAT(ctx context.Context, computeClient gcpclient.ComputeClient, region string, cloudNAT *api.CloudNAT, fldPath *field.Path) field.ErrorList {
+func (c *configValidator) validateNetworks(ctx context.Context, computeClient gcpclient.ComputeClient, clusterName, region string, networks api.NetworkConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if len(cloudNAT.NatIPNames) == 0 {
+	if networks.CloudNAT == nil || len(networks.CloudNAT.NatIPNames) == 0 {
 		return allErrs
 	}
 
-	// Get external IP addresses mapped to whether they are available or not
+	// Get external IP addresses mapped to the names of their users
 	externalAddresses, err := computeClient.GetExternalAddresses(ctx, region)
 	if err != nil {
 		allErrs = append(allErrs, field.InternalError(fldPath, fmt.Errorf("could not get external IP addresses: %w", err)))
 		return allErrs
 	}
 
+	cloudRouterName := clusterName + "-cloud-router"
+	if networks.VPC != nil && networks.VPC.CloudRouter != nil && len(networks.VPC.CloudRouter.Name) > 0 {
+		cloudRouterName = networks.VPC.CloudRouter.Name
+	}
+
 	// Check whether each specified NAT IP name exists and is available
-	for i, natIP := range cloudNAT.NatIPNames {
-		natIPNamePath := fldPath.Child("natIPNames").Index(i).Child("name")
-		if available, ok := externalAddresses[natIP.Name]; !ok {
+	for i, natIP := range networks.CloudNAT.NatIPNames {
+		natIPNamePath := fldPath.Child("cloudNAT", "natIPNames").Index(i).Child("name")
+		if userNames, ok := externalAddresses[natIP.Name]; !ok {
 			allErrs = append(allErrs, field.NotFound(natIPNamePath, natIP.Name))
-		} else if !available {
-			allErrs = append(allErrs, field.Invalid(natIPNamePath, natIP.Name, "external IP address is already in use"))
+		} else if len(userNames) > 1 || len(userNames) == 1 && userNames[0] != cloudRouterName {
+			allErrs = append(allErrs, field.Invalid(natIPNamePath, natIP.Name,
+				fmt.Sprintf("external IP address is already in use by %s", strings.Join(userNames, ","))))
 		}
 	}
 

@@ -112,9 +112,18 @@ var _ = Describe("ConfigValidator", func() {
 			gcpClientFactory.EXPECT().NewComputeClient(ctx, c, infra.Spec.SecretRef).Return(gcpComputeClient, nil)
 		})
 
+		It("should succeed if there are no NAT IP names", func() {
+			infra.Spec.ProviderConfig.Raw = encode(&apisgcp.InfrastructureConfig{
+				Networks: apisgcp.NetworkConfig{},
+			})
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(BeEmpty())
+		})
+
 		It("should forbid NAT IP names that don't exist or are not available", func() {
-			gcpComputeClient.EXPECT().GetExternalAddresses(ctx, region).Return(map[string]bool{
-				"test2": false,
+			gcpComputeClient.EXPECT().GetExternalAddresses(ctx, region).Return(map[string][]string{
+				"test2": {"foo"},
 			}, nil)
 
 			errorList := cv.Validate(ctx, infra)
@@ -124,14 +133,38 @@ var _ = Describe("ConfigValidator", func() {
 			}, Fields{
 				"Type":   Equal(field.ErrorTypeInvalid),
 				"Field":  Equal("networks.cloudNAT.natIPNames[1].name"),
-				"Detail": Equal("external IP address is already in use"),
+				"Detail": Equal("external IP address is already in use by foo"),
 			}))
 		})
 
-		It("should allow NAT IP names that exist and are available", func() {
-			gcpComputeClient.EXPECT().GetExternalAddresses(ctx, region).Return(map[string]bool{
-				"test1": true,
-				"test2": true,
+		It("should allow NAT IP names that exist and are available, or in use by the default cloud router", func() {
+			gcpComputeClient.EXPECT().GetExternalAddresses(ctx, region).Return(map[string][]string{
+				"test1": nil,
+				"test2": {namespace + "-cloud-router"},
+			}, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should allow NAT IP names that exist and are in use by the configured cloud router", func() {
+			infra.Spec.ProviderConfig.Raw = encode(&apisgcp.InfrastructureConfig{
+				Networks: apisgcp.NetworkConfig{
+					VPC: &apisgcp.VPC{
+						Name: "test-vpc",
+						CloudRouter: &apisgcp.CloudRouter{
+							Name: "test-cloud-router",
+						},
+					},
+					CloudNAT: &apisgcp.CloudNAT{
+						NatIPNames: []apisgcp.NatIPName{
+							{Name: "test1"},
+						},
+					},
+				},
+			})
+			gcpComputeClient.EXPECT().GetExternalAddresses(ctx, region).Return(map[string][]string{
+				"test1": {"test-cloud-router"},
 			}, nil)
 
 			errorList := cv.Validate(ctx, infra)
@@ -144,7 +177,7 @@ var _ = Describe("ConfigValidator", func() {
 			errorList := cv.Validate(ctx, infra)
 			Expect(errorList).To(ConsistOfFields(Fields{
 				"Type":   Equal(field.ErrorTypeInternal),
-				"Field":  Equal("networks.cloudNAT"),
+				"Field":  Equal("networks"),
 				"Detail": Equal("could not get external IP addresses: test"),
 			}))
 		})

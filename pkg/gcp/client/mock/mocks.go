@@ -172,10 +172,10 @@ func (m *MockComputeClient) EXPECT() *MockComputeClientMockRecorder {
 }
 
 // GetExternalAddresses mocks base method.
-func (m *MockComputeClient) GetExternalAddresses(arg0 context.Context, arg1 string) (map[string]bool, error) {
+func (m *MockComputeClient) GetExternalAddresses(arg0 context.Context, arg1 string) (map[string][]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetExternalAddresses", arg0, arg1)
-	ret0, _ := ret[0].(map[string]bool)
+	ret0, _ := ret[0].(map[string][]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
