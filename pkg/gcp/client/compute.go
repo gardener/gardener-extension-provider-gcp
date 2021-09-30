@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"strings"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
@@ -29,8 +30,8 @@ import (
 
 // ComputeClient is an interface which must be implemented by GCP compute clients.
 type ComputeClient interface {
-	// GetExternalAddresses returns a list of all external IP addresses mapped to whether they are available for use or not.
-	GetExternalAddresses(ctx context.Context, region string) (map[string]bool, error)
+	// GetExternalAddresses returns a list of all external IP addresses mapped to the names of their users.
+	GetExternalAddresses(ctx context.Context, region string) (map[string][]string, error)
 }
 
 type computeClient struct {
@@ -65,13 +66,20 @@ func NewComputeClientFromSecretRef(ctx context.Context, c client.Client, secretR
 	return newComputeClient(ctx, serviceAccount)
 }
 
-// GetExternalAddresses returns a list of all external IP addresses mapped to whether they are available for use or not.
-func (s *computeClient) GetExternalAddresses(ctx context.Context, region string) (map[string]bool, error) {
-	addresses := make(map[string]bool)
+// GetExternalAddresses returns a list of all external IP addresses mapped to the names of their users.
+func (s *computeClient) GetExternalAddresses(ctx context.Context, region string) (map[string][]string, error) {
+	addresses := make(map[string][]string)
 	if err := s.service.Addresses.List(s.projectID, region).Pages(ctx, func(resp *compute.AddressList) error {
 		for _, address := range resp.Items {
 			if address.AddressType == "EXTERNAL" {
-				addresses[address.Name] = address.Status == "RESERVED"
+				var userNames []string
+				if address.Status == "IN_USE" {
+					for _, user := range address.Users {
+						parts := strings.Split(user, "/")
+						userNames = append(userNames, parts[len(parts)-1])
+					}
+				}
+				addresses[address.Name] = userNames
 			}
 		}
 		return nil
