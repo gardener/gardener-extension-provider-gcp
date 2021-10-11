@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"path/filepath"
 	"strings"
 	"time"
@@ -269,10 +270,19 @@ func runTest(
 	}
 
 	By("create cluster")
+	shoot := gardencorev1beta1.Shoot{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: gardencorev1beta1.SchemeGroupVersion.String(),
+			Kind:       "Shoot",
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: "testShoot"},
+	}
+	shootJson, _ := json.Marshal(shoot)
 	cluster = &extensionsv1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespaceName,
 		},
+		Spec: extensionsv1alpha1.ClusterSpec{Shoot: runtime.RawExtension{Raw: shootJson}},
 	}
 	if err := c.Create(ctx, cluster); err != nil {
 		return err
