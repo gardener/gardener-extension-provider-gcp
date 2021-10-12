@@ -69,6 +69,38 @@ var _ = Describe("Shoot validation", func() {
 		})
 	})
 
+	Describe("#ValidateWorkerAutoscaling", func() {
+		var worker core.Worker
+
+		BeforeEach(func() {
+			worker = core.Worker{
+				Minimum: 2,
+				Maximum: 4,
+				Zones:   []string{"zone1", "zone2"},
+			}
+		})
+
+		It("should not return an error if worker.minimum is equal to number of zones", func() {
+			Expect(ValidateWorkerAutoScaling(worker, "")).To(Succeed())
+		})
+
+		It("should not return an error if worker.minimum is greater than number of zones", func() {
+			worker.Minimum = 3
+			Expect(ValidateWorkerAutoScaling(worker, "")).To(Succeed())
+		})
+
+		It("should not return an error if worker.maximum is 0 and worker.minimum is less than number of zones", func() {
+			worker.Minimum = 0
+			worker.Maximum = 0
+			Expect(ValidateWorkerAutoScaling(worker, "")).To(Succeed())
+		})
+
+		It("should return an error if worker.minimum is less than number of zones", func() {
+			worker.Minimum = 1
+			Expect(ValidateWorkerAutoScaling(worker, "")).To(HaveOccurred())
+		})
+	})
+
 	Describe("#ValidateWorkersUpdate", func() {
 		var workerPath = field.NewPath("spec", "workers")
 
@@ -173,7 +205,7 @@ var _ = Describe("Shoot validation", func() {
 
 			errorList := ValidateWorkersUpdate(oldWorkers, newWorkers, workerPath)
 
-			Expect(errorList[0].Error()).To(Equal("spec.workers[0].minimum: Forbidden: minimum value must be >= " + fmt.Sprint(len(newWorkers[0].Zones)) + " if maximum value > 0 (auto scaling to 0 & from 0 is not supported"))
+			Expect(errorList[0].Error()).To(Equal("spec.workers[0].minimum: Forbidden: spec.workers[0].minimum value must be >= " + fmt.Sprint(len(newWorkers[0].Zones)) + " (number of zones) if maximum value > 0 (auto scaling to 0 & from 0 is not supported)"))
 		})
 	})
 })
