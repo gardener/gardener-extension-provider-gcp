@@ -60,6 +60,15 @@ func ValidateWorkers(workers []core.Worker, fldPath *field.Path) field.ErrorList
 	return allErrs
 }
 
+// ValidateWorkerAutoScaling checks if the worker.minimum value is greater or equal to the number of worker.zones[]
+// when the worker.maximum value is greater than zero. This check is necessary because autoscaling from 0 is not supported on gcp.
+func ValidateWorkerAutoScaling(worker core.Worker, path string) error {
+	if worker.Maximum > 0 && worker.Minimum < int32(len(worker.Zones)) {
+		return fmt.Errorf("%s value must be >= %d (number of zones) if maximum value > 0 (auto scaling to 0 & from 0 is not supported)", path, len(worker.Zones))
+	}
+	return nil
+}
+
 func validateVolume(vol *core.Volume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if vol.Type == nil {
@@ -86,8 +95,10 @@ func ValidateWorkersUpdate(oldWorkers, newWorkers []core.Worker, fldPath *field.
 			}
 		}
 
-		if newWorker.Minimum < int32(len(newWorker.Zones)) {
-			allErrs = append(allErrs, field.Forbidden(workerFldPath.Child("minimum"), fmt.Sprintf("minimum value must be >= %d if maximum value > 0 (auto scaling to 0 & from 0 is not supported", len(newWorker.Zones))))
+		// TODO: This check won't be needed after generic support to scale from zero is introduced in CA
+		// Ongoing issue - https://github.com/gardener/autoscaler/issues/27
+		if err := ValidateWorkerAutoScaling(newWorker, workerFldPath.Child("minimum").String()); err != nil {
+			allErrs = append(allErrs, field.Forbidden(workerFldPath.Child("minimum"), err.Error()))
 		}
 	}
 	return allErrs
