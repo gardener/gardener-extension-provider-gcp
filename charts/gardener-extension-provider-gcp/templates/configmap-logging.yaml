@@ -36,13 +36,13 @@ data:
         Reserve_Data        True
 
     [FILTER]
-        Name                rewrite_tag
+        Name                modify
         Match               kubernetes.*
-        Rule                $tag ^kubernetes\.var\.log\.containers\.(cloud-controller-manager-.+?_.+?_gcp-cloud-controller-manager|csi-driver-controller-.+?_.+?_gcp-csi) user-exposed.$TAG true
-        Emitter_Name        re_emitted-provider-gcp
+        Condition           Key_value_matches tag ^kubernetes\.var\.log\.containers\.(cloud-controller-manager-.+?_.+?_gcp-cloud-controller-manager|csi-driver-controller-.+?_.+?_gcp-csi)
+        Add                 __gardener_multitenant_id__ operator;user
 
     [FILTER]
-        Name                rewrite_tag
+        Name                modify
         Match               kubernetes.*
-        Rule                $tag ^kubernetes\.var\.log\.containers\.machine-controller-manager-.+?_.+?_(gcp-machine-controller-manager|machine-controller-manager-provider-gcp) user-exposed.$TAG true
-        Emitter_Name        re_emitted-provider-gcp-mcm
+        Condition           Key_value_matches tag ^kubernetes\.var\.log\.containers\.machine-controller-manager-.+?_.+?_(gcp-machine-controller-manager|machine-controller-manager-provider-gcp)
+        Add                 __gardener_multitenant_id__ operator;user
