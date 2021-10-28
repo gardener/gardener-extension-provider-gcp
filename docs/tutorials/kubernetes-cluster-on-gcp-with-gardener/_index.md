@@ -81,7 +81,7 @@ Gardener allows you to create a Kubernetes cluster on different infrastructure p
     3. Choose *Add secret*.
     <img src="images/add-gcp-secret.png">
 
-    >After completing these steps, you should see your newly created secret in the *Infrastructure Secrets* section.
+    > After completing these steps, you should see your newly created secret in the *Infrastructure Secrets* section.
 
     <img src="images/secret-stored.png">
 
