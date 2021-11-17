@@ -20,6 +20,7 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/validation"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -84,22 +85,30 @@ func validateVolume(vol *core.Volume, fldPath *field.Path) field.ErrorList {
 func ValidateWorkersUpdate(oldWorkers, newWorkers []core.Worker, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	for i, newWorker := range newWorkers {
-
 		workerFldPath := fldPath.Index(i)
-		for _, oldWorker := range oldWorkers {
-			if newWorker.Name == oldWorker.Name {
-				if validation.ShouldEnforceImmutability(newWorker.Zones, oldWorker.Zones) {
-					allErrs = append(allErrs, apivalidation.ValidateImmutableField(newWorker.Zones, oldWorker.Zones, workerFldPath.Child("zones"))...)
-				}
-				break
-			}
+		oldWorker, found := getWorkerByName(newWorker.Name, oldWorkers)
+
+		if found && validation.ShouldEnforceImmutability(newWorker.Zones, oldWorker.Zones) {
+			allErrs = append(allErrs, apivalidation.ValidateImmutableField(newWorker.Zones, oldWorker.Zones, workerFldPath.Child("zones"))...)
 		}
 
 		// TODO: This check won't be needed after generic support to scale from zero is introduced in CA
 		// Ongoing issue - https://github.com/gardener/autoscaler/issues/27
-		if err := ValidateWorkerAutoScaling(newWorker, workerFldPath.Child("minimum").String()); err != nil {
-			allErrs = append(allErrs, field.Forbidden(workerFldPath.Child("minimum"), err.Error()))
+		if !equality.Semantic.DeepEqual(newWorker, oldWorker) {
+			if err := ValidateWorkerAutoScaling(newWorker, workerFldPath.Child("minimum").String()); err != nil {
+				allErrs = append(allErrs, field.Forbidden(workerFldPath.Child("minimum"), err.Error()))
+			}
 		}
 	}
 	return allErrs
+}
+
+func getWorkerByName(name string, workers []core.Worker) (core.Worker, bool) {
+	for _, w := range workers {
+		if w.Name == name {
+			return w, true
+		}
+	}
+
+	return core.Worker{}, false
 }
