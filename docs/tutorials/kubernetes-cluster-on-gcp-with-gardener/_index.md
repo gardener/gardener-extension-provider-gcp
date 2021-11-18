@@ -4,6 +4,7 @@ level: beginner
 category: Getting Started
 scope: app-developer
 ---
+
 ### Overview
 
 Gardener allows you to create a Kubernetes cluster on different infrastructure providers. This tutorial will guide you through the process of creating a cluster on GCP.
