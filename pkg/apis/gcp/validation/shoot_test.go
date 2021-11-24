@@ -205,6 +205,7 @@ var _ = Describe("Shoot validation", func() {
 
 			errorList := ValidateWorkersUpdate(oldWorkers, newWorkers, workerPath)
 
+			Expect(errorList).ToNot(HaveLen(0))
 			Expect(errorList[0].Error()).To(Equal("spec.workers[0].minimum: Forbidden: spec.workers[0].minimum value must be >= " + fmt.Sprint(len(newWorkers[0].Zones)) + " (number of zones) if maximum value > 0 (auto scaling to 0 & from 0 is not supported)"))
 		})
 
@@ -236,6 +237,7 @@ var _ = Describe("Shoot validation", func() {
 
 			errorList := ValidateWorkersUpdate(oldWorkers, newWorkers, workerPath)
 
+			Expect(errorList).ToNot(HaveLen(0))
 			Expect(errorList[0].Error()).To(Equal("spec.workers[0].minimum: Forbidden: spec.workers[0].minimum value must be >= " + fmt.Sprint(len(newWorkers[0].Zones)) + " (number of zones) if maximum value > 0 (auto scaling to 0 & from 0 is not supported)"))
 		})
 
