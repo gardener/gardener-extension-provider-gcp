@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardener/pkg/apis/core"
+	"github.com/gardener/gardener/pkg/apis/core/helper"
 	"github.com/gardener/gardener/pkg/apis/core/validation"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -86,29 +87,19 @@ func ValidateWorkersUpdate(oldWorkers, newWorkers []core.Worker, fldPath *field.
 	allErrs := field.ErrorList{}
 	for i, newWorker := range newWorkers {
 		workerFldPath := fldPath.Index(i)
-		oldWorker, found := getWorkerByName(newWorker.Name, oldWorkers)
+		oldWorker := helper.FindWorkerByName(oldWorkers, newWorker.Name)
 
-		if found && validation.ShouldEnforceImmutability(newWorker.Zones, oldWorker.Zones) {
+		if oldWorker != nil && validation.ShouldEnforceImmutability(newWorker.Zones, oldWorker.Zones) {
 			allErrs = append(allErrs, apivalidation.ValidateImmutableField(newWorker.Zones, oldWorker.Zones, workerFldPath.Child("zones"))...)
 		}
 
 		// TODO: This check won't be needed after generic support to scale from zero is introduced in CA
 		// Ongoing issue - https://github.com/gardener/autoscaler/issues/27
-		if !equality.Semantic.DeepEqual(newWorker, oldWorker) {
+		if !equality.Semantic.DeepEqual(&newWorker, oldWorker) {
 			if err := ValidateWorkerAutoScaling(newWorker, workerFldPath.Child("minimum").String()); err != nil {
 				allErrs = append(allErrs, field.Forbidden(workerFldPath.Child("minimum"), err.Error()))
 			}
 		}
 	}
 	return allErrs
-}
-
-func getWorkerByName(name string, workers []core.Worker) (core.Worker, bool) {
-	for _, w := range workers {
-		if w.Name == name {
-			return w, true
-		}
-	}
-
-	return core.Worker{}, false
 }
