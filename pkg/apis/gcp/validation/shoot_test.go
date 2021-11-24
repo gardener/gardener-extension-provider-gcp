@@ -131,7 +131,7 @@ var _ = Describe("Shoot validation", func() {
 
 			oldWorkers := []core.Worker{
 				{
-					Name: "worker-test",
+					Name: "worker-test2",
 					Machine: core.Machine{
 						Type: "n1-standard-2",
 						Image: &core.ShootMachineImage{
@@ -156,7 +156,7 @@ var _ = Describe("Shoot validation", func() {
 			Expect(errorList).To(BeEmpty())
 		})
 
-		It("should return an error because new worker pool added does not honor having min workers >= number of zones", func() {
+		It("should return an error because updated worker pool does not honor having min workers >= number of zones", func() {
 			newWorkers := []core.Worker{
 				{
 					Name: "worker-test",
@@ -205,7 +205,93 @@ var _ = Describe("Shoot validation", func() {
 
 			errorList := ValidateWorkersUpdate(oldWorkers, newWorkers, workerPath)
 
+			Expect(errorList).ToNot(HaveLen(0))
 			Expect(errorList[0].Error()).To(Equal("spec.workers[0].minimum: Forbidden: spec.workers[0].minimum value must be >= " + fmt.Sprint(len(newWorkers[0].Zones)) + " (number of zones) if maximum value > 0 (auto scaling to 0 & from 0 is not supported)"))
+		})
+
+		It("should return an error because newly added worker pool does not honor having min workers >= number of zones", func() {
+			newWorkers := []core.Worker{
+				{
+					Name: "worker-test",
+					Machine: core.Machine{
+						Type: "n1-standard-2",
+						Image: &core.ShootMachineImage{
+							Name:    "gardenlinux",
+							Version: "318.8.0",
+						},
+					},
+					Maximum: 6,
+					Minimum: 1,
+					Zones: []string{
+						"europe-west1-b",
+						"europe-west1-c",
+					},
+					Volume: &core.Volume{
+						Type:       pointer.StringPtr("pd-standard"),
+						VolumeSize: "50Gi",
+					},
+				},
+			}
+
+			oldWorkers := []core.Worker{}
+
+			errorList := ValidateWorkersUpdate(oldWorkers, newWorkers, workerPath)
+
+			Expect(errorList).ToNot(HaveLen(0))
+			Expect(errorList[0].Error()).To(Equal("spec.workers[0].minimum: Forbidden: spec.workers[0].minimum value must be >= " + fmt.Sprint(len(newWorkers[0].Zones)) + " (number of zones) if maximum value > 0 (auto scaling to 0 & from 0 is not supported)"))
+		})
+
+		It("should not return any error because existing worker pool does not honor having min workers >= number of zones", func() {
+			newWorkers := []core.Worker{
+				{
+					Name: "worker-test",
+					Machine: core.Machine{
+						Type: "n1-standard-2",
+						Image: &core.ShootMachineImage{
+							Name:    "gardenlinux",
+							Version: "318.8.0",
+						},
+					},
+					Maximum: 6,
+					Minimum: 2,
+					Zones: []string{
+						"europe-west1-b",
+						"europe-west1-c",
+						"europe-west1-d",
+					},
+					Volume: &core.Volume{
+						Type:       pointer.StringPtr("pd-standard"),
+						VolumeSize: "50Gi",
+					},
+				},
+			}
+
+			oldWorkers := []core.Worker{
+				{
+					Name: "worker-test",
+					Machine: core.Machine{
+						Type: "n1-standard-2",
+						Image: &core.ShootMachineImage{
+							Name:    "gardenlinux",
+							Version: "318.8.0",
+						},
+					},
+					Maximum: 6,
+					Minimum: 2,
+					Zones: []string{
+						"europe-west1-b",
+						"europe-west1-c",
+						"europe-west1-d",
+					},
+					Volume: &core.Volume{
+						Type:       pointer.StringPtr("pd-standard"),
+						VolumeSize: "50Gi",
+					},
+				},
+			}
+
+			errorList := ValidateWorkersUpdate(oldWorkers, newWorkers, workerPath)
+			Expect(errorList).To(BeEmpty())
 		})
 	})
 })
