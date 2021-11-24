@@ -162,8 +162,8 @@ func (s *shoot) validateCreate(ctx context.Context, shoot *core.Shoot) error {
 	// TODO: This check won't be needed after generic support to scale from zero is introduced in CA
 	// Ongoing issue - https://github.com/gardener/autoscaler/issues/27
 	for i, worker := range shoot.Spec.Provider.Workers {
-		if worker.Minimum < int32(len(worker.Zones)) {
-			return fmt.Errorf("%s minimum value must be >= %d if maximum value > 0 (auto scaling to 0 & from 0 is not supported", workersPath.Index(i).Child("minimum").String(), len(worker.Zones))
+		if err = gcpvalidation.ValidateWorkerAutoScaling(worker, workersPath.Index(i).Child("minimum").String()); err != nil {
+			return err
 		}
 	}
 
