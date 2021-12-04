@@ -25,6 +25,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	ctrlerror "github.com/gardener/gardener/extensions/pkg/controller/error"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/controllerutils"
 	"github.com/go-logr/logr"
 	"google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -74,7 +75,7 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 		}
 	}
 
-	err = controller.TryUpdateStatus(ctx, retry.DefaultBackoff, a.Client(), bastion, func() error {
+	err = controllerutils.TryUpdateStatus(ctx, retry.DefaultBackoff, a.Client(), bastion, func() error {
 		bytes, err := marshalProviderStatus(opt.Zone)
 		if err != nil {
 			return err
@@ -118,7 +119,7 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 
 	// once a public endpoint is available, publish the endpoint on the
 	// Bastion resource to notify upstream about the ready instance
-	return controller.TryUpdateStatus(ctx, retry.DefaultBackoff, a.Client(), bastion, func() error {
+	return controllerutils.TryUpdateStatus(ctx, retry.DefaultBackoff, a.Client(), bastion, func() error {
 		bastion.Status.Ingress = *endpoints.public
 		return nil
 	})
