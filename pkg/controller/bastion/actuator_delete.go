@@ -21,9 +21,10 @@ import (
 	"time"
 
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
+
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	ctrlerror "github.com/gardener/gardener/extensions/pkg/controller/error"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -63,7 +64,7 @@ func (a *actuator) Delete(ctx context.Context, bastion *extensionsv1alpha1.Basti
 	}
 
 	if !deleted {
-		return &ctrlerror.RequeueAfterError{
+		return &reconcilerutils.RequeueAfterError{
 			RequeueAfter: 10 * time.Second,
 			Cause:        errors.New("bastion instance is still deleting"),
 		}
