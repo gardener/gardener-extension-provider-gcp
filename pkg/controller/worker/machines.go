@@ -36,9 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var (
-	labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
-)
+var labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
 
 const maxGcpLabelCharactersSize = 63
 
@@ -63,11 +61,6 @@ func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
 		if err := w.generateMachineConfig(ctx); err != nil {
 			return err
 		}
-	}
-
-	// Delete any older version machine class CRs.
-	if err := w.Client().DeleteAllOf(ctx, &machinev1alpha1.GCPMachineClass{}, client.InNamespace(w.worker.Namespace)); err != nil {
-		return fmt.Errorf("cleaning up older version of GCP machine class CRs failed: %w", err)
 	}
 
 	return w.seedChartApplier.Apply(ctx, filepath.Join(gcp.InternalChartsPath, "machineclass"), w.worker.Namespace, "machineclass", kubernetes.Values(map[string]interface{}{"machineClasses": w.machineClasses}))
