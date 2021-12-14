@@ -115,11 +115,11 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.internal"),
-					"Detail": Equal(`must not be a subset of "<nil>" ("10.250.1.0/30")`),
+					"Detail": Equal(`must not overlap with "<nil>" ("10.250.1.0/30")`),
 				}, Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.internal"),
-					"Detail": Equal(`must not be a subset of "networks.workers" ("10.250.1.0/30")`),
+					"Detail": Equal(`must not overlap with "networks.workers" ("10.250.1.0/30")`),
 				}))
 			})
 

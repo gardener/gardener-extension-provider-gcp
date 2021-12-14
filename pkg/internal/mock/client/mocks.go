@@ -8,9 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	client "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
+	gcp "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 	gomock "github.com/golang/mock/gomock"
-	v1 "google.golang.org/api/compute/v1"
+	compute "google.golang.org/api/compute/v1"
 	googleapi "google.golang.org/api/googleapi"
 )
 
@@ -38,10 +38,10 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // Disks mocks base method.
-func (m *MockInterface) Disks() client.DisksService {
+func (m *MockInterface) Disks() gcp.DisksService {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Disks")
-	ret0, _ := ret[0].(client.DisksService)
+	ret0, _ := ret[0].(gcp.DisksService)
 	return ret0
 }
 
@@ -52,10 +52,10 @@ func (mr *MockInterfaceMockRecorder) Disks() *gomock.Call {
 }
 
 // Firewalls mocks base method.
-func (m *MockInterface) Firewalls() client.FirewallsService {
+func (m *MockInterface) Firewalls() gcp.FirewallsService {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Firewalls")
-	ret0, _ := ret[0].(client.FirewallsService)
+	ret0, _ := ret[0].(gcp.FirewallsService)
 	return ret0
 }
 
@@ -66,10 +66,10 @@ func (mr *MockInterfaceMockRecorder) Firewalls() *gomock.Call {
 }
 
 // Instances mocks base method.
-func (m *MockInterface) Instances() client.InstancesService {
+func (m *MockInterface) Instances() gcp.InstancesService {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Instances")
-	ret0, _ := ret[0].(client.InstancesService)
+	ret0, _ := ret[0].(gcp.InstancesService)
 	return ret0
 }
 
@@ -80,10 +80,10 @@ func (mr *MockInterfaceMockRecorder) Instances() *gomock.Call {
 }
 
 // Regions mocks base method.
-func (m *MockInterface) Regions() client.RegionsService {
+func (m *MockInterface) Regions() gcp.RegionsService {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Regions")
-	ret0, _ := ret[0].(client.RegionsService)
+	ret0, _ := ret[0].(gcp.RegionsService)
 	return ret0
 }
 
@@ -94,10 +94,10 @@ func (mr *MockInterfaceMockRecorder) Regions() *gomock.Call {
 }
 
 // Routes mocks base method.
-func (m *MockInterface) Routes() client.RoutesService {
+func (m *MockInterface) Routes() gcp.RoutesService {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Routes")
-	ret0, _ := ret[0].(client.RoutesService)
+	ret0, _ := ret[0].(gcp.RoutesService)
 	return ret0
 }
 
@@ -131,10 +131,10 @@ func (m *MockFirewallsService) EXPECT() *MockFirewallsServiceMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockFirewallsService) Delete(arg0, arg1 string) client.FirewallsDeleteCall {
+func (m *MockFirewallsService) Delete(arg0, arg1 string) gcp.FirewallsDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
-	ret0, _ := ret[0].(client.FirewallsDeleteCall)
+	ret0, _ := ret[0].(gcp.FirewallsDeleteCall)
 	return ret0
 }
 
@@ -145,10 +145,10 @@ func (mr *MockFirewallsServiceMockRecorder) Delete(arg0, arg1 interface{}) *gomo
 }
 
 // Get mocks base method.
-func (m *MockFirewallsService) Get(arg0, arg1 string) client.FirewallsGetCall {
+func (m *MockFirewallsService) Get(arg0, arg1 string) gcp.FirewallsGetCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1)
-	ret0, _ := ret[0].(client.FirewallsGetCall)
+	ret0, _ := ret[0].(gcp.FirewallsGetCall)
 	return ret0
 }
 
@@ -159,10 +159,10 @@ func (mr *MockFirewallsServiceMockRecorder) Get(arg0, arg1 interface{}) *gomock.
 }
 
 // Insert mocks base method.
-func (m *MockFirewallsService) Insert(arg0 string, arg1 *v1.Firewall) client.FirewallsInsertCall {
+func (m *MockFirewallsService) Insert(arg0 string, arg1 *compute.Firewall) gcp.FirewallsInsertCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Insert", arg0, arg1)
-	ret0, _ := ret[0].(client.FirewallsInsertCall)
+	ret0, _ := ret[0].(gcp.FirewallsInsertCall)
 	return ret0
 }
 
@@ -173,10 +173,10 @@ func (mr *MockFirewallsServiceMockRecorder) Insert(arg0, arg1 interface{}) *gomo
 }
 
 // List mocks base method.
-func (m *MockFirewallsService) List(arg0 string) client.FirewallsListCall {
+func (m *MockFirewallsService) List(arg0 string) gcp.FirewallsListCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0)
-	ret0, _ := ret[0].(client.FirewallsListCall)
+	ret0, _ := ret[0].(gcp.FirewallsListCall)
 	return ret0
 }
 
@@ -187,10 +187,10 @@ func (mr *MockFirewallsServiceMockRecorder) List(arg0 interface{}) *gomock.Call 
 }
 
 // Patch mocks base method.
-func (m *MockFirewallsService) Patch(arg0, arg1 string, arg2 *v1.Firewall) client.FirewallsPatchCall {
+func (m *MockFirewallsService) Patch(arg0, arg1 string, arg2 *compute.Firewall) gcp.FirewallsPatchCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Patch", arg0, arg1, arg2)
-	ret0, _ := ret[0].(client.FirewallsPatchCall)
+	ret0, _ := ret[0].(gcp.FirewallsPatchCall)
 	return ret0
 }
 
@@ -224,10 +224,10 @@ func (m *MockRoutesService) EXPECT() *MockRoutesServiceMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockRoutesService) Delete(arg0, arg1 string) client.RoutesDeleteCall {
+func (m *MockRoutesService) Delete(arg0, arg1 string) gcp.RoutesDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
-	ret0, _ := ret[0].(client.RoutesDeleteCall)
+	ret0, _ := ret[0].(gcp.RoutesDeleteCall)
 	return ret0
 }
 
@@ -238,10 +238,10 @@ func (mr *MockRoutesServiceMockRecorder) Delete(arg0, arg1 interface{}) *gomock.
 }
 
 // List mocks base method.
-func (m *MockRoutesService) List(arg0 string) client.RoutesListCall {
+func (m *MockRoutesService) List(arg0 string) gcp.RoutesListCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0)
-	ret0, _ := ret[0].(client.RoutesListCall)
+	ret0, _ := ret[0].(gcp.RoutesListCall)
 	return ret0
 }
 
@@ -275,10 +275,10 @@ func (m *MockInstancesService) EXPECT() *MockInstancesServiceMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockInstancesService) Delete(arg0, arg1, arg2 string) client.InstancesDeleteCall {
+func (m *MockInstancesService) Delete(arg0, arg1, arg2 string) gcp.InstancesDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
-	ret0, _ := ret[0].(client.InstancesDeleteCall)
+	ret0, _ := ret[0].(gcp.InstancesDeleteCall)
 	return ret0
 }
 
@@ -289,10 +289,10 @@ func (mr *MockInstancesServiceMockRecorder) Delete(arg0, arg1, arg2 interface{})
 }
 
 // Get mocks base method.
-func (m *MockInstancesService) Get(arg0, arg1, arg2 string) client.InstancesGetCall {
+func (m *MockInstancesService) Get(arg0, arg1, arg2 string) gcp.InstancesGetCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(client.InstancesGetCall)
+	ret0, _ := ret[0].(gcp.InstancesGetCall)
 	return ret0
 }
 
@@ -303,10 +303,10 @@ func (mr *MockInstancesServiceMockRecorder) Get(arg0, arg1, arg2 interface{}) *g
 }
 
 // Insert mocks base method.
-func (m *MockInstancesService) Insert(arg0, arg1 string, arg2 *v1.Instance) client.InstancesInsertCall {
+func (m *MockInstancesService) Insert(arg0, arg1 string, arg2 *compute.Instance) gcp.InstancesInsertCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Insert", arg0, arg1, arg2)
-	ret0, _ := ret[0].(client.InstancesInsertCall)
+	ret0, _ := ret[0].(gcp.InstancesInsertCall)
 	return ret0
 }
 
@@ -340,10 +340,10 @@ func (m *MockDisksService) EXPECT() *MockDisksServiceMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockDisksService) Delete(arg0, arg1, arg2 string) client.DisksDeleteCall {
+func (m *MockDisksService) Delete(arg0, arg1, arg2 string) gcp.DisksDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
-	ret0, _ := ret[0].(client.DisksDeleteCall)
+	ret0, _ := ret[0].(gcp.DisksDeleteCall)
 	return ret0
 }
 
@@ -354,10 +354,10 @@ func (mr *MockDisksServiceMockRecorder) Delete(arg0, arg1, arg2 interface{}) *go
 }
 
 // Get mocks base method.
-func (m *MockDisksService) Get(arg0, arg1, arg2 string) client.DisksGetCall {
+func (m *MockDisksService) Get(arg0, arg1, arg2 string) gcp.DisksGetCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(client.DisksGetCall)
+	ret0, _ := ret[0].(gcp.DisksGetCall)
 	return ret0
 }
 
@@ -368,10 +368,10 @@ func (mr *MockDisksServiceMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomoc
 }
 
 // Insert mocks base method.
-func (m *MockDisksService) Insert(arg0, arg1 string, arg2 *v1.Disk) client.DisksInsertCall {
+func (m *MockDisksService) Insert(arg0, arg1 string, arg2 *compute.Disk) gcp.DisksInsertCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Insert", arg0, arg1, arg2)
-	ret0, _ := ret[0].(client.DisksInsertCall)
+	ret0, _ := ret[0].(gcp.DisksInsertCall)
 	return ret0
 }
 
@@ -405,10 +405,10 @@ func (m *MockRegionsService) EXPECT() *MockRegionsServiceMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockRegionsService) Get(arg0, arg1 string) client.RegionsGetCall {
+func (m *MockRegionsService) Get(arg0, arg1 string) gcp.RegionsGetCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1)
-	ret0, _ := ret[0].(client.RegionsGetCall)
+	ret0, _ := ret[0].(gcp.RegionsGetCall)
 	return ret0
 }
 
@@ -442,7 +442,7 @@ func (m *MockFirewallsListCall) EXPECT() *MockFirewallsListCallMockRecorder {
 }
 
 // Pages mocks base method.
-func (m *MockFirewallsListCall) Pages(arg0 context.Context, arg1 func(*v1.FirewallList) error) error {
+func (m *MockFirewallsListCall) Pages(arg0 context.Context, arg1 func(*compute.FirewallList) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Pages", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -479,10 +479,10 @@ func (m *MockFirewallsGetCall) EXPECT() *MockFirewallsGetCallMockRecorder {
 }
 
 // Context mocks base method.
-func (m *MockFirewallsGetCall) Context(arg0 context.Context) client.FirewallsGetCall {
+func (m *MockFirewallsGetCall) Context(arg0 context.Context) gcp.FirewallsGetCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.FirewallsGetCall)
+	ret0, _ := ret[0].(gcp.FirewallsGetCall)
 	return ret0
 }
 
@@ -493,14 +493,14 @@ func (mr *MockFirewallsGetCallMockRecorder) Context(arg0 interface{}) *gomock.Ca
 }
 
 // Do mocks base method.
-func (m *MockFirewallsGetCall) Do(arg0 ...googleapi.CallOption) (*v1.Firewall, error) {
+func (m *MockFirewallsGetCall) Do(arg0 ...googleapi.CallOption) (*compute.Firewall, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Firewall)
+	ret0, _ := ret[0].(*compute.Firewall)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -535,10 +535,10 @@ func (m *MockFirewallsInsertCall) EXPECT() *MockFirewallsInsertCallMockRecorder 
 }
 
 // Context mocks base method.
-func (m *MockFirewallsInsertCall) Context(arg0 context.Context) client.FirewallsInsertCall {
+func (m *MockFirewallsInsertCall) Context(arg0 context.Context) gcp.FirewallsInsertCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.FirewallsInsertCall)
+	ret0, _ := ret[0].(gcp.FirewallsInsertCall)
 	return ret0
 }
 
@@ -549,14 +549,14 @@ func (mr *MockFirewallsInsertCallMockRecorder) Context(arg0 interface{}) *gomock
 }
 
 // Do mocks base method.
-func (m *MockFirewallsInsertCall) Do(arg0 ...googleapi.CallOption) (*v1.Operation, error) {
+func (m *MockFirewallsInsertCall) Do(arg0 ...googleapi.CallOption) (*compute.Operation, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Operation)
+	ret0, _ := ret[0].(*compute.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -591,10 +591,10 @@ func (m *MockFirewallsPatchCall) EXPECT() *MockFirewallsPatchCallMockRecorder {
 }
 
 // Context mocks base method.
-func (m *MockFirewallsPatchCall) Context(arg0 context.Context) client.FirewallsPatchCall {
+func (m *MockFirewallsPatchCall) Context(arg0 context.Context) gcp.FirewallsPatchCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.FirewallsPatchCall)
+	ret0, _ := ret[0].(gcp.FirewallsPatchCall)
 	return ret0
 }
 
@@ -605,14 +605,14 @@ func (mr *MockFirewallsPatchCallMockRecorder) Context(arg0 interface{}) *gomock.
 }
 
 // Do mocks base method.
-func (m *MockFirewallsPatchCall) Do(arg0 ...googleapi.CallOption) (*v1.Operation, error) {
+func (m *MockFirewallsPatchCall) Do(arg0 ...googleapi.CallOption) (*compute.Operation, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Operation)
+	ret0, _ := ret[0].(*compute.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -647,10 +647,10 @@ func (m *MockFirewallsDeleteCall) EXPECT() *MockFirewallsDeleteCallMockRecorder 
 }
 
 // Context mocks base method.
-func (m *MockFirewallsDeleteCall) Context(arg0 context.Context) client.FirewallsDeleteCall {
+func (m *MockFirewallsDeleteCall) Context(arg0 context.Context) gcp.FirewallsDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.FirewallsDeleteCall)
+	ret0, _ := ret[0].(gcp.FirewallsDeleteCall)
 	return ret0
 }
 
@@ -661,14 +661,14 @@ func (mr *MockFirewallsDeleteCallMockRecorder) Context(arg0 interface{}) *gomock
 }
 
 // Do mocks base method.
-func (m *MockFirewallsDeleteCall) Do(arg0 ...googleapi.CallOption) (*v1.Operation, error) {
+func (m *MockFirewallsDeleteCall) Do(arg0 ...googleapi.CallOption) (*compute.Operation, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Operation)
+	ret0, _ := ret[0].(*compute.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -703,10 +703,10 @@ func (m *MockRoutesDeleteCall) EXPECT() *MockRoutesDeleteCallMockRecorder {
 }
 
 // Context mocks base method.
-func (m *MockRoutesDeleteCall) Context(arg0 context.Context) client.RoutesDeleteCall {
+func (m *MockRoutesDeleteCall) Context(arg0 context.Context) gcp.RoutesDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.RoutesDeleteCall)
+	ret0, _ := ret[0].(gcp.RoutesDeleteCall)
 	return ret0
 }
 
@@ -717,14 +717,14 @@ func (mr *MockRoutesDeleteCallMockRecorder) Context(arg0 interface{}) *gomock.Ca
 }
 
 // Do mocks base method.
-func (m *MockRoutesDeleteCall) Do(arg0 ...googleapi.CallOption) (*v1.Operation, error) {
+func (m *MockRoutesDeleteCall) Do(arg0 ...googleapi.CallOption) (*compute.Operation, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Operation)
+	ret0, _ := ret[0].(*compute.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -759,7 +759,7 @@ func (m *MockRoutesListCall) EXPECT() *MockRoutesListCallMockRecorder {
 }
 
 // Pages mocks base method.
-func (m *MockRoutesListCall) Pages(arg0 context.Context, arg1 func(*v1.RouteList) error) error {
+func (m *MockRoutesListCall) Pages(arg0 context.Context, arg1 func(*compute.RouteList) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Pages", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -796,10 +796,10 @@ func (m *MockInstancesGetCall) EXPECT() *MockInstancesGetCallMockRecorder {
 }
 
 // Context mocks base method.
-func (m *MockInstancesGetCall) Context(arg0 context.Context) client.InstancesGetCall {
+func (m *MockInstancesGetCall) Context(arg0 context.Context) gcp.InstancesGetCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.InstancesGetCall)
+	ret0, _ := ret[0].(gcp.InstancesGetCall)
 	return ret0
 }
 
@@ -810,14 +810,14 @@ func (mr *MockInstancesGetCallMockRecorder) Context(arg0 interface{}) *gomock.Ca
 }
 
 // Do mocks base method.
-func (m *MockInstancesGetCall) Do(arg0 ...googleapi.CallOption) (*v1.Instance, error) {
+func (m *MockInstancesGetCall) Do(arg0 ...googleapi.CallOption) (*compute.Instance, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Instance)
+	ret0, _ := ret[0].(*compute.Instance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -852,10 +852,10 @@ func (m *MockInstancesDeleteCall) EXPECT() *MockInstancesDeleteCallMockRecorder 
 }
 
 // Context mocks base method.
-func (m *MockInstancesDeleteCall) Context(arg0 context.Context) client.InstancesDeleteCall {
+func (m *MockInstancesDeleteCall) Context(arg0 context.Context) gcp.InstancesDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.InstancesDeleteCall)
+	ret0, _ := ret[0].(gcp.InstancesDeleteCall)
 	return ret0
 }
 
@@ -866,14 +866,14 @@ func (mr *MockInstancesDeleteCallMockRecorder) Context(arg0 interface{}) *gomock
 }
 
 // Do mocks base method.
-func (m *MockInstancesDeleteCall) Do(arg0 ...googleapi.CallOption) (*v1.Operation, error) {
+func (m *MockInstancesDeleteCall) Do(arg0 ...googleapi.CallOption) (*compute.Operation, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Operation)
+	ret0, _ := ret[0].(*compute.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -908,10 +908,10 @@ func (m *MockInstancesInsertCall) EXPECT() *MockInstancesInsertCallMockRecorder 
 }
 
 // Context mocks base method.
-func (m *MockInstancesInsertCall) Context(arg0 context.Context) client.InstancesInsertCall {
+func (m *MockInstancesInsertCall) Context(arg0 context.Context) gcp.InstancesInsertCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.InstancesInsertCall)
+	ret0, _ := ret[0].(gcp.InstancesInsertCall)
 	return ret0
 }
 
@@ -922,14 +922,14 @@ func (mr *MockInstancesInsertCallMockRecorder) Context(arg0 interface{}) *gomock
 }
 
 // Do mocks base method.
-func (m *MockInstancesInsertCall) Do(arg0 ...googleapi.CallOption) (*v1.Operation, error) {
+func (m *MockInstancesInsertCall) Do(arg0 ...googleapi.CallOption) (*compute.Operation, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Operation)
+	ret0, _ := ret[0].(*compute.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -964,10 +964,10 @@ func (m *MockDisksInsertCall) EXPECT() *MockDisksInsertCallMockRecorder {
 }
 
 // Context mocks base method.
-func (m *MockDisksInsertCall) Context(arg0 context.Context) client.DisksInsertCall {
+func (m *MockDisksInsertCall) Context(arg0 context.Context) gcp.DisksInsertCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.DisksInsertCall)
+	ret0, _ := ret[0].(gcp.DisksInsertCall)
 	return ret0
 }
 
@@ -978,14 +978,14 @@ func (mr *MockDisksInsertCallMockRecorder) Context(arg0 interface{}) *gomock.Cal
 }
 
 // Do mocks base method.
-func (m *MockDisksInsertCall) Do(arg0 ...googleapi.CallOption) (*v1.Operation, error) {
+func (m *MockDisksInsertCall) Do(arg0 ...googleapi.CallOption) (*compute.Operation, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Operation)
+	ret0, _ := ret[0].(*compute.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1020,10 +1020,10 @@ func (m *MockDisksGetCall) EXPECT() *MockDisksGetCallMockRecorder {
 }
 
 // Context mocks base method.
-func (m *MockDisksGetCall) Context(arg0 context.Context) client.DisksGetCall {
+func (m *MockDisksGetCall) Context(arg0 context.Context) gcp.DisksGetCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.DisksGetCall)
+	ret0, _ := ret[0].(gcp.DisksGetCall)
 	return ret0
 }
 
@@ -1034,14 +1034,14 @@ func (mr *MockDisksGetCallMockRecorder) Context(arg0 interface{}) *gomock.Call {
 }
 
 // Do mocks base method.
-func (m *MockDisksGetCall) Do(arg0 ...googleapi.CallOption) (*v1.Disk, error) {
+func (m *MockDisksGetCall) Do(arg0 ...googleapi.CallOption) (*compute.Disk, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Disk)
+	ret0, _ := ret[0].(*compute.Disk)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1076,10 +1076,10 @@ func (m *MockDisksDeleteCall) EXPECT() *MockDisksDeleteCallMockRecorder {
 }
 
 // Context mocks base method.
-func (m *MockDisksDeleteCall) Context(arg0 context.Context) client.DisksDeleteCall {
+func (m *MockDisksDeleteCall) Context(arg0 context.Context) gcp.DisksDeleteCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.DisksDeleteCall)
+	ret0, _ := ret[0].(gcp.DisksDeleteCall)
 	return ret0
 }
 
@@ -1090,14 +1090,14 @@ func (mr *MockDisksDeleteCallMockRecorder) Context(arg0 interface{}) *gomock.Cal
 }
 
 // Do mocks base method.
-func (m *MockDisksDeleteCall) Do(arg0 ...googleapi.CallOption) (*v1.Operation, error) {
+func (m *MockDisksDeleteCall) Do(arg0 ...googleapi.CallOption) (*compute.Operation, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Operation)
+	ret0, _ := ret[0].(*compute.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1132,10 +1132,10 @@ func (m *MockRegionsGetCall) EXPECT() *MockRegionsGetCallMockRecorder {
 }
 
 // Context mocks base method.
-func (m *MockRegionsGetCall) Context(arg0 context.Context) client.RegionsGetCall {
+func (m *MockRegionsGetCall) Context(arg0 context.Context) gcp.RegionsGetCall {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Context", arg0)
-	ret0, _ := ret[0].(client.RegionsGetCall)
+	ret0, _ := ret[0].(gcp.RegionsGetCall)
 	return ret0
 }
 
@@ -1146,14 +1146,14 @@ func (mr *MockRegionsGetCallMockRecorder) Context(arg0 interface{}) *gomock.Call
 }
 
 // Do mocks base method.
-func (m *MockRegionsGetCall) Do(arg0 ...googleapi.CallOption) (*v1.Region, error) {
+func (m *MockRegionsGetCall) Do(arg0 ...googleapi.CallOption) (*compute.Region, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Do", varargs...)
-	ret0, _ := ret[0].(*v1.Region)
+	ret0, _ := ret[0].(*compute.Region)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

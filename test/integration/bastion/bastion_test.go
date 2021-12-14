@@ -119,8 +119,8 @@ var _ = Describe("Bastion tests", func() {
 			UseExistingCluster: pointer.BoolPtr(true),
 			CRDInstallOptions: envtest.CRDInstallOptions{
 				Paths: []string{
-					filepath.Join(repoRoot, "example", "20-crd-bastion.yaml"),
-					filepath.Join(repoRoot, "example", "20-crd-cluster.yaml"),
+					filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_bastions.yaml"),
+					filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
 				},
 			},
 		}
@@ -471,6 +471,9 @@ func createClusters(name string) (*extensionsv1alpha1.Cluster, *controller.Clust
 			CloudProfile: runtime.RawExtension{
 				Object: cloudProfile,
 				Raw:    cloudProfileJSON,
+			},
+			Seed: runtime.RawExtension{
+				Raw: []byte("{}"),
 			},
 			Shoot: runtime.RawExtension{
 				Object: shoot,
