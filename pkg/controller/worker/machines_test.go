@@ -46,7 +46,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Machines", func() {
@@ -522,19 +521,12 @@ var _ = Describe("Machines", func() {
 
 					workerDelegateCloudRouter, _ := NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", workerCloudRouter, cluster)
 					// Test workerDelegate.DeployMachineClasses()
-
-					gomock.InOrder(
-						c.EXPECT().
-							DeleteAllOf(context.TODO(), &machinev1alpha1.GCPMachineClass{}, client.InNamespace(namespace)),
-						chartApplier.
-							EXPECT().
-							Apply(
-								context.TODO(),
-								filepath.Join(gcp.InternalChartsPath, "machineclass"),
-								namespace,
-								"machineclass",
-								kubernetes.Values(machineClasses),
-							),
+					chartApplier.EXPECT().Apply(
+						context.TODO(),
+						filepath.Join(gcp.InternalChartsPath, "machineclass"),
+						namespace,
+						"machineclass",
+						kubernetes.Values(machineClasses),
 					)
 
 					err := workerDelegateCloudRouter.DeployMachineClasses(context.TODO())
@@ -571,29 +563,6 @@ var _ = Describe("Machines", func() {
 					result, err := workerDelegateCloudRouter.GenerateMachineDeployments(context.TODO())
 					Expect(err).NotTo(HaveOccurred())
 					Expect(result).To(Equal(machineDeployments))
-				})
-
-				It("should delete all old GCPMachineClasses", func() {
-					setup(true)
-					workerCloudRouter := w
-					workerDelegateCloudRouter, _ := NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", workerCloudRouter, cluster)
-
-					gomock.InOrder(
-						c.EXPECT().
-							DeleteAllOf(context.TODO(), &machinev1alpha1.GCPMachineClass{}, client.InNamespace(namespace)),
-						chartApplier.
-							EXPECT().
-							Apply(
-								context.TODO(),
-								filepath.Join(gcp.InternalChartsPath, "machineclass"),
-								namespace,
-								"machineclass",
-								kubernetes.Values(machineClasses),
-							),
-					)
-
-					err := workerDelegateCloudRouter.DeployMachineClasses(context.TODO())
-					Expect(err).NotTo(HaveOccurred())
 				})
 			})
 
