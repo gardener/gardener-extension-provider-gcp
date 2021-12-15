@@ -67,9 +67,15 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 		internalCIDR := cidrvalidation.NewCIDR(*infra.Networks.Internal, networksPath.Child("internal"))
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRParse(internalCIDR)...)
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(networksPath.Child("internal"), *infra.Networks.Internal)...)
-		allErrs = append(allErrs, pods.ValidateNotOverlap(internalCIDR)...)
-		allErrs = append(allErrs, services.ValidateNotOverlap(internalCIDR)...)
-		allErrs = append(allErrs, nodes.ValidateNotOverlap(internalCIDR)...)
+		if pods != nil {
+			allErrs = append(allErrs, pods.ValidateNotOverlap(internalCIDR)...)
+		}
+		if services != nil {
+			allErrs = append(allErrs, services.ValidateNotOverlap(internalCIDR)...)
+		}
+		if nodes != nil {
+			allErrs = append(allErrs, nodes.ValidateNotOverlap(internalCIDR)...)
+		}
 		allErrs = append(allErrs, workerCIDR.ValidateNotOverlap(internalCIDR)...)
 	}
 
