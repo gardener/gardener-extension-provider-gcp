@@ -52,6 +52,11 @@ const (
 	// ServiceAccountJSONMCM is the field in a machine class secret where the service account JSON is stored at.
 	ServiceAccountJSONMCM = "serviceAccountJSON"
 
+	// ServiceAccountSecretFieldProjectID is the field in a service account secret where the project id is stored at.
+	ServiceAccountSecretFieldProjectID = "projectID"
+	// ServiceAccountSecretFieldOrganisationID is the field in a service account secret where the organisation id is stored at.
+	ServiceAccountSecretFieldOrganisationID = "orgID"
+
 	// CloudControllerManagerName is a constant for the name of the CloudController deployed by the worker controller.
 	CloudControllerManagerName = "cloud-controller-manager"
 	// CSIControllerName is a constant for the name of the CSI controller deployment in the seed.
@@ -84,6 +89,12 @@ const (
 	MachineControllerManagerVpaName = "machine-controller-manager-vpa"
 	// MachineControllerManagerMonitoringConfigName is the name of the ConfigMap containing monitoring stack configurations for machine-controller-manager.
 	MachineControllerManagerMonitoringConfigName = "machine-controller-manager-monitoring-config"
+
+	// ExtensionPurposeLabel is a label to define the purpose of a resource for the extension.
+	ExtensionPurposeLabel = "gcp.provider.extensions.gardener.cloud/purpose"
+	// ExtensionPurposeServiceAccoutSecret is the label value for a Secret resource
+	// that hold service account information to a corresponding GCP organisation.
+	ExtensionPurposeServiceAccoutSecret = "service-account-secret"
 )
 
 var (

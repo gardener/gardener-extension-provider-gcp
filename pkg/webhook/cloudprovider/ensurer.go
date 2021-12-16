@@ -16,14 +16,17 @@ package cloudprovider
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
-	"github.com/go-logr/logr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
 	"github.com/gardener/gardener/extensions/pkg/webhook/cloudprovider"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type ensurer struct {
@@ -31,7 +34,7 @@ type ensurer struct {
 	client client.Client
 }
 
-// NewEnsurer ...
+// NewEnsurer creates cloudprovider ensurer.
 func NewEnsurer(logger logr.Logger) cloudprovider.Ensurer {
 	return &ensurer{
 		logger: logger,
@@ -49,7 +52,85 @@ func (e *ensurer) InjectScheme(_ *runtime.Scheme) error {
 	return nil
 }
 
-// EnsureCloudProviderSecret ...
-func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.GardenContext, new, old *corev1.Secret) error {
+// EnsureCloudProviderSecret ensures that cloudprovider secret contain a serviceaccount.json (if not present).
+func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.GardenContext, new, _ *corev1.Secret) error {
+	if hasSecretKey(new, gcp.ServiceAccountJSONField) {
+		return nil
+	}
+
+	if !hasSecretKey(new, gcp.ServiceAccountSecretFieldProjectID) || !hasSecretKey(new, gcp.ServiceAccountSecretFieldOrganisationID) {
+		return fmt.Errorf("could not assign a service account as either project id or org id is missing")
+	}
+
+	serviceAccountSecret, err := e.getManagedServiceAccountSecret(ctx, string(new.Data[gcp.ServiceAccountSecretFieldOrganisationID]))
+	if err != nil {
+		return err
+	}
+
+	serviceAccountData, err := generateServiceAccountData(serviceAccountSecret.Data[gcp.ServiceAccountJSONField], string(new.Data[gcp.ServiceAccountSecretFieldProjectID]))
+	if err != nil {
+		return err
+	}
+	new.Data[gcp.ServiceAccountJSONField] = serviceAccountData
+
 	return nil
+}
+
+func hasSecretKey(secret *corev1.Secret, key string) bool {
+	if _, ok := secret.Data[key]; ok {
+		return true
+	}
+	return false
+}
+
+func (e *ensurer) getManagedServiceAccountSecret(ctx context.Context, orgID string) (*corev1.Secret, error) {
+	var (
+		serviceAccountSecretList = corev1.SecretList{}
+		matchingSecrets          = []*corev1.Secret{}
+		labelSelector            = client.MatchingLabels{gcp.ExtensionPurposeLabel: gcp.ExtensionPurposeServiceAccoutSecret}
+	)
+
+	if err := e.client.List(ctx, &serviceAccountSecretList, labelSelector); err != nil {
+		return nil, err
+	}
+
+	for _, sec := range serviceAccountSecretList.Items {
+		if !hasSecretKey(&sec, gcp.ServiceAccountSecretFieldOrganisationID) {
+			continue
+		}
+
+		if string(sec.Data[gcp.ServiceAccountSecretFieldOrganisationID]) == orgID {
+			tmp := &sec
+			matchingSecrets = append(matchingSecrets, tmp)
+		}
+	}
+
+	if len(matchingSecrets) == 0 {
+		return nil, fmt.Errorf("found no service account secret matching to org id %q", orgID)
+	}
+
+	if len(matchingSecrets) > 1 {
+		return nil, fmt.Errorf("found more than one service account secret matching to org id %q", orgID)
+	}
+
+	if !hasSecretKey(matchingSecrets[0], gcp.ServiceAccountJSONField) {
+		return nil, fmt.Errorf("service account secret does not contain service account information")
+	}
+
+	return matchingSecrets[0], nil
+}
+
+func generateServiceAccountData(serviceAccountTemplate []byte, projectID string) ([]byte, error) {
+	var servieAccountData map[string]string
+	if err := json.Unmarshal(serviceAccountTemplate, &servieAccountData); err != nil {
+		return nil, err
+	}
+
+	servieAccountData["project_id"] = projectID
+
+	servieAccountDataRaw, err := json.Marshal(servieAccountData)
+	if err != nil {
+		return nil, err
+	}
+	return servieAccountDataRaw, nil
 }
