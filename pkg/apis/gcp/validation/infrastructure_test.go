@@ -144,6 +144,16 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					"Detail": Equal("must be valid canonical CIDR"),
 				}))
 			})
+
+			It("should allow specifying valid config", func() {
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(BeEmpty())
+			})
+
+			It("should allow specifying valid config with podsCIDR=nil and servicesCIDR=nil", func() {
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, nil, nil, fldPath)
+				Expect(errorList).To(BeEmpty())
+			})
 		})
 		Context("VPC", func() {
 			var testInfrastructureConfig = &apisgcp.InfrastructureConfig{
