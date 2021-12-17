@@ -24,21 +24,42 @@ import (
 
 var projectIDRegexp = regexp.MustCompile(`^(?P<project>[a-z][a-z0-9-]{4,28}[a-z0-9])$`)
 
-// ValidateCloudProviderSecret checks whether the given secret contains a valid GCP service account.
+// ValidateCloudProviderSecret checks whether the given secret contains a valid GCP service account
+// or a valid project id and an organisation id.
 func ValidateCloudProviderSecret(secret *corev1.Secret) error {
-	serviceAccountJSON, ok := secret.Data[gcp.ServiceAccountJSONField]
-	if !ok {
-		return fmt.Errorf("missing %q field in secret", gcp.ServiceAccountJSONField)
+	if serviceAccountJSON, ok := secret.Data[gcp.ServiceAccountJSONField]; ok {
+		return validateServiceAccountJSON(serviceAccountJSON)
 	}
 
-	projectID, err := gcp.ExtractServiceAccountProjectID(serviceAccountJSON)
+	if !hasSecretKey(secret, gcp.ServiceAccountSecretFieldProjectID) || !hasSecretKey(secret, gcp.ServiceAccountSecretFieldOrganisationID) {
+		return fmt.Errorf("missing required field(s). Either field %q or the fields %q and %q must be present", gcp.ServiceAccountJSONField, gcp.ServiceAccountSecretFieldProjectID, gcp.ServiceAccountSecretFieldOrganisationID)
+	}
+
+	return validateProjectID(string(secret.Data[gcp.ServiceAccountSecretFieldProjectID]))
+}
+
+func validateServiceAccountJSON(jsonData []byte) error {
+	projectID, err := gcp.ExtractServiceAccountProjectID(jsonData)
 	if err != nil {
 		return err
 	}
 
-	if !projectIDRegexp.MatchString(projectID) {
-		return fmt.Errorf("service account project ID does not match the expected format '%s'", projectIDRegexp)
+	if err := validateProjectID(projectID); err != nil {
+		return fmt.Errorf("invalid service account field: %w", err)
 	}
-
 	return nil
+}
+
+func validateProjectID(projectID string) error {
+	if !projectIDRegexp.MatchString(projectID) {
+		return fmt.Errorf("project ID does not match the expected format '%s'", projectIDRegexp)
+	}
+	return nil
+}
+
+func hasSecretKey(secret *corev1.Secret, key string) bool {
+	if _, ok := secret.Data[key]; ok {
+		return true
+	}
+	return false
 }

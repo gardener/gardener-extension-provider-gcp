@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -39,24 +38,31 @@ var _ = Describe("Secret validation", func() {
 
 			Expect(err).To(matcher)
 		},
-		Entry("should return error when the serviceaccount.json field is missing",
-			map[string][]byte{}, HaveOccurred()),
-		Entry("should return error when the project ID is missing",
-			map[string][]byte{gcp.ServiceAccountJSONField: []byte(`{"foo": "bar"}`)}, HaveOccurred()),
-		Entry("should return error when the project ID starts with a digit",
-			map[string][]byte{gcp.ServiceAccountJSONField: []byte(`{"project_id": "0my-project"}`)},
-			HaveOccurred()),
-		Entry("should return error when the project ID ends with hyphen",
-			map[string][]byte{gcp.ServiceAccountJSONField: []byte(`{"project_id": "my-project-"}`)},
-			HaveOccurred()),
-		Entry("should return error when the project ID is too short",
-			map[string][]byte{gcp.ServiceAccountJSONField: []byte(`{"project_id": "foo"}`)},
-			HaveOccurred()),
-		Entry("should return error when the project ID is too long",
-			map[string][]byte{gcp.ServiceAccountJSONField: []byte(fmt.Sprintf(`{"project_id": "%s"}`, strings.Repeat("a", 31)))},
-			HaveOccurred()),
-		Entry("should succeed when the project ID is valid",
-			map[string][]byte{gcp.ServiceAccountJSONField: []byte(`{"project_id": "my-project"}`)},
+		Entry("should succeed when valid serviceaccount.json is present",
+			map[string][]byte{"serviceaccount.json": []byte(`{"project_id": "my-project"}`)},
 			BeNil()),
+		Entry("should return error when serviceaccount.json does not contain a project ID",
+			map[string][]byte{"serviceaccount.json": []byte(`{"foo": "bar"}`)}, HaveOccurred()),
+		Entry("should return error when the project ID of the serviceaccount.json starts with a digit",
+			map[string][]byte{"serviceaccount.json": []byte(`{"project_id": "0my-project"}`)},
+			HaveOccurred()),
+		Entry("should return error when the project ID of the serviceaccount.json ends with hyphen",
+			map[string][]byte{"serviceaccount.json": []byte(`{"project_id": "my-project-"}`)},
+			HaveOccurred()),
+		Entry("should return error when the project ID of the serviceaccount.json is too short",
+			map[string][]byte{"serviceaccount.json": []byte(`{"project_id": "foo"}`)},
+			HaveOccurred()),
+		Entry("should return error when the project ID of the serviceaccount.json is too long",
+			map[string][]byte{"serviceaccount.json": []byte(fmt.Sprintf(`{"project_id": "%s"}`, strings.Repeat("a", 31)))},
+			HaveOccurred()),
+
+		Entry("should succeed when projectID and orgID are present",
+			map[string][]byte{"projectID": []byte("gcp-project-id"), "orgID": []byte("gcp-org-id")}, BeNil()),
+		Entry("should return error when no serviceaccount.json or projectID plus orgID are present",
+			map[string][]byte{}, HaveOccurred()),
+		Entry("should return error when no serviceaccount.json and only a projectID is present",
+			map[string][]byte{"projectID": []byte("gcp-project-id")}, HaveOccurred()),
+		Entry("should return error as no serviceaccount.json and only a orgID is present",
+			map[string][]byte{"orgID": []byte("gcp-org-id")}, HaveOccurred()),
 	)
 })
