@@ -78,3 +78,9 @@ config:
 gardener:
   seed:
     provider: gcp
+
+# serviceAccounts:
+# - orgID: b3JnLTE=
+#   serviceAccount: ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgImNsaWVudF9pZCI6ICIxMjM0Igp9
+# - orgID: b3JnLTI=
+#   serviceAccount: ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgImNsaWVudF9pZCI6ICI1Njc4Igp9
