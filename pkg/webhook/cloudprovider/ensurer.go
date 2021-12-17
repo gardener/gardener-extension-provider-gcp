@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/utils"
 
 	"github.com/gardener/gardener/extensions/pkg/webhook/cloudprovider"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
@@ -54,11 +55,11 @@ func (e *ensurer) InjectScheme(_ *runtime.Scheme) error {
 
 // EnsureCloudProviderSecret ensures that cloudprovider secret contain a serviceaccount.json (if not present).
 func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.GardenContext, new, _ *corev1.Secret) error {
-	if hasSecretKey(new, gcp.ServiceAccountJSONField) {
+	if utils.HasSecretKey(new, gcp.ServiceAccountJSONField) {
 		return nil
 	}
 
-	if !hasSecretKey(new, gcp.ServiceAccountSecretFieldProjectID) || !hasSecretKey(new, gcp.ServiceAccountSecretFieldOrganisationID) {
+	if !utils.HasSecretKey(new, gcp.ServiceAccountSecretFieldProjectID) || !utils.HasSecretKey(new, gcp.ServiceAccountSecretFieldOrganisationID) {
 		return fmt.Errorf("could not assign a service account as either project id or org id is missing")
 	}
 
@@ -76,13 +77,6 @@ func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.Gard
 	return nil
 }
 
-func hasSecretKey(secret *corev1.Secret, key string) bool {
-	if _, ok := secret.Data[key]; ok {
-		return true
-	}
-	return false
-}
-
 func (e *ensurer) getManagedServiceAccountSecret(ctx context.Context, orgID string) (*corev1.Secret, error) {
 	var (
 		serviceAccountSecretList = corev1.SecretList{}
@@ -95,7 +89,7 @@ func (e *ensurer) getManagedServiceAccountSecret(ctx context.Context, orgID stri
 	}
 
 	for _, sec := range serviceAccountSecretList.Items {
-		if !hasSecretKey(&sec, gcp.ServiceAccountSecretFieldOrganisationID) {
+		if !utils.HasSecretKey(&sec, gcp.ServiceAccountSecretFieldOrganisationID) {
 			continue
 		}
 
@@ -113,7 +107,7 @@ func (e *ensurer) getManagedServiceAccountSecret(ctx context.Context, orgID stri
 		return nil, fmt.Errorf("found more than one service account secret matching to org id %q", orgID)
 	}
 
-	if !hasSecretKey(matchingSecrets[0], gcp.ServiceAccountJSONField) {
+	if !utils.HasSecretKey(matchingSecrets[0], gcp.ServiceAccountJSONField) {
 		return nil, fmt.Errorf("service account secret does not contain service account information")
 	}
 

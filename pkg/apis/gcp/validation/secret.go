@@ -19,6 +19,7 @@ import (
 	"regexp"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -31,7 +32,7 @@ func ValidateCloudProviderSecret(secret *corev1.Secret) error {
 		return validateServiceAccountJSON(serviceAccountJSON)
 	}
 
-	if !hasSecretKey(secret, gcp.ServiceAccountSecretFieldProjectID) || !hasSecretKey(secret, gcp.ServiceAccountSecretFieldOrganisationID) {
+	if !utils.HasSecretKey(secret, gcp.ServiceAccountSecretFieldProjectID) || !utils.HasSecretKey(secret, gcp.ServiceAccountSecretFieldOrganisationID) {
 		return fmt.Errorf("missing required field(s). Either field %q or the fields %q and %q must be present", gcp.ServiceAccountJSONField, gcp.ServiceAccountSecretFieldProjectID, gcp.ServiceAccountSecretFieldOrganisationID)
 	}
 
@@ -55,11 +56,4 @@ func validateProjectID(projectID string) error {
 		return fmt.Errorf("project ID does not match the expected format '%s'", projectIDRegexp)
 	}
 	return nil
-}
-
-func hasSecretKey(secret *corev1.Secret, key string) bool {
-	if _, ok := secret.Data[key]; ok {
-		return true
-	}
-	return false
 }
