@@ -11,7 +11,7 @@ Every shoot cluster references a `SecretBinding` which itself references a `Secr
 The `SecretBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`.
 
 The required credentials for the GCP project are a [Service Account Key](https://cloud.google.com/iam/docs/service-accounts#service_account_keys) to authenticate as a [GCP Service Account](https://cloud.google.com/compute/docs/access/service-accounts).
-A service account is a special account that can be used by services and applications to interact with Google Cloud Platform APIs. 
+A service account is a special account that can be used by services and applications to interact with Google Cloud Platform APIs.
 Applications can use service account credentials to authorize themselves to a set of APIs and perform actions within the permissions granted to the service account.
 
 Make sure to [enable the Google Identity and Access Management (IAM) API](https://cloud.google.com/service-usage/docs/enable-disable).
@@ -40,6 +40,25 @@ data:
 
 ⚠️ Depending on your API usage it can be problematic to reuse the same Service Account Key for different Shoot clusters due to rate limits.
 Please consider spreading your Shoots over multiple Service Accounts on different GCP projects if you are hitting those limits, see https://cloud.google.com/compute/docs/api-rate-limits.
+
+### Managed Service Accounts
+
+The operators of the Gardener GCP extension can provide managed service accounts.
+This eliminates the need for users to provide an own service account for a Shoot.
+
+To make use of a managed service account, the GCP secret of a Shoot cluster must contain an `orgID` and a `projectID` field, but no `serviceaccount.json` field.
+- The `projectID` field contains the id of the GCP project
+- The `orgID` contains the id of the GCP organisation where the GCP project belongs to
+
+Removing the `serviceaccount.json` field and adding the `projectID` and `orgID` from the secret of an existing Shoot will also let it adopt the managed service account.
+
+Based on the `orgID` field, the Gardener extension will try to assign the managed service account to the Shoot.
+If no managed service account can be assigned then the next operation on the Shoot will fail.
+
+⚠️ The managed service account need to be assigned to the users GCP project with [proper permissions](#gcp-provider-credentials) before using it.
+
+In addition to use this feature the user project need to have the organisation policy enabled that allow the assignment of service accounts originated in a different project of the same organisation.
+More information are available [here](https://cloud.google.com/iam/docs/impersonating-service-accounts#binding-to-resources).
 
 ## `InfrastructureConfig`
 

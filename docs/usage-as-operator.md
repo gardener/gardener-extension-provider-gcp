@@ -89,7 +89,7 @@ The location/region where the backups will be stored defaults to the region of t
 The region of the backup can be different from where the seed cluster is running.
 However, usually it makes sense to pick the same region for the backup bucket as used for the Seed cluster.
 
-Please find below an example `Seed` manifest (partly) that configures backups using Google Cloud Storage buckets. 
+Please find below an example `Seed` manifest (partly) that configures backups using Google Cloud Storage buckets.
 
 ```yaml
 ---
@@ -113,6 +113,47 @@ An example of the referenced secret containing the credentials for the GCP Cloud
 
 #### Permissions for GCP Cloud Storage
 
-Please make sure the service account associated with the provided credentials has the following IAM roles. 
+Please make sure the service account associated with the provided credentials has the following IAM roles.
 - [Storage Admin](https://cloud.google.com/storage/docs/access-control/iam-roles)
 
+## Miscellaneous
+
+### Gardener managed Service Accounts
+
+The operators of the Gardener GCP extension can provide a list of managed service accounts (technical users) that can be used for GCP Shoots.
+This eliminates the need for users to provide own service account for their clusters.
+
+GCP service accounts are always bound to one project.
+But there is an option to assign a service account originated in a different project of the same GCP organisation to a project.
+Based on this approach Gardener operators can provide a project which contains managed service accounts and users could assign service accounts from this project with proper permissions to their projects.
+
+To use this feature the user project need to have the organisation policy enabled that allow the assignment of service accounts originated in a different project of the same organisation.
+More information are available [here](https://cloud.google.com/iam/docs/impersonating-service-accounts#binding-to-resources).
+
+In case the user provide an own service account in the Shoot secret, this one will be used instead of the managed one provided by the operator.
+
+Each managed service account will be maintained in a `Secret` like that:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: service-account-my-org
+  namespace: extension-provider-gcp
+  labels:
+     gcp.provider.extensions.gardener.cloud/purpose: service-account-secret
+data:
+  orgID: base64(my-gcp-org-id)
+  serviceaccount.json: base64(my-service-account-json-without-project-id-field)
+type: Opaque
+```
+
+The user needs to provide in its Shoot secret a `orgID` and `projectID`.
+
+The managed service account will be assigned based on the `orgID`.
+In case there is a managed service account secret with a matching `orgID`, this one will be used for the Shoot.
+If there is no matching managed service account secret then the next Shoot operation will fail.
+
+One of the benefits of having managed service account is that the operator controls the lifecycle of the service account and can rotate its secrets.
+
+After the service account secret has been rotated and the corresponding secret is updated, all Shoot clusters using it need to be reconciled or the last operation to be retried.
