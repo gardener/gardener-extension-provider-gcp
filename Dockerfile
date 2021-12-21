@@ -6,7 +6,7 @@ COPY . .
 RUN make install
 
 ############# base image
-FROM alpine:3.15.0 AS base
+FROM alpine:3.13.7 AS base
 
 ############# gardener-extension-provider-gcp
 FROM base AS gardener-extension-provider-gcp
