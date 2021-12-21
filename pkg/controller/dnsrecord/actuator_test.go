@@ -24,7 +24,6 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
-	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -113,14 +112,8 @@ var _ = Describe("Actuator", func() {
 			gcpDNSClient.EXPECT().GetManagedZones(ctx).Return(zones, nil)
 			gcpDNSClient.EXPECT().CreateOrUpdateRecordSet(ctx, zone, domainName, string(extensionsv1alpha1.DNSRecordTypeA), []string{address}, int64(120)).Return(nil)
 			gcpDNSClient.EXPECT().DeleteRecordSet(ctx, zone, "comment-"+domainName, "TXT").Return(nil)
-			c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&extensionsv1alpha1.DNSRecord{})).DoAndReturn(
-				func(_ context.Context, _ client.ObjectKey, obj *extensionsv1alpha1.DNSRecord) error {
-					*obj = *dns
-					return nil
-				},
-			)
-			sw.EXPECT().Update(ctx, gomock.AssignableToTypeOf(&extensionsv1alpha1.DNSRecord{})).DoAndReturn(
-				func(_ context.Context, obj *extensionsv1alpha1.DNSRecord, opts ...client.UpdateOption) error {
+			sw.EXPECT().Patch(ctx, gomock.AssignableToTypeOf(&extensionsv1alpha1.DNSRecord{}), gomock.Any()).DoAndReturn(
+				func(_ context.Context, obj *extensionsv1alpha1.DNSRecord, _ client.Patch, opts ...client.PatchOption) error {
 					Expect(obj.Status).To(Equal(extensionsv1alpha1.DNSRecordStatus{
 						Zone: pointer.String(zone),
 					}))
