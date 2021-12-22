@@ -1,12 +1,12 @@
 ############# builder
-FROM golang:1.16.3 AS builder
+FROM golang:1.17.5 AS builder
 
 WORKDIR /go/src/github.com/gardener/gardener-extension-provider-gcp
 COPY . .
 RUN make install
 
 ############# base image
-FROM alpine:3.13.4 AS base
+FROM alpine:3.13.7 AS base
 
 ############# gardener-extension-provider-gcp
 FROM base AS gardener-extension-provider-gcp
