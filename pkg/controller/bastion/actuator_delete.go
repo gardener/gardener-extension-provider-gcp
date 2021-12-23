@@ -65,7 +65,7 @@ func (a *actuator) Delete(ctx context.Context, bastion *extensionsv1alpha1.Basti
 
 	if !deleted {
 		return &reconcilerutils.RequeueAfterError{
-			RequeueAfter: 10 * time.Second,
+			RequeueAfter: 30 * time.Second,
 			Cause:        errors.New("bastion instance is still deleting"),
 		}
 	}
@@ -74,14 +74,14 @@ func (a *actuator) Delete(ctx context.Context, bastion *extensionsv1alpha1.Basti
 		return fmt.Errorf("failed to remove disk: %w", err)
 	}
 
-	if err := removeFirewallRules(ctx, logger, bastion, gcpClient, opt); err != nil {
+	if err := removeFirewallRules(ctx, gcpClient, opt); err != nil {
 		return fmt.Errorf("failed to remove firewall rule: %w", err)
 	}
 
 	return nil
 }
 
-func removeFirewallRules(ctx context.Context, logger logr.Logger, bastion *extensionsv1alpha1.Bastion, gcpclient gcpclient.Interface, opt *Options) error {
+func removeFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) error {
 	firewallList := []string{FirewallIngressAllowSSHResourceName(opt.BastionInstanceName), FirewallEgressDenyAllResourceName(opt.BastionInstanceName), FirewallEgressAllowOnlyResourceName(opt.BastionInstanceName)}
 	for _, firewall := range firewallList {
 		if err := deleteFirewallRule(ctx, gcpclient, opt, firewall); err != nil {
