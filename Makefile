@@ -38,6 +38,13 @@ REGION               := europe-west1
 SERVICE_ACCOUNT_FILE := .kube-secrets/gcp/serviceaccount.json
 
 #########################################
+# Tools                                 #
+#########################################
+
+TOOLS_DIR := hack/tools
+include vendor/github.com/gardener/gardener/hack/tools.mk
+
+#########################################
 # Rules for local development scenarios #
 #########################################
 
@@ -117,6 +124,10 @@ check-generate:
 check:
 	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/...
 	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check-charts.sh ./charts
+
+.PHONY: check-docforge
+check-docforge: $(DOCFORGE)
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check-docforge.sh $(REPO_ROOT) $(REPO_ROOT)/.docforge/manifest.yaml ".docforge/;docs/" "gardener-extension-provider-gcp" false
 
 .PHONY: generate
 generate:
