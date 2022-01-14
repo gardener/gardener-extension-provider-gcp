@@ -17,6 +17,7 @@ package bastion
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 
@@ -145,7 +146,7 @@ func ingressPermissions(bastion *extensionsv1alpha1.Bastion) ([]string, error) {
 		} else if ip.To16() != nil {
 			// Only IPv4 is supported in sourceRanges[].
 			// https://cloud.google.com/compute/docs/reference/rest/v1/firewalls/insert
-			return nil, fmt.Errorf("IPv6 is currently not fully supported: %w", err)
+			return nil, errors.New("IPv6 is currently not fully supported")
 		}
 
 	}
