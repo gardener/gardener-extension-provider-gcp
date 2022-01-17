@@ -42,6 +42,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -232,7 +233,7 @@ var _ = Describe("Bastion tests", func() {
 			nil,
 		)).To(Succeed())
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 		verifyPort22IsOpen(ctx, c, bastion)
 		verifyPort42IsClosed(ctx, c, bastion)
 
@@ -248,7 +249,7 @@ func verifyPort22IsOpen(ctx context.Context, c client.Client, bastion *extension
 
 	ipAddress := bastionUpdated.Status.Ingress.IP
 	address := net.JoinHostPort(ipAddress, "22")
-	conn, err := net.DialTimeout("tcp4", address, 60*time.Second)
+	conn, err := net.DialTimeout("tcp", address, 60*time.Second)
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(conn).NotTo(BeNil())
 }
@@ -261,7 +262,7 @@ func verifyPort42IsClosed(ctx context.Context, c client.Client, bastion *extensi
 
 	ipAddress := bastionUpdated.Status.Ingress.IP
 	address := net.JoinHostPort(ipAddress, "42")
-	conn, err := net.DialTimeout("tcp4", address, 3*time.Second)
+	conn, err := net.DialTimeout("tcp", address, 3*time.Second)
 	Expect(err).Should(HaveOccurred())
 	Expect(conn).To(BeNil())
 }
@@ -508,13 +509,13 @@ func verifyCreation(ctx context.Context, project string, computeService *compute
 
 	By("checking Firewall-allow-ssh rule SSHPortOpen,Public Source Ranges")
 	firewall, err := computeService.Firewalls.Get(project, bastionctrl.FirewallIngressAllowSSHResourceName(options.BastionInstanceName)).Context(ctx).Do()
-	Expect(err).NotTo(HaveOccurred())
+	Expect(ignoreNotFoundError(err)).NotTo(HaveOccurred())
 	Expect(firewall.Allowed[0].Ports[0]).To(Equal("22"))
 	Expect(firewall.SourceRanges[0]).To(Equal(myPublicIP))
 
 	By("checking Firewall-deny-all rule")
 	firewall, err = computeService.Firewalls.Get(project, bastionctrl.FirewallEgressDenyAllResourceName(options.BastionInstanceName)).Context(ctx).Do()
-	Expect(err).NotTo(HaveOccurred())
+	Expect(ignoreNotFoundError(err)).NotTo(HaveOccurred())
 	Expect(firewall.Denied[0].IPProtocol).To(Equal("all"))
 	Expect(firewall.DestinationRanges[0]).To(Equal("0.0.0.0/0"))
 
@@ -540,7 +541,7 @@ func verifyCreation(ctx context.Context, project string, computeService *compute
 	By("checking bastion disks exists")
 	//bastion Disk exists
 	createdDisk, err := computeService.Disks.Get(project, options.Zone, bastionctrl.DiskResourceName(options.BastionInstanceName)).Context(ctx).Do()
-	Expect(err).NotTo(HaveOccurred())
+	Expect(ignoreNotFoundError(err)).NotTo(HaveOccurred())
 	Expect(createdDisk.Name).To(Equal(bastionctrl.DiskResourceName(options.BastionInstanceName)))
 
 	By("checking userData matches the constant")
@@ -557,21 +558,21 @@ func verifyDeletion(ctx context.Context, project string, computeService *compute
 
 	// instance should be terminated and not found
 	_, err := computeService.Instances.Get(project, options.Zone, options.BastionInstanceName).Context(ctx).Do()
-	Expect(err).To(HaveOccurred())
+	Expect(ignoreNotFoundError(err)).NotTo(HaveOccurred())
 
 	// Disk should be terminated and not found
 	_, err = computeService.Disks.Get(project, options.Zone, bastionctrl.DiskResourceName(options.BastionInstanceName)).Context(ctx).Do()
-	Expect(err).To(HaveOccurred())
+	Expect(ignoreNotFoundError(err)).NotTo(HaveOccurred())
 }
 
 func checkFirewallDoesNotExist(ctx context.Context, project string, computeService *compute.Service, firewallName string) {
 	_, err := computeService.Firewalls.Get(project, firewallName).Context(ctx).Do()
-	Expect(err).To(HaveOccurred())
+	Expect(ignoreNotFoundError(err)).NotTo(HaveOccurred())
 }
 
 func checkFirewallExists(ctx context.Context, project string, computeService *compute.Service, firewallName string) {
 	firewall, err := computeService.Firewalls.Get(project, firewallName).Context(ctx).Do()
-	Expect(err).NotTo(HaveOccurred())
+	Expect(ignoreNotFoundError(err)).NotTo(HaveOccurred())
 	Expect(firewall.Name).To(Equal(firewallName))
 }
 
@@ -641,4 +642,14 @@ func randomString() (string, error) {
 	}
 
 	return suffix, nil
+}
+
+func ignoreNotFoundError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if googleError, ok := err.(*googleapi.Error); ok && googleError.Code == http.StatusNotFound {
+		return nil
+	}
+	return err
 }
