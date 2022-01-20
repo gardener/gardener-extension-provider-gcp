@@ -87,7 +87,7 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 		return fmt.Errorf("failed to store status.providerStatus for zone: %s", opt.Zone)
 	}
 
-	err = ensureFirewallRules(ctx, gcpClient, opt)
+	err = ensureFirewallRules(ctx, gcpClient, bastion, opt)
 	if err != nil {
 		return fmt.Errorf("failed to ensure firewall rule: %w", err)
 	}
@@ -126,7 +126,14 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 
 }
 
-func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) error {
+func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, bastion *extensionsv1alpha1.Bastion, opt *Options) error {
+	cidrs, err := ingressPermissions(bastion)
+	if err != nil {
+		return err
+	}
+
+	opt.CIDRs = cidrs
+
 	firewallList := []*compute.Firewall{IngressAllowSSH(opt), EgressDenyAll(opt), EgressAllowOnly(opt)}
 
 	for _, item := range firewallList {

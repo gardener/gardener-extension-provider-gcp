@@ -75,7 +75,6 @@ var _ = Describe("Bastion", func() {
 			Expect(options.BastionInstanceName).To(Equal("cluster1-bastionName1-bastion-1cdc8"))
 			Expect(options.Zone).To(Equal("us-west1-a"))
 			Expect(options.DiskName).To(Equal("cluster1-bastionName1-bastion-1cdc8-disk"))
-			Expect(options.CIDRs).To(Equal([]string{"213.69.151.0/24"}))
 			Expect(options.Subnetwork).To(Equal("regions/us-west/subnetworks/cluster1-nodes"))
 			Expect(options.ProjectID).To(Equal("projectID"))
 			Expect(options.Network).To(Equal("projects/projectID/global/networks/cluster1"))

@@ -61,11 +61,6 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		return nil, err
 	}
 
-	cidrs, err := ingressPermissions(bastion)
-	if err != nil {
-		return nil, err
-	}
-
 	// Each resource name up to a maximum of 63 characters in GCP
 	// https://cloud.google.com/compute/docs/naming-resources
 	clusterName := cluster.ObjectMeta.Name
@@ -90,7 +85,6 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		BastionInstanceName: baseResourceName,
 		Zone:                getZone(cluster, region, providerStatus),
 		DiskName:            DiskResourceName(baseResourceName),
-		CIDRs:               cidrs,
 		Subnetwork:          fmt.Sprintf("regions/%s/subnetworks/%s", region, NodesResourceName(clusterName)),
 		ProjectID:           projectID,
 		Network:             networkName,
