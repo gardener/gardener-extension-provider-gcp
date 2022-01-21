@@ -21,7 +21,7 @@ spec:
       labels:
 {{ include "labels" . | indent 8 }}
     spec:
-      {{- if not .Values.global.virtualGarden.enabled }}
+      {{- if or (not .Values.global.virtualGarden.enabled) (and (and .Values.global.virtualGarden.enabled .Values.global.virtualGarden.user.name) .Values.global.serviceAccountTokenVolumeProjection.enabled) }}
       serviceAccountName: {{ include "name" . }}
       {{- end }}
       {{- if .Values.global.kubeconfig }}
