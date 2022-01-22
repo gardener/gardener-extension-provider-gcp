@@ -17,7 +17,7 @@ package validation_test
 import (
 	"fmt"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 
 	"github.com/gardener/gardener/pkg/apis/core"
@@ -98,6 +98,59 @@ var _ = Describe("Shoot validation", func() {
 		It("should return an error if worker.minimum is less than number of zones", func() {
 			worker.Minimum = 1
 			Expect(ValidateWorkerAutoScaling(worker, "")).To(HaveOccurred())
+		})
+	})
+
+	Describe("#ValidateWorkers", func() {
+		var workers []core.Worker
+
+		BeforeEach(func() {
+			workers = []core.Worker{
+				{
+					Name: "foo",
+					Volume: &core.Volume{
+						Type:       pointer.String("some-type"),
+						VolumeSize: "40Gi",
+					},
+					Zones: []string{"zone1"},
+				},
+				{
+					Name: "bar",
+					Volume: &core.Volume{
+						Type:       pointer.String("some-type"),
+						VolumeSize: "40Gi",
+					},
+					Zones: []string{"zone1"},
+				},
+			}
+		})
+		It("should pass when the kubernetes version is equal to the CSI migration version", func() {
+			workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.18.0")}
+
+			errorList := ValidateWorkers(workers, field.NewPath(""))
+
+			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should pass when the kubernetes version is higher to the CSI migration version", func() {
+			workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.19.0")}
+
+			errorList := ValidateWorkers(workers, field.NewPath(""))
+
+			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should not allow when the kubernetes version is lower than the CSI migration version", func() {
+			workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.17.0")}
+
+			errorList := ValidateWorkers(workers, field.NewPath("workers"))
+
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeForbidden),
+					"Field": Equal("workers[0].kubernetes.version"),
+				})),
+			))
 		})
 	})
 
@@ -296,7 +349,7 @@ var _ = Describe("Shoot validation", func() {
 	})
 })
 
-func validateWorkerConfig(workers []core.Worker, workerConfig *gcp.WorkerConfig) field.ErrorList {
+func validateWorkerConfig(workers []core.Worker, workerConfig *api.WorkerConfig) field.ErrorList {
 	allErrs := field.ErrorList{}
 	for _, worker := range workers {
 		for _, volume := range worker.DataVolumes {
