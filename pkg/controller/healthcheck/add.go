@@ -47,7 +47,7 @@ var (
 // RegisterHealthChecks registers health checks for each extension resource
 func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
 	csiEnabledPreCheckFunc := func(_ client.Object, cluster *extensionscontroller.Cluster) bool {
-		csiEnabled, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, ">=", "1.18")
+		csiEnabled, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, ">=", gcp.CSIMigrationKubernetesVersion)
 		if err != nil {
 			return false
 		}

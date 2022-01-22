@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/Masterminds/semver"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 
+	"github.com/Masterminds/semver"
 	"github.com/coreos/go-systemd/v22/unit"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
@@ -40,8 +40,6 @@ import (
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-const csiMigrationVersion = "1.18"
 
 // NewEnsurer creates a new controlplane ensurer.
 func NewEnsurer(logger logr.Logger) genericmutator.Ensurer {
@@ -84,7 +82,7 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gconte
 		return err
 	}
 
-	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}
@@ -113,7 +111,7 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, gct
 		return err
 	}
 
-	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}
@@ -143,7 +141,7 @@ func (e *ensurer) EnsureKubeSchedulerDeployment(ctx context.Context, gctx gconte
 		return err
 	}
 
-	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}
@@ -408,7 +406,7 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcon
 		return nil, err
 	}
 
-	csiEnabled, _, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, _, err := csimigration.CheckCSIConditions(cluster, gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -445,7 +443,7 @@ func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, gctx gcontext.
 		return err
 	}
 
-	csiEnabled, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, ">=", csiMigrationVersion)
+	csiEnabled, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, ">=", gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}

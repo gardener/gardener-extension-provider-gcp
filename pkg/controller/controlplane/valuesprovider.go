@@ -374,7 +374,7 @@ func (vp *valuesProvider) GetControlPlaneShootCRDsChartValues(
 	_ *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
-	k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.18")
+	k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -392,7 +392,7 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 	_ *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
-	k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.18")
+	k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +494,7 @@ func getCSIControllerChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
-	k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.18")
+	k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -529,7 +529,7 @@ func getControlPlaneShootChartValues(
 	cluster *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
 	kubernetesVersion := cluster.Shoot.Spec.Kubernetes.Version
-	k8sVersionLessThan118, err := version.CompareVersions(kubernetesVersion, "<", "1.18")
+	k8sVersionLessThan118, err := version.CompareVersions(kubernetesVersion, "<", gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return nil, err
 	}
