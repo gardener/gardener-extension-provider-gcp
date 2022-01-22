@@ -18,9 +18,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Masterminds/semver"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 
+	"github.com/Masterminds/semver"
 	"github.com/coreos/go-systemd/v22/unit"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
@@ -34,6 +34,7 @@ import (
 	"github.com/gardener/gardener/pkg/utils/version"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -556,50 +557,32 @@ var _ = Describe("Ensurer", func() {
 			}
 		})
 
-		It("should modify existing elements of kubelet configuration (< 1.17)", func() {
-			newKubeletConfig := &kubeletconfigv1beta1.KubeletConfiguration{
-				FeatureGates: map[string]bool{
-					"Foo": true,
-				},
-			}
-			kubeletConfig := *oldKubeletConfig
+		DescribeTable("should modify existing elements of kubelet configuration",
+			func(gctx gcontext.GardenContext, kubeletVersion *semver.Version, unregisterFeatureGateName string) {
+				newKubeletConfig := &kubeletconfigv1beta1.KubeletConfiguration{
+					FeatureGates: map[string]bool{
+						"Foo": true,
+					},
+				}
 
-			err := ensurer.EnsureKubeletConfiguration(ctx, eContextK8s117, semver.MustParse("1.17.0"), &kubeletConfig, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(&kubeletConfig).To(Equal(newKubeletConfig))
-		})
+				if unregisterFeatureGateName != "" {
+					newKubeletConfig.FeatureGates["CSIMigration"] = true
+					newKubeletConfig.FeatureGates["CSIMigrationGCE"] = true
+					newKubeletConfig.FeatureGates[unregisterFeatureGateName] = true
+				}
 
-		It("should modify existing elements of kubelet configuration (>= 1.18)", func() {
-			newKubeletConfig := &kubeletconfigv1beta1.KubeletConfiguration{
-				FeatureGates: map[string]bool{
-					"Foo":                     true,
-					"CSIMigration":            true,
-					"CSIMigrationGCE":         true,
-					"CSIMigrationGCEComplete": true,
-				},
-			}
-			kubeletConfig := *oldKubeletConfig
+				kubeletConfig := *oldKubeletConfig
 
-			err := ensurer.EnsureKubeletConfiguration(ctx, eContextK8s118, semver.MustParse("1.18.0"), &kubeletConfig, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(&kubeletConfig).To(Equal(newKubeletConfig))
-		})
+				err := ensurer.EnsureKubeletConfiguration(ctx, gctx, kubeletVersion, &kubeletConfig, nil)
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(&kubeletConfig).To(Equal(newKubeletConfig))
+			},
 
-		It("should modify existing elements of kubelet configuration (>= 1.21)", func() {
-			newKubeletConfig := &kubeletconfigv1beta1.KubeletConfiguration{
-				FeatureGates: map[string]bool{
-					"Foo":                       true,
-					"CSIMigration":              true,
-					"CSIMigrationGCE":           true,
-					"InTreePluginGCEUnregister": true,
-				},
-			}
-			kubeletConfig := *oldKubeletConfig
-
-			err := ensurer.EnsureKubeletConfiguration(ctx, eContextK8s121, semver.MustParse("1.21.0"), &kubeletConfig, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(&kubeletConfig).To(Equal(newKubeletConfig))
-		})
+			Entry("control plane, kubelet < 1.18", eContextK8s117, semver.MustParse("1.17.0"), ""),
+			Entry("1.18 <= control plane, kubelet <= 1.21", eContextK8s118, semver.MustParse("1.18.0"), "CSIMigrationGCEComplete"),
+			Entry("controlplane >= 1.21, kubelet < 1.21", eContextK8s121, semver.MustParse("1.20.0"), "CSIMigrationGCEComplete"),
+			Entry("control plane, kubelet >= 1.21", eContextK8s121, semver.MustParse("1.21.0"), "InTreePluginGCEUnregister"),
+		)
 	})
 
 	Describe("#EnsureKubernetesGeneralConfiguration", func() {
