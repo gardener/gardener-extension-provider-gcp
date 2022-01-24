@@ -50,7 +50,7 @@ images:
 - name: csi-driver
   sourceRepository: github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
   repository: gcr.io/gke-release/gcp-compute-persistent-disk-csi-driver
-  tag: "v1.0.1-gke.0"
+  tag: "v1.3.4-gke.0"
 - name: csi-provisioner
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: k8s.gcr.io/sig-storage/csi-provisioner
