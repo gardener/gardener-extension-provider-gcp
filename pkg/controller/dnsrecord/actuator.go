@@ -27,11 +27,10 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	extensionsv1alpha1helper "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1/helper"
-	"github.com/gardener/gardener/pkg/controllerutils"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
-	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -92,10 +91,9 @@ func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRec
 	}
 
 	// Update resource status
-	return controllerutils.TryUpdateStatus(ctx, retry.DefaultBackoff, a.Client(), dns, func() error {
-		dns.Status.Zone = &managedZone
-		return nil
-	})
+	patch := client.MergeFrom(dns.DeepCopy())
+	dns.Status.Zone = &managedZone
+	return a.Client().Status().Patch(ctx, dns, patch)
 }
 
 // Delete deletes the DNSRecord.

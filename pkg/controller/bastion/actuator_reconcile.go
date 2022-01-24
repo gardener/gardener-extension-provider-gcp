@@ -24,13 +24,11 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/controllerutils"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
 	"google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -75,15 +73,14 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 		}
 	}
 
-	err = controllerutils.TryUpdateStatus(ctx, retry.DefaultBackoff, a.Client(), bastion, func() error {
-		bytes, err := marshalProviderStatus(opt.Zone)
-		if err != nil {
-			return err
-		}
-		bastion.Status.ProviderStatus = &runtime.RawExtension{Raw: bytes}
-		return nil
-	})
+	bytes, err := marshalProviderStatus(opt.Zone)
 	if err != nil {
+		return err
+	}
+
+	patch := client.MergeFrom(bastion.DeepCopy())
+	bastion.Status.ProviderStatus = &runtime.RawExtension{Raw: bytes}
+	if err := a.Client().Status().Patch(ctx, bastion, patch); err != nil {
 		return fmt.Errorf("failed to store status.providerStatus for zone: %s", opt.Zone)
 	}
 
@@ -119,11 +116,9 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 
 	// once a public endpoint is available, publish the endpoint on the
 	// Bastion resource to notify upstream about the ready instance
-	return controllerutils.TryUpdateStatus(ctx, retry.DefaultBackoff, a.Client(), bastion, func() error {
-		bastion.Status.Ingress = *endpoints.public
-		return nil
-	})
-
+	patch = client.MergeFrom(bastion.DeepCopy())
+	bastion.Status.Ingress = *endpoints.public
+	return a.Client().Status().Patch(ctx, bastion, patch)
 }
 
 func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) error {
