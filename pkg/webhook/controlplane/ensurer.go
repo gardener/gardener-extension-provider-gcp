@@ -20,12 +20,11 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/Masterminds/semver"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 
+	"github.com/Masterminds/semver"
 	"github.com/coreos/go-systemd/v22/unit"
-	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
@@ -40,8 +39,6 @@ import (
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-const csiMigrationVersion = "1.18"
 
 // NewEnsurer creates a new controlplane ensurer.
 func NewEnsurer(logger logr.Logger) genericmutator.Ensurer {
@@ -62,8 +59,8 @@ func (e *ensurer) InjectClient(client client.Client) error {
 	return nil
 }
 
-func computeCSIMigrationCompleteFeatureGate(cluster *extensionscontroller.Cluster) (string, error) {
-	k8sGreaterEqual121, err := versionutils.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, ">=", "1.21")
+func computeCSIMigrationCompleteFeatureGate(version string) (string, error) {
+	k8sGreaterEqual121, err := versionutils.CompareVersions(version, ">=", "1.21")
 	if err != nil {
 		return "", err
 	}
@@ -84,11 +81,11 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gconte
 		return err
 	}
 
-	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}
-	csiMigrationCompleteFeatureGate, err := computeCSIMigrationCompleteFeatureGate(cluster)
+	csiMigrationCompleteFeatureGate, err := computeCSIMigrationCompleteFeatureGate(cluster.Shoot.Spec.Kubernetes.Version)
 	if err != nil {
 		return err
 	}
@@ -113,11 +110,11 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, gct
 		return err
 	}
 
-	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}
-	csiMigrationCompleteFeatureGate, err := computeCSIMigrationCompleteFeatureGate(cluster)
+	csiMigrationCompleteFeatureGate, err := computeCSIMigrationCompleteFeatureGate(cluster.Shoot.Spec.Kubernetes.Version)
 	if err != nil {
 		return err
 	}
@@ -143,11 +140,11 @@ func (e *ensurer) EnsureKubeSchedulerDeployment(ctx context.Context, gctx gconte
 		return err
 	}
 
-	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}
-	csiMigrationCompleteFeatureGate, err := computeCSIMigrationCompleteFeatureGate(cluster)
+	csiMigrationCompleteFeatureGate, err := computeCSIMigrationCompleteFeatureGate(cluster.Shoot.Spec.Kubernetes.Version)
 	if err != nil {
 		return err
 	}
@@ -408,7 +405,7 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcon
 		return nil, err
 	}
 
-	csiEnabled, _, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, _, err := csimigration.CheckCSIConditions(cluster, gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -445,11 +442,11 @@ func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, gctx gcontext.
 		return err
 	}
 
-	csiEnabled, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, ">=", csiMigrationVersion)
+	csiEnabled, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, ">=", gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}
-	csiMigrationCompleteFeatureGate, err := computeCSIMigrationCompleteFeatureGate(cluster)
+	csiMigrationCompleteFeatureGate, err := computeCSIMigrationCompleteFeatureGate(kubeletVersion.String())
 	if err != nil {
 		return err
 	}
@@ -461,7 +458,7 @@ func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, gctx gcontext.
 
 		new.FeatureGates["CSIMigration"] = true
 		new.FeatureGates["CSIMigrationGCE"] = true
-		// kubelets of new worker nodes can directly be started with the the <csiMigrationCompleteFeatureGate> feature gate
+		// kubelets of new worker nodes can directly be started with the <csiMigrationCompleteFeatureGate> feature gate
 		new.FeatureGates[csiMigrationCompleteFeatureGate] = true
 	}
 

@@ -17,10 +17,12 @@ package validation
 import (
 	"fmt"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+
+	"github.com/Masterminds/semver"
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/helper"
 	"github.com/gardener/gardener/pkg/apis/core/validation"
-
 	"k8s.io/apimachinery/pkg/api/equality"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -41,8 +43,30 @@ func ValidateNetworking(networking core.Networking, fldPath *field.Path) field.E
 func ValidateWorkers(workers []core.Worker, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
+	csiMigrationVersion, err := semver.NewVersion(gcp.CSIMigrationKubernetesVersion)
+	if err != nil {
+		allErrs = append(allErrs, field.InternalError(fldPath, err))
+		return allErrs
+	}
+
 	for i, worker := range workers {
 		workerFldPath := fldPath.Index(i)
+
+		// Ensure the kubelet version is not lower than the version in which the extension performs CSI migration.
+		if worker.Kubernetes != nil && worker.Kubernetes.Version != nil {
+			versionPath := workerFldPath.Child("kubernetes", "version")
+
+			v, err := semver.NewVersion(*worker.Kubernetes.Version)
+			if err != nil {
+				allErrs = append(allErrs, field.Invalid(versionPath, *worker.Kubernetes.Version, err.Error()))
+				return allErrs
+			}
+
+			if v.LessThan(csiMigrationVersion) {
+				allErrs = append(allErrs, field.Forbidden(versionPath, fmt.Sprintf("cannot use kubelet version (%s) lower than CSI migration version (%s)", v.String(), csiMigrationVersion.String())))
+			}
+		}
+
 		if worker.Volume == nil {
 			allErrs = append(allErrs, field.Required(workerFldPath.Child("volume"), "must not be nil"))
 		} else {
