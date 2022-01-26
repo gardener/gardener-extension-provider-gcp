@@ -31,7 +31,7 @@ current-context: garden
 users:
 - name: garden
     user:
-    tokenFile: /etc/projected/serviceaccount/token
+    tokenFile: /var/run/secrets/projected/serviceaccount/token
 ```
 
 This will allow for automatic rotation of the service account token by the `kubelet`. The configuration can be achieved by setting both `.Values.global.serviceAccountTokenVolumeProjection.enabled: true` and `.Values.global.kubeconfig` in the respective chart's `values.yaml` file.
@@ -80,5 +80,5 @@ current-context: virtual-garden
 users:
 - name: virtual-garden
     user:
-    tokenFile: /etc/projected/serviceaccount/token
+    tokenFile: /var/run/secrets/projected/serviceaccount/token
 ```
