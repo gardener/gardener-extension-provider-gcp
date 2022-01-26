@@ -57,7 +57,7 @@ spec:
         {{- end }}
         {{- if .Values.global.serviceAccountTokenVolumeProjection.enabled }}
         - name: service-account-token
-          mountPath: /etc/projected/serviceaccount
+          mountPath: /var/run/secrets/projected/serviceaccount
           readOnly: true
         {{- end }}
       volumes:
