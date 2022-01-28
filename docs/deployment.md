@@ -1,4 +1,4 @@
-# Setup of the GCP provider extension
+# Deployment of the GCP provider extension
 
 **Disclaimer:** This document is NOT a step by step installation guide for the GCP provider extension and only contains some configuration specifics regarding the installation of different components via the helm charts residing in the GCP provider extension [repository](https://github.com/gardener/gardener-extension-provider-gcp).
 
