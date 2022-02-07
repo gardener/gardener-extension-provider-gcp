@@ -98,8 +98,8 @@ func deleteFirewallRule(ctx context.Context, gcpclient gcpclient.Interface, opt 
 	return nil
 }
 
-func patchFirewallRule(ctx context.Context, gcpclient gcpclient.Interface, opt *Options, firewallRuleName string) error {
-	if _, err := gcpclient.Firewalls().Patch(opt.ProjectID, firewallRuleName, patchCIDRs(opt)).Context(ctx).Do(); err != nil {
+func patchFirewallRule(ctx context.Context, gcpclient gcpclient.Interface, opt *Options, firewallRuleName string, cidrs []string) error {
+	if _, err := gcpclient.Firewalls().Patch(opt.ProjectID, firewallRuleName, patchCIDRs(cidrs)).Context(ctx).Do(); err != nil {
 		return err
 	}
 	return nil

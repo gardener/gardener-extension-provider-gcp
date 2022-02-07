@@ -40,7 +40,6 @@ const maxLengthForResource = 63
 type Options struct {
 	Shoot               *gardencorev1beta1.Shoot
 	BastionInstanceName string
-	CIDRs               []string
 	DiskName            string
 	Zone                string
 	Subnetwork          string

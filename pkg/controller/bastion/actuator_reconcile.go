@@ -132,9 +132,7 @@ func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, bas
 		return err
 	}
 
-	opt.CIDRs = cidrs
-
-	firewallList := []*compute.Firewall{IngressAllowSSH(opt), EgressDenyAll(opt), EgressAllowOnly(opt)}
+	firewallList := []*compute.Firewall{IngressAllowSSH(opt, cidrs), EgressDenyAll(opt), EgressAllowOnly(opt)}
 
 	for _, item := range firewallList {
 		if err := createFirewallRuleIfNotExist(ctx, gcpclient, opt, item); err != nil {
@@ -142,16 +140,16 @@ func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, bas
 		}
 	}
 
-	firewall, err := getFirewallRule(ctx, gcpclient, opt, IngressAllowSSH(opt).Name)
+	firewall, err := getFirewallRule(ctx, gcpclient, opt, IngressAllowSSH(opt, cidrs).Name)
 	if err != nil || firewall == nil {
 		return fmt.Errorf("could not get firewall rule: %w", err)
 	}
 
 	currentCIDRs := firewall.SourceRanges
-	wantedCIDRs := opt.CIDRs
+	wantedCIDRs := cidrs
 
 	if !reflect.DeepEqual(currentCIDRs, wantedCIDRs) {
-		return patchFirewallRule(ctx, gcpclient, opt, IngressAllowSSH(opt).Name)
+		return patchFirewallRule(ctx, gcpclient, opt, IngressAllowSSH(opt, cidrs).Name, cidrs)
 	}
 
 	return nil
