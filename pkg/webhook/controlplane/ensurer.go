@@ -37,6 +37,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -412,7 +413,7 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcon
 
 	if opt := extensionswebhook.UnitOptionWithSectionAndName(new, "Service", "ExecStart"); opt != nil {
 		command := extensionswebhook.DeserializeCommandLine(opt.Value)
-		command = ensureKubeletCommandLineArgs(command, csiEnabled)
+		command = ensureKubeletCommandLineArgs(command, csiEnabled, kubeletVersion)
 		opt.Value = extensionswebhook.SerializeCommandLine(command, 1, " \\\n    ")
 	}
 
@@ -425,10 +426,12 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcon
 	return new, nil
 }
 
-func ensureKubeletCommandLineArgs(command []string, csiEnabled bool) []string {
+func ensureKubeletCommandLineArgs(command []string, csiEnabled bool, kubeletVersion *semver.Version) []string {
 	if csiEnabled {
-		command = extensionswebhook.EnsureStringWithPrefix(command, "--cloud-provider=", "external")
-		command = extensionswebhook.EnsureStringWithPrefix(command, "--enable-controller-attach-detach=", "true")
+		if !version.ConstraintK8sGreaterEqual123.Check(kubeletVersion) {
+			command = extensionswebhook.EnsureStringWithPrefix(command, "--cloud-provider=", "external")
+			command = extensionswebhook.EnsureStringWithPrefix(command, "--enable-controller-attach-detach=", "true")
+		}
 	} else {
 		command = extensionswebhook.EnsureStringWithPrefix(command, "--cloud-provider=", "gce")
 	}
@@ -460,6 +463,10 @@ func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, gctx gcontext.
 		new.FeatureGates["CSIMigrationGCE"] = true
 		// kubelets of new worker nodes can directly be started with the <csiMigrationCompleteFeatureGate> feature gate
 		new.FeatureGates[csiMigrationCompleteFeatureGate] = true
+
+		if version.ConstraintK8sGreaterEqual123.Check(kubeletVersion) {
+			new.EnableControllerAttachDetach = pointer.Bool(true)
+		}
 	}
 
 	return nil
