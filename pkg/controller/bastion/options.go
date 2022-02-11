@@ -40,7 +40,6 @@ const maxLengthForResource = 63
 type Options struct {
 	Shoot               *gardencorev1beta1.Shoot
 	BastionInstanceName string
-	CIDRs               []string
 	DiskName            string
 	Zone                string
 	Subnetwork          string
@@ -57,11 +56,6 @@ type providerStatusRaw struct {
 // function does not create any IaaS resources.
 func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, projectID string) (*Options, error) {
 	providerStatus, err := getProviderStatus(bastion)
-	if err != nil {
-		return nil, err
-	}
-
-	cidrs, err := ingressPermissions(bastion)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +84,6 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		BastionInstanceName: baseResourceName,
 		Zone:                getZone(cluster, region, providerStatus),
 		DiskName:            DiskResourceName(baseResourceName),
-		CIDRs:               cidrs,
 		Subnetwork:          fmt.Sprintf("regions/%s/subnetworks/%s", region, NodesResourceName(clusterName)),
 		ProjectID:           projectID,
 		Network:             networkName,

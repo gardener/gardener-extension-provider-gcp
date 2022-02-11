@@ -84,7 +84,7 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 		return fmt.Errorf("failed to store status.providerStatus for zone: %s", opt.Zone)
 	}
 
-	err = ensureFirewallRules(ctx, gcpClient, opt)
+	err = ensureFirewallRules(ctx, gcpClient, bastion, opt)
 	if err != nil {
 		return fmt.Errorf("failed to ensure firewall rule: %w", err)
 	}
@@ -121,8 +121,13 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 	return a.Client().Status().Patch(ctx, bastion, patch)
 }
 
-func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) error {
-	firewallList := []*compute.Firewall{IngressAllowSSH(opt), EgressDenyAll(opt), EgressAllowOnly(opt)}
+func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, bastion *extensionsv1alpha1.Bastion, opt *Options) error {
+	cidrs, err := ingressPermissions(bastion)
+	if err != nil {
+		return err
+	}
+
+	firewallList := []*compute.Firewall{IngressAllowSSH(opt, cidrs), EgressDenyAll(opt), EgressAllowOnly(opt)}
 
 	for _, item := range firewallList {
 		if err := createFirewallRuleIfNotExist(ctx, gcpclient, opt, item); err != nil {
@@ -130,16 +135,16 @@ func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, opt
 		}
 	}
 
-	firewall, err := getFirewallRule(ctx, gcpclient, opt, IngressAllowSSH(opt).Name)
+	firewall, err := getFirewallRule(ctx, gcpclient, opt, IngressAllowSSH(opt, cidrs).Name)
 	if err != nil || firewall == nil {
 		return fmt.Errorf("could not get firewall rule: %w", err)
 	}
 
 	currentCIDRs := firewall.SourceRanges
-	wantedCIDRs := opt.CIDRs
+	wantedCIDRs := cidrs
 
 	if !reflect.DeepEqual(currentCIDRs, wantedCIDRs) {
-		return patchFirewallRule(ctx, gcpclient, opt, IngressAllowSSH(opt).Name)
+		return patchFirewallRule(ctx, gcpclient, opt, IngressAllowSSH(opt, cidrs).Name, cidrs)
 	}
 
 	return nil
