@@ -76,5 +76,6 @@ config:
       provisioner: kubernetes.io/gce-pd
 
 gardener:
+  version: ""
   seed:
     provider: gcp
