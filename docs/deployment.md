@@ -36,7 +36,7 @@ users:
 
 This will allow for automatic rotation of the service account token by the `kubelet`. The configuration can be achieved by setting both `.Values.global.serviceAccountTokenVolumeProjection.enabled: true` and `.Values.global.kubeconfig` in the respective chart's `values.yaml` file.
 
-#### *Virtual Garden* is used, i.e., the `runtime` Garden cluster is different from the `target` Garden cluster.**
+#### *Virtual Garden* is used, i.e., the `runtime` Garden cluster is different from the `target` Garden cluster.
 
 **Service Account**
 The easiest way to setup the authentication will be to create a service account and the respective roles will be bound to this service account in the `target` cluster. Then use the generated service account token and craft a `kubeconfig` which will be used by the workload in the `runtime` cluster. This approach does not provide a solution for the rotation of the service account token. However, this setup can be achieved by setting `.Values.global.virtualGarden.enabled: true` and following these steps:
