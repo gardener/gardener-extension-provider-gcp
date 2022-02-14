@@ -22,7 +22,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/helper"
-	"github.com/gardener/gardener/pkg/apis/core/validation"
+	validationutils "github.com/gardener/gardener/pkg/utils/validation"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -113,7 +113,7 @@ func ValidateWorkersUpdate(oldWorkers, newWorkers []core.Worker, fldPath *field.
 		workerFldPath := fldPath.Index(i)
 		oldWorker := helper.FindWorkerByName(oldWorkers, newWorker.Name)
 
-		if oldWorker != nil && validation.ShouldEnforceImmutability(newWorker.Zones, oldWorker.Zones) {
+		if oldWorker != nil && validationutils.ShouldEnforceImmutability(newWorker.Zones, oldWorker.Zones) {
 			allErrs = append(allErrs, apivalidation.ValidateImmutableField(newWorker.Zones, oldWorker.Zones, workerFldPath.Child("zones"))...)
 		}
 
