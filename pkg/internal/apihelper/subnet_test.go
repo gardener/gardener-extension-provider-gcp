@@ -18,8 +18,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/apihelper"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

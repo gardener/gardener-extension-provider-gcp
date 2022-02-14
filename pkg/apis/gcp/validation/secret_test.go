@@ -21,8 +21,7 @@ import (
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	gomegatypes "github.com/onsi/gomega/types"
 	corev1 "k8s.io/api/core/v1"

@@ -20,7 +20,7 @@ import (
 	"k8s.io/utils/pointer"
 
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"

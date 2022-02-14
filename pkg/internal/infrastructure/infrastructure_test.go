@@ -21,7 +21,7 @@ import (
 	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/mock/client"
 
 	"github.com/golang/mock/gomock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/api/compute/v1"
 )
