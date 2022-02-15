@@ -84,17 +84,30 @@ var (
 	project        string
 	computeService *compute.Service
 	iamService     *iam.Service
-
-	internalChartsPath string
 )
 
 var _ = BeforeSuite(func() {
 	flag.Parse()
 	validateFlags()
 
-	internalChartsPath = gcp.InternalChartsPath
+	internalChartsPath := gcp.InternalChartsPath
 	repoRoot := filepath.Join("..", "..", "..")
 	gcp.InternalChartsPath = filepath.Join(repoRoot, gcp.InternalChartsPath)
+
+	DeferCleanup(func() {
+		defer func() {
+			By("stopping manager")
+			mgrCancel()
+		}()
+
+		By("running cleanup actions")
+		framework.RunCleanupActions()
+
+		By("stopping test environment")
+		Expect(testEnv.Stop()).To(Succeed())
+
+		gcp.InternalChartsPath = internalChartsPath
+	})
 
 	runtimelog.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
 	log = runtimelog.Log.WithName("infrastructure-test")
@@ -147,21 +160,6 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	iamService, err = iam.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)))
 	Expect(err).NotTo(HaveOccurred())
-})
-
-var _ = AfterSuite(func() {
-	defer func() {
-		By("stopping manager")
-		mgrCancel()
-	}()
-
-	By("running cleanup actions")
-	framework.RunCleanupActions()
-
-	By("stopping test environment")
-	Expect(testEnv.Stop()).To(Succeed())
-
-	gcp.InternalChartsPath = internalChartsPath
 })
 
 var _ = Describe("Infrastructure tests", func() {
