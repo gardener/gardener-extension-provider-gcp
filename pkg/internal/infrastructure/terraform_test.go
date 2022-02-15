@@ -43,12 +43,13 @@ var _ = Describe("Terraform", func() {
 
 		minPortsPerVM = int32(2048)
 
-		ctrl = gomock.NewController(GinkgoT())
-		tf   = mockterraformer.NewMockTerraformer(ctrl)
+		ctrl *gomock.Controller
+		tf   *mockterraformer.MockTerraformer
 		ctx  context.Context
 	)
 
 	BeforeEach(func() {
+		ctrl = gomock.NewController(GinkgoT())
 		tf = mockterraformer.NewMockTerraformer(ctrl)
 		ctx = context.Background()
 

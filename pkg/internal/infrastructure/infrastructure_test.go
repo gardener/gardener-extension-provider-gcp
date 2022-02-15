@@ -27,14 +27,10 @@ import (
 )
 
 var _ = Describe("Infrastructure", func() {
-	var (
-		ctrl *gomock.Controller
-	)
+	var ctrl *gomock.Controller
+
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-	})
-	AfterEach(func() {
-		ctrl.Finish()
 	})
 
 	Describe("#ListKubernetesFirewalls", func() {
