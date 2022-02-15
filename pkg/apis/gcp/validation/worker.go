@@ -16,6 +16,7 @@ package validation
 
 import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -23,15 +24,17 @@ import (
 var validVolumeLocalSSDInterfacesTypes = sets.NewString("NVME", "SCSI")
 
 // ValidateWorkerConfig validates a WorkerConfig object.
-func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, volumeType *string) field.ErrorList {
+func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.DataVolume) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if volumeType != nil && *volumeType == "SCRATCH" {
-		if workerConfig == nil || workerConfig.Volume == nil || workerConfig.Volume.LocalSSDInterface == nil {
-			allErrs = append(allErrs, field.Required(field.NewPath("volume", "localSSDInterface"), "must be set when using SCRATCH volumes"))
-		} else {
-			if !validVolumeLocalSSDInterfacesTypes.Has(*workerConfig.Volume.LocalSSDInterface) {
-				allErrs = append(allErrs, field.NotSupported(field.NewPath("volume", "localSSDInterface"), *workerConfig.Volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.List()))
+	for _, volume := range dataVolumes {
+		if volume.Type != nil && *volume.Type == "SCRATCH" {
+			if workerConfig == nil || workerConfig.Volume == nil || workerConfig.Volume.LocalSSDInterface == nil {
+				allErrs = append(allErrs, field.Required(field.NewPath("volume", "localSSDInterface"), "must be set when using SCRATCH volumes"))
+			} else {
+				if !validVolumeLocalSSDInterfacesTypes.Has(*workerConfig.Volume.LocalSSDInterface) {
+					allErrs = append(allErrs, field.NotSupported(field.NewPath("volume", "localSSDInterface"), *workerConfig.Volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.List()))
+				}
 			}
 		}
 	}

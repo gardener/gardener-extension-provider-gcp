@@ -140,13 +140,11 @@ func (s *shoot) validateContext(valContext *validationContext) field.ErrorList {
 	// WorkerConfig
 	for i, worker := range valContext.shoot.Spec.Provider.Workers {
 		workerFldPath := workersPath.Index(i)
-		for _, volume := range worker.DataVolumes {
-			workerConfig, err := admission.DecodeWorkerConfig(s.decoder, worker.ProviderConfig)
-			if err != nil {
-				allErrors = append(allErrors, field.Invalid(workerFldPath.Child("providerConfig"), err, "invalid providerConfig"))
-			} else {
-				allErrors = append(allErrors, gcpvalidation.ValidateWorkerConfig(workerConfig, volume.Type)...)
-			}
+		workerConfig, err := admission.DecodeWorkerConfig(s.decoder, worker.ProviderConfig)
+		if err != nil {
+			allErrors = append(allErrors, field.Invalid(workerFldPath.Child("providerConfig"), err, "invalid providerConfig"))
+		} else {
+			allErrors = append(allErrors, gcpvalidation.ValidateWorkerConfig(workerConfig, worker.DataVolumes)...)
 		}
 	}
 
