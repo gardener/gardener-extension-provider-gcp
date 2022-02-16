@@ -352,10 +352,7 @@ var _ = Describe("Shoot validation", func() {
 func validateWorkerConfig(workers []core.Worker, workerConfig *api.WorkerConfig) field.ErrorList {
 	allErrs := field.ErrorList{}
 	for _, worker := range workers {
-		for _, volume := range worker.DataVolumes {
-			allErrs = append(allErrs, ValidateWorkerConfig(workerConfig, volume.Type)...)
-
-		}
+		allErrs = append(allErrs, ValidateWorkerConfig(workerConfig, worker.DataVolumes)...)
 	}
 
 	return allErrs

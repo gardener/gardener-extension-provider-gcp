@@ -66,6 +66,17 @@ var _ = Describe("#ValidateWorkers", func() {
 					},
 				},
 			},
+			{
+				Volume: &core.Volume{
+					Type:       makeStringPointer("Volume"),
+					VolumeSize: "20G",
+				},
+				Minimum: 2,
+				Zones: []string{
+					"zone1",
+					"zone2",
+				},
+			},
 		}
 	})
 	It("should pass because workers are configured correctly", func() {
