@@ -172,12 +172,12 @@ func getSecretConfigsFuncs(useTokenRequestor bool) secrets.Interface {
 
 func shootAccessSecretsFunc(namespace string) []*gutil.ShootAccessSecret {
 	return []*gutil.ShootAccessSecret{
-		gutil.NewShootAccessSecret(cloudControllerManagerDeploymentName, ""),
-		gutil.NewShootAccessSecret(gcp.CSIProvisionerName, ""),
-		gutil.NewShootAccessSecret(gcp.CSIAttacherName, ""),
-		gutil.NewShootAccessSecret(gcp.CSISnapshotterName, ""),
-		gutil.NewShootAccessSecret(gcp.CSIResizerName, ""),
-		gutil.NewShootAccessSecret(gcp.CSISnapshotControllerName, ""),
+		gutil.NewShootAccessSecret(cloudControllerManagerDeploymentName, namespace),
+		gutil.NewShootAccessSecret(gcp.CSIProvisionerName, namespace),
+		gutil.NewShootAccessSecret(gcp.CSIAttacherName, namespace),
+		gutil.NewShootAccessSecret(gcp.CSISnapshotterName, namespace),
+		gutil.NewShootAccessSecret(gcp.CSIResizerName, namespace),
+		gutil.NewShootAccessSecret(gcp.CSISnapshotControllerName, namespace),
 	}
 }
 
