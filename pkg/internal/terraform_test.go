@@ -19,7 +19,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

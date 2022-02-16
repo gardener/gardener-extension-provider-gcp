@@ -26,7 +26,7 @@ import (
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/golang/mock/gomock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,12 +43,13 @@ var _ = Describe("Terraform", func() {
 
 		minPortsPerVM = int32(2048)
 
-		ctrl = gomock.NewController(GinkgoT())
-		tf   = mockterraformer.NewMockTerraformer(ctrl)
+		ctrl *gomock.Controller
+		tf   *mockterraformer.MockTerraformer
 		ctx  context.Context
 	)
 
 	BeforeEach(func() {
+		ctrl = gomock.NewController(GinkgoT())
 		tf = mockterraformer.NewMockTerraformer(ctrl)
 		ctx = context.Background()
 

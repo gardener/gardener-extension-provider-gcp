@@ -21,20 +21,16 @@ import (
 	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/mock/client"
 
 	"github.com/golang/mock/gomock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/api/compute/v1"
 )
 
 var _ = Describe("Infrastructure", func() {
-	var (
-		ctrl *gomock.Controller
-	)
+	var ctrl *gomock.Controller
+
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-	})
-	AfterEach(func() {
-		ctrl.Finish()
 	})
 
 	Describe("#ListKubernetesFirewalls", func() {

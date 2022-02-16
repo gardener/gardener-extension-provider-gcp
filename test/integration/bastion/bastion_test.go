@@ -38,7 +38,7 @@ import (
 	"github.com/gardener/gardener/pkg/extensions"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/test/framework"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/compute/v1"
@@ -75,113 +75,40 @@ func validateFlags() {
 	}
 }
 
-var _ = Describe("Bastion tests", func() {
-	var (
-		ctx = context.Background()
+var (
+	ctx = context.Background()
 
-		logger         *logrus.Entry
-		project        string
-		computeService *compute.Service
+	logger         *logrus.Entry
+	project        string
+	computeService *compute.Service
 
-		extensionscluster *extensionsv1alpha1.Cluster
+	extensionscluster *extensionsv1alpha1.Cluster
 
-		controllercluster *controller.Cluster
+	controllercluster *controller.Cluster
 
-		secret    *corev1.Secret
-		testEnv   *envtest.Environment
-		mgrCancel context.CancelFunc
-		c         client.Client
-		options   *bastionctrl.Options
-		bastion   *extensionsv1alpha1.Bastion
-	)
+	secret    *corev1.Secret
+	testEnv   *envtest.Environment
+	mgrCancel context.CancelFunc
+	c         client.Client
+	options   *bastionctrl.Options
+	bastion   *extensionsv1alpha1.Bastion
 
-	randString, err := randomString()
-	Expect(err).NotTo(HaveOccurred())
+	name       string
+	routerName string
+	subnetName string
+)
 
-	name := fmt.Sprintf("gcp-bastion-it--%s", randString)
-	routerName := name + "-cloud-router"
-	subnetName := name + "-nodes"
+var _ = BeforeSuite(func() {
+	repoRoot := filepath.Join("..", "..", "..")
 
-	myPublicIP, err = getMyPublicIPWithMask()
-	Expect(err).ToNot(HaveOccurred())
+	// enable manager logs
+	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
 
-	BeforeSuite(func() {
-		repoRoot := filepath.Join("..", "..", "..")
+	log := logrus.New()
+	log.SetOutput(GinkgoWriter)
+	logger = logrus.NewEntry(log)
 
-		// enable manager logs
-		logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
-
-		log := logrus.New()
-		log.SetOutput(GinkgoWriter)
-		logger = logrus.NewEntry(log)
-
-		By("starting test environment")
-		testEnv = &envtest.Environment{
-			UseExistingCluster: pointer.BoolPtr(true),
-			CRDInstallOptions: envtest.CRDInstallOptions{
-				Paths: []string{
-					filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_bastions.yaml"),
-					filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
-				},
-			},
-		}
-
-		cfg, err := testEnv.Start()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(cfg).ToNot(BeNil())
-
-		By("setup manager")
-		mgr, err := manager.New(cfg, manager.Options{
-			MetricsBindAddress: "0",
-		})
-		Expect(err).ToNot(HaveOccurred())
-
-		Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
-		Expect(gcpinstall.AddToScheme(mgr.GetScheme())).To(Succeed())
-
-		Expect(bastionctrl.AddToManager(mgr)).To(Succeed())
-
-		var mgrContext context.Context
-		mgrContext, mgrCancel = context.WithCancel(ctx)
-
-		By("start manager")
-		go func() {
-			err := mgr.Start(mgrContext)
-			Expect(err).NotTo(HaveOccurred())
-		}()
-
-		// test client should be uncached and independent from the tested manager
-		c, err = client.New(cfg, client.Options{
-			Scheme: mgr.GetScheme(),
-			Mapper: mgr.GetRESTMapper(),
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(c).NotTo(BeNil())
-
-		flag.Parse()
-		validateFlags()
-
-		project, err = gcp.ExtractServiceAccountProjectID([]byte(*serviceAccount))
-		Expect(err).NotTo(HaveOccurred())
-		computeService, err = compute.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(compute.CloudPlatformScope))
-		Expect(err).NotTo(HaveOccurred())
-
-		extensionscluster, controllercluster = createClusters(name)
-		bastion, options = createBastion(controllercluster, name, project)
-
-		secret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cloudprovider",
-				Namespace: name,
-			},
-			Data: map[string][]byte{
-				gcp.ServiceAccountJSONField: []byte(*serviceAccount),
-			},
-		}
-
-	})
-
-	AfterSuite(func() {
+	DeferCleanup(func() {
 		defer func() {
 			By("stopping manager")
 			mgrCancel()
@@ -194,9 +121,87 @@ var _ = Describe("Bastion tests", func() {
 		Expect(testEnv.Stop()).To(Succeed())
 	})
 
+	By("generating randomized test resource identifiers")
+	randString, err := randomString()
+	Expect(err).NotTo(HaveOccurred())
+
+	name = fmt.Sprintf("gcp-bastion-it--%s", randString)
+	routerName = name + "-cloud-router"
+	subnetName = name + "-nodes"
+
+	myPublicIP, err = getMyPublicIPWithMask()
+	Expect(err).ToNot(HaveOccurred())
+
+	By("starting test environment")
+	testEnv = &envtest.Environment{
+		UseExistingCluster: pointer.BoolPtr(true),
+		CRDInstallOptions: envtest.CRDInstallOptions{
+			Paths: []string{
+				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_bastions.yaml"),
+				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
+			},
+		},
+	}
+
+	cfg, err := testEnv.Start()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(cfg).ToNot(BeNil())
+
+	By("setup manager")
+	mgr, err := manager.New(cfg, manager.Options{
+		MetricsBindAddress: "0",
+	})
+	Expect(err).ToNot(HaveOccurred())
+
+	Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
+	Expect(gcpinstall.AddToScheme(mgr.GetScheme())).To(Succeed())
+
+	Expect(bastionctrl.AddToManager(mgr)).To(Succeed())
+
+	var mgrContext context.Context
+	mgrContext, mgrCancel = context.WithCancel(ctx)
+
+	By("start manager")
+	go func() {
+		err := mgr.Start(mgrContext)
+		Expect(err).NotTo(HaveOccurred())
+	}()
+
+	// test client should be uncached and independent from the tested manager
+	c, err = client.New(cfg, client.Options{
+		Scheme: mgr.GetScheme(),
+		Mapper: mgr.GetRESTMapper(),
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Expect(c).NotTo(BeNil())
+
+	flag.Parse()
+	validateFlags()
+
+	project, err = gcp.ExtractServiceAccountProjectID([]byte(*serviceAccount))
+	Expect(err).NotTo(HaveOccurred())
+	computeService, err = compute.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(compute.CloudPlatformScope))
+	Expect(err).NotTo(HaveOccurred())
+
+	extensionscluster, controllercluster = createClusters(name)
+	bastion, options = createBastion(controllercluster, name, project)
+
+	secret = &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cloudprovider",
+			Namespace: name,
+		},
+		Data: map[string][]byte{
+			gcp.ServiceAccountJSONField: []byte(*serviceAccount),
+		},
+	}
+
+})
+
+var _ = Describe("Bastion tests", func() {
 	It("should successfully create and delete", func() {
 		By("setup Infrastructure")
-		err = prepareNewNetwork(ctx, logger, project, computeService, name, routerName, subnetName)
+		err := prepareNewNetwork(ctx, logger, project, computeService, name, routerName, subnetName)
 		Expect(err).NotTo(HaveOccurred())
 		framework.AddCleanupAction(func() {
 			err = teardownNetwork(ctx, logger, project, computeService, name, routerName, subnetName)
