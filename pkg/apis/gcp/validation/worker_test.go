@@ -37,7 +37,7 @@ var _ = Describe("#ValidateWorkers", func() {
 					Type:       makeStringPointer("Volume"),
 					VolumeSize: "30G",
 				},
-				Minimum: 2,
+
 				Zones: []string{
 					"zone1",
 					"zone2",
@@ -54,7 +54,7 @@ var _ = Describe("#ValidateWorkers", func() {
 					Type:       makeStringPointer("Volume"),
 					VolumeSize: "20G",
 				},
-				Minimum: 2,
+
 				Zones: []string{
 					"zone1",
 					"zone2",
@@ -272,7 +272,6 @@ var _ = Describe("#ValidateWorkers", func() {
 		It("should allow adding a zone to a worker", func() {
 			newWorkers := copyWorkers(workers)
 			newWorkers[0].Zones = append(newWorkers[0].Zones, "another-zone")
-			newWorkers[0].Minimum = 3
 			errorList := ValidateWorkersUpdate(workers, newWorkers, nilPath)
 
 			Expect(errorList).To(BeEmpty())
@@ -315,9 +314,6 @@ var _ = Describe("#ValidateWorkers", func() {
 			newWorkers := copyWorkers(workers)
 			newWorkers = append(newWorkers, core.Worker{Name: "worker3", Zones: []string{"zone1"}})
 			newWorkers[1].Zones[0] = workers[1].Zones[1]
-			newWorkers[0].Minimum = 2
-			newWorkers[1].Minimum = 2
-			newWorkers[2].Minimum = 1
 			errorList := ValidateWorkersUpdate(workers, newWorkers, nilPath)
 
 			Expect(errorList).To(ConsistOf(
