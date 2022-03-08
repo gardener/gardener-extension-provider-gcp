@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
@@ -83,12 +82,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		machineImages      []apisgcp.MachineImage
 	)
 
-	infrastructureStatus := &gcpapi.InfrastructureStatus{}
+	infrastructureStatus := &apisgcp.InfrastructureStatus{}
 	if _, _, err := w.Decoder().Decode(w.worker.Spec.InfrastructureProviderStatus.Raw, nil, infrastructureStatus); err != nil {
 		return err
 	}
 
-	nodesSubnet, err := gcpapihelper.FindSubnetByPurpose(infrastructureStatus.Networks.Subnets, gcpapi.PurposeNodes)
+	nodesSubnet, err := gcpapihelper.FindSubnetByPurpose(infrastructureStatus.Networks.Subnets, apisgcp.PurposeNodes)
 	if err != nil {
 		return err
 	}
@@ -123,7 +122,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		}
 
 		// additional volumes
-		workerConfig := &gcpapi.WorkerConfig{}
+		workerConfig := &apisgcp.WorkerConfig{}
 		if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
 			if _, _, err := w.Decoder().Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
 				return fmt.Errorf("could not decode provider config: %+v", err)
@@ -216,6 +215,15 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			machineClassSpec["name"] = className
 			machineClassSpec["resourceLabels"] = map[string]string{
 				v1beta1constants.GardenerPurpose: genericworkeractuator.GardenPurposeMachineClass,
+			}
+
+			if pool.NodeTemplate != nil {
+				machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
+					Capacity:     pool.NodeTemplate.Capacity,
+					InstanceType: pool.MachineType,
+					Region:       w.worker.Spec.Region,
+					Zone:         zone,
+				}
 			}
 
 			machineClasses = append(machineClasses, machineClassSpec)
