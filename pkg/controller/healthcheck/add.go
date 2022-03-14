@@ -15,6 +15,7 @@
 package healthcheck
 
 import (
+	"context"
 	"time"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -46,7 +47,7 @@ var (
 
 // RegisterHealthChecks registers health checks for each extension resource
 func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
-	csiEnabledPreCheckFunc := func(_ client.Object, cluster *extensionscontroller.Cluster) bool {
+	csiEnabledPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, cluster *extensionscontroller.Cluster) bool {
 		csiEnabled, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, ">=", gcp.CSIMigrationKubernetesVersion)
 		if err != nil {
 			return false
