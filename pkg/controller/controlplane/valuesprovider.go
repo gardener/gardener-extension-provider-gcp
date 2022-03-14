@@ -24,8 +24,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/apihelper"
-
-	"github.com/Masterminds/semver"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -36,9 +34,14 @@ import (
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/gardener/gardener/pkg/utils/version"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/Masterminds/semver"
 	"github.com/go-logr/logr"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -69,6 +72,15 @@ func getSecretConfigsFuncs(useTokenRequestor bool) secrets.Interface {
 						Name:       cloudControllerManagerServerName,
 						CommonName: cloudControllerManagerDeploymentName,
 						DNSNames:   kutil.DNSNamesForService(cloudControllerManagerDeploymentName, clusterName),
+						CertType:   secrets.ServerCert,
+						SigningCA:  cas[v1beta1constants.SecretNameCACluster],
+					},
+				},
+				&secrets.ControlPlaneSecretConfig{
+					CertificateSecretConfig: &secrets.CertificateSecretConfig{
+						Name:       gcp.CSISnapshotValidation,
+						CommonName: gcp.UsernamePrefix + gcp.CSISnapshotValidation,
+						DNSNames:   kutil.DNSNamesForService(gcp.CSISnapshotValidation, clusterName),
 						CertType:   secrets.ServerCert,
 						SigningCA:  cas[v1beta1constants.SecretNameCACluster],
 					},
@@ -223,6 +235,7 @@ var (
 					gcp.CSIResizerImageName,
 					gcp.CSILivenessProbeImageName,
 					gcp.CSISnapshotControllerImageName,
+					gcp.CSISnapshotValidationWebhookImageName,
 				},
 				Objects: []*chart.Object{
 					// csi-driver-controller
@@ -233,6 +246,10 @@ var (
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotControllerName},
 					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: gcp.CSISnapshotControllerName + "-vpa"},
+					// csi-snapshot-validation-webhook
+					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotValidation},
+					{Type: &corev1.Service{}, Name: gcp.CSISnapshotValidation},
+					{Type: &networkingv1.NetworkPolicy{}, Name: "allow-kube-apiserver-to-csi-snapshot-validation"},
 				},
 			},
 		},
@@ -293,6 +310,8 @@ var (
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
 					{Type: &rbacv1.Role{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
 					{Type: &rbacv1.RoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
+					// csi-snapshot-validation-webhook
+					{Type: &admissionregistrationv1.ValidatingWebhookConfiguration{}, Name: gcp.CSISnapshotValidation},
 				},
 			},
 		},
@@ -395,15 +414,15 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
 func (vp *valuesProvider) GetControlPlaneShootChartValues(
-	_ context.Context,
-	_ *extensionsv1alpha1.ControlPlane,
+	ctx context.Context,
+	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 	_ map[string]string,
 ) (
 	map[string]interface{},
 	error,
 ) {
-	return getControlPlaneShootChartValues(cluster, vp.useTokenRequestor, vp.useProjectedTokenMount)
+	return getControlPlaneShootChartValues(ctx, cluster, cp, vp.Client(), vp.useTokenRequestor, vp.useProjectedTokenMount)
 }
 
 // GetControlPlaneShootCRDsChartValues returns the values for the control plane shoot CRDs chart applied by the generic actuator.
@@ -567,12 +586,21 @@ func getCSIControllerChartValues(
 				"checksum/secret-" + gcp.CSISnapshotControllerName: checksums[gcp.CSISnapshotControllerName],
 			},
 		},
+		"csiSnapshotValidationWebhook": map[string]interface{}{
+			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
+			"podAnnotations": map[string]interface{}{
+				"checksum/secret-" + gcp.CSISnapshotValidation: checksums[gcp.CSISnapshotValidation],
+			},
+		},
 	}, nil
 }
 
 // getControlPlaneShootChartValues collects and returns the control plane shoot chart values.
 func getControlPlaneShootChartValues(
+	ctx context.Context,
 	cluster *extensionscontroller.Cluster,
+	cp *extensionsv1alpha1.ControlPlane,
+	client client.Client,
 	useTokenRequestor bool,
 	useProjectedTokenMount bool,
 ) (
@@ -582,6 +610,12 @@ func getControlPlaneShootChartValues(
 	kubernetesVersion := cluster.Shoot.Spec.Kubernetes.Version
 	k8sVersionLessThan118, err := version.CompareVersions(kubernetesVersion, "<", gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
+		return nil, err
+	}
+
+	// get the ca.crt for caBundle of the snapshot-validation webhook
+	secret := &corev1.Secret{}
+	if err := client.Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), secret); err != nil {
 		return nil, err
 	}
 
@@ -595,6 +629,10 @@ func getControlPlaneShootChartValues(
 			"enabled":           !k8sVersionLessThan118,
 			"kubernetesVersion": kubernetesVersion,
 			"vpaEnabled":        gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
+			"webhookConfig": map[string]interface{}{
+				"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+				"caBundle": string(secret.Data["ca.crt"]),
+			},
 		},
 	}, nil
 }

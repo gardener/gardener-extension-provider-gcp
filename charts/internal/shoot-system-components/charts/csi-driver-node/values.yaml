@@ -6,6 +6,13 @@ images:
 socketPath: /csi/csi.sock
 vpaEnabled: false
 
+webhookConfig:
+  url: https://service-name.service-namespace/volumesnapshot
+  caBundle: |
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+
 resources:
   driver:
     requests:
