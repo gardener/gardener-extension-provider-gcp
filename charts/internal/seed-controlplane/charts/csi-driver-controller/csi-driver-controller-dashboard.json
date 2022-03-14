@@ -270,7 +270,6 @@
       "type": "logs"
     }
   ],
-  "refresh": "1m",
   "schemaVersion": 26,
   "style": "dark",
   "tags": [
@@ -413,7 +412,7 @@
       "14d"
     ]
   },
-  "timezone": "browser",
+  "timezone": "utc",
   "title": "CSI Driver Controller",
   "uid": "csi-driver-controller",
   "version": 1
