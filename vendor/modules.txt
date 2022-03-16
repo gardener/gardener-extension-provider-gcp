@@ -105,6 +105,7 @@ github.com/gardener/gardener/extensions/test/testmachinery/operation
 github.com/gardener/gardener/hack
 github.com/gardener/gardener/hack/.ci
 github.com/gardener/gardener/hack/api-reference/template
+github.com/gardener/gardener/hack/tools
 github.com/gardener/gardener/pkg/api/core
 github.com/gardener/gardener/pkg/api/extensions
 github.com/gardener/gardener/pkg/apis/core
