@@ -940,7 +940,7 @@ k8s.io/apimachinery/third_party/forked/golang/reflect
 k8s.io/apiserver/pkg/apis/config
 k8s.io/apiserver/pkg/apis/config/v1
 k8s.io/apiserver/pkg/authentication/user
-# k8s.io/autoscaler/vertical-pod-autoscaler v0.10.0 => k8s.io/autoscaler/vertical-pod-autoscaler v0.9.0
+# k8s.io/autoscaler/vertical-pod-autoscaler v0.10.0 => k8s.io/autoscaler/vertical-pod-autoscaler v0.10.0
 ## explicit; go 1.14
 k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1
 k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2
@@ -1128,8 +1128,9 @@ k8s.io/gengo/generator
 k8s.io/gengo/namer
 k8s.io/gengo/parser
 k8s.io/gengo/types
-# k8s.io/helm v2.16.1+incompatible => k8s.io/helm v2.13.1+incompatible
+# k8s.io/helm v2.16.1+incompatible => k8s.io/helm v2.17.0+incompatible
 ## explicit
+k8s.io/helm/internal/third_party/dep/fs
 k8s.io/helm/pkg/chartutil
 k8s.io/helm/pkg/downloader
 k8s.io/helm/pkg/engine
@@ -1282,11 +1283,11 @@ sigs.k8s.io/yaml
 # k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.23.3
 # k8s.io/apimachinery => k8s.io/apimachinery v0.23.3
 # k8s.io/apiserver => k8s.io/apiserver v0.23.3
-# k8s.io/autoscaler => k8s.io/autoscaler v0.0.0-20201008123815-1d78814026aa
-# k8s.io/autoscaler/vertical-pod-autoscaler => k8s.io/autoscaler/vertical-pod-autoscaler v0.9.0
+# k8s.io/autoscaler => k8s.io/autoscaler v0.0.0-20220408135442-24df6b872292
+# k8s.io/autoscaler/vertical-pod-autoscaler => k8s.io/autoscaler/vertical-pod-autoscaler v0.10.0
 # k8s.io/client-go => k8s.io/client-go v0.23.3
 # k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.23.3
 # k8s.io/code-generator => k8s.io/code-generator v0.23.3
 # k8s.io/component-base => k8s.io/component-base v0.23.3
-# k8s.io/helm => k8s.io/helm v2.13.1+incompatible
+# k8s.io/helm => k8s.io/helm v2.17.0+incompatible
 # k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.23.3

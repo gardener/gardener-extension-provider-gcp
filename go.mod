@@ -155,12 +155,12 @@ replace (
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.23.3
 	k8s.io/apimachinery => k8s.io/apimachinery v0.23.3
 	k8s.io/apiserver => k8s.io/apiserver v0.23.3
-	k8s.io/autoscaler => k8s.io/autoscaler v0.0.0-20201008123815-1d78814026aa // translates to k8s.io/autoscaler/vertical-pod-autoscaler@v0.9.0
-	k8s.io/autoscaler/vertical-pod-autoscaler => k8s.io/autoscaler/vertical-pod-autoscaler v0.9.0
+	k8s.io/autoscaler => k8s.io/autoscaler v0.0.0-20220408135442-24df6b872292 // translates to k8s.io/autoscaler/vertical-pod-autoscaler@v0.9.0
+	k8s.io/autoscaler/vertical-pod-autoscaler => k8s.io/autoscaler/vertical-pod-autoscaler v0.10.0
 	k8s.io/client-go => k8s.io/client-go v0.23.3
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.23.3
 	k8s.io/code-generator => k8s.io/code-generator v0.23.3
 	k8s.io/component-base => k8s.io/component-base v0.23.3
-	k8s.io/helm => k8s.io/helm v2.13.1+incompatible
+	k8s.io/helm => k8s.io/helm v2.17.0+incompatible
 	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.23.3
 )
