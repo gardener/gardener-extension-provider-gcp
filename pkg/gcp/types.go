@@ -92,6 +92,10 @@ const (
 	// CSIMigrationKubernetesVersion is a constant for the Kubernetes version for which the Shoot's CSI migration will be
 	// performed.
 	CSIMigrationKubernetesVersion = "1.18"
+
+	// ForceK8sVersionUpgrade is an annotation set on the Shoot resource that allows to enforce a k8s version upgrade
+	// even if it would otherwise be forbidden by the admission controller.
+	ForceK8sVersionUpgrade = "shoot.gardener.cloud/force-version-upgrade"
 )
 
 var (

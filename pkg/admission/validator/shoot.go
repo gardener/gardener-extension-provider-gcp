@@ -200,6 +200,9 @@ func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core
 	allErrors = append(allErrors, gcpvalidation.ValidateWorkersUpdate(oldValContext.shoot.Spec.Provider.Workers, currentValContext.shoot.Spec.Provider.Workers, workersPath)...)
 	allErrors = append(allErrors, s.validateContext(currentValContext)...)
 
+	// TODO(dkistner) remove this once the kcm detaches all disks during upgrade from v1.20 to v1.21 is resolved.
+	allErrors = append(allErrors, gcpvalidation.ValidateUpgradeV120ToV121(currentShoot, oldShoot, specPath.Child("kubernetes", "version"))...)
+
 	return allErrors.ToAggregate()
 
 }

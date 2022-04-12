@@ -24,6 +24,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/types"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/pointer"
 )
@@ -347,6 +349,49 @@ var _ = Describe("Shoot validation", func() {
 			Expect(errorList).To(BeEmpty())
 		})
 	})
+
+	DescribeTable("#ValidateUpgradeV120ToV121",
+		func(oldShoot, newShoot *core.Shoot, matcher types.GomegaMatcher) {
+			Expect(ValidateUpgradeV120ToV121(newShoot, oldShoot, field.NewPath("spec", "kubernetes", "version"))).To(matcher)
+		},
+		Entry(
+			"should forbid version upgrade from < v1.21 to >= v1.21.0",
+			makeShootWithVersion("v1.20.0", map[string]string{}),
+			makeShootWithVersion("v1.21.0", map[string]string{}),
+			ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("spec.kubernetes.version"),
+			}))),
+		),
+		Entry(
+			"should allow k8s version upgrade from < v1.21 to < v1.21",
+			makeShootWithVersion("v1.20.0", map[string]string{}),
+			makeShootWithVersion("v1.20.1", map[string]string{}),
+			HaveLen(0),
+		),
+		Entry(
+			"should allow k8s version upgrade >= v1.21 to > v1.21",
+			makeShootWithVersion("v1.21.0", map[string]string{}),
+			makeShootWithVersion("v1.21.1", map[string]string{}),
+			HaveLen(0),
+		),
+		Entry(
+			"should allow enforced k8s version upgrade from < v1.21 to >= v1.21",
+			makeShootWithVersion("v1.20.0", map[string]string{}),
+			makeShootWithVersion("v1.21.0", map[string]string{"shoot.gardener.cloud/force-version-upgrade": "true"}),
+			HaveLen(0),
+		),
+		Entry(
+			"should forbid enforced k8s version upgrade from < v1.21 to >= v1.21 due to invalid annotation",
+			makeShootWithVersion("v1.20.0", map[string]string{}),
+			makeShootWithVersion("v1.21.0", map[string]string{"shoot.gardener.cloud/force-version-upgrade": "abc"}),
+			ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("spec.kubernetes.version"),
+			}))),
+		),
+	)
+
 })
 
 func validateWorkerConfig(workers []core.Worker, workerConfig *api.WorkerConfig) field.ErrorList {
@@ -356,4 +401,17 @@ func validateWorkerConfig(workers []core.Worker, workerConfig *api.WorkerConfig)
 	}
 
 	return allErrs
+}
+
+func makeShootWithVersion(version string, annotations map[string]string) *core.Shoot {
+	return &core.Shoot{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: annotations,
+		},
+		Spec: core.ShootSpec{
+			Kubernetes: core.Kubernetes{
+				Version: version,
+			},
+		},
+	}
 }

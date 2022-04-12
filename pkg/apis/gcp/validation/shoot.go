@@ -28,6 +28,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
+var k8sV121 *semver.Version
+
+func init() {
+	k8sV121 = semver.MustParse("v1.21.0")
+}
+
 // ValidateNetworking validates the network settings of a Shoot.
 func ValidateNetworking(networking core.Networking, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
@@ -125,5 +131,30 @@ func ValidateWorkersUpdate(oldWorkers, newWorkers []core.Worker, fldPath *field.
 			}
 		}
 	}
+	return allErrs
+}
+
+// ValidateUpgradeV120ToV121 prevents that Shoots get updated from k8s v1.20 to v1.21.
+// TODO(dkistner) remove this once the kcm detaches all disks during upgrade from v1.20 to v1.21 is resolved.
+func ValidateUpgradeV120ToV121(newShoot, oldShoot *core.Shoot, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	oldShootVersion, err := semver.NewVersion(oldShoot.Spec.Kubernetes.Version)
+	if err != nil {
+		return append(allErrs, field.Invalid(fldPath, oldShoot.Spec.Kubernetes.Version, "could not parse kubernetes version"))
+	}
+
+	newShootVersion, err := semver.NewVersion(newShoot.Spec.Kubernetes.Version)
+	if err != nil {
+		return append(allErrs, field.Invalid(fldPath, newShoot.Spec.Kubernetes.Version, "could not parse kubernetes version"))
+	}
+
+	if oldShootVersion.LessThan(k8sV121) && (newShootVersion.Equal(k8sV121) || newShootVersion.GreaterThan(k8sV121)) {
+		if value, ok := newShoot.Annotations[gcp.ForceK8sVersionUpgrade]; ok && value == "true" {
+			return allErrs
+		}
+		allErrs = append(allErrs, field.Forbidden(fldPath, "upgrade Kubernetes version from < v1.21 to >= v1.21.0 are disabled"))
+	}
+
 	return allErrs
 }
