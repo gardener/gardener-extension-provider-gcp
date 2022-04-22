@@ -21,63 +21,56 @@ resources:
       cpu: 20m
       memory: 50Mi
     limits:
-      cpu: 50m
-      memory: 80Mi
+      memory: 210Mi 
   provisioner:
     requests:
-      cpu: 10m
+      cpu: 11m
       memory: 32Mi
     limits:
-      cpu: 30m
-      memory: 50Mi
+      memory: 200Mi
   attacher:
     requests:
       cpu: 10m
-      memory: 32Mi
-    limits:
-      cpu: 30m
       memory: 50Mi
+    limits:
+      memory: 210Mi
   snapshotter:
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
-      cpu: 30m
-      memory: 50Mi
+      memory: 256Mi
   resizer:
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
-      cpu: 30m
-      memory: 50Mi
+      memory: 200Mi
   livenessProbe:
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
-      cpu: 30m
-      memory: 50Mi
+      memory: 110Mi
 
 csiSnapshotController:
   replicas: 1
   podAnnotations: {}
   resources:
     requests:
-      cpu: 10m
+      cpu: 11m
       memory: 32Mi
     limits:
-      cpu: 30m
-      memory: 50Mi
+      memory: 2.2Gi
 
 csiSnapshotValidationWebhook:
   replica: 1
   podAnnotations: {}
-  resources:
-    cpu: 10m
-    memory: 32Mi
-  limits:
-    cpu: 30m
-    memory: 50Mi
   secrets:
     server: csi-snapshot-validation-server
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 200Mi 

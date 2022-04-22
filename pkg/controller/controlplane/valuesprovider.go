@@ -50,7 +50,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	autoscalingv1beta2 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2"
+	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 )
 
 const (
@@ -126,7 +126,7 @@ var (
 					{Type: &corev1.Service{}, Name: "cloud-controller-manager"},
 					{Type: &appsv1.Deployment{}, Name: "cloud-controller-manager"},
 					{Type: &corev1.ConfigMap{}, Name: "cloud-controller-manager-observability-config"},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: "cloud-controller-manager-vpa"},
+					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: "cloud-controller-manager-vpa"},
 				},
 			},
 			{
@@ -146,10 +146,10 @@ var (
 					{Type: &appsv1.Deployment{}, Name: gcp.CSIControllerName},
 					{Type: &corev1.ConfigMap{}, Name: gcp.CSIControllerConfigName},
 					{Type: &corev1.ConfigMap{}, Name: gcp.CSIControllerObservabilityConfigName},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: gcp.CSIControllerName + "-vpa"},
+					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: gcp.CSIControllerName + "-vpa"},
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotControllerName},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: gcp.CSISnapshotControllerName + "-vpa"},
+					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: gcp.CSISnapshotControllerName + "-vpa"},
 					// csi-snapshot-validation-webhook
 					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotValidation},
 					{Type: &corev1.Service{}, Name: gcp.CSISnapshotValidation},

@@ -19,19 +19,16 @@ resources:
       cpu: 20m
       memory: 50Mi
     limits:
-      cpu: 100m
-      memory: 80Mi
+      memory: 400Mi
   nodeDriverRegistrar:
     requests:
-      cpu: 10m
+      cpu: 11m
       memory: 32Mi
     limits:
-      cpu: 30m
       memory: 50Mi
   livenessProbe:
     requests:
-      cpu: 10m
+      cpu: 11m
       memory: 32Mi
     limits:
-      cpu: 30m
-      memory: 50Mi
+      memory: 300Mi

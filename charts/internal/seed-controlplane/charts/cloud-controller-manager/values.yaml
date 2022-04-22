@@ -11,11 +11,10 @@ images:
   cloud-controller-manager: image-repository:image-tag
 resources:
   requests:
-    cpu: 23m
+    cpu: 100m 
     memory: 75Mi
   limits:
-    cpu: 500m
-    memory: 512Mi
+    memory: 400Mi
 tlsCipherSuites: []
 secrets:
   server: cloud-controller-manager-server
