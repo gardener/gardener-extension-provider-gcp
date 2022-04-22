@@ -26,6 +26,14 @@ machineClasses:
   labels:
     name: mcm
   machineType: n1-standard-4
+  nodeTemplate:
+    capacity:
+      cpu: 2
+      gpu: 1
+      memory: 25Gi
+    instanceType: n1-standard-4
+    region: europe-west1
+    zone: europe-west1-b
   networkInterfaces:
   - subnetwork: my-subnet
     disableExternalIP: true
