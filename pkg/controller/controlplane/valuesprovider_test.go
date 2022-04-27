@@ -164,7 +164,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		c = mockclient.NewMockClient(ctrl)
 
-		vp = NewValuesProvider(logger, true, true)
+		vp = NewValuesProvider(logger)
 		err := vp.(inject.Scheme).InjectScheme(scheme)
 		Expect(err).NotTo(HaveOccurred())
 		err = vp.(inject.Client).InjectClient(c)
@@ -227,9 +227,6 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sLessThan118, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"global": map[string]interface{}{
-					"useTokenRequestor": true,
-				},
 				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": clusterK8sLessThan118.Shoot.Spec.Kubernetes.Version,
 				}),
@@ -241,9 +238,6 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast118, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"global": map[string]interface{}{
-					"useTokenRequestor": true,
-				},
 				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": clusterK8sAtLeast118.Shoot.Spec.Kubernetes.Version,
 				}),
@@ -281,10 +275,6 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sLessThan118, nil)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"global": map[string]interface{}{
-					"useTokenRequestor":      true,
-					"useProjectedTokenMount": true,
-				},
 				gcp.CloudControllerManagerName: enabledTrue,
 				gcp.CSINodeName: utils.MergeMaps(enabledFalse, map[string]interface{}{
 					"kubernetesVersion": "1.15.4",
@@ -308,10 +298,6 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast118, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
-					"global": map[string]interface{}{
-						"useTokenRequestor":      true,
-						"useProjectedTokenMount": true,
-					},
 					gcp.CloudControllerManagerName: enabledTrue,
 					gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 						"kubernetesVersion": "1.18.0",

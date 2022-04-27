@@ -79,11 +79,7 @@ spec:
         imagePullPolicy: IfNotPresent
         args:
         - --csi-address=$(ADDRESS)
-        {{- if .Values.global.useTokenRequestor }}
         - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
-        {{- else }}
-        - --kubeconfig=/var/lib/csi-provisioner/kubeconfig
-        {{- end }}
         - --feature-gates=Topology=true
         - --volume-name-prefix=pv-
         - --default-fstype=ext4
@@ -100,25 +96,16 @@ spec:
         volumeMounts:
         - name: socket-dir
           mountPath: {{ .Values.socketPath }}
-        {{- if .Values.global.useTokenRequestor }}
         - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
           name: kubeconfig-csi-provisioner
           readOnly: true
-        {{- else }}
-        - name: csi-provisioner
-          mountPath: /var/lib/csi-provisioner
-        {{- end }}
 
       - name: gcp-csi-attacher
         image: {{ index .Values.images "csi-attacher" }}
         imagePullPolicy: IfNotPresent
         args:
         - --csi-address=$(ADDRESS)
-        {{- if .Values.global.useTokenRequestor }}
         - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
-        {{- else }}
-        - --kubeconfig=/var/lib/csi-attacher/kubeconfig
-        {{- end }}
         - --leader-election
         - --leader-election-namespace=kube-system
         - --v=5
@@ -132,25 +119,16 @@ spec:
         volumeMounts:
         - name: socket-dir
           mountPath: {{ .Values.socketPath }}
-        {{- if .Values.global.useTokenRequestor }}
         - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
           name: kubeconfig-csi-attacher
           readOnly: true
-        {{- else }}
-        - name: csi-attacher
-          mountPath: /var/lib/csi-attacher
-        {{- end }}
 
       - name: gcp-csi-snapshotter
         image: {{ index .Values.images "csi-snapshotter" }}
         imagePullPolicy: IfNotPresent
         args:
         - --csi-address=$(CSI_ENDPOINT)
-        {{- if .Values.global.useTokenRequestor }}
         - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
-        {{- else }}
-        - --kubeconfig=/var/lib/csi-snapshotter/kubeconfig
-        {{- end }}
         - --leader-election
         - --leader-election-namespace=kube-system
         - --snapshot-name-prefix=snapshot
@@ -164,25 +142,16 @@ spec:
         volumeMounts:
         - name: socket-dir
           mountPath: {{ .Values.socketPath }}
-        {{- if .Values.global.useTokenRequestor }}
         - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
           name: kubeconfig-csi-snapshotter
           readOnly: true
-        {{- else }}
-        - name: csi-snapshotter
-          mountPath: /var/lib/csi-snapshotter
-        {{- end }}
 
       - name: gcp-csi-resizer
         image: {{ index .Values.images "csi-resizer" }}
         imagePullPolicy: IfNotPresent
         args:
         - --csi-address=$(ADDRESS)
-        {{- if .Values.global.useTokenRequestor }}
         - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
-        {{- else }}
-        - --kubeconfig=/var/lib/csi-resizer/kubeconfig
-        {{- end }}
         - --leader-election=true
         - --leader-election-namespace=kube-system
         - --v=5
@@ -196,14 +165,9 @@ spec:
         volumeMounts:
         - name: socket-dir
           mountPath: {{ .Values.socketPath }}
-        {{- if .Values.global.useTokenRequestor }}
         - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
           name: kubeconfig-csi-resizer
           readOnly: true
-        {{- else }}
-        - name: csi-resizer
-          mountPath: /var/lib/csi-resizer
-        {{- end }}
 
       - name: gcp-csi-liveness-probe
         image: {{ index .Values.images "csi-liveness-probe" }}
@@ -220,7 +184,6 @@ spec:
       volumes:
       - name: socket-dir
         emptyDir: {}
-      {{- if .Values.global.useTokenRequestor }}
       - name: kubeconfig-csi-attacher
         projected:
           defaultMode: 420
@@ -285,20 +248,6 @@ spec:
                     path: token
                 name: shoot-access-csi-resizer
                 optional: false
-      {{- else }}
-      - name: csi-provisioner
-        secret:
-          secretName: csi-provisioner
-      - name: csi-attacher
-        secret:
-          secretName: csi-attacher
-      - name: csi-snapshotter
-        secret:
-          secretName: csi-snapshotter
-      - name: csi-resizer
-        secret:
-          secretName: csi-resizer
-      {{- end }}
       - name: cloudprovider
         secret:
           secretName: cloudprovider
