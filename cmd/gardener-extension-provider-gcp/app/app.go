@@ -200,7 +200,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 				return fmt.Errorf("could not determine whether service account token volume projection should be used: %w", err)
 			}
 			gcpcontrolplane.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
-			gcpinfrastructure.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
 			gcpworker.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
 
 			configFileOpts.Completed().ApplyETCDStorage(&gcpcontrolplaneexposure.DefaultAddOptions.ETCDStorage)

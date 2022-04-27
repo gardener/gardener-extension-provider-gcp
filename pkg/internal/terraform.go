@@ -54,7 +54,7 @@ func NewTerraformer(
 	restConfig *rest.Config,
 	purpose string,
 	infra *extensionsv1alpha1.Infrastructure,
-	useProjectedTokenMount bool,
+	disableProjectedTokenMount bool,
 ) (
 	terraformer.Terraformer,
 	error,
@@ -66,7 +66,7 @@ func NewTerraformer(
 
 	owner := metav1.NewControllerRef(infra, extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.InfrastructureResource))
 	return tf.
-		UseProjectedTokenMount(useProjectedTokenMount).
+		UseProjectedTokenMount(!disableProjectedTokenMount).
 		SetTerminationGracePeriodSeconds(630).
 		SetDeadlineCleaning(5 * time.Minute).
 		SetDeadlinePod(15 * time.Minute).
@@ -79,12 +79,12 @@ func NewTerraformerWithAuth(
 	restConfig *rest.Config,
 	purpose string,
 	infra *extensionsv1alpha1.Infrastructure,
-	useProjectedTokenMount bool,
+	disableProjectedTokenMount bool,
 ) (
 	terraformer.Terraformer,
 	error,
 ) {
-	tf, err := NewTerraformer(logger, restConfig, purpose, infra, useProjectedTokenMount)
+	tf, err := NewTerraformer(logger, restConfig, purpose, infra, disableProjectedTokenMount)
 	if err != nil {
 		return nil, err
 	}

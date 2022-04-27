@@ -29,7 +29,7 @@ import (
 func (a *actuator) Migrate(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
 	logger := a.logger.WithValues("infrastructure", client.ObjectKeyFromObject(infra), "operation", "migrate")
 
-	tf, err := internal.NewTerraformer(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.useProjectedTokenMount)
+	tf, err := internal.NewTerraformer(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
 	if err != nil {
 		return err
 	}
