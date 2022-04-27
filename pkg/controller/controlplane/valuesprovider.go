@@ -397,6 +397,9 @@ func getControlPlaneChartValues(
 	}
 
 	return map[string]interface{}{
+		"global": map[string]interface{}{
+			"genericTokenKubeconfigSecretName": extensionscontroller.GenericTokenKubeconfigSecretNameFromCluster(cluster),
+		},
 		gcp.CloudControllerManagerName: ccm,
 		gcp.CSIControllerName:          csi,
 	}, nil
@@ -422,7 +425,6 @@ func getCCMChartValues(
 		"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 		"podNetwork":        extensionscontroller.GetPodNetwork(cluster),
 		"podAnnotations": map[string]interface{}{
-			"checksum/secret-" + gcp.CloudControllerManagerName:             checksums[cloudControllerManagerDeploymentName],
 			"checksum/secret-" + gcp.CloudControllerManagerName + "-server": checksums[cloudControllerManagerServerName],
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:   checksums[v1beta1constants.SecretNameCloudProvider],
 			"checksum/configmap-" + internal.CloudProviderConfigName:        checksums[internal.CloudProviderConfigName],
@@ -464,17 +466,10 @@ func getCSIControllerChartValues(
 		"projectID": serviceAccount.ProjectID,
 		"zone":      cpConfig.Zone,
 		"podAnnotations": map[string]interface{}{
-			"checksum/secret-" + gcp.CSIProvisionerName:                   checksums[gcp.CSIProvisionerName],
-			"checksum/secret-" + gcp.CSIAttacherName:                      checksums[gcp.CSIAttacherName],
-			"checksum/secret-" + gcp.CSISnapshotterName:                   checksums[gcp.CSISnapshotterName],
-			"checksum/secret-" + gcp.CSIResizerName:                       checksums[gcp.CSIResizerName],
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
 		},
 		"csiSnapshotController": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-			"podAnnotations": map[string]interface{}{
-				"checksum/secret-" + gcp.CSISnapshotControllerName: checksums[gcp.CSISnapshotControllerName],
-			},
 		},
 		"csiSnapshotValidationWebhook": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
