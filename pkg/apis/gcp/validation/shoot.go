@@ -77,9 +77,6 @@ func ValidateWorkers(workers []core.Worker, fldPath *field.Path) field.ErrorList
 			continue
 		}
 
-		if worker.Maximum != 0 && worker.Minimum == 0 {
-			allErrs = append(allErrs, field.Forbidden(workerFldPath.Child("minimum"), "minimum value must be > 0 if maximum value > 0 (auto scaling to 0 is not supported)"))
-		}
 	}
 
 	return allErrs
