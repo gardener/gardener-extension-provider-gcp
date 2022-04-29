@@ -116,21 +116,6 @@ var _ = Describe("#ValidateWorkers", func() {
 		))
 	})
 
-	It("should enforce workers min > 0 if max > 0", func() {
-		workersCopy := workers
-		workersCopy[0].Minimum = 0
-		workersCopy[0].Maximum = 1
-
-		errorList := ValidateWorkers(workersCopy, nil)
-
-		Expect(errorList).To(ConsistOf(
-			PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":  Equal(field.ErrorTypeForbidden),
-				"Field": Equal("[0].minimum"),
-			})),
-		))
-	})
-
 	It("should forbid because worker does not specify a zone", func() {
 		workers[0].Zones = nil
 
