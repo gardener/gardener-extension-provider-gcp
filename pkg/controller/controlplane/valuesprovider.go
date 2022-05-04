@@ -20,12 +20,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/apihelper"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
+	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -33,8 +31,14 @@ import (
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/gardener/gardener/pkg/utils/secrets"
+	secretutils "github.com/gardener/gardener/pkg/utils/secrets"
+	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	"github.com/gardener/gardener/pkg/utils/version"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/apihelper"
 
 	"github.com/Masterminds/semver"
 	"github.com/go-logr/logr"
@@ -46,138 +50,47 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/apiserver/pkg/authentication/user"
 	autoscalingv1beta2 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2"
 )
 
-// Object names
 const (
+	caNameControlPlane                   = "ca-" + gcp.Name + "-controlplane"
 	cloudControllerManagerDeploymentName = "cloud-controller-manager"
 	cloudControllerManagerServerName     = "cloud-controller-manager-server"
+	csiSnapshotValidationServerName      = gcp.CSISnapshotValidation + "-server"
 )
 
-func getSecretConfigsFuncs(useTokenRequestor bool) secrets.Interface {
-	return &secrets.Secrets{
-		CertificateSecretConfigs: map[string]*secrets.CertificateSecretConfig{
-			v1beta1constants.SecretNameCACluster: {
-				Name:       v1beta1constants.SecretNameCACluster,
-				CommonName: "kubernetes",
+func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfigWithOptions {
+	return []extensionssecretsmanager.SecretConfigWithOptions{
+		{
+			Config: &secretutils.CertificateSecretConfig{
+				Name:       caNameControlPlane,
+				CommonName: caNameControlPlane,
 				CertType:   secrets.CACert,
 			},
+			Options: []secretsmanager.GenerateOption{secretsmanager.Persist()},
 		},
-		SecretConfigsFunc: func(cas map[string]*secrets.Certificate, clusterName string) []secrets.ConfigInterface {
-			out := []secrets.ConfigInterface{
-				&secrets.ControlPlaneSecretConfig{
-					Name: cloudControllerManagerServerName,
-					CertificateSecretConfig: &secrets.CertificateSecretConfig{
-						CommonName: cloudControllerManagerDeploymentName,
-						DNSNames:   kutil.DNSNamesForService(cloudControllerManagerDeploymentName, clusterName),
-						CertType:   secrets.ServerCert,
-						SigningCA:  cas[v1beta1constants.SecretNameCACluster],
-					},
-				},
-				&secrets.ControlPlaneSecretConfig{
-					Name: gcp.CSISnapshotValidation,
-					CertificateSecretConfig: &secrets.CertificateSecretConfig{
-						CommonName: gcp.UsernamePrefix + gcp.CSISnapshotValidation,
-						DNSNames:   kutil.DNSNamesForService(gcp.CSISnapshotValidation, clusterName),
-						CertType:   secrets.ServerCert,
-						SigningCA:  cas[v1beta1constants.SecretNameCACluster],
-					},
-				},
-			}
-
-			if !useTokenRequestor {
-				out = append(out,
-					&secrets.ControlPlaneSecretConfig{
-						Name: cloudControllerManagerDeploymentName,
-						CertificateSecretConfig: &secrets.CertificateSecretConfig{
-							CommonName:   "system:cloud-controller-manager",
-							Organization: []string{user.SystemPrivilegedGroup},
-							CertType:     secrets.ClientCert,
-							SigningCA:    cas[v1beta1constants.SecretNameCACluster],
-						},
-						KubeConfigRequests: []secrets.KubeConfigRequest{
-							{
-								ClusterName:   clusterName,
-								APIServerHost: v1beta1constants.DeploymentNameKubeAPIServer,
-							},
-						},
-					},
-					&secrets.ControlPlaneSecretConfig{
-						Name: gcp.CSIProvisionerName,
-						CertificateSecretConfig: &secrets.CertificateSecretConfig{
-							CommonName: gcp.UsernamePrefix + gcp.CSIProvisionerName,
-							CertType:   secrets.ClientCert,
-							SigningCA:  cas[v1beta1constants.SecretNameCACluster],
-						},
-						KubeConfigRequests: []secrets.KubeConfigRequest{
-							{
-								ClusterName:   clusterName,
-								APIServerHost: v1beta1constants.DeploymentNameKubeAPIServer,
-							},
-						},
-					},
-					&secrets.ControlPlaneSecretConfig{
-						Name: gcp.CSIAttacherName,
-						CertificateSecretConfig: &secrets.CertificateSecretConfig{
-							CommonName: gcp.UsernamePrefix + gcp.CSIAttacherName,
-							CertType:   secrets.ClientCert,
-							SigningCA:  cas[v1beta1constants.SecretNameCACluster],
-						},
-						KubeConfigRequests: []secrets.KubeConfigRequest{
-							{
-								ClusterName:   clusterName,
-								APIServerHost: v1beta1constants.DeploymentNameKubeAPIServer,
-							},
-						},
-					},
-					&secrets.ControlPlaneSecretConfig{
-						Name: gcp.CSISnapshotterName,
-						CertificateSecretConfig: &secrets.CertificateSecretConfig{
-							CommonName: gcp.UsernamePrefix + gcp.CSISnapshotterName,
-							CertType:   secrets.ClientCert,
-							SigningCA:  cas[v1beta1constants.SecretNameCACluster],
-						},
-						KubeConfigRequests: []secrets.KubeConfigRequest{
-							{
-								ClusterName:   clusterName,
-								APIServerHost: v1beta1constants.DeploymentNameKubeAPIServer,
-							},
-						},
-					},
-					&secrets.ControlPlaneSecretConfig{
-						Name: gcp.CSIResizerName,
-						CertificateSecretConfig: &secrets.CertificateSecretConfig{
-							CommonName: gcp.UsernamePrefix + gcp.CSIResizerName,
-							CertType:   secrets.ClientCert,
-							SigningCA:  cas[v1beta1constants.SecretNameCACluster],
-						},
-						KubeConfigRequests: []secrets.KubeConfigRequest{
-							{
-								ClusterName:   clusterName,
-								APIServerHost: v1beta1constants.DeploymentNameKubeAPIServer,
-							},
-						},
-					},
-					&secrets.ControlPlaneSecretConfig{
-						Name: gcp.CSISnapshotControllerName,
-						CertificateSecretConfig: &secrets.CertificateSecretConfig{
-							CommonName: gcp.UsernamePrefix + gcp.CSISnapshotControllerName,
-							CertType:   secrets.ClientCert,
-							SigningCA:  cas[v1beta1constants.SecretNameCACluster],
-						},
-						KubeConfigRequests: []secrets.KubeConfigRequest{
-							{
-								ClusterName:   clusterName,
-								APIServerHost: v1beta1constants.DeploymentNameKubeAPIServer,
-							},
-						},
-					},
-				)
-			}
-
-			return out
+		{
+			Config: &secretutils.CertificateSecretConfig{
+				Name:                        cloudControllerManagerServerName,
+				CommonName:                  gcp.CloudControllerManagerName,
+				DNSNames:                    kutil.DNSNamesForService(gcp.CloudControllerManagerName, namespace),
+				CertType:                    secretutils.ServerCert,
+				SkipPublishingCACertificate: true,
+			},
+			Options: []secretsmanager.GenerateOption{secretsmanager.SignedByCA(caNameControlPlane)},
+		},
+		{
+			Config: &secretutils.CertificateSecretConfig{
+				Name:                        csiSnapshotValidationServerName,
+				CommonName:                  gcp.UsernamePrefix + gcp.CSISnapshotValidation,
+				DNSNames:                    kutil.DNSNamesForService(gcp.CSISnapshotValidation, namespace),
+				CertType:                    secretutils.ServerCert,
+				SkipPublishingCACertificate: true,
+			},
+			// use current CA for signing server cert to prevent mismatches when dropping the old CA from the webhook
+			// config in phase Completing
+			Options: []secretsmanager.GenerateOption{secretsmanager.SignedByCA(caNameControlPlane, secretsmanager.UseCurrentCA)},
 		},
 	}
 }
@@ -194,15 +107,6 @@ func shootAccessSecretsFunc(namespace string) []*gutil.ShootAccessSecret {
 }
 
 var (
-	legacySecretNamesToCleanup = []string{
-		cloudControllerManagerDeploymentName,
-		gcp.CSIProvisionerName,
-		gcp.CSIAttacherName,
-		gcp.CSISnapshotterName,
-		gcp.CSIResizerName,
-		gcp.CSISnapshotControllerName,
-	}
-
 	configChart = &chart.Chart{
 		Name: "cloud-provider-config",
 		Path: filepath.Join(gcp.InternalChartsPath, "cloud-provider-config"),
@@ -339,20 +243,15 @@ var (
 )
 
 // NewValuesProvider creates a new ValuesProvider for the generic actuator.
-func NewValuesProvider(logger logr.Logger, useTokenRequestor, useProjectedTokenMount bool) genericactuator.ValuesProvider {
-	return &valuesProvider{
-		logger:                 logger.WithName("gcp-values-provider"),
-		useTokenRequestor:      useTokenRequestor,
-		useProjectedTokenMount: useProjectedTokenMount,
-	}
+func NewValuesProvider(logger logr.Logger) genericactuator.ValuesProvider {
+	return &valuesProvider{logger: logger.WithName("gcp-values-provider")}
 }
 
 // valuesProvider is a ValuesProvider that provides GCP-specific values for the 2 charts applied by the generic actuator.
 type valuesProvider struct {
 	genericactuator.NoopValuesProvider
-	logger                 logr.Logger
-	useTokenRequestor      bool
-	useProjectedTokenMount bool
+	common.ClientContext
+	logger logr.Logger
 }
 
 // GetConfigChartValues returns the values for the config chart applied by the generic actuator.
@@ -390,6 +289,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	ctx context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
+	secretsReader secretsmanager.Reader,
 	checksums map[string]string,
 	scaledDown bool,
 ) (
@@ -409,20 +309,21 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
 
-	return getControlPlaneChartValues(cpConfig, cp, cluster, serviceAccount, checksums, scaledDown, vp.useTokenRequestor)
+	return getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, serviceAccount, checksums, scaledDown)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
 func (vp *valuesProvider) GetControlPlaneShootChartValues(
-	ctx context.Context,
+	_ context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
+	secretsReader secretsmanager.Reader,
 	_ map[string]string,
 ) (
 	map[string]interface{},
 	error,
 ) {
-	return getControlPlaneShootChartValues(ctx, cluster, cp, vp.Client(), vp.useTokenRequestor, vp.useProjectedTokenMount)
+	return getControlPlaneShootChartValues(cluster, cp, secretsReader)
 }
 
 // GetControlPlaneShootCRDsChartValues returns the values for the control plane shoot CRDs chart applied by the generic actuator.
@@ -485,27 +386,27 @@ func getControlPlaneChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
+	secretsReader secretsmanager.Reader,
 	serviceAccount *gcp.ServiceAccount,
 	checksums map[string]string,
 	scaledDown bool,
-	useTokenRequestor bool,
 ) (
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := getCCMChartValues(cpConfig, cp, cluster, checksums, scaledDown)
+	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown)
 	if err != nil {
 		return nil, err
 	}
 
-	csi, err := getCSIControllerChartValues(cpConfig, cp, cluster, serviceAccount, checksums, scaledDown)
+	csi, err := getCSIControllerChartValues(cpConfig, cp, cluster, secretsReader, serviceAccount, checksums, scaledDown)
 	if err != nil {
 		return nil, err
 	}
 
 	return map[string]interface{}{
 		"global": map[string]interface{}{
-			"useTokenRequestor": useTokenRequestor,
+			"genericTokenKubeconfigSecretName": extensionscontroller.GenericTokenKubeconfigSecretNameFromCluster(cluster),
 		},
 		gcp.CloudControllerManagerName: ccm,
 		gcp.CSIControllerName:          csi,
@@ -517,12 +418,18 @@ func getCCMChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
+	secretsReader secretsmanager.Reader,
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
 	kubeVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
 	if err != nil {
 		return nil, err
+	}
+
+	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
+	if !found {
+		return nil, fmt.Errorf("secret %q not found", cloudControllerManagerServerName)
 	}
 
 	values := map[string]interface{}{
@@ -532,15 +439,16 @@ func getCCMChartValues(
 		"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 		"podNetwork":        extensionscontroller.GetPodNetwork(cluster),
 		"podAnnotations": map[string]interface{}{
-			"checksum/secret-" + gcp.CloudControllerManagerName:             checksums[cloudControllerManagerDeploymentName],
-			"checksum/secret-" + gcp.CloudControllerManagerName + "-server": checksums[cloudControllerManagerServerName],
-			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:   checksums[v1beta1constants.SecretNameCloudProvider],
-			"checksum/configmap-" + internal.CloudProviderConfigName:        checksums[internal.CloudProviderConfigName],
+			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+			"checksum/configmap-" + internal.CloudProviderConfigName:      checksums[internal.CloudProviderConfigName],
 		},
 		"podLabels": map[string]interface{}{
 			v1beta1constants.LabelPodMaintenanceRestart: "true",
 		},
 		"tlsCipherSuites": kutil.TLSCipherSuites(kubeVersion),
+		"secrets": map[string]interface{}{
+			"server": serverSecret.Name,
+		},
 	}
 
 	if cpConfig.CloudControllerManager != nil {
@@ -555,6 +463,7 @@ func getCSIControllerChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	_ *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
+	secretsReader secretsmanager.Reader,
 	serviceAccount *gcp.ServiceAccount,
 	checksums map[string]string,
 	scaledDown bool,
@@ -568,28 +477,26 @@ func getCSIControllerChartValues(
 		return map[string]interface{}{"enabled": false}, nil
 	}
 
+	serverSecret, found := secretsReader.Get(csiSnapshotValidationServerName)
+	if !found {
+		return nil, fmt.Errorf("secret %q not found", csiSnapshotValidationServerName)
+	}
+
 	return map[string]interface{}{
 		"enabled":   true,
 		"replicas":  extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		"projectID": serviceAccount.ProjectID,
 		"zone":      cpConfig.Zone,
 		"podAnnotations": map[string]interface{}{
-			"checksum/secret-" + gcp.CSIProvisionerName:                   checksums[gcp.CSIProvisionerName],
-			"checksum/secret-" + gcp.CSIAttacherName:                      checksums[gcp.CSIAttacherName],
-			"checksum/secret-" + gcp.CSISnapshotterName:                   checksums[gcp.CSISnapshotterName],
-			"checksum/secret-" + gcp.CSIResizerName:                       checksums[gcp.CSIResizerName],
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
 		},
 		"csiSnapshotController": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-			"podAnnotations": map[string]interface{}{
-				"checksum/secret-" + gcp.CSISnapshotControllerName: checksums[gcp.CSISnapshotControllerName],
-			},
 		},
 		"csiSnapshotValidationWebhook": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-			"podAnnotations": map[string]interface{}{
-				"checksum/secret-" + gcp.CSISnapshotValidation: checksums[gcp.CSISnapshotValidation],
+			"secrets": map[string]interface{}{
+				"server": serverSecret.Name,
 			},
 		},
 	}, nil
@@ -597,33 +504,22 @@ func getCSIControllerChartValues(
 
 // getControlPlaneShootChartValues collects and returns the control plane shoot chart values.
 func getControlPlaneShootChartValues(
-	ctx context.Context,
 	cluster *extensionscontroller.Cluster,
 	cp *extensionsv1alpha1.ControlPlane,
-	client client.Client,
-	useTokenRequestor bool,
-	useProjectedTokenMount bool,
-) (
-	map[string]interface{},
-	error,
-) {
+	secretsReader secretsmanager.Reader,
+) (map[string]interface{}, error) {
 	kubernetesVersion := cluster.Shoot.Spec.Kubernetes.Version
 	k8sVersionLessThan118, err := version.CompareVersions(kubernetesVersion, "<", gcp.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return nil, err
 	}
 
-	// get the ca.crt for caBundle of the snapshot-validation webhook
-	secret := &corev1.Secret{}
-	if err := client.Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), secret); err != nil {
-		return nil, err
+	caSecret, found := secretsReader.Get(caNameControlPlane)
+	if !found {
+		return nil, fmt.Errorf("secret %q not found", caNameControlPlane)
 	}
 
 	return map[string]interface{}{
-		"global": map[string]interface{}{
-			"useTokenRequestor":      useTokenRequestor,
-			"useProjectedTokenMount": useProjectedTokenMount,
-		},
 		gcp.CloudControllerManagerName: map[string]interface{}{"enabled": true},
 		gcp.CSINodeName: map[string]interface{}{
 			"enabled":           !k8sVersionLessThan118,
@@ -631,7 +527,7 @@ func getControlPlaneShootChartValues(
 			"vpaEnabled":        gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 			"webhookConfig": map[string]interface{}{
 				"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
-				"caBundle": string(secret.Data["ca.crt"]),
+				"caBundle": string(caSecret.Data[secretutils.DataKeyCertificateBundle]),
 			},
 		},
 	}, nil

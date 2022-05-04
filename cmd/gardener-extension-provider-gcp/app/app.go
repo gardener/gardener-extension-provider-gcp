@@ -23,6 +23,7 @@ import (
 	gcpcmd "github.com/gardener/gardener-extension-provider-gcp/pkg/cmd"
 	gcpbackupbucket "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupbucket"
 	gcpbackupentry "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupentry"
+	gcpbastion "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
 	gcpcontrolplane "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/controlplane"
 	gcpcsimigration "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/csimigration"
 	gcpdnsrecord "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/dnsrecord"
@@ -33,7 +34,6 @@ import (
 	gcpcontrolplaneexposure "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplaneexposure"
 
 	druidv1alpha1 "github.com/gardener/etcd-druid/api/v1alpha1"
-	gcpbastion "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
@@ -187,21 +187,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 
 			// add common meta types to schema for controller-runtime to use v1.ListOptions
 			metav1.AddToGroupVersion(scheme, machinev1alpha1.SchemeGroupVersion)
-
-			useTokenRequestor, err := controller.UseTokenRequestor(generalOpts.Completed().GardenerVersion)
-			if err != nil {
-				return fmt.Errorf("could not determine whether token requestor should be used: %w", err)
-			}
-			gcpcontrolplane.DefaultAddOptions.UseTokenRequestor = useTokenRequestor
-			gcpworker.DefaultAddOptions.UseTokenRequestor = useTokenRequestor
-
-			useProjectedTokenMount, err := controller.UseServiceAccountTokenVolumeProjection(generalOpts.Completed().GardenerVersion)
-			if err != nil {
-				return fmt.Errorf("could not determine whether service account token volume projection should be used: %w", err)
-			}
-			gcpcontrolplane.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
-			gcpinfrastructure.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
-			gcpworker.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
 
 			configFileOpts.Completed().ApplyETCDStorage(&gcpcontrolplaneexposure.DefaultAddOptions.ETCDStorage)
 			configFileOpts.Completed().ApplyHealthCheckConfig(&healthcheck.DefaultAddOptions.HealthCheckConfig)
