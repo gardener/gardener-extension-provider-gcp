@@ -54,7 +54,7 @@ type providerStatusRaw struct {
 
 // DetermineOptions determines the required information that are required to reconcile a Bastion on GCP. This
 // function does not create any IaaS resources.
-func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, projectID string) (*Options, error) {
+func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, projectID, vNetworkName, subnetWork string) (*Options, error) {
 	providerStatus, err := getProviderStatus(bastion)
 	if err != nil {
 		return nil, err
@@ -73,20 +73,15 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		return nil, err
 	}
 
-	networkName, err := getNetworkName(cluster, projectID, clusterName)
-	if err != nil {
-		return nil, err
-	}
-
 	region := cluster.Shoot.Spec.Region
 	return &Options{
 		Shoot:               cluster.Shoot,
 		BastionInstanceName: baseResourceName,
 		Zone:                getZone(cluster, region, providerStatus),
 		DiskName:            DiskResourceName(baseResourceName),
-		Subnetwork:          fmt.Sprintf("regions/%s/subnetworks/%s", region, NodesResourceName(clusterName)),
+		Subnetwork:          fmt.Sprintf("regions/%s/subnetworks/%s", region, subnetWork),
 		ProjectID:           projectID,
-		Network:             networkName,
+		Network:             fmt.Sprintf("projects/%s/global/networks/%s", projectID, vNetworkName),
 		WorkersCIDR:         workersCidr,
 	}, nil
 }
@@ -194,11 +189,6 @@ func unmarshalProviderStatus(bytes []byte) (*providerStatusRaw, error) {
 // DiskResourceName is Disk resource name
 func DiskResourceName(baseName string) string {
 	return fmt.Sprintf("%s-disk", baseName)
-}
-
-// NodesResourceName is Nodes resource name
-func NodesResourceName(baseName string) string {
-	return fmt.Sprintf("%s-nodes", baseName)
 }
 
 // FirewallIngressAllowSSHResourceName is Firewall ingress allow SSH rule resource name
