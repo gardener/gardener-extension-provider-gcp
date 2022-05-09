@@ -433,6 +433,10 @@ func createInfrastructureConfig() *gcpv1alpha1.InfrastructureConfig {
 }
 
 func createWorker(name, vNetName, subnetName string) *extensionsv1alpha1.Worker {
+	infrastructureProviderStatus := createInfrastructureStatus(vNetName, subnetName)
+	json, err := json.Marshal(infrastructureProviderStatus)
+	Expect(err).NotTo(HaveOccurred())
+
 	return &extensionsv1alpha1.Worker{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -443,21 +447,29 @@ func createWorker(name, vNetName, subnetName string) *extensionsv1alpha1.Worker 
 				Type: gcp.Type,
 			},
 			InfrastructureProviderStatus: &runtime.RawExtension{
-				Object: &gcpv1alpha1.InfrastructureStatus{
-					Networks: gcpv1alpha1.NetworkStatus{
-						VPC: gcpv1alpha1.VPC{
-							Name: vNetName,
-						},
-						Subnets: []gcpv1alpha1.Subnet{
-							{
-								Purpose: gcpv1alpha1.PurposeNodes,
-								Name:    subnetName,
-							},
-						},
-					},
-				},
+				Raw: json,
 			},
 			Pools: []extensionsv1alpha1.WorkerPool{},
+		},
+	}
+}
+
+func createInfrastructureStatus(vNetName, subnetName string) *gcpv1alpha1.InfrastructureStatus {
+	return &gcpv1alpha1.InfrastructureStatus{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: gcpv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "InfrastructureStatus",
+		},
+		Networks: gcpv1alpha1.NetworkStatus{
+			VPC: gcpv1alpha1.VPC{
+				Name: vNetName,
+			},
+			Subnets: []gcpv1alpha1.Subnet{
+				{
+					Purpose: gcpv1alpha1.PurposeNodes,
+					Name:    subnetName,
+				},
+			},
 		},
 	}
 }
