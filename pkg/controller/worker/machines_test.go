@@ -188,7 +188,7 @@ var _ = Describe("Machines", func() {
 
 				nodeCapacity = corev1.ResourceList{
 					"cpu":    resource.MustParse("8"),
-					"gpu":    resource.MustParse("1"),
+					"gpu":    resource.MustParse("0"),
 					"memory": resource.MustParse("128Gi"),
 				}
 				nodeTemplateZone1 = machinev1alpha1.NodeTemplate{

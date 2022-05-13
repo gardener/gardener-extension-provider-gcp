@@ -75,7 +75,7 @@ func (w *workerDelegate) GenerateMachineDeployments(ctx context.Context) (worker
 	return w.machineDeployments, nil
 }
 
-func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
+func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 	var (
 		machineDeployments = worker.MachineDeployments{}
 		machineClasses     []map[string]interface{}
@@ -224,8 +224,20 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					Region:       w.worker.Spec.Region,
 					Zone:         zone,
 				}
+
+				numGpus := pool.NodeTemplate.Capacity["gpu"]
+				if !numGpus.IsZero() {
+					disableLiveMigration(machineClassSpec)
+				}
 			}
 
+			if workerConfig.GPU != nil {
+				machineClassSpec["gpu"] = map[string]interface{}{
+					"acceleratorType": workerConfig.GPU.AcceleratorType,
+					"count":           workerConfig.GPU.Count,
+				}
+				disableLiveMigration(machineClassSpec)
+			}
 			machineClasses = append(machineClasses, machineClassSpec)
 		}
 	}
@@ -271,6 +283,17 @@ func createDiskSpec(size, workerName string, boot bool, machineImage, volumeType
 	}
 
 	return disk, nil
+}
+
+func disableLiveMigration(machineClassSpec map[string]interface{}) {
+	// TODO: Use the user-provided value of `onHostMaintenance` when its made configurable
+	// and also do validation for the same for GPU machines to avoid user from providing `MIGRATE`. Currently overwriting it to `TERMINATE`
+	// as gpu attached machines don't support live-migration (https://cloud.google.com/compute/docs/instances/live-migration#gpusmaintenance)
+	machineClassSpec["scheduling"] = map[string]interface{}{
+		"automaticRestart":  true,
+		"onHostMaintenance": "TERMINATE",
+		"preemptible":       false,
+	}
 }
 
 func getGceInstanceLabels(name string, pool v1alpha1.WorkerPool) map[string]interface{} {
