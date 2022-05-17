@@ -56,10 +56,18 @@ images:
   sourceRepository: github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
   repository: gcr.io/gke-release/gcp-compute-persistent-disk-csi-driver
   tag: "v1.3.4-gke.0"
+# Use external-provisioner@v2.1.0 for "< 1.22" clusters to prevent creating new PVs affected by https://issues.k8s.io/109354.
+# For more details check the issue itself (incl. the recommended workaround).
+- name: csi-provisioner
+  sourceRepository: github.com/kubernetes-csi/external-provisioner
+  repository: k8s.gcr.io/sig-storage/csi-provisioner
+  tag: "v2.1.0"
+  targetVersion: "< 1.22"
 - name: csi-provisioner
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: k8s.gcr.io/sig-storage/csi-provisioner
   tag: "v2.1.2"
+  targetVersion: ">= 1.22"
 - name: csi-attacher
   sourceRepository: github.com/kubernetes-csi/external-attacher
   repository: k8s.gcr.io/sig-storage/csi-attacher
