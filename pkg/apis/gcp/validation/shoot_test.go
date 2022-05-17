@@ -34,18 +34,13 @@ func copyWorkers(workers []core.Worker) []core.Worker {
 	return copy
 }
 
-func makeStringPointer(s string) *string {
-	ptr := s
-	return &ptr
-}
-
 var _ = Describe("Shoot validation", func() {
 	Describe("#ValidateNetworking", func() {
 		var networkingPath = field.NewPath("spec", "networking")
 
 		It("should return no error because nodes CIDR was provided", func() {
 			networking := core.Networking{
-				Nodes: makeStringPointer("1.2.3.4/5"),
+				Nodes: pointer.String("1.2.3.4/5"),
 			}
 
 			errorList := ValidateNetworking(networking, networkingPath)

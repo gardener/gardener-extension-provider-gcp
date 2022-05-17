@@ -17,11 +17,13 @@ package validation_test
 import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
+
 	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/pointer"
 )
 
 var _ = Describe("#ValidateWorkers", func() {
@@ -34,7 +36,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		workers = []core.Worker{
 			{
 				Volume: &core.Volume{
-					Type:       makeStringPointer("Volume"),
+					Type:       pointer.String("Volume"),
 					VolumeSize: "30G",
 				},
 
@@ -44,14 +46,14 @@ var _ = Describe("#ValidateWorkers", func() {
 				},
 				DataVolumes: []core.DataVolume{
 					{
-						Type:       makeStringPointer("Volume"),
+						Type:       pointer.String("Volume"),
 						VolumeSize: "30G",
 					},
 				},
 			},
 			{
 				Volume: &core.Volume{
-					Type:       makeStringPointer("Volume"),
+					Type:       pointer.String("Volume"),
 					VolumeSize: "20G",
 				},
 
@@ -61,14 +63,14 @@ var _ = Describe("#ValidateWorkers", func() {
 				},
 				DataVolumes: []core.DataVolume{
 					{
-						Type:       makeStringPointer("SCRATCH"),
+						Type:       pointer.String("SCRATCH"),
 						VolumeSize: "30G",
 					},
 				},
 			},
 			{
 				Volume: &core.Volume{
-					Type:       makeStringPointer("Volume"),
+					Type:       pointer.String("Volume"),
 					VolumeSize: "20G",
 				},
 				Minimum: 2,
@@ -132,7 +134,7 @@ var _ = Describe("#ValidateWorkers", func() {
 	It("should pass because worker config is configured correctly", func() {
 		errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
 			Volume: &gcp.Volume{
-				LocalSSDInterface: makeStringPointer("NVME"),
+				LocalSSDInterface: pointer.String("NVME"),
 			},
 		})
 		Expect(errorList).To(BeEmpty())
@@ -141,7 +143,7 @@ var _ = Describe("#ValidateWorkers", func() {
 	It("should forbid because interface of worker config is misconfiguration", func() {
 		errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
 			Volume: &gcp.Volume{
-				LocalSSDInterface: makeStringPointer("Interface"),
+				LocalSSDInterface: pointer.String("Interface"),
 			},
 		})
 		Expect(errorList).To(ConsistOf(
