@@ -466,6 +466,10 @@ func createInfrastructureStatus(vNetName, subnetName string) *gcpv1alpha1.Infras
 			},
 			Subnets: []gcpv1alpha1.Subnet{
 				{
+					Purpose: "fake",
+					Name:    subnetName,
+				},
+				{
 					Purpose: gcpv1alpha1.PurposeNodes,
 					Name:    subnetName,
 				},

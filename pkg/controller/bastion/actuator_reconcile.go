@@ -33,6 +33,7 @@ import (
 	"google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -151,15 +152,33 @@ func getNetAndSubnet(ctx context.Context, a *actuator, cluster *extensions.Clust
 		return "", "", errors.New("virtual network must be not empty for infrastructure provider status")
 	}
 
-	if len(infrastructureStatus.Networks.Subnets) != 1 {
-		return "", "", errors.New("unsupported multiple subnets or empty subnet for infrastructure provider status")
+	if len(infrastructureStatus.Networks.Subnets) == 0 {
+		return "", "", errors.New("subnet must be not empty")
 	}
 
-	if infrastructureStatus.Networks.Subnets[0].Name == "" {
+	var purposeNodesSet = sets.NewString()
+	for _, subnet := range infrastructureStatus.Networks.Subnets {
+		purposeNodesSet.Insert(string(subnet.Purpose))
+	}
+
+	if !purposeNodesSet.Has(string(gcp.PurposeNodes)) {
+		return "", "", errors.New("none of subenet purpose as node found")
+	}
+
+	var i int
+	for k, name := range infrastructureStatus.Networks.Subnets {
+		if name.Purpose != gcp.PurposeNodes {
+			continue
+		}
+		i = k
+		break
+	}
+
+	if infrastructureStatus.Networks.Subnets[i].Name == "" {
 		return "", "", errors.New("subnet must be not empty for infrastructure provider status")
 	}
 
-	return infrastructureStatus.Networks.VPC.Name, infrastructureStatus.Networks.Subnets[0].Name, nil
+	return infrastructureStatus.Networks.VPC.Name, infrastructureStatus.Networks.Subnets[i].Name, nil
 }
 
 func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, bastion *extensionsv1alpha1.Bastion, opt *Options) error {
