@@ -242,7 +242,7 @@ var _ = Describe("Bastion tests", func() {
 			nil,
 		)).To(Succeed())
 
-		time.Sleep(10 * time.Second)
+		time.Sleep(60 * time.Second)
 		verifyPort22IsOpen(ctx, c, bastion)
 		verifyPort42IsClosed(ctx, c, bastion)
 
