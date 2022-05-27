@@ -199,6 +199,20 @@ string
 </tr>
 <tr>
 <td>
+<code>gpu</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.GPU">
+GPU
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>GPU contains configuration for the GPU attached to VMs.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>volume</code></br>
 <em>
 <a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Volume">
@@ -389,6 +403,47 @@ string
 <td>
 <em>(Optional)</em>
 <p>Metadata configures whether metadata fields should be added to the reported VPC flow logs.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.GPU">GPU
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+</p>
+<p>
+<p>GPU is the configuration of the GPU to be attached</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>acceleratorType</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>AcceleratorType is the type of accelerator to be attached</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>count</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Count is the number of accelerator to be attached</p>
 </td>
 </tr>
 </tbody>
