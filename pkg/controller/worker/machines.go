@@ -156,6 +156,8 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 		}
 
 		gceInstanceLabels := getGceInstanceLabels(w.worker.Name, pool)
+		isLiveMigrationAllowed := true
+
 		for zoneIndex, zone := range pool.Zones {
 			zoneIdx := int32(zoneIndex)
 			machineClassSpec := map[string]interface{}{
@@ -172,11 +174,6 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 						"subnetwork":        nodesSubnet.Name,
 						"disableExternalIP": true,
 					},
-				},
-				"scheduling": map[string]interface{}{
-					"automaticRestart":  true,
-					"onHostMaintenance": "MIGRATE",
-					"preemptible":       false,
 				},
 				"secret": map[string]interface{}{
 					"cloudConfig": string(pool.UserData),
@@ -227,7 +224,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 
 				numGpus := pool.NodeTemplate.Capacity["gpu"]
 				if !numGpus.IsZero() {
-					disableLiveMigration(machineClassSpec)
+					isLiveMigrationAllowed = false
 				}
 			}
 
@@ -236,8 +233,10 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 					"acceleratorType": workerConfig.GPU.AcceleratorType,
 					"count":           workerConfig.GPU.Count,
 				}
-				disableLiveMigration(machineClassSpec)
+				isLiveMigrationAllowed = false
 			}
+
+			setSchedulingPolicy(machineClassSpec, isLiveMigrationAllowed)
 			machineClasses = append(machineClasses, machineClassSpec)
 		}
 	}
@@ -306,6 +305,22 @@ func getGceInstanceLabels(name string, pool v1alpha1.WorkerPool) map[string]inte
 		}
 	}
 	return gceInstanceLabels
+}
+
+func setSchedulingPolicy(machineClassSpec map[string]interface{}, isLiveMigrationAllowed bool) {
+	if isLiveMigrationAllowed {
+		machineClassSpec["scheduling"] = map[string]interface{}{
+			"automaticRestart":  true,
+			"onHostMaintenance": "MIGRATE",
+			"preemptible":       false,
+		}
+	} else {
+		machineClassSpec["scheduling"] = map[string]interface{}{
+			"automaticRestart":  true,
+			"onHostMaintenance": "TERMINATE",
+			"preemptible":       false,
+		}
+	}
 }
 
 // SanitizeGcpLabel will sanitize the label base on the gcp label Restrictions
