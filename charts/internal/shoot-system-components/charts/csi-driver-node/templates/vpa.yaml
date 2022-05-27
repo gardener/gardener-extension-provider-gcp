@@ -22,6 +22,9 @@ spec:
         cpu: {{ .Values.resources.livenessProbe.requests.cpu }}
         memory: {{ .Values.resources.livenessProbe.requests.memory }}
       controlledValues: RequestsOnly
+  targetRef:
+    apiVersion: apps/v1
+    kind: DaemonSet
   updatePolicy:
     updateMode: "Auto"
 {{- end }}
