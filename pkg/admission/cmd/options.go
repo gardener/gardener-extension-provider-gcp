@@ -17,14 +17,13 @@ package cmd
 import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/validator"
 
-	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 )
 
 // GardenWebhookSwitchOptions are the webhookcmd.SwitchOptions for the admission webhooks.
 func GardenWebhookSwitchOptions() *webhookcmd.SwitchOptions {
 	return webhookcmd.NewSwitchOptions(
-		webhookcmd.Switch(extensionswebhook.ValidatorName, validator.New),
+		webhookcmd.Switch(validator.Name, validator.New),
 		webhookcmd.Switch(validator.SecretsValidatorName, validator.NewSecretsWebhook),
 	)
 }
