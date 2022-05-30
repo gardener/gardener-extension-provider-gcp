@@ -42,7 +42,12 @@ func (a *actuator) Delete(ctx context.Context, bastion *extensionsv1alpha1.Basti
 		return fmt.Errorf("failed to create GCP client: %w", err)
 	}
 
-	opt, err := DetermineOptions(bastion, cluster, serviceAccount.ProjectID)
+	vNet, subnet, err := getNetAndSubnet(ctx, a, cluster)
+	if err != nil {
+		return err
+	}
+
+	opt, err := DetermineOptions(bastion, cluster, serviceAccount.ProjectID, vNet, subnet)
 	if err != nil {
 		return fmt.Errorf("failed to determine Options: %w", err)
 	}

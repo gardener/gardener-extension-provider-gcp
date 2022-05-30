@@ -16,15 +16,19 @@ package bastion
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
+	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/go-logr/logr"
 	"google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -61,7 +65,12 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 		return fmt.Errorf("failed to create GCP client: %w", err)
 	}
 
-	opt, err := DetermineOptions(bastion, cluster, serviceAccount.ProjectID)
+	vNet, subnet, err := getNetAndSubnet(ctx, a, cluster)
+	if err != nil {
+		return err
+	}
+
+	opt, err := DetermineOptions(bastion, cluster, serviceAccount.ProjectID, vNet, subnet)
 	if err != nil {
 		return fmt.Errorf("failed to determine Options: %w", err)
 	}
@@ -119,6 +128,46 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 	patch = client.MergeFrom(bastion.DeepCopy())
 	bastion.Status.Ingress = endpoints.public
 	return a.Client().Status().Patch(ctx, bastion, patch)
+}
+
+func getNetAndSubnet(ctx context.Context, a *actuator, cluster *extensions.Cluster) (vNet, subnet string, err error) {
+	var infrastructureStatus *gcp.InfrastructureStatus
+	worker := &extensionsv1alpha1.Worker{}
+
+	err = a.Client().Get(ctx, client.ObjectKey{Namespace: cluster.ObjectMeta.Name, Name: cluster.Shoot.Name}, worker)
+	if err != nil {
+		return "", "", err
+	}
+
+	if worker == nil || worker.Spec.InfrastructureProviderStatus == nil {
+		return "", "", errors.New("infrastructure provider status must be not empty for worker")
+	}
+
+	if infrastructureStatus, err = helper.InfrastructureStatusFromRaw(worker.Spec.InfrastructureProviderStatus); err != nil {
+		return "", "", err
+	}
+
+	if infrastructureStatus.Networks.VPC.Name == "" {
+		return "", "", errors.New("virtual network must be not empty for infrastructure provider status")
+	}
+
+	if len(infrastructureStatus.Networks.Subnets) == 0 {
+		return "", "", errors.New("subnet must be not empty")
+	}
+
+	var nodeSubnet string
+	for _, s := range infrastructureStatus.Networks.Subnets {
+		if s.Purpose == gcp.PurposeNodes && s.Name != "" {
+			nodeSubnet = s.Name
+			break
+		}
+	}
+
+	if nodeSubnet == "" {
+		return "", "", errors.New("no nodes subnet found")
+	}
+
+	return infrastructureStatus.Networks.VPC.Name, nodeSubnet, nil
 }
 
 func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, bastion *extensionsv1alpha1.Bastion, opt *Options) error {

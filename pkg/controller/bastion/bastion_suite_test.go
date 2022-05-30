@@ -68,15 +68,15 @@ var _ = Describe("Bastion", func() {
 
 	Describe("Determine options", func() {
 		It("should return options", func() {
-			options, err := DetermineOptions(bastion, cluster, "projectID")
+			options, err := DetermineOptions(bastion, cluster, "projectID", "vNet", "subnet")
 			Expect(err).To(Not(HaveOccurred()))
 
 			Expect(options.BastionInstanceName).To(Equal("cluster1-bastionName1-bastion-1cdc8"))
 			Expect(options.Zone).To(Equal("us-west1-a"))
 			Expect(options.DiskName).To(Equal("cluster1-bastionName1-bastion-1cdc8-disk"))
-			Expect(options.Subnetwork).To(Equal("regions/us-west/subnetworks/cluster1-nodes"))
+			Expect(options.Subnetwork).To(Equal("regions/us-west/subnetworks/subnet"))
 			Expect(options.ProjectID).To(Equal("projectID"))
-			Expect(options.Network).To(Equal("projects/projectID/global/networks/cluster1"))
+			Expect(options.Network).To(Equal("projects/projectID/global/networks/vNet"))
 			Expect(options.WorkersCIDR).To(Equal("10.250.0.0/16"))
 		})
 	})
@@ -113,7 +113,6 @@ var _ = Describe("Bastion", func() {
 				Expect(input).Should(Equal(expectedOut))
 			},
 			Entry("disk resource name", DiskResourceName(baseName), "clusterName-LetsExceed63LenLimit0-bastion-139c4-disk"),
-			Entry("nodes resource name", NodesResourceName(baseName), "clusterName-LetsExceed63LenLimit0-bastion-139c4-nodes"),
 			Entry("firewall ingress ssh resource name", FirewallIngressAllowSSHResourceName(baseName), "clusterName-LetsExceed63LenLimit0-bastion-139c4-allow-ssh"),
 			Entry("firewall egress allow resource name", FirewallEgressAllowOnlyResourceName(baseName), "clusterName-LetsExceed63LenLimit0-bastion-139c4-egress-worker"),
 			Entry("firewall egress deny resource name", FirewallEgressDenyAllResourceName(baseName), "clusterName-LetsExceed63LenLimit0-bastion-139c4-deny-all"),

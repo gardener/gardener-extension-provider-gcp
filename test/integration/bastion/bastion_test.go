@@ -83,7 +83,7 @@ var (
 	computeService *compute.Service
 
 	extensionscluster *extensionsv1alpha1.Cluster
-
+	worker            *extensionsv1alpha1.Worker
 	controllercluster *controller.Cluster
 
 	secret    *corev1.Secret
@@ -94,6 +94,7 @@ var (
 	bastion   *extensionsv1alpha1.Bastion
 
 	name       string
+	vNetName   string
 	routerName string
 	subnetName string
 )
@@ -126,8 +127,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	name = fmt.Sprintf("gcp-bastion-it--%s", randString)
-	routerName = name + "-cloud-router"
-	subnetName = name + "-nodes"
+	vNetName = name
+	routerName = vNetName + "-cloud-router"
+	subnetName = vNetName + "-nodes"
 
 	myPublicIP, err = getMyPublicIPWithMask()
 	Expect(err).ToNot(HaveOccurred())
@@ -139,6 +141,7 @@ var _ = BeforeSuite(func() {
 			Paths: []string{
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_bastions.yaml"),
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
+				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_workers.yaml"),
 			},
 		},
 	}
@@ -184,7 +187,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	extensionscluster, controllercluster = createClusters(name)
-	bastion, options = createBastion(controllercluster, name, project)
+	worker = createWorker(name, vNetName, subnetName)
+	bastion, options = createBastion(controllercluster, name, project, vNetName, subnetName)
 
 	secret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -201,17 +205,17 @@ var _ = BeforeSuite(func() {
 var _ = Describe("Bastion tests", func() {
 	It("should successfully create and delete", func() {
 		By("setup Infrastructure")
-		err := prepareNewNetwork(ctx, logger, project, computeService, name, routerName, subnetName)
+		err := prepareNewNetwork(ctx, logger, project, computeService, vNetName, routerName, subnetName)
 		Expect(err).NotTo(HaveOccurred())
 		framework.AddCleanupAction(func() {
-			err = teardownNetwork(ctx, logger, project, computeService, name, routerName, subnetName)
+			err = teardownNetwork(ctx, logger, project, computeService, vNetName, routerName, subnetName)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		By("create namespace for test execution")
-		setupEnvironmentObjects(ctx, c, namespace(name), secret, extensionscluster)
+		setupEnvironmentObjects(ctx, c, namespace(name), secret, extensionscluster, worker)
 		framework.AddCleanupAction(func() {
-			teardownShootEnvironment(ctx, c, namespace(name), secret, extensionscluster)
+			teardownShootEnvironment(ctx, c, namespace(name), secret, extensionscluster, worker)
 		})
 
 		By("setup bastion")
@@ -238,7 +242,7 @@ var _ = Describe("Bastion tests", func() {
 			nil,
 		)).To(Succeed())
 
-		time.Sleep(10 * time.Second)
+		time.Sleep(60 * time.Second)
 		verifyPort22IsOpen(ctx, c, bastion)
 		verifyPort42IsClosed(ctx, c, bastion)
 
@@ -391,7 +395,7 @@ func getResourceNameFromSelfLink(link string) string {
 	return parts[len(parts)-1]
 }
 
-func createBastion(cluster *controller.Cluster, name string, project string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {
+func createBastion(cluster *controller.Cluster, name, project, vNet, subnet string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {
 	bastion := &extensionsv1alpha1.Bastion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "-bastion",
@@ -410,7 +414,7 @@ func createBastion(cluster *controller.Cluster, name string, project string) (*e
 		},
 	}
 
-	options, err := bastionctrl.DetermineOptions(bastion, cluster, project)
+	options, err := bastionctrl.DetermineOptions(bastion, cluster, project, vNet, subnet)
 	Expect(err).NotTo(HaveOccurred())
 
 	return bastion, options
@@ -428,12 +432,62 @@ func createInfrastructureConfig() *gcpv1alpha1.InfrastructureConfig {
 	}
 }
 
+func createWorker(name, vNetName, subnetName string) *extensionsv1alpha1.Worker {
+	infrastructureProviderStatus := createInfrastructureStatus(vNetName, subnetName)
+	json, err := json.Marshal(infrastructureProviderStatus)
+	Expect(err).NotTo(HaveOccurred())
+
+	return &extensionsv1alpha1.Worker{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: name,
+		},
+		Spec: extensionsv1alpha1.WorkerSpec{
+			DefaultSpec: extensionsv1alpha1.DefaultSpec{
+				Type: gcp.Type,
+			},
+			InfrastructureProviderStatus: &runtime.RawExtension{
+				Raw: json,
+			},
+			Pools: []extensionsv1alpha1.WorkerPool{},
+		},
+	}
+}
+
+func createInfrastructureStatus(vNetName, subnetName string) *gcpv1alpha1.InfrastructureStatus {
+	return &gcpv1alpha1.InfrastructureStatus{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: gcpv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "InfrastructureStatus",
+		},
+		Networks: gcpv1alpha1.NetworkStatus{
+			VPC: gcpv1alpha1.VPC{
+				Name: vNetName,
+			},
+			Subnets: []gcpv1alpha1.Subnet{
+				{
+					Purpose: "fake",
+					Name:    subnetName,
+				},
+				{
+					Purpose: gcpv1alpha1.PurposeNodes,
+					Name:    subnetName,
+				},
+			},
+		},
+	}
+}
+
 func createShoot(infrastructureConfig []byte) *gardencorev1beta1.Shoot {
 	return &gardencorev1beta1.Shoot{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "core.gardener.cloud/v1beta1",
 			Kind:       "Shoot",
 		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+
 		Spec: gardencorev1beta1.ShootSpec{
 			Region: *region,
 			Provider: gardencorev1beta1.Provider{
@@ -589,13 +643,15 @@ func namespace(name string) *corev1.Namespace {
 	}
 }
 
-func setupEnvironmentObjects(ctx context.Context, c client.Client, namespace *corev1.Namespace, secret *corev1.Secret, cluster *extensionsv1alpha1.Cluster) {
+func setupEnvironmentObjects(ctx context.Context, c client.Client, namespace *corev1.Namespace, secret *corev1.Secret, cluster *extensionsv1alpha1.Cluster, worker *extensionsv1alpha1.Worker) {
 	Expect(c.Create(ctx, namespace)).To(Succeed())
 	Expect(c.Create(ctx, cluster)).To(Succeed())
 	Expect(c.Create(ctx, secret)).To(Succeed())
+	Expect(c.Create(ctx, worker)).To(Succeed())
 }
 
-func teardownShootEnvironment(ctx context.Context, c client.Client, namespace *corev1.Namespace, secret *corev1.Secret, cluster *extensionsv1alpha1.Cluster) {
+func teardownShootEnvironment(ctx context.Context, c client.Client, namespace *corev1.Namespace, secret *corev1.Secret, cluster *extensionsv1alpha1.Cluster, worker *extensionsv1alpha1.Worker) {
+	Expect(client.IgnoreNotFound(c.Delete(ctx, worker))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, secret))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, cluster))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, namespace))).To(Succeed())
