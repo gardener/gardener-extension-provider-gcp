@@ -58,7 +58,7 @@ func validateGPU(gpu *gcp.GPU, fldPath *field.Path) field.ErrorList {
 		allErrs = append(allErrs, field.Required(fldPath.Child("acceleratorType"), "must be set when providing gpu"))
 	}
 
-	if gpu.Count == 0 {
+	if gpu.Count <= 0 {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("count"), "must be > 0 when providing gpu"))
 	}
 
