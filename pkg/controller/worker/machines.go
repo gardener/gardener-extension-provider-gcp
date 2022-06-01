@@ -284,17 +284,6 @@ func createDiskSpec(size, workerName string, boot bool, machineImage, volumeType
 	return disk, nil
 }
 
-func disableLiveMigration(machineClassSpec map[string]interface{}) {
-	// TODO: Use the user-provided value of `onHostMaintenance` when its made configurable
-	// and also do validation for the same for GPU machines to avoid user from providing `MIGRATE`. Currently overwriting it to `TERMINATE`
-	// as gpu attached machines don't support live-migration (https://cloud.google.com/compute/docs/instances/live-migration#gpusmaintenance)
-	machineClassSpec["scheduling"] = map[string]interface{}{
-		"automaticRestart":  true,
-		"onHostMaintenance": "TERMINATE",
-		"preemptible":       false,
-	}
-}
-
 func getGceInstanceLabels(name string, pool v1alpha1.WorkerPool) map[string]interface{} {
 	gceInstanceLabels := map[string]interface{}{
 		"name": SanitizeGcpLabelValue(name),
