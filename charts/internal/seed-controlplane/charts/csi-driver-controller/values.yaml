@@ -21,37 +21,55 @@ resources:
       cpu: 20m
       memory: 50Mi
     limits:
-      memory: 210Mi 
+      memory: 210Mi
+    maxAllowed:
+      cpu: 800m
+      memory: 4G
   provisioner:
     requests:
       cpu: 11m
       memory: 32Mi
     limits:
       memory: 200Mi
+    maxAllowed:
+      cpu: 800m
+      memory: 4G
   attacher:
     requests:
       cpu: 10m
       memory: 50Mi
     limits:
       memory: 210Mi
+    maxAllowed:
+      cpu: 500m
+      memory: 4G
   snapshotter:
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
       memory: 256Mi
+    maxAllowed:
+      cpu: 700m
+      memory: 4G
   resizer:
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
       memory: 200Mi
+    maxAllowed:
+      cpu: 700m
+      memory: 2G
   livenessProbe:
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
       memory: 110Mi
+    maxAllowed:
+      cpu: 500m
+      memory: 2G
 
 csiSnapshotController:
   replicas: 1
@@ -73,4 +91,4 @@ csiSnapshotValidationWebhook:
       cpu: 10m
       memory: 32Mi
     limits:
-      memory: 200Mi 
+      memory: 200Mi

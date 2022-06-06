@@ -17,6 +17,9 @@ spec:
       minAllowed:
         cpu: {{ .Values.resources.mcmProviderGCP.requests.cpu }}
         memory: {{ .Values.resources.mcmProviderGCP.requests.memory }}
+      maxAllowed:
+        cpu: {{.Values.resources.mcmProviderGCP.maxAllowed.cpu}}
+        memory: {{.Values.resources.mcmProviderGCP.maxAllowed.memory}}
       controlledValues: RequestsOnly
     - containerName: gcp-machine-controller-manager
       minAllowed:
