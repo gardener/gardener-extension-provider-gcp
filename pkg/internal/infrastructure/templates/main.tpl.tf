@@ -8,10 +8,12 @@ provider "google" {
 //= Service Account
 //=====================================================================
 
+{{ if .create.serviceAccount -}}
 resource "google_service_account" "serviceaccount" {
   account_id   = "{{ .clusterName }}"
   display_name = "{{ .clusterName }}"
 }
+{{- end }}
 
 //=====================================================================
 //= Networks
@@ -28,7 +30,7 @@ resource "google_compute_network" "network" {
     delete = "5m"
   }
 }
-{{- end}}
+{{- end }}
 
 resource "google_compute_subnetwork" "subnetwork-nodes" {
   name          = "{{ .clusterName }}-nodes"
@@ -245,9 +247,11 @@ output "{{ .outputKeys.natIPs }}" {
 }
 {{- end }}
 
+{{ if .create.ServiceAccount -}}
 output "{{ .outputKeys.serviceAccountEmail }}" {
   value = google_service_account.serviceaccount.email
 }
+{{- end }}
 
 output "{{ .outputKeys.subnetNodes }}" {
   value = google_compute_subnetwork.subnetwork-nodes.name

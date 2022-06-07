@@ -275,7 +275,7 @@ func (vp *valuesProvider) GetConfigChartValues(
 	}
 
 	// Get service account
-	serviceAccount, err := gcp.GetServiceAccount(ctx, vp.Client(), cp.Spec.SecretRef)
+	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, vp.Client(), cp.Spec.SecretRef)
 	if err != nil {
 		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
@@ -304,7 +304,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	}
 
 	// Get service account
-	serviceAccount, err := gcp.GetServiceAccount(ctx, vp.Client(), cp.Spec.SecretRef)
+	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, vp.Client(), cp.Spec.SecretRef)
 	if err != nil {
 		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}

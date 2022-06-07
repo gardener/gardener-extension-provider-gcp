@@ -20,7 +20,7 @@ import (
 	"errors"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
+	infractrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client/mock"
 
@@ -69,7 +69,7 @@ var _ = Describe("ConfigValidator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
-		cv = NewConfigValidator(gcpClientFactory, logger)
+		cv = infractrl.NewConfigValidator(gcpClientFactory, logger)
 		err := cv.(inject.Client).InjectClient(c)
 		Expect(err).NotTo(HaveOccurred())
 

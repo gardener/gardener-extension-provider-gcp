@@ -17,6 +17,7 @@ package infrastructure
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
@@ -25,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
 )
@@ -35,7 +37,7 @@ func (a *actuator) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infr
 	return a.reconcile(ctx, logger, infra, cluster, terraformer.StateConfigMapInitializerFunc(terraformer.CreateState))
 }
 
-func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *extensionsv1alpha1.Infrastructure, _ *controller.Cluster, stateInitializer terraformer.StateConfigMapInitializer) error {
+func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, stateInitializer terraformer.StateConfigMapInitializer) error {
 	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
 	if err != nil {
 		return err
@@ -46,7 +48,16 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		return err
 	}
 
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, serviceAccount, config)
+	iam, err := gcpclient.NewIAMClient(ctx, serviceAccount)
+	if err != nil {
+		return err
+	}
+	createSA, err := shouldCreateServiceAccount(iam, cluster.ObjectMeta.Name)
+	if err != nil {
+		return err
+	}
+
+	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, serviceAccount, config, createSA)
 	if err != nil {
 		return err
 	}
@@ -59,9 +70,24 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 	if err := tf.
 		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
 		Apply(ctx); err != nil {
-
 		return fmt.Errorf("failed to apply the terraform config: %w", err)
 	}
 
-	return a.updateProviderStatus(ctx, tf, infra, config)
+	return a.updateProviderStatus(ctx, tf, infra, config, createSA)
+}
+
+// shouldCreateServiceAccount checkes whether terraform needs to create/reconcile a gardener-managed service account.
+// If we do have ServiceAccount permissions and there is already a service acccount with the shoot name, continue
+// to reconcile it in the terraform.
+func shouldCreateServiceAccount(iam gcpclient.IAMClient, clusterName string) (bool, error) {
+	createServiceAccount := true
+
+	_, err := iam.GetServiceAccount(context.Background(), clusterName)
+	if gcpclient.IgnoreErrorCodes(err, http.StatusNotFound, http.StatusUnauthorized) != nil {
+		return false, err
+	} else if err != nil {
+		createServiceAccount = false
+	}
+
+	return createServiceAccount, nil
 }

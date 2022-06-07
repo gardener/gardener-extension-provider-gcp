@@ -60,7 +60,7 @@ func newDNSClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (DNSC
 
 // NewDNSClientFromSecretRef creates a new DNS client from the given client and secret reference.
 func NewDNSClientFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (DNSClient, error) {
-	serviceAccount, err := gcp.GetServiceAccount(ctx, c, secretRef)
+	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, c, secretRef)
 	if err != nil {
 		return nil, err
 	}

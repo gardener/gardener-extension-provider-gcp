@@ -55,8 +55,10 @@ providerSpec:
     automaticRestart: {{ $machineClass.scheduling.automaticRestart }}
     onHostMaintenance: {{ $machineClass.scheduling.onHostMaintenance }}
     preemptible: {{ $machineClass.scheduling.preemptible }}
+{{- if $machineClass.serviceAccounts }}
   serviceAccounts:
 {{ toYaml $machineClass.serviceAccounts | indent 2 }}
+{{- end }}
 {{- if $machineClass.tags }}
   tags:
 {{ toYaml $machineClass.tags | indent 2 }}

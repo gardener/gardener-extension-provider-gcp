@@ -40,7 +40,7 @@ func (a *actuator) cleanupKubernetesFirewallRules(
 	account *gcp.ServiceAccount,
 	shootSeedNamespace string,
 ) error {
-	state, err := infrastructure.ExtractTerraformState(ctx, tf, config)
+	state, err := infrastructure.ExtractTerraformState(ctx, tf, config, false)
 	if err != nil {
 		if terraformer.IsVariablesNotFoundError(err) {
 			return nil
@@ -59,7 +59,7 @@ func (a *actuator) cleanupKubernetesRoutes(
 	account *gcp.ServiceAccount,
 	shootSeedNamespace string,
 ) error {
-	state, err := infrastructure.ExtractTerraformState(ctx, tf, config)
+	state, err := infrastructure.ExtractTerraformState(ctx, tf, config, false)
 	if err != nil {
 		if terraformer.IsVariablesNotFoundError(err) {
 			return nil
@@ -97,7 +97,7 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 		return err
 	}
 
-	serviceAccount, err := gcp.GetServiceAccount(ctx, a.Client(), infra.Spec.SecretRef)
+	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, a.Client(), infra.Spec.SecretRef)
 	if err != nil {
 		return err
 	}
