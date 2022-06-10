@@ -25,6 +25,7 @@ spec:
   targetRef:
     apiVersion: apps/v1
     kind: DaemonSet
+    name: csi-driver-node
   updatePolicy:
     updateMode: "Auto"
 {{- end }}
