@@ -43,7 +43,6 @@ func GetServiceAccountFromSecretReference(ctx context.Context, c client.Client, 
 	}
 
 	return GetServiceAccountFromSecret(secret)
-	// return GetServiceAccountFromJSON(data)
 }
 
 // GetServiceAccountFromSecret retrieves the ServiceAccount from the secret.
@@ -52,11 +51,11 @@ func GetServiceAccountFromSecret(secret *corev1.Secret) (*ServiceAccount, error)
 	if err != nil {
 		return nil, err
 	}
-	return GetServiceAccountFromJSON(data)
+	return getServiceAccountFromJSON(data)
 }
 
-// GetServiceAccountFromJSON returns a ServiceAccount from the given
-func GetServiceAccountFromJSON(data []byte) (*ServiceAccount, error) {
+// getServiceAccountFromJSON returns a ServiceAccount from the given
+func getServiceAccountFromJSON(data []byte) (*ServiceAccount, error) {
 	var serviceAccount struct {
 		ProjectID string `json:"project_id"`
 		Email     string `json:"client_email"`
@@ -88,7 +87,7 @@ func readServiceAccountSecret(secret *corev1.Secret) ([]byte, error) {
 
 // ExtractServiceAccountProjectID extracts the project id from the given service account JSON.
 func ExtractServiceAccountProjectID(serviceAccountJSON []byte) (string, error) {
-	sa, err := GetServiceAccountFromJSON(serviceAccountJSON)
+	sa, err := getServiceAccountFromJSON(serviceAccountJSON)
 	if err != nil {
 		return "", err
 	}
