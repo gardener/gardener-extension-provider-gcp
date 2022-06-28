@@ -23,9 +23,9 @@ machineClasses:
 #    image: projects/coreos-cloud/global/images/coreos-stable-1576-5-0-v20180105
 #    labels:
 #      name: my-disk
-  gpu:
-    acceleratorType: nvidia-tesla-t4
-    count: 1
+# gpu:
+#   acceleratorType: nvidia-tesla-t4
+#   count: 1
   labels:
     name: mcm
   machineType: n1-standard-4
