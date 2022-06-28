@@ -41,6 +41,7 @@ var labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
 
 const (
 	maxGcpLabelCharactersSize                 = 63
+	// ResourceGPU is the GPU resource . It should be a non-negative integer.
 	ResourceGPU               v1.ResourceName = "gpu"
 )
 
