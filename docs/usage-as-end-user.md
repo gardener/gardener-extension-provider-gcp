@@ -139,9 +139,9 @@ The worker configuration contains:
 
   **Note**: 
   * A rolling upgrade of the worker group would be triggered in case the `acceleratorType` or `count` is updated.
-  * Some machineTypes like [a2 family](https://cloud.google.com/blog/products/compute/announcing-google-cloud-a2-vm-family-based-on-nvidia-a100-gpu) come with already attached gpu of `a100` type and pre-defined count. So DONOT specify workerConfig if workerPool is made of those machineTypes.
+  * Some machineTypes like [a2 family](https://cloud.google.com/blog/products/compute/announcing-google-cloud-a2-vm-family-based-on-nvidia-a100-gpu) come with already attached gpu of `a100` type and pre-defined count. If your workerPool consists of those machineTypes, please **do not** specify any GPU configuration.
   * Sufficient quota of gpu is needed in the GCP project. This includes quota to support autoscaling if enabled.
-  * GPU attached machines couldn't be live migrated during onHostMaintainence in GCP. Find out how to handle that in your application [here](https://cloud.google.com/compute/docs/gpus/gpu-host-maintenance)
+  * GPU-attached machines can't be live migrated during host maintenance events. Find out how to handle that in your application [here](https://cloud.google.com/compute/docs/gpus/gpu-host-maintenance)
   * GPU count specified here is considered for forming node template during scale-from-zero in Cluster Autoscaler
 
   An example `WorkerConfig` for the GCP looks as follows:
