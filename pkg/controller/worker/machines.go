@@ -17,11 +17,12 @@ package worker
 import (
 	"context"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -40,9 +41,9 @@ import (
 var labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
 
 const (
-	maxGcpLabelCharactersSize                 = 63
+	maxGcpLabelCharactersSize = 63
 	// ResourceGPU is the GPU resource . It should be a non-negative integer.
-	ResourceGPU               v1.ResourceName = "gpu"
+	ResourceGPU v1.ResourceName = "gpu"
 )
 
 // MachineClassKind yields the name of the machine class kind used by GCP provider.
