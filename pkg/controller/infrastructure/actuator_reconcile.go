@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
@@ -80,6 +81,10 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 // If we do have ServiceAccount permissions and there is already a service acccount with the shoot name, continue
 // to reconcile it in the terraform.
 func shouldCreateServiceAccount(iam gcpclient.IAMClient, clusterName string) (bool, error) {
+	if !features.ExtensionFeatureGate.Enabled(features.DisableGardenerServiceAccountCreation) {
+		return true, nil
+	}
+
 	if _, err := iam.GetServiceAccount(context.Background(), clusterName); err != nil {
 		if gcpclient.IsErrorCode(err, http.StatusNotFound, http.StatusUnauthorized) {
 			return false, nil

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 
+	druidv1alpha1 "github.com/gardener/etcd-druid/api/v1alpha1"
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	gcpcmd "github.com/gardener/gardener-extension-provider-gcp/pkg/cmd"
 	gcpbackupbucket "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupbucket"
@@ -30,10 +31,10 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/healthcheck"
 	gcpinfrastructure "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
 	gcpworker "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	gcpcontrolplaneexposure "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplaneexposure"
 
-	druidv1alpha1 "github.com/gardener/etcd-druid/api/v1alpha1"
+	gcpcontrolplaneexposure "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplaneexposure"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
@@ -160,6 +161,10 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 
 			if err := aggOption.Complete(); err != nil {
 				return fmt.Errorf("error completing options: %w", err)
+			}
+
+			if err := features.ExtensionFeatureGate.SetFromMap(configFileOpts.Completed().Config.FeatureGates); err != nil {
+				return err
 			}
 
 			util.ApplyClientConnectionConfigurationToRESTConfig(configFileOpts.Completed().Config.ClientConnection, restOpts.Completed().Config)

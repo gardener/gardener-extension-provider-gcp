@@ -23,4 +23,7 @@ data:
         capacity: {{ .Values.config.etcd.storage.capacity }}
 {{- if .Values.config.etcd.backup }}
 {{ toYaml .Values.config.etcd.backup | indent 6 }}
+{{- if .Values.config.featureGates.disableGardenerServiceAccountCreation -}}
+    disableGardenerServiceAccountCreation: {{ .Values.config.featureGates.disableGardenerServiceAccountCreation }}
+{{- end }}
 {{- end }}

@@ -247,7 +247,7 @@ output "{{ .outputKeys.natIPs }}" {
 }
 {{- end }}
 
-{{ if .create.ServiceAccount -}}
+{{ if .create.serviceAccount -}}
 output "{{ .outputKeys.serviceAccountEmail }}" {
   value = google_service_account.serviceaccount.email
 }
