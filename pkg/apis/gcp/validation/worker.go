@@ -40,7 +40,26 @@ func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.Dat
 	}
 
 	if workerConfig != nil {
+		allErrs = append(allErrs, validateGPU(workerConfig.GPU, field.NewPath("gpu"))...)
 		allErrs = append(allErrs, validateServiceAccount(workerConfig.ServiceAccount, field.NewPath("serviceAccount"))...)
+	}
+
+	return allErrs
+}
+
+func validateGPU(gpu *gcp.GPU, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if gpu == nil {
+		return allErrs
+	}
+
+	if gpu.AcceleratorType == "" {
+		allErrs = append(allErrs, field.Required(fldPath.Child("acceleratorType"), "must be set when providing gpu"))
+	}
+
+	if gpu.Count <= 0 {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("count"), "must be > 0 when providing gpu"))
 	}
 
 	return allErrs

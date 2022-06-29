@@ -25,6 +25,9 @@ import (
 type WorkerConfig struct {
 	metav1.TypeMeta
 
+	// GPU contains configuration for the GPU attached to VMs.
+	GPU *GPU
+
 	// Volume contains configuration for the root disks attached to VMs.
 	Volume *Volume
 
@@ -55,6 +58,14 @@ type WorkerStatus struct {
 	// resources that are still using this version. Hence, it stores the used versions in the provider status to ensure
 	// reconciliation is possible.
 	MachineImages []MachineImage
+}
+
+// GPU is the configuration of the GPU to be attached
+type GPU struct {
+	// AcceleratorType is the type of accelerator to be attached
+	AcceleratorType string
+	// Count is the number of accelerator to be attached
+	Count int32
 }
 
 // MachineImage is a mapping from logical names and versions to GCP-specific identifiers.

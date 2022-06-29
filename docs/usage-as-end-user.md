@@ -135,7 +135,16 @@ The worker configuration contains:
 
   Service accounts created in advance that generate access tokens that can be accessed through the metadata server and used to authenticate applications on the instance.
 
-An example `WorkerConfig` for the GCP looks as follows:
+* GPU with its type and count per node. This will attach that GPU to all the machines in the worker grp
+
+  **Note**: 
+  * A rolling upgrade of the worker group would be triggered in case the `acceleratorType` or `count` is updated.
+  * Some machineTypes like [a2 family](https://cloud.google.com/blog/products/compute/announcing-google-cloud-a2-vm-family-based-on-nvidia-a100-gpu) come with already attached gpu of `a100` type and pre-defined count. If your workerPool consists of those machineTypes, please **do not** specify any GPU configuration.
+  * Sufficient quota of gpu is needed in the GCP project. This includes quota to support autoscaling if enabled.
+  * GPU-attached machines can't be live migrated during host maintenance events. Find out how to handle that in your application [here](https://cloud.google.com/compute/docs/gpus/gpu-host-maintenance)
+  * GPU count specified here is considered for forming node template during scale-from-zero in Cluster Autoscaler
+
+  An example `WorkerConfig` for the GCP looks as follows:
 
 ```yaml
 apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
@@ -146,6 +155,9 @@ serviceAccount:
   email: foo@bar.com
   scopes:
   - https://www.googleapis.com/auth/cloud-platform
+gpu:
+  acceleratorType: nvidia-tesla-t4
+  count: 1
 ```
 ## Example `Shoot` manifest
 

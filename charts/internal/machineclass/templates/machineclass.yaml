@@ -36,6 +36,10 @@ providerSpec:
   description: {{ $machineClass.description }}
   disks:
 {{ toYaml $machineClass.disks | indent 2 }}
+{{- if $machineClass.gpu }}
+  gpu:
+{{ toYaml $machineClass.gpu | indent 4 }}
+{{- end }}
 {{- if $machineClass.labels }}
   labels:
 {{ toYaml $machineClass.labels | indent 4 }}

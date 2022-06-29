@@ -21,6 +21,9 @@ import (
 	"regexp"
 	"strings"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -37,7 +40,11 @@ import (
 
 var labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
 
-const maxGcpLabelCharactersSize = 63
+const (
+	maxGcpLabelCharactersSize = 63
+	// ResourceGPU is the GPU resource . It should be a non-negative integer.
+	ResourceGPU v1.ResourceName = "gpu"
+)
 
 // MachineClassKind yields the name of the machine class kind used by GCP provider.
 func (w *workerDelegate) MachineClassKind() string {
@@ -75,7 +82,7 @@ func (w *workerDelegate) GenerateMachineDeployments(ctx context.Context) (worker
 	return w.machineDeployments, nil
 }
 
-func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
+func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 	var (
 		machineDeployments = worker.MachineDeployments{}
 		machineClasses     []map[string]interface{}
@@ -156,6 +163,8 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		}
 
 		gceInstanceLabels := getGceInstanceLabels(w.worker.Name, pool)
+		isLiveMigrationAllowed := true
+
 		for zoneIndex, zone := range pool.Zones {
 			zoneIdx := int32(zoneIndex)
 			machineClassSpec := map[string]interface{}{
@@ -172,11 +181,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 						"subnetwork":        nodesSubnet.Name,
 						"disableExternalIP": true,
 					},
-				},
-				"scheduling": map[string]interface{}{
-					"automaticRestart":  true,
-					"onHostMaintenance": "MIGRATE",
-					"preemptible":       false,
 				},
 				"secret": map[string]interface{}{
 					"cloudConfig": string(pool.UserData),
@@ -196,6 +200,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			var (
 				deploymentName = fmt.Sprintf("%s-%s-z%d", w.worker.Namespace, pool.Name, zoneIndex+1)
 				className      = fmt.Sprintf("%s-%s", deploymentName, workerPoolHash)
+				gpuCount       int32
 			)
 
 			machineDeployments = append(machineDeployments, worker.MachineDeployment{
@@ -217,15 +222,31 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				v1beta1constants.GardenerPurpose: genericworkeractuator.GardenPurposeMachineClass,
 			}
 
+			if workerConfig.GPU != nil {
+				machineClassSpec["gpu"] = map[string]interface{}{
+					"acceleratorType": workerConfig.GPU.AcceleratorType,
+					"count":           workerConfig.GPU.Count,
+				}
+				// using this gpu count for scale-from-zero cases
+				gpuCount = workerConfig.GPU.Count
+				isLiveMigrationAllowed = false
+			}
+
 			if pool.NodeTemplate != nil {
 				machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
-					Capacity:     pool.NodeTemplate.Capacity,
+					Capacity:     initializeCapacity(pool.NodeTemplate.Capacity, gpuCount),
 					InstanceType: pool.MachineType,
 					Region:       w.worker.Spec.Region,
 					Zone:         zone,
 				}
+
+				numGpus := pool.NodeTemplate.Capacity[ResourceGPU]
+				if !numGpus.IsZero() {
+					isLiveMigrationAllowed = false
+				}
 			}
 
+			setSchedulingPolicy(machineClassSpec, isLiveMigrationAllowed)
 			machineClasses = append(machineClasses, machineClassSpec)
 		}
 	}
@@ -283,6 +304,31 @@ func getGceInstanceLabels(name string, pool v1alpha1.WorkerPool) map[string]inte
 		}
 	}
 	return gceInstanceLabels
+}
+
+func initializeCapacity(capacityList v1.ResourceList, gpuCount int32) v1.ResourceList {
+	resultCapacity := capacityList.DeepCopy()
+	if gpuCount != 0 {
+		resultCapacity[ResourceGPU] = *resource.NewQuantity(int64(gpuCount), resource.DecimalSI)
+	}
+
+	return resultCapacity
+}
+
+func setSchedulingPolicy(machineClassSpec map[string]interface{}, isLiveMigrationAllowed bool) {
+	if isLiveMigrationAllowed {
+		machineClassSpec["scheduling"] = map[string]interface{}{
+			"automaticRestart":  true,
+			"onHostMaintenance": "MIGRATE",
+			"preemptible":       false,
+		}
+	} else {
+		machineClassSpec["scheduling"] = map[string]interface{}{
+			"automaticRestart":  true,
+			"onHostMaintenance": "TERMINATE",
+			"preemptible":       false,
+		}
+	}
 }
 
 // SanitizeGcpLabel will sanitize the label base on the gcp label Restrictions

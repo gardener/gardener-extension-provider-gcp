@@ -240,6 +240,67 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(BeEmpty())
 	})
 
+	It("should forbid because gpu accelerator type is empty", func() {
+		errorList := ValidateWorkerConfig(
+			&gcp.WorkerConfig{
+				GPU: &gcp.GPU{
+					AcceleratorType: "",
+					Count:           1},
+				ServiceAccount: &gcp.ServiceAccount{
+					Email:  "foo",
+					Scopes: []string{"baz"},
+				},
+			},
+			nil,
+		)
+
+		Expect(errorList).To(ConsistOf(
+			PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("gpu.acceleratorType"),
+			})),
+		))
+	})
+
+	It("should forbid because gpu count is zero", func() {
+		errorList := ValidateWorkerConfig(
+			&gcp.WorkerConfig{
+				GPU: &gcp.GPU{
+					AcceleratorType: "foo",
+					Count:           0},
+				ServiceAccount: &gcp.ServiceAccount{
+					Email:  "foo",
+					Scopes: []string{"baz"},
+				},
+			},
+			nil,
+		)
+
+		Expect(errorList).To(ConsistOf(
+			PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("gpu.count"),
+			})),
+		))
+	})
+
+	It("should allow valid gpu configurations", func() {
+		errorList := ValidateWorkerConfig(
+			&gcp.WorkerConfig{
+				GPU: &gcp.GPU{
+					AcceleratorType: "foo",
+					Count:           1},
+				ServiceAccount: &gcp.ServiceAccount{
+					Email:  "foo",
+					Scopes: []string{"baz"},
+				},
+			},
+			nil,
+		)
+
+		Expect(errorList).To(BeEmpty())
+	})
+
 	Describe("#ValidateWorkersUpdate", func() {
 		It("should pass because workers are unchanged", func() {
 			newWorkers := copyWorkers(workers)

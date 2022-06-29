@@ -25,6 +25,10 @@ import (
 type WorkerConfig struct {
 	metav1.TypeMeta `json:",inline"`
 
+	// GPU contains configuration for the GPU attached to VMs.
+	// +optional
+	GPU *GPU `json:"gpu,omitempty"`
+
 	// Volume contains configuration for the root disks attached to VMs.
 	// +optional
 	Volume *Volume `json:"volume,omitempty"`
@@ -58,6 +62,14 @@ type WorkerStatus struct {
 	// reconciliation is possible.
 	// +optional
 	MachineImages []MachineImage `json:"machineImages,omitempty"`
+}
+
+// GPU is the configuration of the GPU to be attached
+type GPU struct {
+	// AcceleratorType is the type of accelerator to be attached
+	AcceleratorType string `json:"acceleratorType"`
+	// Count is the number of accelerator to be attached
+	Count int32 `json:"count"`
 }
 
 // MachineImage is a mapping from logical names and versions to GCP-specific identifiers.
