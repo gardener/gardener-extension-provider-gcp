@@ -60,7 +60,7 @@ images:
 - name: csi-driver
   sourceRepository: github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
   repository: gcr.io/gke-release/gcp-compute-persistent-disk-csi-driver
-  tag: "v1.3.4-gke.0"
+  tag: "v1.7.2-gke.2"
 # Use external-provisioner@v2.1.0 for "< 1.22" clusters to prevent creating new PVs affected by https://issues.k8s.io/109354.
 # For more details check the issue itself (incl. the recommended workaround).
 - name: csi-provisioner
