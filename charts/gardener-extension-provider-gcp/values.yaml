@@ -76,9 +76,8 @@ config:
       className: gardener.cloud-fast
       capacity: 25Gi
       provisioner: kubernetes.io/gce-pd
-  featureGates:
-    disableGardenerServiceAccountCreation: false
-
+  featureGates: {}
+#   DisableGardenerServiceAccountCreation: false
 gardener:
   version: ""
   seed:
