@@ -24,3 +24,7 @@ data:
 {{- if .Values.config.etcd.backup }}
 {{ toYaml .Values.config.etcd.backup | indent 6 }}
 {{- end }}
+{{- if .Values.config.featureGates }}
+    featureGates:
+{{ toYaml .Values.config.featureGates | indent 6 }}
+{{- end }}

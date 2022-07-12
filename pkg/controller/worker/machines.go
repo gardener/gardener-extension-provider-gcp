@@ -149,13 +149,12 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 		}
 
 		serviceAccounts := make([]map[string]interface{}, 0)
-
 		if workerConfig.ServiceAccount != nil {
 			serviceAccounts = append(serviceAccounts, map[string]interface{}{
 				"email":  workerConfig.ServiceAccount.Email,
 				"scopes": workerConfig.ServiceAccount.Scopes,
 			})
-		} else {
+		} else if len(infrastructureStatus.ServiceAccountEmail) != 0 {
 			serviceAccounts = append(serviceAccounts, map[string]interface{}{
 				"email":  infrastructureStatus.ServiceAccountEmail,
 				"scopes": []string{computev1.ComputeScope},

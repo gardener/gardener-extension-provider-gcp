@@ -58,7 +58,7 @@ func NewStorageClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (
 
 // NewStorageClientFromSecretRef creates a new storage client from the given <secretRef>.
 func NewStorageClientFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (StorageClient, error) {
-	serviceAccount, err := gcp.GetServiceAccount(ctx, c, secretRef)
+	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, c, secretRef)
 	if err != nil {
 		return nil, err
 	}

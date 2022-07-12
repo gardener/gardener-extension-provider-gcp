@@ -26,6 +26,7 @@ type Factory interface {
 	NewDNSClient(context.Context, client.Client, corev1.SecretReference) (DNSClient, error)
 	NewStorageClient(context.Context, client.Client, corev1.SecretReference) (StorageClient, error)
 	NewComputeClient(context.Context, client.Client, corev1.SecretReference) (ComputeClient, error)
+	NewIAMClient(context.Context, client.Client, corev1.SecretReference) (IAMClient, error)
 }
 
 type factory struct{}
@@ -48,4 +49,9 @@ func (f factory) NewStorageClient(ctx context.Context, client client.Client, sec
 // NewComputeClient reads the secret from the passed reference and returns a GCP compute client.
 func (f factory) NewComputeClient(ctx context.Context, client client.Client, secretRef corev1.SecretReference) (ComputeClient, error) {
 	return NewComputeClientFromSecretRef(ctx, client, secretRef)
+}
+
+// NewIAMClient reads the secret from the passed reference and returns a GCP compute client.
+func (f factory) NewIAMClient(ctx context.Context, client client.Client, secretRef corev1.SecretReference) (IAMClient, error) {
+	return NewIAMClientFromSecretRef(ctx, client, secretRef)
 }

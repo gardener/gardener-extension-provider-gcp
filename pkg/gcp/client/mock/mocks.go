@@ -67,6 +67,21 @@ func (mr *MockFactoryMockRecorder) NewDNSClient(arg0, arg1, arg2 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewDNSClient", reflect.TypeOf((*MockFactory)(nil).NewDNSClient), arg0, arg1, arg2)
 }
 
+// NewIAMClient mocks base method.
+func (m *MockFactory) NewIAMClient(arg0 context.Context, arg1 client0.Client, arg2 v1.SecretReference) (client.IAMClient, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewIAMClient", arg0, arg1, arg2)
+	ret0, _ := ret[0].(client.IAMClient)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NewIAMClient indicates an expected call of NewIAMClient.
+func (mr *MockFactoryMockRecorder) NewIAMClient(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewIAMClient", reflect.TypeOf((*MockFactory)(nil).NewIAMClient), arg0, arg1, arg2)
+}
+
 // NewStorageClient mocks base method.
 func (m *MockFactory) NewStorageClient(arg0 context.Context, arg1 client0.Client, arg2 v1.SecretReference) (client.StorageClient, error) {
 	m.ctrl.T.Helper()

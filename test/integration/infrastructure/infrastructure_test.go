@@ -48,6 +48,7 @@ import (
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/test/integration/infrastructure"
 )
@@ -477,11 +478,12 @@ func verifyCreation(
 	providerConfig *gcpv1alpha1.InfrastructureConfig,
 ) {
 	// service account
-
-	serviceAccountName := getServiceAccountName(project, infra.Namespace)
-	serviceAccount, err := iamService.Projects.ServiceAccounts.Get(serviceAccountName).Context(ctx).Do()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(serviceAccount.DisplayName).To(Equal(infra.Namespace))
+	if !features.ExtensionFeatureGate.Enabled(features.DisableGardenerServiceAccountCreation) {
+		serviceAccountName := getServiceAccountName(project, infra.Namespace)
+		serviceAccount, err := iamService.Projects.ServiceAccounts.Get(serviceAccountName).Context(ctx).Do()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(serviceAccount.DisplayName).To(Equal(infra.Namespace))
+	}
 
 	// network
 

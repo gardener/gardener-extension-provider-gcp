@@ -127,5 +127,5 @@ func CleanupKubernetesRoutes(ctx context.Context, client gcpclient.Interface, pr
 
 // GetServiceAccountFromInfrastructure retrieves the ServiceAccount from the Secret referenced in the given Infrastructure.
 func GetServiceAccountFromInfrastructure(ctx context.Context, c client.Client, config *extensionsv1alpha1.Infrastructure) (*gcp.ServiceAccount, error) {
-	return gcp.GetServiceAccount(ctx, c, config.Spec.SecretRef)
+	return gcp.GetServiceAccountFromSecretReference(ctx, c, config.Spec.SecretRef)
 }

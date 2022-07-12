@@ -117,7 +117,7 @@ func getDisk(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) (
 }
 
 func getServiceAccount(ctx context.Context, a *actuator, bastion *v1alpha1.Bastion) (*gcp.ServiceAccount, error) {
-	return gcp.GetServiceAccount(ctx, a.Client(), corev1.SecretReference{Namespace: bastion.Namespace, Name: constants.SecretNameCloudProvider})
+	return gcp.GetServiceAccountFromSecretReference(ctx, a.Client(), corev1.SecretReference{Namespace: bastion.Namespace, Name: constants.SecretNameCloudProvider})
 }
 
 func createGCPClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (gcpclient.Interface, error) {

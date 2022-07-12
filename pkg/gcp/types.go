@@ -51,8 +51,6 @@ const (
 
 	// ServiceAccountJSONField is the field in a secret where the service account JSON is stored at.
 	ServiceAccountJSONField = "serviceaccount.json"
-	// ServiceAccountJSONMCM is the field in a machine class secret where the service account JSON is stored at.
-	ServiceAccountJSONMCM = "serviceAccountJSON"
 
 	// CloudControllerManagerName is a constant for the name of the CloudController deployed by the worker controller.
 	CloudControllerManagerName = "cloud-controller-manager"
