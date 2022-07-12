@@ -10,6 +10,19 @@ metadata:
 allowVolumeExpansion: true
 provisioner: pd.csi.storage.gke.io
 parameters:
+  type: pd-balanced
+volumeBindingMode: WaitForFirstConsumer
+
+---
+apiVersion: {{ include "storageclassversion" . }}
+kind: StorageClass
+metadata:
+  name: gce-sc-hdd
+  annotations:
+    resources.gardener.cloud/delete-on-invalid-update: "true"
+allowVolumeExpansion: true
+provisioner: pd.csi.storage.gke.io
+parameters:
   type: pd-standard
 volumeBindingMode: WaitForFirstConsumer
 
