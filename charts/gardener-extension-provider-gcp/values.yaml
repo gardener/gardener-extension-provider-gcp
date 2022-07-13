@@ -17,6 +17,7 @@ vpa:
   updatePolicy:
     updateMode: "Auto"
 
+metricsPort: 8080
 healthPort: 8081
 
 controllers:
@@ -64,6 +65,13 @@ webhookConfig:
 
 leaderElection:
   resourceLock: leases
+
+## settings for metrics, e.g. scraping by seed-prometheus
+##
+metrics:
+  ## enable metrics scraping
+  ##
+  enableScraping: true
 
 config:
   clientConnection:
