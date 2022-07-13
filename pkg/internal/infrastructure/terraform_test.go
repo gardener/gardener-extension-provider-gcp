@@ -146,7 +146,7 @@ var _ = Describe("Terraform", func() {
 				}, nil
 			})
 
-			state, err := ExtractTerraformState(ctx, tf, vpcWithoutCloudRouterConfig)
+			state, err := ExtractTerraformState(ctx, tf, vpcWithoutCloudRouterConfig, true)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(state).To(Equal(&TerraformState{
 				VPCName:             vpcName,
@@ -188,7 +188,7 @@ var _ = Describe("Terraform", func() {
 				}, nil
 			})
 
-			state, err := ExtractTerraformState(ctx, tf, vpcWithoutCloudRouterConfig)
+			state, err := ExtractTerraformState(ctx, tf, vpcWithoutCloudRouterConfig, true)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(state).To(Equal(&TerraformState{
 				VPCName:             vpcName,
@@ -199,17 +199,56 @@ var _ = Describe("Terraform", func() {
 	})
 
 	Describe("#ComputeTerraformerTemplateValues", func() {
-		It("should correctly compute the terraformer chart values", func() {
-			values := ComputeTerraformerTemplateValues(infra, serviceAccount, config)
-
+		It("should correctly compute the terraformer chart values without serviceAccount", func() {
+			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, false)
+			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
 					"region":  infra.Spec.Region,
 					"project": projectID,
 				},
 				"create": map[string]interface{}{
-					"vpc":         false,
-					"cloudRouter": false,
+					"vpc":            false,
+					"cloudRouter":    false,
+					"serviceAccount": false,
+				},
+				"vpc": map[string]interface{}{
+					"name": strconv.Quote(config.Networks.VPC.Name),
+					"cloudRouter": map[string]interface{}{
+						"name": "cloudrouter",
+					},
+				},
+				"clusterName": infra.Namespace,
+				"networks": map[string]interface{}{
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
+					"cloudNAT": map[string]interface{}{
+						"minPortsPerVM": minPortsPerVM,
+					},
+				},
+				"outputKeys": map[string]interface{}{
+					"vpcName":             TerraformerOutputKeyVPCName,
+					"cloudNAT":            TerraformOutputKeyCloudNAT,
+					"cloudRouter":         TerraformOutputKeyCloudRouter,
+					"subnetNodes":         TerraformerOutputKeySubnetNodes,
+					"subnetInternal":      TerraformerOutputKeySubnetInternal,
+					"serviceAccountEmail": TerraformerOutputKeyServiceAccountEmail,
+				},
+			}))
+		})
+
+		It("should correctly compute the terraformer chart values with serviceAccount", func() {
+			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, true)
+			Expect(err).To(BeNil())
+			Expect(values).To(Equal(map[string]interface{}{
+				"google": map[string]interface{}{
+					"region":  infra.Spec.Region,
+					"project": projectID,
+				},
+				"create": map[string]interface{}{
+					"vpc":            false,
+					"cloudRouter":    false,
+					"serviceAccount": true,
 				},
 				"vpc": map[string]interface{}{
 					"name": strconv.Quote(config.Networks.VPC.Name),
@@ -262,16 +301,17 @@ var _ = Describe("Terraform", func() {
 				},
 			}
 
-			values := ComputeTerraformerTemplateValues(infra, serviceAccount, config)
-
+			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, true)
+			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
 					"region":  infra.Spec.Region,
 					"project": projectID,
 				},
 				"create": map[string]interface{}{
-					"vpc":         false,
-					"cloudRouter": false,
+					"vpc":            false,
+					"cloudRouter":    false,
+					"serviceAccount": true,
 				},
 				"vpc": map[string]interface{}{
 					"name": strconv.Quote(config.Networks.VPC.Name),
@@ -323,16 +363,17 @@ var _ = Describe("Terraform", func() {
 				},
 			}
 
-			values := ComputeTerraformerTemplateValues(infra, serviceAccount, config)
-
+			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, true)
+			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
 					"region":  infra.Spec.Region,
 					"project": projectID,
 				},
 				"create": map[string]interface{}{
-					"vpc":         false,
-					"cloudRouter": false,
+					"vpc":            false,
+					"cloudRouter":    false,
+					"serviceAccount": true,
 				},
 				"vpc": map[string]interface{}{
 					"name": strconv.Quote(config.Networks.VPC.Name),
@@ -366,16 +407,17 @@ var _ = Describe("Terraform", func() {
 
 		It("should correctly compute the terraformer chart values with vpc creation", func() {
 			config.Networks.VPC = nil
-			values := ComputeTerraformerTemplateValues(infra, serviceAccount, config)
-
+			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, true)
+			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
 					"region":  infra.Spec.Region,
 					"project": projectID,
 				},
 				"create": map[string]interface{}{
-					"vpc":         true,
-					"cloudRouter": true,
+					"vpc":            true,
+					"cloudRouter":    true,
+					"serviceAccount": true,
 				},
 				"vpc": map[string]interface{}{
 					"name": DefaultVPCName,

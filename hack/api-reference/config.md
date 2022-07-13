@@ -84,6 +84,20 @@ github.com/gardener/gardener/extensions/pkg/controller/healthcheck/config/v1alph
 <p>HealthCheckConfig is the config for the health check controller</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>featureGates</code></br>
+<em>
+map[string]bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FeatureGates is a map of feature names to bools that enable
+or disable alpha/experimental features.
+Default: nil</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="	gcp.provider.extensions.config.gardener.cloud/v1alpha1.ETCD">ETCD

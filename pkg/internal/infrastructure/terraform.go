@@ -24,8 +24,8 @@ import (
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
 
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -53,20 +53,19 @@ const (
 	TerraformOutputKeyCloudRouter = "cloud_router"
 )
 
-var (
-	// StatusTypeMeta is the TypeMeta of the GCP InfrastructureStatus
-	StatusTypeMeta = metav1.TypeMeta{
-		APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
-		Kind:       "InfrastructureStatus",
-	}
-)
+// StatusTypeMeta is the TypeMeta of the GCP InfrastructureStatus
+var StatusTypeMeta = metav1.TypeMeta{
+	APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+	Kind:       "InfrastructureStatus",
+}
 
 // ComputeTerraformerTemplateValues computes the values for the GCP Terraformer chart.
 func ComputeTerraformerTemplateValues(
 	infra *extensionsv1alpha1.Infrastructure,
 	account *gcp.ServiceAccount,
 	config *api.InfrastructureConfig,
-) map[string]interface{} {
+	createSA bool,
+) (map[string]interface{}, error) {
 	var (
 		vpcName           = DefaultVPCName
 		createVPC         = true
@@ -132,8 +131,9 @@ func ComputeTerraformerTemplateValues(
 			"project": account.ProjectID,
 		},
 		"create": map[string]interface{}{
-			"vpc":         createVPC,
-			"cloudRouter": createCloudRouter,
+			"vpc":            createVPC,
+			"cloudRouter":    createCloudRouter,
+			"serviceAccount": createSA,
 		},
 		"vpc":         vpc,
 		"clusterName": infra.Namespace,
@@ -163,7 +163,7 @@ func ComputeTerraformerTemplateValues(
 		values["networks"].(map[string]interface{})["flowLogs"] = fl
 	}
 
-	return values
+	return values, nil
 }
 
 // RenderTerraformerTemplate renders the gcp-infra chart with the given values.
@@ -171,9 +171,12 @@ func RenderTerraformerTemplate(
 	infra *extensionsv1alpha1.Infrastructure,
 	account *gcp.ServiceAccount,
 	config *api.InfrastructureConfig,
+	createSA bool,
 ) (*TerraformFiles, error) {
-
-	values := ComputeTerraformerTemplateValues(infra, account, config)
+	values, err := ComputeTerraformerTemplateValues(infra, account, config, createSA)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute terraform values: %v", err)
+	}
 
 	var mainTF bytes.Buffer
 	if err := mainTemplate.Execute(&mainTF, values); err != nil {
@@ -213,15 +216,23 @@ type TerraformState struct {
 }
 
 // ExtractTerraformState extracts the TerraformState from the given Terraformer.
-func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, config *api.InfrastructureConfig) (*TerraformState, error) {
+func ExtractTerraformState(
+	ctx context.Context,
+	tf terraformer.Terraformer,
+	config *api.InfrastructureConfig,
+	createSA bool,
+) (*TerraformState, error) {
 	var (
 		outputKeys = []string{
 			TerraformerOutputKeyVPCName,
 			TerraformerOutputKeySubnetNodes,
-			TerraformerOutputKeyServiceAccountEmail,
 		}
 		vpcSpecifiedWithoutCloudRouter = config.Networks.VPC != nil && config.Networks.VPC.CloudRouter == nil
 	)
+
+	if createSA {
+		outputKeys = append(outputKeys, TerraformerOutputKeyServiceAccountEmail)
+	}
 
 	if !vpcSpecifiedWithoutCloudRouter {
 		outputKeys = append(outputKeys, TerraformOutputKeyCloudRouter, TerraformOutputKeyCloudNAT)
@@ -242,16 +253,18 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, conf
 	}
 
 	state := &TerraformState{
-		VPCName:             vars[TerraformerOutputKeyVPCName],
-		SubnetNodes:         vars[TerraformerOutputKeySubnetNodes],
-		ServiceAccountEmail: vars[TerraformerOutputKeyServiceAccountEmail],
+		VPCName:     vars[TerraformerOutputKeyVPCName],
+		SubnetNodes: vars[TerraformerOutputKeySubnetNodes],
+	}
+
+	if createSA {
+		state.ServiceAccountEmail = vars[TerraformerOutputKeyServiceAccountEmail]
 	}
 
 	if manualNatIPsSet(config) {
 		state.NatIPs = []apiv1alpha1.NatIP{}
 		for _, ip := range strings.Split(vars[TerraformOutputKeyNATIPs], ",") {
 			state.NatIPs = append(state.NatIPs, apiv1alpha1.NatIP{IP: ip})
-
 		}
 	}
 
@@ -271,23 +284,21 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, conf
 // StatusFromTerraformState computes an InfrastructureStatus from the given
 // Terraform variables.
 func StatusFromTerraformState(state *TerraformState) *apiv1alpha1.InfrastructureStatus {
-	var (
-		status = &apiv1alpha1.InfrastructureStatus{
-			TypeMeta: StatusTypeMeta,
-			Networks: apiv1alpha1.NetworkStatus{
-				VPC: apiv1alpha1.VPC{
-					Name: state.VPCName,
-				},
-				Subnets: []apiv1alpha1.Subnet{
-					{
-						Purpose: apiv1alpha1.PurposeNodes,
-						Name:    state.SubnetNodes,
-					},
+	status := &apiv1alpha1.InfrastructureStatus{
+		TypeMeta: StatusTypeMeta,
+		Networks: apiv1alpha1.NetworkStatus{
+			VPC: apiv1alpha1.VPC{
+				Name: state.VPCName,
+			},
+			Subnets: []apiv1alpha1.Subnet{
+				{
+					Purpose: apiv1alpha1.PurposeNodes,
+					Name:    state.SubnetNodes,
 				},
 			},
-			ServiceAccountEmail: state.ServiceAccountEmail,
-		}
-	)
+		},
+		ServiceAccountEmail: state.ServiceAccountEmail,
+	}
 
 	if len(state.CloudRouterName) > 0 {
 		status.Networks.VPC.CloudRouter = &apiv1alpha1.CloudRouter{
@@ -310,8 +321,8 @@ func StatusFromTerraformState(state *TerraformState) *apiv1alpha1.Infrastructure
 }
 
 // ComputeStatus computes the status based on the Terraformer and the given InfrastructureConfig.
-func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, config *api.InfrastructureConfig) (*apiv1alpha1.InfrastructureStatus, error) {
-	state, err := ExtractTerraformState(ctx, tf, config)
+func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, config *api.InfrastructureConfig, createSA bool) (*apiv1alpha1.InfrastructureStatus, error) {
+	state, err := ExtractTerraformState(ctx, tf, config, createSA)
 	if err != nil {
 		return nil, err
 	}

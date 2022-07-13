@@ -31,14 +31,16 @@ import (
 var _ = Describe("Service Account", func() {
 	var (
 		projectID          string
+		email              string
 		serviceAccountData []byte
 		serviceAccount     *ServiceAccount
 		secret             *corev1.Secret
 	)
 	BeforeEach(func() {
 		projectID = "project"
-		serviceAccountData = []byte(fmt.Sprintf(`{"project_id": "%s"}`, projectID))
-		serviceAccount = &ServiceAccount{ProjectID: projectID, Raw: serviceAccountData}
+		email = "email"
+		serviceAccountData = []byte(fmt.Sprintf(`{"project_id": "%s", "client_email": "%s"}`, projectID, email))
+		serviceAccount = &ServiceAccount{ProjectID: projectID, Email: email, Raw: serviceAccountData}
 		secret = &corev1.Secret{
 			Data: map[string][]byte{
 				ServiceAccountJSONField: serviceAccountData,
@@ -46,9 +48,7 @@ var _ = Describe("Service Account", func() {
 		}
 	})
 
-	var (
-		ctrl *gomock.Controller
-	)
+	var ctrl *gomock.Controller
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 	})
@@ -83,9 +83,9 @@ var _ = Describe("Service Account", func() {
 				ServiceAccountJSONField: serviceAccountData,
 			}}
 
-			actual, err := ReadServiceAccountSecret(secret)
+			actual, err := GetServiceAccountFromSecret(secret)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(actual).To(Equal(serviceAccountData))
+			Expect(actual.Raw).To(Equal(serviceAccountData))
 		})
 	})
 
@@ -107,10 +107,10 @@ var _ = Describe("Service Account", func() {
 					return nil
 				})
 
-			actual, err := GetServiceAccountData(ctx, c, secretRef)
+			actual, err := GetServiceAccountFromSecretReference(ctx, c, secretRef)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(actual).To(Equal(serviceAccountData))
+			Expect(actual.Raw).To(Equal(serviceAccountData))
 		})
 	})
 
@@ -132,7 +132,7 @@ var _ = Describe("Service Account", func() {
 					return nil
 				})
 
-			actual, err := GetServiceAccount(ctx, c, secretRef)
+			actual, err := GetServiceAccountFromSecretReference(ctx, c, secretRef)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(serviceAccount))

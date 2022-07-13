@@ -49,8 +49,9 @@ func (a *actuator) updateProviderStatus(
 	tf terraformer.Terraformer,
 	infra *extensionsv1alpha1.Infrastructure,
 	config *api.InfrastructureConfig,
+	createSA bool,
 ) error {
-	status, err := infrainternal.ComputeStatus(ctx, tf, config)
+	status, err := infrainternal.ComputeStatus(ctx, tf, config, createSA)
 	if err != nil {
 		return err
 	}

@@ -31,41 +31,55 @@ type ServiceAccount struct {
 	Raw []byte
 	// ProjectID is the project id the service account is associated to.
 	ProjectID string
+	// Email is the email associated with the service account.
+	Email string
 }
 
-// GetServiceAccount retrieves the ServiceAccount from the secret with the given secret reference.
-func GetServiceAccount(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (*ServiceAccount, error) {
-	data, err := GetServiceAccountData(ctx, c, secretRef)
-	if err != nil {
-		return nil, err
-	}
-
-	projectID, err := ExtractServiceAccountProjectID(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ServiceAccount{
-		Raw:       data,
-		ProjectID: projectID,
-	}, nil
-}
-
-// GetServiceAccountData retrieves the service account specified by the secret reference.
-func GetServiceAccountData(ctx context.Context, c client.Client, secretRef corev1.SecretReference) ([]byte, error) {
+// GetServiceAccountFromSecretReference retrieves the ServiceAccount from the secret with the given secret reference.
+func GetServiceAccountFromSecretReference(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (*ServiceAccount, error) {
 	secret, err := extensionscontroller.GetSecretByReference(ctx, c, &secretRef)
 	if err != nil {
 		return nil, err
 	}
 
-	return ReadServiceAccountSecret(secret)
+	return GetServiceAccountFromSecret(secret)
 }
 
-// ReadServiceAccountSecret reads the ServiceAccount from the given secret.
-func ReadServiceAccountSecret(secret *corev1.Secret) ([]byte, error) {
+// GetServiceAccountFromSecret retrieves the ServiceAccount from the secret.
+func GetServiceAccountFromSecret(secret *corev1.Secret) (*ServiceAccount, error) {
+	data, err := readServiceAccountSecret(secret)
+	if err != nil {
+		return nil, err
+	}
+	return getServiceAccountFromJSON(data)
+}
+
+// getServiceAccountFromJSON returns a ServiceAccount from the given
+func getServiceAccountFromJSON(data []byte) (*ServiceAccount, error) {
+	var serviceAccount struct {
+		ProjectID string `json:"project_id"`
+		Email     string `json:"client_email"`
+	}
+
+	if err := json.Unmarshal(data, &serviceAccount); err != nil {
+		return nil, err
+	}
+	if serviceAccount.ProjectID == "" {
+		return nil, fmt.Errorf("no service account specified")
+	}
+
+	return &ServiceAccount{
+		Raw:       data,
+		ProjectID: serviceAccount.ProjectID,
+		Email:     serviceAccount.Email,
+	}, nil
+}
+
+// readServiceAccountSecret reads the ServiceAccount from the given secret.
+func readServiceAccountSecret(secret *corev1.Secret) ([]byte, error) {
 	data, ok := secret.Data[ServiceAccountJSONField]
 	if !ok {
-		return nil, fmt.Errorf("secret %s/%s doesn't have a service account json", secret.Namespace, secret.Name)
+		return nil, fmt.Errorf("secret %s/%s doesn't have a service account json (expected field: %q)", secret.Namespace, secret.Name, ServiceAccountJSONField)
 	}
 
 	return data, nil
@@ -73,16 +87,9 @@ func ReadServiceAccountSecret(secret *corev1.Secret) ([]byte, error) {
 
 // ExtractServiceAccountProjectID extracts the project id from the given service account JSON.
 func ExtractServiceAccountProjectID(serviceAccountJSON []byte) (string, error) {
-	var serviceAccount struct {
-		ProjectID string `json:"project_id"`
-	}
-
-	if err := json.Unmarshal(serviceAccountJSON, &serviceAccount); err != nil {
+	sa, err := getServiceAccountFromJSON(serviceAccountJSON)
+	if err != nil {
 		return "", err
 	}
-	if serviceAccount.ProjectID == "" {
-		return "", fmt.Errorf("no service account specified")
-	}
-
-	return serviceAccount.ProjectID, nil
+	return sa.ProjectID, nil
 }

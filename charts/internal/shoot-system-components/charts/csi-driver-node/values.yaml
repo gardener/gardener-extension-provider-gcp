@@ -20,15 +20,24 @@ resources:
       memory: 50Mi
     limits:
       memory: 400Mi
+    maxAllowed:
+      cpu: 2
+      memory: 4G
   nodeDriverRegistrar:
     requests:
       cpu: 11m
       memory: 32Mi
     limits:
       memory: 50Mi
+    maxAllowed:
+      cpu: 1
+      memory: 2G
   livenessProbe:
     requests:
       cpu: 11m
       memory: 32Mi
     limits:
       memory: 300Mi
+    maxAllowed:
+      cpu: 1
+      memory: 4G
