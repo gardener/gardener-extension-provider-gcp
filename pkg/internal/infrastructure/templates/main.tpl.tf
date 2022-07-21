@@ -4,6 +4,14 @@ provider "google" {
   region      = "{{ .google.region }}"
 }
 
+{{ if .google.enableBeta -}}
+provider "google-beta" {
+  credentials = var.SERVICEACCOUNT
+  project     = "{{ .google.project }}"
+  region      = "{{ .google.region }}"
+}
+{{- end }}
+
 //=====================================================================
 //= Service Account
 //=====================================================================
@@ -43,6 +51,9 @@ resource "google_compute_subnetwork" "subnetwork-nodes" {
     {{ if .networks.flowLogs.flowSampling }}flow_sampling        = "{{ .networks.flowLogs.flowSampling }}"{{ end }}
     {{ if .networks.flowLogs.metadata }}metadata             = "{{ .networks.flowLogs.metadata }}"{{ end }}
   }
+{{- end }}
+{{- if .networks.privateServiceConnect }}
+  private_ip_google_access = true
 {{- end }}
 
   timeouts {
@@ -98,14 +109,14 @@ resource "google_compute_router_nat" "nat" {
     delete = "5m"
   }
 }
-{{- end}}
+{{- end }}
 
 {{ if .networks.cloudNAT.natIPNames -}}
 {{range $index, $natIP := .networks.cloudNAT.natIPNames}}
 data "google_compute_address" "{{ $natIP }}" {
   name = "{{ $natIP }}"
 }
-{{end}}
+{{ end }}
 {{- end }}
 
 {{ if .networks.internal -}}
@@ -121,7 +132,33 @@ resource "google_compute_subnetwork" "subnetwork-internal" {
     delete = "5m"
   }
 }
-{{- end}}
+{{- end }}
+
+{{ if .networks.privateServiceConnect }}
+  resource "google_compute_global_address" "default" {
+  provider     = google-beta
+  name         = "{{ .clusterName }}"
+  address_type = "INTERNAL"
+  purpose      = "PRIVATE_SERVICE_CONNECT"
+  network      = {{ .vpc.name }}
+  address      = "{{ .networks.privateServiceConnect.address }}"
+}
+
+// There is an issue currently that TF will always delete and recreate the address during infrastructure reconciliation
+// because it cannot handle the labels properly.
+resource "google_compute_global_forwarding_rule" "default" {
+  provider              = google-beta
+  name                  = "{{ .networks.privateServiceConnect.endpointName }}"
+  target                = "all-apis"
+  network               = {{ .vpc.name }}
+  ip_address            =  google_compute_global_address.default.id
+  load_balancing_scheme = ""
+  description = "{{ .clusterName }}"
+
+// labels = {}
+}
+
+{{- end }}
 
 //=====================================================================
 //= Firewall
@@ -260,4 +297,13 @@ output "{{ .outputKeys.subnetNodes }}" {
 output "{{ .outputKeys.subnetInternal }}" {
   value = google_compute_subnetwork.subnetwork-internal.name
 }
-{{- end}}
+{{- end }}
+
+{{ if .networks.privateServiceConnect }}
+output "{{ .outputKeys.privateServiceConnectIP }}" {
+  value = google_compute_global_forwarding_rule.default.name
+}
+output "{{ .outputKeys.privateServiceConnectName }}" {
+  value = google_compute_global_address.default.address
+}
+{{- end }}

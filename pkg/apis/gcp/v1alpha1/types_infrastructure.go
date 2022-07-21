@@ -48,6 +48,20 @@ type NetworkConfig struct {
 	// FlowLogs contains the flow log configuration for the subnet.
 	// +optional
 	FlowLogs *FlowLogs `json:"flowLogs,omitempty"`
+	// PrivateServiceConnect configures access to Google services via Private Service Connect.
+	// +optional
+	PrivateServiceConnect *PrivateServiceConnectConfig `json:"privateServiceConnect,omitempty"`
+}
+
+// PrivateServiceConnectConfig holds the configuration for Private Service Connect endpoints.
+type PrivateServiceConnectConfig struct {
+	// EndpointIP is the IP where the services will be accessible.
+	EndpointIP string `json:"endpointIP"`
+	// EndpointName is the name of the endpoint. The name can be used to access common services using the automatically
+	// created private DNS zone.
+	// See https://cloud.google.com/vpc/docs/configure-private-service-connect-apis#configure-p-dns
+	// +optional
+	EndpointName *string `json:"endpointName,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -74,6 +88,10 @@ type NetworkStatus struct {
 	// NatIPs is a list of all user provided external premium ips which can be used by the nat gateway
 	// +optional
 	NatIPs []NatIP `json:"natIPs,omitempty"`
+
+	// PrivateServiceConnectStatus contains information about the created PrivateServiceConnect endpoint.
+	// +optional
+	PrivateServiceConnectStatus *PrivateServiceConnectStatus `json:"privateServiceConnect,omitempty"`
 }
 
 // SubnetPurpose is a purpose of a subnet.
@@ -143,4 +161,12 @@ type FlowLogs struct {
 	// Metadata configures whether metadata fields should be added to the reported VPC flow logs.
 	// +optional
 	Metadata *string `json:"metadata,omitempty"`
+}
+
+// PrivateServiceConnectStatus contains information about the PrivateServiceConnect resource
+type PrivateServiceConnectStatus struct {
+	// EndpointIP is the IP of the created endpoint.
+	EndpointIP string `json:"endpointIP"`
+	// EndpointName is the name of the created endpoint.
+	EndpointName string `json:"endpointName"`
 }

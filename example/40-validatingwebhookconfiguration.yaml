@@ -17,6 +17,7 @@ webhooks:
     - cloudprofiles
     - secretbindings
     - shoots
+    - shoots/binding
   failurePolicy: Fail
   # Please make sure you are running `gardener@v1.42` or later before enabling this object selector.
   objectSelector:

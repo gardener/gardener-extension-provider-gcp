@@ -19,6 +19,9 @@ import (
 	"fmt"
 	"reflect"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/utils/pointer"
+
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
@@ -89,6 +92,7 @@ var (
 
 type validationContext struct {
 	shoot                *core.Shoot
+	seed                 *gardencorev1beta1.Seed
 	infrastructureConfig *apisgcp.InfrastructureConfig
 	controlPlaneConfig   *apisgcp.ControlPlaneConfig
 	cloudProfile         *gardencorev1beta1.CloudProfile
@@ -120,12 +124,13 @@ func getAllowedRegionZonesFromCloudProfile(shoot *core.Shoot, cloudProfile *gard
 
 func (s *shoot) validateContext(valContext *validationContext) field.ErrorList {
 	var (
-		allErrors    = field.ErrorList{}
-		allowedZones = getAllowedRegionZonesFromCloudProfile(valContext.shoot, valContext.cloudProfile)
+		allErrors       = field.ErrorList{}
+		allowedZones    = getAllowedRegionZonesFromCloudProfile(valContext.shoot, valContext.cloudProfile)
+		seedServiceCIDR *string
 	)
 
 	allErrors = append(allErrors, gcpvalidation.ValidateNetworking(valContext.shoot.Spec.Networking, networkPath)...)
-	allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfig(valContext.infrastructureConfig, valContext.shoot.Spec.Networking.Nodes, valContext.shoot.Spec.Networking.Pods, valContext.shoot.Spec.Networking.Services, infrastructureConfigPath)...)
+	allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfig(valContext.infrastructureConfig, valContext.shoot.Spec.Networking.Nodes, valContext.shoot.Spec.Networking.Pods, valContext.shoot.Spec.Networking.Services, seedServiceCIDR, infrastructureConfigPath)...)
 	allErrors = append(allErrors, gcpvalidation.ValidateWorkers(valContext.shoot.Spec.Provider.Workers, workersPath)...)
 	allErrors = append(allErrors, gcpvalidation.ValidateControlPlaneConfig(valContext.controlPlaneConfig, allowedZones, workersZones(valContext.shoot.Spec.Provider.Workers), valContext.shoot.Spec.Kubernetes.Version, controlPlaneConfigPath)...)
 
@@ -169,9 +174,11 @@ func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core
 		allErrors                                            = field.ErrorList{}
 	)
 
-	if !reflect.DeepEqual(oldInfrastructureConfig, currentInfrastructureConfig) {
-		allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfigUpdate(oldInfrastructureConfig, currentInfrastructureConfig, infrastructureConfigPath)...)
+	var seedServices *string
+	if currentValContext.seed != nil {
+		seedServices = pointer.String(currentValContext.seed.Spec.Networks.Services)
 	}
+	allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfigUpdate(oldInfrastructureConfig, currentInfrastructureConfig, seedServices, infrastructureConfigPath)...)
 
 	if !reflect.DeepEqual(oldControlPlaneConfig, currentControlPlaneConfig) {
 		allErrors = append(allErrors, gcpvalidation.ValidateControlPlaneConfigUpdate(oldControlPlaneConfig, currentControlPlaneConfig, controlPlaneConfigPath)...)
@@ -209,13 +216,24 @@ func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client
 	if cloudProfile.Spec.ProviderConfig == nil {
 		return nil, fmt.Errorf("providerConfig is not given for cloud profile %q", cloudProfile.Name)
 	}
+
 	cloudProfileConfig, err := admission.DecodeCloudProfileConfig(decoder, cloudProfile.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("an error occurred while reading the cloud profile %q: %v", cloudProfile.Name, err)
 	}
 
+	var seed *gardencorev1beta1.Seed
+	if shoot.Spec.SeedName != nil && len(*shoot.Spec.SeedName) > 0 {
+		seed = &gardencorev1beta1.Seed{}
+		err = c.Get(ctx, kutil.Key(*shoot.Spec.SeedName), seed)
+		if err != nil && !errors.IsNotFound(err) {
+			return nil, fmt.Errorf("an error occured while reading seed information: %v", err)
+		}
+	}
+
 	return &validationContext{
 		shoot:                shoot,
+		seed:                 seed,
 		infrastructureConfig: infrastructureConfig,
 		controlPlaneConfig:   controlPlaneConfig,
 		cloudProfile:         cloudProfile,

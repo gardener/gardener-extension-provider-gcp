@@ -19,10 +19,11 @@ import (
 	"fmt"
 	"strconv"
 
+	mockterraformer "github.com/gardener/gardener/extensions/pkg/terraformer/mock"
+
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	mockterraformer "github.com/gardener/gardener/extensions/pkg/terraformer/mock"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/golang/mock/gomock"
@@ -205,8 +206,9 @@ var _ = Describe("Terraform", func() {
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
-					"region":  infra.Spec.Region,
-					"project": projectID,
+					"region":     infra.Spec.Region,
+					"project":    projectID,
+					"enableBeta": false,
 				},
 				"create": map[string]interface{}{
 					"vpc":            false,
@@ -244,8 +246,9 @@ var _ = Describe("Terraform", func() {
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
-					"region":  infra.Spec.Region,
-					"project": projectID,
+					"region":     infra.Spec.Region,
+					"project":    projectID,
+					"enableBeta": false,
 				},
 				"create": map[string]interface{}{
 					"vpc":            false,
@@ -308,8 +311,9 @@ var _ = Describe("Terraform", func() {
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
-					"region":  infra.Spec.Region,
-					"project": projectID,
+					"region":     infra.Spec.Region,
+					"project":    projectID,
+					"enableBeta": false,
 				},
 				"create": map[string]interface{}{
 					"vpc":            false,
@@ -371,8 +375,9 @@ var _ = Describe("Terraform", func() {
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
-					"region":  infra.Spec.Region,
-					"project": projectID,
+					"region":     infra.Spec.Region,
+					"project":    projectID,
+					"enableBeta": false,
 				},
 				"create": map[string]interface{}{
 					"vpc":            false,
@@ -416,8 +421,9 @@ var _ = Describe("Terraform", func() {
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
-					"region":  infra.Spec.Region,
-					"project": projectID,
+					"region":     infra.Spec.Region,
+					"project":    projectID,
+					"enableBeta": false,
 				},
 				"create": map[string]interface{}{
 					"vpc":            true,

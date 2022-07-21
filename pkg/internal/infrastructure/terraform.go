@@ -17,9 +17,13 @@ package infrastructure
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
+	"encoding/base32"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"k8s.io/utils/pointer"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
@@ -51,6 +55,10 @@ const (
 	TerraformOutputKeyNATIPs = "nat_ips"
 	// TerraformOutputKeyCloudRouter is the name of the cloud_router terraform output variable.
 	TerraformOutputKeyCloudRouter = "cloud_router"
+	// TerraformOutputKeyPrivateServiceConnectIP is the name of the psc_ip terraform output variable.
+	TerraformOutputKeyPrivateServiceConnectIP = "psc_ip"
+	// TerraformOutputKeyPrivateServiceConnectIP is the name of the psc_name terraform output variable.
+	TerraformOutputKeyPrivateServiceConnectName = "psc_name"
 )
 
 // StatusTypeMeta is the TypeMeta of the GCP InfrastructureStatus
@@ -128,8 +136,9 @@ func ComputeTerraformerTemplateValues(
 
 	values := map[string]interface{}{
 		"google": map[string]interface{}{
-			"region":  infra.Spec.Region,
-			"project": account.ProjectID,
+			"region":     infra.Spec.Region,
+			"project":    account.ProjectID,
+			"enableBeta": false,
 		},
 		"create": map[string]interface{}{
 			"vpc":            createVPC,
@@ -145,6 +154,31 @@ func ComputeTerraformerTemplateValues(
 		},
 		"podCIDR":    *podCIDR,
 		"outputKeys": outputKeys,
+	}
+
+	if config.Networks.PrivateServiceConnect != nil {
+		values["google"].(map[string]interface{})["enableBeta"] = true
+
+		psc := make(map[string]interface{})
+		psc["address"] = config.Networks.PrivateServiceConnect.EndpointIP
+		var (
+			name string
+			err  error
+		)
+		if config.Networks.PrivateServiceConnect.EndpointName != nil {
+			name = *config.Networks.PrivateServiceConnect.EndpointName
+		} else {
+			name, err = generatePrivateServiceConnectEndpointName(infra)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		psc["endpointName"] = name
+		values["networks"].(map[string]interface{})["privateServiceConnect"] = psc
+
+		outputKeys["privateServiceConnectIP"] = TerraformOutputKeyPrivateServiceConnectIP
+		outputKeys["privateServiceConnectName"] = TerraformOutputKeyPrivateServiceConnectName
 	}
 
 	if config.Networks.FlowLogs != nil {
@@ -216,6 +250,10 @@ type TerraformState struct {
 	SubnetNodes string
 	// SubnetInternal is the CIDR of the internal subnet of an infrastructure.
 	SubnetInternal *string
+	// PrivateServiceConnectIP is the IP of PSC endpoint.
+	PrivateServiceConnectIP *string
+	// PrivateServiceConnectName is the name of PSC endpoint.
+	PrivateServiceConnectName *string
 }
 
 // ExtractTerraformState extracts the TerraformState from the given Terraformer.
@@ -250,6 +288,10 @@ func ExtractTerraformState(
 		outputKeys = append(outputKeys, TerraformerOutputKeySubnetInternal)
 	}
 
+	if config.Networks.PrivateServiceConnect != nil {
+		outputKeys = append(outputKeys, TerraformOutputKeyPrivateServiceConnectIP, TerraformOutputKeyPrivateServiceConnectName)
+	}
+
 	vars, err := tf.GetStateOutputVariables(ctx, outputKeys...)
 	if err != nil {
 		return nil, err
@@ -279,6 +321,11 @@ func ExtractTerraformState(
 	if hasInternal {
 		subnetInternal := vars[TerraformerOutputKeySubnetInternal]
 		state.SubnetInternal = &subnetInternal
+	}
+
+	if config.Networks.PrivateServiceConnect != nil {
+		state.PrivateServiceConnectIP = pointer.String(vars[TerraformOutputKeyPrivateServiceConnectIP])
+		state.PrivateServiceConnectName = pointer.String(vars[TerraformOutputKeyPrivateServiceConnectName])
 	}
 
 	return state, nil
@@ -320,6 +367,13 @@ func StatusFromTerraformState(state *TerraformState) *apiv1alpha1.Infrastructure
 		})
 	}
 
+	if state.PrivateServiceConnectIP != nil && state.PrivateServiceConnectName != nil {
+		status.Networks.PrivateServiceConnectStatus = &apiv1alpha1.PrivateServiceConnectStatus{
+			EndpointIP:   *state.PrivateServiceConnectIP,
+			EndpointName: *state.PrivateServiceConnectName,
+		}
+	}
+
 	return status
 }
 
@@ -335,4 +389,16 @@ func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, config *api.
 
 func manualNatIPsSet(config *api.InfrastructureConfig) bool {
 	return config.Networks.CloudNAT != nil && config.Networks.CloudNAT.NatIPNames != nil
+}
+
+func generatePrivateServiceConnectEndpointName(infra *extensionsv1alpha1.Infrastructure) (string, error) {
+	sha := sha1.New()
+	_, err := sha.Write([]byte(infra.Namespace))
+	if err != nil {
+		return "", fmt.Errorf("failed to create name for PrivateServiceConnect: %v", err)
+	}
+
+	var buf []byte
+	name := fmt.Sprintf("g%19s", strings.ToLower(base32.StdEncoding.EncodeToString(sha.Sum(buf))))[:20]
+	return name, nil
 }

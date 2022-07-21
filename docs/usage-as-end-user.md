@@ -22,6 +22,10 @@ Make sure to [enable the Google Identity and Access Management (IAM) API](https:
 - Service Account User
 - Compute Admin
 
+If you want to use the [Private Service Connect](https://cloud.google.com/vpc/docs/private-service-connect) services, then you need to additionally grant the [following permissions](https://cloud.google.com/vpc/docs/configure-private-service-connect-apis#roles) :
+- Service Directory Editor (roles/servicedirectory.editor)
+- DNS Administrator (roles/dns.admin)
+
 Create a [JSON Service Account key](https://cloud.google.com/iam/docs/creating-managing-service-account-keys#creating_service_account_keys) for the Service Account.
 Provide it in the `Secret` (base64 encoded for field `serviceaccount.json`), that is being referenced by the `SecretBinding` in the Shoot cluster configuration.
 
@@ -62,6 +66,9 @@ networks:
 #   natIPNames:
 #   - name: manualnat1
 #   - name: manualnat2
+#  privateServiceConnect:
+#    enabled: true
+#    endpointIP: 10.252.0.0
 # flowLogs:
 #   aggregationInterval: INTERVAL_5_SEC
 #   flowSampling: 0.2
@@ -99,6 +106,8 @@ The `networks.flowLogs` section describes the configuration for the VPC flow log
 
 Apart from the VPC and the subnets the GCP extension will also create a dedicated service account for this shoot, and firewall rules.
 
+The `networks.privateServiceConnect` is an optional parameter describing whether the [Private Service Connect](https://cloud.google.com/vpc/docs/private-service-connect) should be enabled for the network. `networks.privateServiceConnect.endpointIP` is the endpoint where users can access Google services privately from their network. This IP should not overlap with current network subnet CIDRs or other important ranges that should be accesible from the shoot cluster.
+ 
 ## `ControlPlaneConfig`
 
 The control plane configuration mainly contains values for the GCP-specific control plane components.

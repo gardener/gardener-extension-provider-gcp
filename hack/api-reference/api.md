@@ -777,6 +777,20 @@ FlowLogs
 <p>FlowLogs contains the flow log configuration for the subnet.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>privateServiceConnect</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.PrivateServiceConnectConfig">
+PrivateServiceConnectConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PrivateServiceConnect configures access to Google services via Private Service Connect.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus
@@ -834,6 +848,105 @@ VPC
 <td>
 <em>(Optional)</em>
 <p>NatIPs is a list of all user provided external premium ips which can be used by the nat gateway</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>privateServiceConnect</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.PrivateServiceConnectStatus">
+PrivateServiceConnectStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PrivateServiceConnectStatus contains information about the created PrivateServiceConnect endpoint.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.PrivateServiceConnectConfig">PrivateServiceConnectConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
+</p>
+<p>
+<p>PrivateServiceConnectConfig holds the configuration for Private Service Connect endpoints.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>endpointIP</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>EndpointIP is the IP where the services will be accessible.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>endpointName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EndpointName is the name of the endpoint. The name can be used to access common services using the automatically
+created private DNS zone.
+See <a href="https://cloud.google.com/vpc/docs/configure-private-service-connect-apis#configure-p-dns">https://cloud.google.com/vpc/docs/configure-private-service-connect-apis#configure-p-dns</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.PrivateServiceConnectStatus">PrivateServiceConnectStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
+</p>
+<p>
+<p>PrivateServiceConnectStatus contains information about the PrivateServiceConnect resource</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>endpointIP</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>EndpointIP is the IP of the created endpoint.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>endpointName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>EndpointName is the name of the created endpoint.</p>
 </td>
 </tr>
 </tbody>

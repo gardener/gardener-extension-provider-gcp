@@ -17,6 +17,7 @@ webhooks:
     - cloudprofiles
     - secretbindings
     - shoots
+    - shoots/binding
   failurePolicy: Fail
   objectSelector:
     {{- if .Values.global.webhookConfig.useObjectSelector }}

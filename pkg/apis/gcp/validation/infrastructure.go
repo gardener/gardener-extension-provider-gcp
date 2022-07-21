@@ -15,17 +15,24 @@
 package validation
 
 import (
+	"fmt"
+	"net"
 	"reflect"
 
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+)
+
+const (
+	reverseVpnCidr = "192.168.123.0/24"
 )
 
 // ValidateInfrastructureConfig validates a InfrastructureConfig object.
-func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string, fldPath *field.Path) field.ErrorList {
+func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR, seedServiceCIDR *string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	var (
@@ -51,7 +58,7 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 		allErrs = append(allErrs, field.Required(networksPath.Child("workers"), "must specify the network range for the worker network"))
 	}
 
-	var workerCIDR cidrvalidation.CIDR
+	var workerCIDR, internalCIDR cidrvalidation.CIDR
 	if infra.Networks.Worker != "" {
 		workerCIDR = cidrvalidation.NewCIDR(infra.Networks.Worker, networksPath.Child("worker"))
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRParse(workerCIDR)...)
@@ -64,7 +71,7 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 	}
 
 	if infra.Networks.Internal != nil {
-		internalCIDR := cidrvalidation.NewCIDR(*infra.Networks.Internal, networksPath.Child("internal"))
+		internalCIDR = cidrvalidation.NewCIDR(*infra.Networks.Internal, networksPath.Child("internal"))
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRParse(internalCIDR)...)
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(networksPath.Child("internal"), *infra.Networks.Internal)...)
 		if pods != nil {
@@ -124,11 +131,25 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 		}
 	}
 
+	if infra.Networks.PrivateServiceConnect != nil {
+		ranges := []cidrvalidation.CIDR{
+			pods, services, nodes, workerCIDR,
+		}
+		if infra.Networks.Internal != nil {
+			ranges = append(ranges, internalCIDR)
+		}
+		if seedServiceCIDR != nil {
+			ranges = append(ranges, cidrvalidation.NewCIDR(*seedServiceCIDR, field.NewPath("seed service range")))
+		}
+
+		allErrs = append(allErrs, ValidatePrivateServiceConnect(networksPath.Child("privateServiceConnect"), infra.Networks.PrivateServiceConnect, ranges)...)
+	}
+
 	return allErrs
 }
 
 // ValidateInfrastructureConfigUpdate validates a InfrastructureConfig object.
-func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.InfrastructureConfig, fldPath *field.Path) field.ErrorList {
+func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.InfrastructureConfig, seedServices *string, fldPath *field.Path) field.ErrorList {
 	var (
 		allErrs      = field.ErrorList{}
 		networksPath = fldPath.Child("networks")
@@ -150,6 +171,48 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.Infrastruc
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Worker, oldConfig.Networks.Worker, networksPath.Child("worker"))...)
 	}
 
+	if newConfig.Networks.PrivateServiceConnect != nil {
+		var ranges []cidrvalidation.CIDR
+		if seedServices != nil {
+			ranges = append(ranges, cidrvalidation.NewCIDR(*seedServices, field.NewPath("seed service range")))
+		}
+
+		allErrs = append(allErrs, ValidatePrivateServiceConnect(networksPath.Child("privateServiceConnect"), newConfig.Networks.PrivateServiceConnect, ranges)...)
+	}
+	return allErrs
+}
+
+// ValidatePrivateServiceConnect validates the Private Service Connect configuration.
+// The endpointCIDR must not overlap with the following ranges:
+// - Shoot's functional CIDRs (pod, service, node)
+// - Seed's service CIDRs
+// - The VPC CIDR (the sub of the subnet CIDRs used by workers)
+// - The static ranges used by	reverse VPN (192.168.123.0/24)
+func ValidatePrivateServiceConnect(fldPath *field.Path, psc *apisgcp.PrivateServiceConnectConfig, ranges []cidrvalidation.CIDR) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if psc == nil {
+		return allErrs
+	}
+
+	if len(psc.EndpointIP) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath, "endpointIP must be specified"))
+		return allErrs
+	}
+
+	if net.ParseIP(psc.EndpointIP) == nil {
+		allErrs = append(allErrs, field.Invalid(fldPath, psc.EndpointIP, "endpointIP must be a valid IP address"))
+		return allErrs
+	}
+
+	endpointCIDR := cidrvalidation.NewCIDR(fmt.Sprintf("%s/32", psc.EndpointIP), fldPath)
+	allErrs = append(allErrs, cidrvalidation.ValidateCIDRParse(endpointCIDR)...)
+
+	var rangesToVerify = []cidrvalidation.CIDR{
+		cidrvalidation.NewCIDR(reverseVpnCidr, nil),
+	}
+	rangesToVerify = append(rangesToVerify, ranges...)
+
+	allErrs = append(allErrs, endpointCIDR.ValidateNotOverlap(rangesToVerify...)...)
 	return allErrs
 }
 
