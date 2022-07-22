@@ -169,7 +169,7 @@ resource "google_compute_firewall" "rule-allow-external-access" {
 
   allow {
     protocol = "tcp"
-    ports    = ["80", "443"] // Allow ingress
+    ports    = ["443"] // Allow ingress
   }
 
   timeouts {
