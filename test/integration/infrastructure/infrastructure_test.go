@@ -559,7 +559,7 @@ func verifyCreation(
 	Expect(allowExternalAccess.Allowed).To(ConsistOf([]*compute.FirewallAllowed{
 		{
 			IPProtocol: "tcp",
-			Ports:      []string{"80", "443"},
+			Ports:      []string{"443"},
 		},
 	}))
 
