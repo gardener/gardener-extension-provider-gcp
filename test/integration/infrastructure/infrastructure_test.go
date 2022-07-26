@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
@@ -56,6 +57,7 @@ import (
 const (
 	workersSubnetCIDR  = "10.250.0.0/19"
 	internalSubnetCIDR = "10.250.112.0/22"
+	podCIDR            = "100.96.0.0/11"
 )
 
 var (
@@ -272,6 +274,21 @@ func runTest(
 	}
 
 	By("create cluster")
+	shoot := &gardencorev1beta1.Shoot{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Shoot",
+			APIVersion: gardencorev1beta1.SchemeGroupVersion.String(),
+		},
+		Spec: gardencorev1beta1.ShootSpec{
+			Networking: gardencorev1beta1.Networking{
+				Pods: pointer.String(podCIDR),
+			},
+		},
+	}
+	shootJSON, err := json.Marshal(shoot)
+	if err != nil {
+		return err
+	}
 	cluster = &extensionsv1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespaceName,
@@ -279,7 +296,7 @@ func runTest(
 		Spec: extensionsv1alpha1.ClusterSpec{
 			CloudProfile: runtime.RawExtension{Raw: []byte("{}")},
 			Seed:         runtime.RawExtension{Raw: []byte("{}")},
-			Shoot:        runtime.RawExtension{Raw: []byte("{}")},
+			Shoot:        runtime.RawExtension{Raw: shootJSON},
 		},
 	}
 	if err := c.Create(ctx, cluster); err != nil {
@@ -301,7 +318,7 @@ func runTest(
 	}
 
 	By("create infrastructure")
-	infra, err := newInfrastructure(namespaceName, providerConfig)
+	infra, err = newInfrastructure(namespaceName, providerConfig)
 	if err != nil {
 		return err
 	}
@@ -532,8 +549,8 @@ func verifyCreation(
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(allowInternalAccess.Network).To(Equal(network.SelfLink))
-	Expect(allowInternalAccess.SourceRanges).To(HaveLen(2))
-	Expect(allowInternalAccess.SourceRanges).To(ConsistOf(workersSubnetCIDR, internalSubnetCIDR))
+	Expect(allowInternalAccess.SourceRanges).To(HaveLen(3))
+	Expect(allowInternalAccess.SourceRanges).To(ConsistOf(workersSubnetCIDR, internalSubnetCIDR, podCIDR))
 	Expect(allowInternalAccess.Allowed).To(ConsistOf([]*compute.FirewallAllowed{
 		{
 			IPProtocol: "icmp",

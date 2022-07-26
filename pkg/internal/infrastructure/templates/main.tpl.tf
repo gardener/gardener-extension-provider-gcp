@@ -132,9 +132,9 @@ resource "google_compute_firewall" "rule-allow-internal-access" {
   name          = "{{ .clusterName }}-allow-internal-access"
   network       = {{ .vpc.name }}
   {{ if .networks.internal -}}
-  source_ranges = ["{{ .networks.workers }}", "{{ .networks.internal }}"]
+  source_ranges = ["{{ .networks.workers }}", "{{ .networks.internal }}", "{{ .podCIDR }}"]
   {{ else -}}
-  source_ranges = ["{{ .networks.workers }}"]
+  source_ranges = ["{{ .networks.workers }}", "{{ .podCIDR }}"]
   {{ end -}}
 
   allow {

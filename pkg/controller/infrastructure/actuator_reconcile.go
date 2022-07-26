@@ -58,7 +58,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		return err
 	}
 
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, serviceAccount, config, createSA)
+	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, serviceAccount, config, cluster.Shoot.Spec.Networking.Pods, createSA)
 	if err != nil {
 		return err
 	}
