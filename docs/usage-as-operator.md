@@ -14,6 +14,7 @@ This section describes, how the configuration for `CloudProfile`s looks like for
 
 The cloud profile configuration contains information about the real machine image IDs in the GCP environment (image URLs).
 You have to map every version that you specify in `.spec.machineImages[].versions` here such that the GCP extension knows the image URL for every version you want to offer.
+For each machine image version an `architecture` field can be specified which specifies the CPU architecture of the machine on which given machine image can be used.
 
 An example `CloudProfileConfig` for the GCP extension looks as follows:
 
@@ -25,6 +26,7 @@ machineImages:
   versions:
   - version: 2135.6.0
     image: projects/coreos-cloud/global/images/coreos-stable-2135-6-0-v20190801
+    # architecture: amd64 # optional
 ```
 
 ### Example `CloudProfile` manifest
@@ -74,6 +76,7 @@ spec:
       versions:
       - version: 2135.6.0
         image: projects/coreos-cloud/global/images/coreos-stable-2135-6-0-v20190801
+        # architecture: amd64 # optional
 ```
 
 ## `Seed` resource
