@@ -29,5 +29,16 @@ import (
 // Public to allow building arbitrary schemes.
 // All generated defaulters are covering - they call all nested defaulters.
 func RegisterDefaults(scheme *runtime.Scheme) error {
+	scheme.AddTypeDefaultingFunc(&CloudProfileConfig{}, func(obj interface{}) { SetObjectDefaults_CloudProfileConfig(obj.(*CloudProfileConfig)) })
 	return nil
+}
+
+func SetObjectDefaults_CloudProfileConfig(in *CloudProfileConfig) {
+	for i := range in.MachineImages {
+		a := &in.MachineImages[i]
+		for j := range a.Versions {
+			b := &a.Versions[j]
+			SetDefaults_MachineImageVersion(b)
+		}
+	}
 }

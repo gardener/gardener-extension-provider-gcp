@@ -76,6 +76,8 @@ type MachineImage struct {
 	Version string
 	// Image is the path to the image.
 	Image string
+	// Architecture is the CPU architecture of the machine image.
+	Architecture *string
 }
 
 // ServiceAccount is a GCP service account.

@@ -463,6 +463,7 @@ func autoConvert_v1alpha1_MachineImage_To_gcp_MachineImage(in *MachineImage, out
 	out.Name = in.Name
 	out.Version = in.Version
 	out.Image = in.Image
+	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
 	return nil
 }
 
@@ -475,6 +476,7 @@ func autoConvert_gcp_MachineImage_To_v1alpha1_MachineImage(in *gcp.MachineImage,
 	out.Name = in.Name
 	out.Version = in.Version
 	out.Image = in.Image
+	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
 	return nil
 }
 
@@ -486,6 +488,7 @@ func Convert_gcp_MachineImage_To_v1alpha1_MachineImage(in *gcp.MachineImage, out
 func autoConvert_v1alpha1_MachineImageVersion_To_gcp_MachineImageVersion(in *MachineImageVersion, out *gcp.MachineImageVersion, s conversion.Scope) error {
 	out.Version = in.Version
 	out.Image = in.Image
+	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
 	return nil
 }
 
@@ -497,6 +500,7 @@ func Convert_v1alpha1_MachineImageVersion_To_gcp_MachineImageVersion(in *Machine
 func autoConvert_gcp_MachineImageVersion_To_v1alpha1_MachineImageVersion(in *gcp.MachineImageVersion, out *MachineImageVersion, s conversion.Scope) error {
 	out.Version = in.Version
 	out.Image = in.Image
+	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
 	return nil
 }
 
