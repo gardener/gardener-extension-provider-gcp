@@ -168,9 +168,3 @@ replace (
 	k8s.io/helm => k8s.io/helm v2.13.1+incompatible
 	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.24.2
 )
-
-// workaround for https://github.com/gardener/hvpa-controller/issues/92, remove once it's fixed
-replace (
-	github.com/gardener/hvpa-controller => github.com/gardener/hvpa-controller v0.5.0
-	github.com/gardener/hvpa-controller/api => github.com/gardener/hvpa-controller/api v0.5.0
-)
