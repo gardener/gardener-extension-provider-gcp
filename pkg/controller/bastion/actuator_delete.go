@@ -26,12 +26,9 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (a *actuator) Delete(ctx context.Context, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	logger := a.logger.WithValues("bastion", client.ObjectKeyFromObject(bastion), "operation", "delete")
-
+func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
 	serviceAccount, err := getServiceAccount(ctx, a, bastion)
 	if err != nil {
 		return fmt.Errorf("failed to get service account: %w", err)
@@ -59,7 +56,7 @@ func (a *actuator) Delete(ctx context.Context, bastion *extensionsv1alpha1.Basti
 		}
 	}
 
-	if err := removeBastionInstance(ctx, logger, gcpClient, opt); err != nil {
+	if err := removeBastionInstance(ctx, log, gcpClient, opt); err != nil {
 		return fmt.Errorf("failed to remove bastion instance: %w", err)
 	}
 
@@ -75,21 +72,21 @@ func (a *actuator) Delete(ctx context.Context, bastion *extensionsv1alpha1.Basti
 		}
 	}
 
-	if err := removeDisk(ctx, logger, gcpClient, opt); err != nil {
+	if err := removeDisk(ctx, log, gcpClient, opt); err != nil {
 		return fmt.Errorf("failed to remove disk: %w", err)
 	}
 
-	if err := removeFirewallRules(ctx, gcpClient, opt); err != nil {
+	if err := removeFirewallRules(ctx, log, gcpClient, opt); err != nil {
 		return fmt.Errorf("failed to remove firewall rule: %w", err)
 	}
 
 	return nil
 }
 
-func removeFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) error {
+func removeFirewallRules(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interface, opt *Options) error {
 	firewallList := []string{FirewallIngressAllowSSHResourceName(opt.BastionInstanceName), FirewallEgressDenyAllResourceName(opt.BastionInstanceName), FirewallEgressAllowOnlyResourceName(opt.BastionInstanceName)}
 	for _, firewall := range firewallList {
-		if err := deleteFirewallRule(ctx, gcpclient, opt, firewall); err != nil {
+		if err := deleteFirewallRule(ctx, log, gcpclient, opt, firewall); err != nil {
 			return err
 		}
 	}

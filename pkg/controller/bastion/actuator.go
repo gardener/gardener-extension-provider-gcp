@@ -24,13 +24,13 @@ import (
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
+	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/go-logr/logr"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 	corev1 "k8s.io/api/core/v1"
@@ -43,13 +43,10 @@ const (
 
 type actuator struct {
 	common.ClientContext
-	logger logr.Logger
 }
 
 func newActuator() bastion.Actuator {
-	return &actuator{
-		logger: logger,
-	}
+	return &actuator{}
 }
 
 func getBastionInstance(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) (*compute.Instance, error) {
@@ -74,7 +71,7 @@ func getFirewallRule(ctx context.Context, gcpclient gcpclient.Interface, opt *Op
 	return firewall, nil
 }
 
-func createFirewallRuleIfNotExist(ctx context.Context, gcpclient gcpclient.Interface, opt *Options, firewallRule *compute.Firewall) error {
+func createFirewallRuleIfNotExist(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interface, opt *Options, firewallRule *compute.Firewall) error {
 	if _, err := gcpclient.Firewalls().Insert(opt.ProjectID, firewallRule).Context(ctx).Do(); err != nil {
 		if googleError, ok := err.(*googleapi.Error); ok && googleError.Code == http.StatusConflict {
 			return nil
@@ -82,11 +79,11 @@ func createFirewallRuleIfNotExist(ctx context.Context, gcpclient gcpclient.Inter
 		return fmt.Errorf("could not create firewall rule %s: %w", firewallRule.Name, err)
 	}
 
-	logger.Info("Firewall created", "firewall", firewallRule.Name)
+	log.Info("Firewall created", "firewall", firewallRule.Name)
 	return nil
 }
 
-func deleteFirewallRule(ctx context.Context, gcpclient gcpclient.Interface, opt *Options, firewallRuleName string) error {
+func deleteFirewallRule(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interface, opt *Options, firewallRuleName string) error {
 	if _, err := gcpclient.Firewalls().Delete(opt.ProjectID, firewallRuleName).Context(ctx).Do(); err != nil {
 		if googleError, ok := err.(*googleapi.Error); ok && googleError.Code == http.StatusNotFound {
 			return nil
@@ -94,7 +91,7 @@ func deleteFirewallRule(ctx context.Context, gcpclient gcpclient.Interface, opt 
 		return fmt.Errorf("failed to delete firewall rule %s: %w", firewallRuleName, err)
 	}
 
-	logger.Info("Firewall rule removed", "rule", firewallRuleName)
+	log.Info("Firewall rule removed", "rule", firewallRuleName)
 	return nil
 }
 
