@@ -43,19 +43,17 @@ const (
 type actuator struct {
 	common.ClientContext
 	gcpClientFactory gcpclient.Factory
-	logger           logr.Logger
 }
 
 // NewActuator creates a new dnsrecord.Actuator.
-func NewActuator(gcpClientFactory gcpclient.Factory, logger logr.Logger) dnsrecord.Actuator {
+func NewActuator(gcpClientFactory gcpclient.Factory) dnsrecord.Actuator {
 	return &actuator{
 		gcpClientFactory: gcpClientFactory,
-		logger:           logger.WithName("gcp-dnsrecord-actuator"),
 	}
 }
 
 // Reconcile reconciles the DNSRecord.
-func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
 	// Create GCP DNS client
 	dnsClient, err := a.gcpClientFactory.NewDNSClient(ctx, a.Client(), dns.Spec.SecretRef)
 	if err != nil {
@@ -63,14 +61,14 @@ func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRec
 	}
 
 	// Determine DNS managed zone
-	managedZone, err := a.getManagedZone(ctx, dns, dnsClient)
+	managedZone, err := a.getManagedZone(ctx, log, dns, dnsClient)
 	if err != nil {
 		return err
 	}
 
 	// Create or update DNS recordset
 	ttl := extensionsv1alpha1helper.GetDNSRecordTTL(dns.Spec.TTL)
-	a.logger.Info("Creating or updating DNS recordset", "managedZone", managedZone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "rrdatas", dns.Spec.Values, "dnsrecord", kutil.ObjectName(dns))
+	log.Info("Creating or updating DNS recordset", "managedZone", managedZone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "rrdatas", dns.Spec.Values, "dnsrecord", kutil.ObjectName(dns))
 	if err := dnsClient.CreateOrUpdateRecordSet(ctx, managedZone, dns.Spec.Name, string(dns.Spec.RecordType), dns.Spec.Values, ttl); err != nil {
 		return &reconcilerutils.RequeueAfterError{
 			Cause:        fmt.Errorf("could not create or update DNS recordset in managed zone %s with name %s, type %s, and rrdatas %v: %+v", managedZone, dns.Spec.Name, dns.Spec.RecordType, dns.Spec.Values, err),
@@ -81,7 +79,7 @@ func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRec
 	// Delete meta DNS recordset if exists
 	if dns.Status.LastOperation == nil || dns.Status.LastOperation.Type == gardencorev1beta1.LastOperationTypeCreate {
 		name, recordType := dnsrecord.GetMetaRecordName(dns.Spec.Name), "TXT"
-		a.logger.Info("Deleting meta DNS recordset", "managedZone", managedZone, "name", name, "type", recordType, "dnsrecord", kutil.ObjectName(dns))
+		log.Info("Deleting meta DNS recordset", "managedZone", managedZone, "name", name, "type", recordType, "dnsrecord", kutil.ObjectName(dns))
 		if err := dnsClient.DeleteRecordSet(ctx, managedZone, name, recordType); err != nil {
 			return &reconcilerutils.RequeueAfterError{
 				Cause:        fmt.Errorf("could not delete meta DNS recordset in managed zone %s with name %s and type %s: %+v", managedZone, name, recordType, err),
@@ -97,7 +95,7 @@ func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRec
 }
 
 // Delete deletes the DNSRecord.
-func (a *actuator) Delete(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
 	// Create GCP DNS client
 	dnsClient, err := a.gcpClientFactory.NewDNSClient(ctx, a.Client(), dns.Spec.SecretRef)
 	if err != nil {
@@ -105,13 +103,13 @@ func (a *actuator) Delete(ctx context.Context, dns *extensionsv1alpha1.DNSRecord
 	}
 
 	// Determine DNS managed zone
-	managedZone, err := a.getManagedZone(ctx, dns, dnsClient)
+	managedZone, err := a.getManagedZone(ctx, log, dns, dnsClient)
 	if err != nil {
 		return err
 	}
 
 	// Delete DNS recordset
-	a.logger.Info("Deleting DNS recordset", "managedZone", managedZone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "dnsrecord", kutil.ObjectName(dns))
+	log.Info("Deleting DNS recordset", "managedZone", managedZone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "dnsrecord", kutil.ObjectName(dns))
 	if err := dnsClient.DeleteRecordSet(ctx, managedZone, dns.Spec.Name, string(dns.Spec.RecordType)); err != nil {
 		return &reconcilerutils.RequeueAfterError{
 			Cause:        fmt.Errorf("could not delete DNS recordset in managed zone %s with name %s and type %s: %+v", managedZone, dns.Spec.Name, dns.Spec.RecordType, err),
@@ -122,16 +120,16 @@ func (a *actuator) Delete(ctx context.Context, dns *extensionsv1alpha1.DNSRecord
 }
 
 // Restore restores the DNSRecord.
-func (a *actuator) Restore(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
-	return a.Reconcile(ctx, dns, cluster)
+func (a *actuator) Restore(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+	return a.Reconcile(ctx, log, dns, cluster)
 }
 
 // Migrate migrates the DNSRecord.
-func (a *actuator) Migrate(context.Context, *extensionsv1alpha1.DNSRecord, *extensionscontroller.Cluster) error {
+func (a *actuator) Migrate(context.Context, logr.Logger, *extensionsv1alpha1.DNSRecord, *extensionscontroller.Cluster) error {
 	return nil
 }
 
-func (a *actuator) getManagedZone(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, dnsClient gcpclient.DNSClient) (string, error) {
+func (a *actuator) getManagedZone(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, dnsClient gcpclient.DNSClient) (string, error) {
 	switch {
 	case dns.Spec.Zone != nil && *dns.Spec.Zone != "":
 		return *dns.Spec.Zone, nil
@@ -147,7 +145,7 @@ func (a *actuator) getManagedZone(ctx context.Context, dns *extensionsv1alpha1.D
 				RequeueAfter: requeueAfterOnProviderError,
 			}
 		}
-		a.logger.Info("Got DNS managed zones", "zones", zones, "dnsrecord", kutil.ObjectName(dns))
+		log.Info("Got DNS managed zones", "zones", zones, "dnsrecord", kutil.ObjectName(dns))
 		zone := dnsrecord.FindZoneForName(zones, dns.Spec.Name)
 		if zone == "" {
 			return "", fmt.Errorf("could not find DNS managed zone for name %s", dns.Spec.Name)

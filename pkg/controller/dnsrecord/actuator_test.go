@@ -72,7 +72,7 @@ var _ = Describe("Actuator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
-		a = NewActuator(gcpClientFactory, logger)
+		a = NewActuator(gcpClientFactory)
 		err := a.(inject.Client).InjectClient(c)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -121,7 +121,7 @@ var _ = Describe("Actuator", func() {
 				},
 			)
 
-			err := a.Reconcile(ctx, dns, nil)
+			err := a.Reconcile(ctx, logger, dns, nil)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -132,7 +132,7 @@ var _ = Describe("Actuator", func() {
 			gcpClientFactory.EXPECT().NewDNSClient(ctx, c, dns.Spec.SecretRef).Return(gcpDNSClient, nil)
 			gcpDNSClient.EXPECT().DeleteRecordSet(ctx, zone, domainName, string(extensionsv1alpha1.DNSRecordTypeA)).Return(nil)
 
-			err := a.Delete(ctx, dns, nil)
+			err := a.Delete(ctx, logger, dns, nil)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
