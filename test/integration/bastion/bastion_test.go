@@ -20,7 +20,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -31,16 +30,17 @@ import (
 	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	bastionctrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
+	"github.com/gardener/gardener/pkg/logger"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/test/framework"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
@@ -78,7 +78,7 @@ func validateFlags() {
 var (
 	ctx = context.Background()
 
-	logger         *logrus.Entry
+	log            logr.Logger
 	project        string
 	computeService *compute.Service
 
@@ -103,11 +103,9 @@ var _ = BeforeSuite(func() {
 	repoRoot := filepath.Join("..", "..", "..")
 
 	// enable manager logs
-	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
+	logf.SetLogger(logger.MustNewZapLogger(logger.DebugLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
 
-	log := logrus.New()
-	log.SetOutput(GinkgoWriter)
-	logger = logrus.NewEntry(log)
+	log = logf.Log.WithName("bastion-test")
 
 	DeferCleanup(func() {
 		defer func() {
@@ -205,10 +203,10 @@ var _ = BeforeSuite(func() {
 var _ = Describe("Bastion tests", func() {
 	It("should successfully create and delete", func() {
 		By("setup Infrastructure")
-		err := prepareNewNetwork(ctx, logger, project, computeService, vNetName, routerName, subnetName)
+		err := prepareNewNetwork(ctx, log, project, computeService, vNetName, routerName, subnetName)
 		Expect(err).NotTo(HaveOccurred())
 		framework.AddCleanupAction(func() {
-			err = teardownNetwork(ctx, logger, project, computeService, vNetName, routerName, subnetName)
+			err = teardownNetwork(ctx, log, project, computeService, vNetName, routerName, subnetName)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -223,7 +221,7 @@ var _ = Describe("Bastion tests", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		framework.AddCleanupAction(func() {
-			teardownBastion(ctx, logger, c, bastion)
+			teardownBastion(ctx, log, c, bastion)
 
 			By("verify bastion deletion")
 			verifyDeletion(ctx, project, computeService, options)
@@ -233,7 +231,7 @@ var _ = Describe("Bastion tests", func() {
 		Expect(extensions.WaitUntilExtensionObjectReady(
 			ctx,
 			c,
-			logger,
+			log,
 			bastion,
 			extensionsv1alpha1.BastionResource,
 			10*time.Second,
@@ -276,7 +274,7 @@ func verifyPort42IsClosed(ctx context.Context, c client.Client, bastion *extensi
 	Expect(conn).To(BeNil())
 }
 
-func prepareNewNetwork(ctx context.Context, logger *logrus.Entry, project string, computeService *compute.Service, networkName string, routerName string, subnetName string) error {
+func prepareNewNetwork(ctx context.Context, log logr.Logger, project string, computeService *compute.Service, networkName string, routerName string, subnetName string) error {
 
 	network := &compute.Network{
 		Name:                  networkName,
@@ -291,7 +289,7 @@ func prepareNewNetwork(ctx context.Context, logger *logrus.Entry, project string
 	if err != nil {
 		return err
 	}
-	logger.Info("Waiting until network is created...", "network ", networkName)
+	log.Info("Waiting until network is created...", "network ", networkName)
 	if err := waitForOperation(ctx, project, computeService, networkOp); err != nil {
 		return err
 	}
@@ -306,9 +304,9 @@ func prepareNewNetwork(ctx context.Context, logger *logrus.Entry, project string
 	}
 
 	resubnetOp, err := computeService.Subnetworks.Insert(project, *region, subnet).Context(ctx).Do()
-	logger.Info("Waiting until subnet is created...", "subnet ", networkName+"-nodes")
+	log.Info("Waiting until subnet is created...", "subnet ", networkName+"-nodes")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	if err := waitForOperation(ctx, project, computeService, resubnetOp); err != nil {
 		return err
@@ -322,7 +320,7 @@ func prepareNewNetwork(ctx context.Context, logger *logrus.Entry, project string
 	if err != nil {
 		return err
 	}
-	logger.Info("Waiting until router is created...", "router ", routerName)
+	log.Info("Waiting until router is created...", "router ", routerName)
 
 	err = waitForOperation(ctx, project, computeService, routerOp)
 	if err != nil {
@@ -332,14 +330,14 @@ func prepareNewNetwork(ctx context.Context, logger *logrus.Entry, project string
 	return nil
 }
 
-func teardownNetwork(ctx context.Context, logger *logrus.Entry, project string, computeService *compute.Service, networkName string, routerName string, subnetName string) error {
+func teardownNetwork(ctx context.Context, log logr.Logger, project string, computeService *compute.Service, networkName string, routerName string, subnetName string) error {
 
 	routerOp, err := computeService.Routers.Delete(project, *region, routerName).Context(ctx).Do()
 	if err != nil {
 		return err
 	}
 
-	logger.Info("Waiting until router is deleted...", "router ", routerName)
+	log.Info("Waiting until router is deleted...", "router ", routerName)
 	if err := waitForOperation(ctx, project, computeService, routerOp); err != nil {
 		return err
 	}
@@ -349,7 +347,7 @@ func teardownNetwork(ctx context.Context, logger *logrus.Entry, project string, 
 		return err
 	}
 
-	logger.Info("Waiting until subnet is deleted...", "subnet ", subnetName)
+	log.Info("Waiting until subnet is deleted...", "subnet ", subnetName)
 	if err := waitForOperation(ctx, project, computeService, subnetOp); err != nil {
 		return err
 	}
@@ -359,7 +357,7 @@ func teardownNetwork(ctx context.Context, logger *logrus.Entry, project string, 
 		return err
 	}
 
-	logger.Info("Waiting until network is deleted...", "network ", networkName)
+	log.Info("Waiting until network is deleted...", "network ", networkName)
 
 	err = waitForOperation(ctx, project, computeService, networkOp)
 	if err != nil {
@@ -550,12 +548,12 @@ func createClusters(name string) (*extensionsv1alpha1.Cluster, *controller.Clust
 	return extensionscluster, cluster
 }
 
-func teardownBastion(ctx context.Context, logger *logrus.Entry, c client.Client, bastion *extensionsv1alpha1.Bastion) {
+func teardownBastion(ctx context.Context, log logr.Logger, c client.Client, bastion *extensionsv1alpha1.Bastion) {
 	By("delete bastion")
 	Expect(client.IgnoreNotFound(c.Delete(ctx, bastion))).To(Succeed())
 
 	By("wait until bastion is deleted")
-	err := extensions.WaitUntilExtensionObjectDeleted(ctx, c, logger, bastion, extensionsv1alpha1.BastionResource, 10*time.Second, 16*time.Minute)
+	err := extensions.WaitUntilExtensionObjectDeleted(ctx, c, log, bastion, extensionsv1alpha1.BastionResource, 10*time.Second, 16*time.Minute)
 	Expect(err).NotTo(HaveOccurred())
 }
 
