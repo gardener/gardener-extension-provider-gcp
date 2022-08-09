@@ -64,6 +64,7 @@ func ComputeTerraformerTemplateValues(
 	infra *extensionsv1alpha1.Infrastructure,
 	account *gcp.ServiceAccount,
 	config *api.InfrastructureConfig,
+	podCIDR *string,
 	createSA bool,
 ) (map[string]interface{}, error) {
 	var (
@@ -142,6 +143,7 @@ func ComputeTerraformerTemplateValues(
 			"internal": config.Networks.Internal,
 			"cloudNAT": cN,
 		},
+		"podCIDR":    *podCIDR,
 		"outputKeys": outputKeys,
 	}
 
@@ -171,9 +173,10 @@ func RenderTerraformerTemplate(
 	infra *extensionsv1alpha1.Infrastructure,
 	account *gcp.ServiceAccount,
 	config *api.InfrastructureConfig,
+	podCIDR *string,
 	createSA bool,
 ) (*TerraformFiles, error) {
-	values, err := ComputeTerraformerTemplateValues(infra, account, config, createSA)
+	values, err := ComputeTerraformerTemplateValues(infra, account, config, podCIDR, createSA)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute terraform values: %v", err)
 	}

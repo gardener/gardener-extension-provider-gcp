@@ -41,6 +41,7 @@ var _ = Describe("Terraform", func() {
 		serviceAccountData []byte
 		serviceAccount     *gcp.ServiceAccount
 
+		podCIDR       = "100.96.0.0/11"
 		minPortsPerVM = int32(2048)
 
 		ctrl *gomock.Controller
@@ -200,7 +201,7 @@ var _ = Describe("Terraform", func() {
 
 	Describe("#ComputeTerraformerTemplateValues", func() {
 		It("should correctly compute the terraformer chart values without serviceAccount", func() {
-			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, false)
+			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, &podCIDR, false)
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -226,6 +227,7 @@ var _ = Describe("Terraform", func() {
 						"minPortsPerVM": minPortsPerVM,
 					},
 				},
+				"podCIDR": podCIDR,
 				"outputKeys": map[string]interface{}{
 					"vpcName":             TerraformerOutputKeyVPCName,
 					"cloudNAT":            TerraformOutputKeyCloudNAT,
@@ -238,7 +240,7 @@ var _ = Describe("Terraform", func() {
 		})
 
 		It("should correctly compute the terraformer chart values with serviceAccount", func() {
-			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, true)
+			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, &podCIDR, true)
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -264,6 +266,7 @@ var _ = Describe("Terraform", func() {
 						"minPortsPerVM": minPortsPerVM,
 					},
 				},
+				"podCIDR": podCIDR,
 				"outputKeys": map[string]interface{}{
 					"vpcName":             TerraformerOutputKeyVPCName,
 					"cloudNAT":            TerraformOutputKeyCloudNAT,
@@ -301,7 +304,7 @@ var _ = Describe("Terraform", func() {
 				},
 			}
 
-			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, true)
+			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, &podCIDR, true)
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -328,6 +331,7 @@ var _ = Describe("Terraform", func() {
 						"natIPNames":    natIPNamesOutput,
 					},
 				},
+				"podCIDR": podCIDR,
 				"outputKeys": map[string]interface{}{
 					"vpcName":             TerraformerOutputKeyVPCName,
 					"cloudNAT":            TerraformOutputKeyCloudNAT,
@@ -363,7 +367,7 @@ var _ = Describe("Terraform", func() {
 				},
 			}
 
-			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, true)
+			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, &podCIDR, true)
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -394,6 +398,7 @@ var _ = Describe("Terraform", func() {
 						"metadata":            *config.Networks.FlowLogs.Metadata,
 					},
 				},
+				"podCIDR": podCIDR,
 				"outputKeys": map[string]interface{}{
 					"vpcName":             TerraformerOutputKeyVPCName,
 					"cloudNAT":            TerraformOutputKeyCloudNAT,
@@ -407,7 +412,7 @@ var _ = Describe("Terraform", func() {
 
 		It("should correctly compute the terraformer chart values with vpc creation", func() {
 			config.Networks.VPC = nil
-			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, true)
+			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, &podCIDR, true)
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -430,6 +435,7 @@ var _ = Describe("Terraform", func() {
 						"minPortsPerVM": minPortsPerVM,
 					},
 				},
+				"podCIDR": podCIDR,
 				"outputKeys": map[string]interface{}{
 					"vpcName":             TerraformerOutputKeyVPCName,
 					"cloudNAT":            TerraformOutputKeyCloudNAT,
