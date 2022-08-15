@@ -20,21 +20,18 @@ import (
 
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupentry/genericactuator"
+	"github.com/go-logr/logr"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type actuator struct {
 	client client.Client
-	logger logr.Logger
 }
 
 func newActuator() genericactuator.BackupEntryDelegate {
-	return &actuator{
-		logger: logger,
-	}
+	return &actuator{}
 }
 
 func (a *actuator) InjectClient(client client.Client) error {
@@ -42,11 +39,11 @@ func (a *actuator) InjectClient(client client.Client) error {
 	return nil
 }
 
-func (a *actuator) GetETCDSecretData(ctx context.Context, be *extensionsv1alpha1.BackupEntry, backupSecretData map[string][]byte) (map[string][]byte, error) {
+func (a *actuator) GetETCDSecretData(ctx context.Context, _ logr.Logger, be *extensionsv1alpha1.BackupEntry, backupSecretData map[string][]byte) (map[string][]byte, error) {
 	return backupSecretData, nil
 }
 
-func (a *actuator) Delete(ctx context.Context, be *extensionsv1alpha1.BackupEntry) error {
+func (a *actuator) Delete(ctx context.Context, _ logr.Logger, be *extensionsv1alpha1.BackupEntry) error {
 	storageClient, err := gcpclient.NewStorageClientFromSecretRef(ctx, a.client, be.Spec.SecretRef)
 	if err != nil {
 		return err

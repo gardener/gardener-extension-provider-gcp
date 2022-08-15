@@ -31,7 +31,6 @@ import (
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
@@ -77,8 +76,7 @@ func validateFlags() {
 var (
 	ctx = context.Background()
 
-	log         logr.Logger
-	gardenerlog *logrus.Entry
+	log logr.Logger
 
 	testEnv   *envtest.Environment
 	mgrCancel context.CancelFunc
@@ -114,10 +112,6 @@ var _ = BeforeSuite(func() {
 
 	runtimelog.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
 	log = runtimelog.Log.WithName("infrastructure-test")
-
-	gardenerlogger := logrus.New()
-	gardenerlogger.SetOutput(GinkgoWriter)
-	gardenerlog = logrus.NewEntry(gardenerlogger)
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
@@ -246,7 +240,7 @@ func runTest(
 		err := extensions.WaitUntilExtensionObjectDeleted(
 			ctx,
 			c,
-			gardenerlog,
+			log,
 			infra,
 			"Infrastructure",
 			10*time.Second,
@@ -331,7 +325,7 @@ func runTest(
 	if err := extensions.WaitUntilExtensionObjectReady(
 		ctx,
 		c,
-		gardenerlog,
+		log,
 		infra,
 		extensionsv1alpha1.InfrastructureResource,
 		10*time.Second,

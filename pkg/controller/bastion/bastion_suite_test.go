@@ -27,6 +27,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
+	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -34,6 +35,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func TestBastion(t *testing.T) {
@@ -45,6 +47,7 @@ var _ = Describe("Bastion", func() {
 	var (
 		cluster *extensions.Cluster
 		bastion *extensionsv1alpha1.Bastion
+		log     logr.Logger
 
 		opt  Options
 		ctrl *gomock.Controller
@@ -53,6 +56,7 @@ var _ = Describe("Bastion", func() {
 		cluster = createGCPTestCluster()
 		bastion = createTestBastion()
 		ctrl = gomock.NewController(GinkgoT())
+		log = logf.Log.WithName("test")
 	})
 	AfterEach(func() {
 		ctrl.Finish()
@@ -258,7 +262,7 @@ var _ = Describe("Bastion", func() {
 				firewallsDeleteCall.EXPECT().Context(ctx).Return(firewallsDeleteCall),
 				firewallsDeleteCall.EXPECT().Do(),
 			)
-			Expect(deleteFirewallRule(ctx, client, &opt, firewallName)).To(Succeed())
+			Expect(deleteFirewallRule(ctx, log, client, &opt, firewallName)).To(Succeed())
 
 		})
 	})

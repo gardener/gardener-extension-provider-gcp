@@ -52,9 +52,7 @@ func (be *bastionEndpoints) Ready() bool {
 	return be != nil && IngressReady(be.private) && IngressReady(be.public)
 }
 
-func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	logger := a.logger.WithValues("bastion", client.ObjectKeyFromObject(bastion), "operation", "reconcile")
-
+func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
 	serviceAccount, err := getServiceAccount(ctx, a, bastion)
 	if err != nil {
 		return fmt.Errorf("failed to get service account: %w", err)
@@ -93,17 +91,17 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 		return fmt.Errorf("failed to store status.providerStatus for zone: %s", opt.Zone)
 	}
 
-	err = ensureFirewallRules(ctx, gcpClient, bastion, opt)
+	err = ensureFirewallRules(ctx, log, gcpClient, bastion, opt)
 	if err != nil {
 		return fmt.Errorf("failed to ensure firewall rule: %w", err)
 	}
 
-	err = ensureDisk(ctx, gcpClient, opt)
+	err = ensureDisk(ctx, log, gcpClient, opt)
 	if err != nil {
 		return err
 	}
 
-	instance, err := ensureComputeInstance(ctx, logger, bastion, gcpClient, opt)
+	instance, err := ensureComputeInstance(ctx, log, bastion, gcpClient, opt)
 	if err != nil {
 		return err
 	}
@@ -170,7 +168,7 @@ func getNetAndSubnet(ctx context.Context, a *actuator, cluster *extensions.Clust
 	return infrastructureStatus.Networks.VPC.Name, nodeSubnet, nil
 }
 
-func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, bastion *extensionsv1alpha1.Bastion, opt *Options) error {
+func ensureFirewallRules(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interface, bastion *extensionsv1alpha1.Bastion, opt *Options) error {
 	cidrs, err := ingressPermissions(bastion)
 	if err != nil {
 		return err
@@ -179,7 +177,7 @@ func ensureFirewallRules(ctx context.Context, gcpclient gcpclient.Interface, bas
 	firewallList := []*compute.Firewall{IngressAllowSSH(opt, cidrs), EgressDenyAll(opt), EgressAllowOnly(opt)}
 
 	for _, item := range firewallList {
-		if err := createFirewallRuleIfNotExist(ctx, gcpclient, opt, item); err != nil {
+		if err := createFirewallRuleIfNotExist(ctx, log, gcpclient, opt, item); err != nil {
 			return err
 		}
 	}
@@ -284,13 +282,13 @@ func addressToIngress(dnsName *string, ipAddress *string) *corev1.LoadBalancerIn
 	return ingress
 }
 
-func ensureDisk(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) error {
+func ensureDisk(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interface, opt *Options) error {
 	disk, err := getDisk(ctx, gcpclient, opt)
 	if disk != nil || err != nil {
 		return err
 	}
 
-	logger.Info("create new bastion compute instance disk")
+	log.Info("create new bastion compute instance disk")
 	disk = diskDefine(opt.Zone, opt.DiskName)
 	_, err = gcpclient.Disks().Insert(opt.ProjectID, opt.Zone, disk).Context(ctx).Do()
 	if err != nil {
