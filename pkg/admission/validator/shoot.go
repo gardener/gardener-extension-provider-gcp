@@ -19,9 +19,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/utils/pointer"
-
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
@@ -73,7 +70,9 @@ func (s *shoot) Validate(ctx context.Context, new, old client.Object) error {
 		if !ok {
 			return fmt.Errorf("wrong object type %T for old object", old)
 		}
-		return s.validateUpdate(ctx, oldShoot, shoot)
+		if err := s.validateUpdate(ctx, oldShoot, shoot); err != nil {
+			return err
+		}
 	}
 
 	return s.validateCreate(ctx, shoot)
@@ -174,11 +173,11 @@ func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core
 		allErrors                                            = field.ErrorList{}
 	)
 
-	var seedServices *string
-	if currentValContext.seed != nil {
-		seedServices = pointer.String(currentValContext.seed.Spec.Networks.Services)
-	}
-	allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfigUpdate(oldInfrastructureConfig, currentInfrastructureConfig, seedServices, infrastructureConfigPath)...)
+	// var seedServices *string
+	// if currentValContext.seed != nil {
+	// 	seedServices = pointer.String(currentValContext.seed.Spec.Networks.Services)
+	// }
+	allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfigUpdate(oldInfrastructureConfig, currentInfrastructureConfig, infrastructureConfigPath)...)
 
 	if !reflect.DeepEqual(oldControlPlaneConfig, currentControlPlaneConfig) {
 		allErrors = append(allErrors, gcpvalidation.ValidateControlPlaneConfigUpdate(oldControlPlaneConfig, currentControlPlaneConfig, controlPlaneConfigPath)...)
@@ -226,8 +225,8 @@ func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client
 	if shoot.Spec.SeedName != nil && len(*shoot.Spec.SeedName) > 0 {
 		seed = &gardencorev1beta1.Seed{}
 		err = c.Get(ctx, kutil.Key(*shoot.Spec.SeedName), seed)
-		if err != nil && !errors.IsNotFound(err) {
-			return nil, fmt.Errorf("an error occured while reading seed information: %v", err)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch seed information: %v", err)
 		}
 	}
 

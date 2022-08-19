@@ -72,7 +72,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid invalid worker CIDRs", func() {
 				infrastructureConfig.Networks.Workers = invalidCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -85,7 +85,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				invalidCIDR = "invalid-cidr"
 				infrastructureConfig.Networks.Internal = &invalidCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -97,7 +97,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid workers CIDR which are not in Nodes CIDR", func() {
 				infrastructureConfig.Networks.Workers = "1.1.1.1/32"
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -111,7 +111,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.Internal = &overlappingCIDR
 				infrastructureConfig.Networks.Workers = overlappingCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &overlappingCIDR, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &overlappingCIDR, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -132,7 +132,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.Internal = &internal
 				infrastructureConfig.Networks.Workers = "10.250.3.8/24"
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodeCIDR, &podCIDR, &serviceCIDR, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodeCIDR, &podCIDR, &serviceCIDR, nil, fldPath)
 
 				Expect(errorList).To(HaveLen(2))
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -147,12 +147,12 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should allow specifying valid config", func() {
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(BeEmpty())
 			})
 
 			It("should allow specifying valid config with podsCIDR=nil and servicesCIDR=nil", func() {
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, nil, nil, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, nil, nil, nil, fldPath)
 				Expect(errorList).To(BeEmpty())
 			})
 		})
@@ -167,7 +167,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				testInfrastructureConfig.Networks.VPC = &apisgcp.VPC{}
 				testInfrastructureConfig.Networks.VPC.CloudRouter = &apisgcp.CloudRouter{}
 
-				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.vpc.cloudRouter"),
@@ -181,7 +181,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid empty VPC flow log config", func() {
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{}
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeRequired),
 					"Field":  Equal("networks.flowLogs"),
@@ -194,7 +194,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				metadata := "foo"
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{AggregationInterval: &aggregationInterval, FlowSampling: &flowSampling, Metadata: &metadata}
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeNotSupported),
 					"Field":  Equal("networks.flowLogs.aggregationInterval"),
@@ -214,7 +214,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Name: "test-vpc",
 				}
 
-				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.vpc.cloudRouter"),
@@ -227,7 +227,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					CloudRouter: &apisgcp.CloudRouter{},
 				}
 
-				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.vpc.cloudRouter.name"),
@@ -239,7 +239,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Name: "test-vpc",
 				}
 
-				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.vpc.cloudRouter"),
@@ -252,7 +252,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					CloudRouter: &apisgcp.CloudRouter{},
 				}
 
-				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.vpc.cloudRouter.name"),
@@ -263,7 +263,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid empty VPC flow log config", func() {
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{}
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeRequired),
 					"Field":  Equal("networks.flowLogs"),
@@ -276,7 +276,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				metadata := "foo"
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{AggregationInterval: &aggregationInterval, FlowSampling: &flowSampling, Metadata: &metadata}
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeNotSupported),
 					"Field":  Equal("networks.flowLogs.aggregationInterval"),
@@ -297,7 +297,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				metadata := "INCLUDE_ALL_METADATA"
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{AggregationInterval: &aggregationInterval, FlowSampling: &flowSampling, Metadata: &metadata}
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(BeEmpty())
 			})
 		})
@@ -310,15 +310,74 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					FlowSampling:        pointer.Float32Ptr(0.5),
 				}
 
-				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(BeEmpty())
+			})
+		})
+		Context("Private Service Connect", func() {
+			It("should allow correct PSC configuration", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.PrivateServiceConnect = &apisgcp.PrivateServiceConnectConfig{
+					EndpointIP: "10.15.0.0",
+				}
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
+				Expect(errorList).To(BeEmpty())
+			})
+			It("should return an error if endpointIP is not specified", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.PrivateServiceConnect = &apisgcp.PrivateServiceConnectConfig{
+					EndpointIP: "",
+				}
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("networks.privateServiceConnect.endpointIP"),
+					"Detail": Equal("endpointIP must be specified"),
+				}))
+			})
+			It("should return an error when PSC endpoint collides with shoot CIDRs", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.PrivateServiceConnect = &apisgcp.PrivateServiceConnectConfig{
+					EndpointIP: "100.96.0.0",
+				}
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Detail": Equal(`must not overlap with "networks.privateServiceConnect.endpointIP" ("100.96.0.0/32")`),
+				}))
+			})
+			It("should return an error when PSC endpoint collides with seed CIDRs", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				seedServiceCIDR := "10.100.0.0/16"
+				newInfrastructureConfig.Networks.PrivateServiceConnect = &apisgcp.PrivateServiceConnectConfig{
+					EndpointIP: "10.100.100.0",
+				}
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, &seedServiceCIDR, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("seed service range"),
+					"Detail": Equal(`must not overlap with "networks.privateServiceConnect.endpointIP" ("10.100.100.0/32")`),
+				}))
+			})
+
+			It("should return an error when PSC endpoint colliced with reverse VPN CIDRs", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.PrivateServiceConnect = &apisgcp.PrivateServiceConnectConfig{
+					EndpointIP: "192.168.123.0",
+				}
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("<nil>"),
+					"Detail": Equal(`must not overlap with "networks.privateServiceConnect.endpointIP" ("192.168.123.0/32")`),
+				}))
 			})
 		})
 	})
 
 	Describe("#ValidateInfrastructureConfigUpdate", func() {
 		It("should return no errors for an unchanged config", func() {
-			Expect(ValidateInfrastructureConfigUpdate(infrastructureConfig, infrastructureConfig, nil, nil, fldPath)).To(BeEmpty())
+			Expect(ValidateInfrastructureConfigUpdate(infrastructureConfig, infrastructureConfig, fldPath)).To(BeEmpty())
 		})
 
 		It("should allow changing cloudNAT AND Flow-logs details", func() {
@@ -333,7 +392,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				AggregationInterval: pointer.StringPtr("INTERVAL_30_SEC"),
 			}
 
-			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, nil, nil, fldPath)
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
 			Expect(errorList).To(BeEmpty())
 		})
 
@@ -349,7 +408,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			newInfrastructureConfig.Networks.Worker = "10.96.0.0/16"
 			newInfrastructureConfig.Networks.Internal = pointer.StringPtr("10.96.0.0/16")
 
-			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, nil, nil, fldPath)
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
 			Expect(errorList).To(ConsistOfFields(Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
 				"Field": Equal("networks.vpc.name"),
@@ -372,7 +431,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			newInfrastructureConfig := infrastructureConfig.DeepCopy()
 			newInfrastructureConfig.Networks.VPC = nil
 
-			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, nil, nil, fldPath)
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
 			Expect(errorList).To(ConsistOfFields(Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
 				"Field": Equal("networks.vpc"),
