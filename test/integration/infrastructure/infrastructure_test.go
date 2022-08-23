@@ -45,6 +45,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	gcpinternal "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
@@ -57,6 +59,7 @@ const (
 	workersSubnetCIDR  = "10.250.0.0/19"
 	internalSubnetCIDR = "10.250.112.0/22"
 	podCIDR            = "100.96.0.0/11"
+	pscIP              = "10.249.0.0"
 )
 
 var (
@@ -171,6 +174,19 @@ var _ = Describe("Infrastructure tests", func() {
 
 		It("should successfully create and delete", func() {
 			providerConfig := newProviderConfig(nil)
+
+			namespace, err := generateNamespaceName()
+			Expect(err).NotTo(HaveOccurred())
+
+			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should successfully create and delete with privateServiceConnect", func() {
+			providerConfig := newProviderConfig(nil)
+			providerConfig.Networks.PrivateServiceConnect = &gcpv1alpha1.PrivateServiceConnectConfig{
+				EndpointIP: pscIP,
+			}
 
 			namespace, err := generateNamespaceName()
 			Expect(err).NotTo(HaveOccurred())
@@ -337,7 +353,14 @@ func runTest(
 	}
 
 	By("verify infrastructure creation")
-	verifyCreation(ctx, project, computeService, iamService, infra, providerConfig)
+	err = c.Get(ctx, client.ObjectKey{
+		Namespace: infra.Namespace,
+		Name:      infra.Name,
+	}, infra)
+	Expect(err).To(BeNil())
+	providerStatus, err := helper.InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
+	Expect(err).To(BeNil())
+	verifyCreation(ctx, project, computeService, iamService, infra, providerConfig, providerStatus)
 
 	return nil
 }
@@ -487,6 +510,7 @@ func verifyCreation(
 	iamService *iam.Service,
 	infra *extensionsv1alpha1.Infrastructure,
 	providerConfig *gcpv1alpha1.InfrastructureConfig,
+	providerStatus *gcpinternal.InfrastructureStatus,
 ) {
 	// service account
 	if !features.ExtensionFeatureGate.Enabled(features.DisableGardenerServiceAccountCreation) {
@@ -497,7 +521,6 @@ func verifyCreation(
 	}
 
 	// network
-
 	network, err := computeService.Networks.Get(project, infra.Namespace).Do()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(network.AutoCreateSubnetworks).To(BeFalse())
@@ -594,6 +617,21 @@ func verifyCreation(
 			Ports:      []string{"30000-32767"},
 		},
 	}))
+
+	if providerConfig.Networks.PrivateServiceConnect != nil {
+		Expect(providerStatus.Networks).NotTo(BeNil())
+		Expect(providerStatus.Networks.PrivateServiceConnectStatus).NotTo(BeNil())
+		Expect(providerStatus.Networks.PrivateServiceConnectStatus.EndpointName).NotTo(BeEmpty())
+		fwd, err := computeService.GlobalForwardingRules.Get(project, providerStatus.Networks.PrivateServiceConnectStatus.EndpointName).Do()
+		Expect(err).To(BeNil())
+		Expect(fwd.Network).To(Equal(network.SelfLink))
+
+		addr, err := computeService.GlobalAddresses.Get(project, infra.Namespace).Do()
+
+		Expect(err).To(BeNil())
+		Expect(addr.Address).To(Equal(providerConfig.Networks.PrivateServiceConnect.EndpointIP))
+		Expect(addr.AddressType).To(Equal("INTERNAL"))
+	}
 }
 
 func verifyDeletion(

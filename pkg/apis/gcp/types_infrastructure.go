@@ -48,7 +48,7 @@ type NetworkConfig struct {
 	PrivateServiceConnect *PrivateServiceConnectConfig
 }
 
-// PrivateServiceConnect holds the configuration for Private Service Connect endpoints.
+// PrivateServiceConnectConfig holds the configuration for Private Service Connect endpoints.
 type PrivateServiceConnectConfig struct {
 	// EndpointIP is the IP where the services will be accessible.
 	EndpointIP string

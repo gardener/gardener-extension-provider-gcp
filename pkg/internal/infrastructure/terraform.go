@@ -57,7 +57,7 @@ const (
 	TerraformOutputKeyCloudRouter = "cloud_router"
 	// TerraformOutputKeyPrivateServiceConnectIP is the name of the psc_ip terraform output variable.
 	TerraformOutputKeyPrivateServiceConnectIP = "psc_ip"
-	// TerraformOutputKeyPrivateServiceConnectIP is the name of the psc_name terraform output variable.
+	// TerraformOutputKeyPrivateServiceConnectName is the name of the psc_name terraform output variable.
 	TerraformOutputKeyPrivateServiceConnectName = "psc_name"
 )
 

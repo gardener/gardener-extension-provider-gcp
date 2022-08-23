@@ -299,11 +299,11 @@ output "{{ .outputKeys.subnetInternal }}" {
 }
 {{- end }}
 
-{{ if .networks.privateServiceConnect }}
-output "{{ .outputKeys.privateServiceConnectIP }}" {
+{{- if .networks.privateServiceConnect }}
+output "{{ .outputKeys.privateServiceConnectName }}" {
   value = google_compute_global_forwarding_rule.default.name
 }
-output "{{ .outputKeys.privateServiceConnectName }}" {
+output "{{ .outputKeys.privateServiceConnectIP }}" {
   value = google_compute_global_address.default.address
 }
 {{- end }}

@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	mockterraformer "github.com/gardener/gardener/extensions/pkg/terraformer/mock"
+	"k8s.io/utils/pointer"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
@@ -158,6 +159,7 @@ var _ = Describe("Terraform", func() {
 				CloudNATName:        cloudNATName,
 			}))
 		})
+
 		It("should return correct state when cloudRouter name is NOT specified", func() {
 			var (
 				vpcWithoutCloudRouterConfig = &api.InfrastructureConfig{
@@ -449,6 +451,60 @@ var _ = Describe("Terraform", func() {
 					"serviceAccountEmail": TerraformerOutputKeyServiceAccountEmail,
 					"subnetNodes":         TerraformerOutputKeySubnetNodes,
 					"subnetInternal":      TerraformerOutputKeySubnetInternal,
+				},
+			}))
+		})
+
+		It("should correctly compute the terraformer chart values with privateServiceConnect", func() {
+			var (
+				endpointIP   = "10.0.0.0"
+				endpointName = "endpoint"
+			)
+			config.Networks.PrivateServiceConnect = &api.PrivateServiceConnectConfig{
+				EndpointIP:   endpointIP,
+				EndpointName: pointer.String(endpointName),
+			}
+			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, &podCIDR, true)
+			Expect(err).To(BeNil())
+			Expect(values).To(Equal(map[string]interface{}{
+				"google": map[string]interface{}{
+					"region":     infra.Spec.Region,
+					"project":    projectID,
+					"enableBeta": true,
+				},
+				"create": map[string]interface{}{
+					"vpc":            false,
+					"cloudRouter":    false,
+					"serviceAccount": true,
+				},
+				"vpc": map[string]interface{}{
+					"name": strconv.Quote(config.Networks.VPC.Name),
+					"cloudRouter": map[string]interface{}{
+						"name": "cloudrouter",
+					},
+				},
+				"clusterName": infra.Namespace,
+				"networks": map[string]interface{}{
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
+					"cloudNAT": map[string]interface{}{
+						"minPortsPerVM": minPortsPerVM,
+					},
+					"privateServiceConnect": map[string]interface{}{
+						"endpointName": endpointName,
+						"address":      endpointIP,
+					},
+				},
+				"podCIDR": podCIDR,
+				"outputKeys": map[string]interface{}{
+					"vpcName":                   TerraformerOutputKeyVPCName,
+					"cloudNAT":                  TerraformOutputKeyCloudNAT,
+					"cloudRouter":               TerraformOutputKeyCloudRouter,
+					"serviceAccountEmail":       TerraformerOutputKeyServiceAccountEmail,
+					"subnetNodes":               TerraformerOutputKeySubnetNodes,
+					"subnetInternal":            TerraformerOutputKeySubnetInternal,
+					"privateServiceConnectIP":   TerraformOutputKeyPrivateServiceConnectIP,
+					"privateServiceConnectName": TerraformOutputKeyPrivateServiceConnectName,
 				},
 			}))
 		})
