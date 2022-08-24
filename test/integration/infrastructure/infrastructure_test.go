@@ -210,6 +210,7 @@ var _ = Describe("Infrastructure tests", func() {
 				CloudRouter: &gcpv1alpha1.CloudRouter{
 					Name: cloudRouterName,
 				},
+				EnablePrivateGoogleAccess: true,
 			})
 
 			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
@@ -527,6 +528,9 @@ func verifyCreation(
 	Expect(subnetNodes.LogConfig.AggregationInterval).To(Equal("INTERVAL_5_SEC"))
 	Expect(subnetNodes.LogConfig.FlowSampling).To(Equal(float64(0.2)))
 	Expect(subnetNodes.LogConfig.Metadata).To(Equal("INCLUDE_ALL_METADATA"))
+	if providerConfig.Networks.VPC != nil {
+		Expect(subnetNodes.PrivateIpGoogleAccess).To(Equal(providerConfig.Networks.VPC.EnablePrivateGoogleAccess))
+	}
 
 	subnetInternal, err := computeService.Subnetworks.Get(project, *region, infra.Namespace+"-internal").Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
