@@ -38,6 +38,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -302,6 +303,7 @@ var _ = Describe("ValuesProvider", func() {
 						"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
+					"pspDisabled": false,
 				}),
 			}))
 		})
@@ -318,6 +320,57 @@ var _ = Describe("ValuesProvider", func() {
 							"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
 							"caBundle": "",
 						},
+						"pspDisabled": false,
+					}),
+				}))
+			})
+		})
+
+		Context("podSecurityPolicy", func() {
+			It("should return correct shoot control plane chart when PodSecurityPolicy admission plugin is not disabled in the shoot", func() {
+				clusterK8sAtLeast118.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
+					AdmissionPlugins: []gardencorev1beta1.AdmissionPlugin{
+						{
+							Name: "PodSecurityPolicy",
+						},
+					},
+				}
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast118, fakeSecretsManager, nil)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal(map[string]interface{}{
+					gcp.CloudControllerManagerName: enabledTrue,
+					gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+						"kubernetesVersion": "1.18.0",
+						"vpaEnabled":        true,
+						"webhookConfig": map[string]interface{}{
+							"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+							"caBundle": "",
+						},
+						"pspDisabled": false,
+					}),
+				}))
+			})
+			It("should return correct shoot control plane chart when PodSecurityPolicy admission plugin is disabled in the shoot", func() {
+				clusterK8sAtLeast118.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
+					AdmissionPlugins: []gardencorev1beta1.AdmissionPlugin{
+						{
+							Name:     "PodSecurityPolicy",
+							Disabled: pointer.Bool(true),
+						},
+					},
+				}
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast118, fakeSecretsManager, nil)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal(map[string]interface{}{
+					gcp.CloudControllerManagerName: enabledTrue,
+					gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+						"kubernetesVersion": "1.18.0",
+						"vpaEnabled":        true,
+						"webhookConfig": map[string]interface{}{
+							"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+							"caBundle": "",
+						},
+						"pspDisabled": true,
 					}),
 				}))
 			})
