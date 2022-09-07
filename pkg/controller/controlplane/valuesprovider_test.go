@@ -113,7 +113,7 @@ var _ = Describe("ValuesProvider", func() {
 						Pods: &cidr,
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
-						Version: "1.15.4",
+						Version: "1.17.1",
 					},
 				},
 			},
@@ -297,7 +297,7 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values).To(Equal(map[string]interface{}{
 				gcp.CloudControllerManagerName: enabledTrue,
 				gcp.CSINodeName: utils.MergeMaps(enabledFalse, map[string]interface{}{
-					"kubernetesVersion": "1.15.4",
+					"kubernetesVersion": "1.17.1",
 					"vpaEnabled":        false,
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
