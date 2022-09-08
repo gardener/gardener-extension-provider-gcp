@@ -47,6 +47,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/pointer"
 )
 
 var _ = Describe("Machines", func() {
@@ -128,6 +129,9 @@ var _ = Describe("Machines", func() {
 				zone1 string
 				zone2 string
 
+				archAMD string
+				archARM string
+
 				labels map[string]string
 
 				nodeCapacity         corev1.ResourceList
@@ -184,6 +188,9 @@ var _ = Describe("Machines", func() {
 				zone1 = region + "a"
 				zone2 = region + "b"
 
+				archAMD = "amd64"
+				archARM = "arm64"
+
 				labels = map[string]string{"component": "TiDB"}
 
 				nodeCapacity = corev1.ResourceList{
@@ -230,8 +237,9 @@ var _ = Describe("Machines", func() {
 							Name: machineImageName,
 							Versions: []apiv1alpha1.MachineImageVersion{
 								{
-									Version: machineImageVersion,
-									Image:   machineImage,
+									Version:      machineImageVersion,
+									Image:        machineImage,
+									Architecture: pointer.String(archAMD),
 								},
 							},
 						},
@@ -284,6 +292,7 @@ var _ = Describe("Machines", func() {
 								MaxSurge:       maxSurgePool1,
 								MaxUnavailable: maxUnavailablePool1,
 								MachineType:    machineType,
+								Architecture:   pointer.String(archAMD),
 								MachineImage: extensionsv1alpha1.MachineImage{
 									Name:    machineImageName,
 									Version: machineImageVersion,
@@ -574,9 +583,10 @@ var _ = Describe("Machines", func() {
 						},
 						MachineImages: []apiv1alpha1.MachineImage{
 							{
-								Name:    machineImageName,
-								Version: machineImageVersion,
-								Image:   machineImage,
+								Name:         machineImageName,
+								Version:      machineImageVersion,
+								Image:        machineImage,
+								Architecture: pointer.String(archAMD),
 							},
 						},
 					}
@@ -622,6 +632,16 @@ var _ = Describe("Machines", func() {
 				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
 					Raw: encode(&api.InfrastructureStatus{}),
 				}
+
+				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
+
+				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
+				Expect(err).To(HaveOccurred())
+				Expect(result).To(BeNil())
+			})
+
+			It("should fail because the machine image for given architecture cannot be found", func() {
+				w.Spec.Pools[0].Architecture = pointer.String(archARM)
 
 				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
 

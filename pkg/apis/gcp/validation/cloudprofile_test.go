@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/pointer"
 )
 
 var _ = Describe("CloudProfileConfig validation", func() {
@@ -44,8 +45,9 @@ var _ = Describe("CloudProfileConfig validation", func() {
 						Name: machineImageName,
 						Versions: []apisgcp.MachineImageVersion{
 							{
-								Version: machineImageVersion,
-								Image:   "path/to/gcp/image",
+								Version:      machineImageVersion,
+								Image:        "path/to/gcp/image",
+								Architecture: pointer.String("amd64"),
 							},
 						},
 					},
@@ -103,6 +105,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 			It("should forbid unsupported machine image version configuration", func() {
 				cloudProfileConfig.MachineImages[0].Versions[0].Image = ""
+				cloudProfileConfig.MachineImages[0].Versions[0].Architecture = pointer.String("foo")
 				machineImages[0].Versions = append(machineImages[0].Versions, core.MachineImageVersion{ExpirableVersion: core.ExpirableVersion{Version: "2.0.0"}})
 				errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, nilPath)
 
@@ -114,6 +117,10 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeRequired),
 						"Field": Equal("machineImages[0].versions[0].image"),
+					})),
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeNotSupported),
+						"Field": Equal("machineImages[0].versions[0].architecture"),
 					})),
 				))
 			})

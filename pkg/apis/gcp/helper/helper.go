@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"k8s.io/utils/pointer"
 )
 
 // FindSubnetByPurpose takes a list of subnets and tries to find the first entry
@@ -33,33 +34,33 @@ func FindSubnetByPurpose(subnets []api.Subnet, purpose api.SubnetPurpose) (*api.
 }
 
 // FindMachineImage takes a list of machine images and tries to find the first entry
-// whose name, version, and zone matches with the given name, version, and zone. If no such entry is
+// whose name, version, architecture and zone matches with the given name, version, and zone. If no such entry is
 // found then an error will be returned.
-func FindMachineImage(machineImages []api.MachineImage, name, version string) (*api.MachineImage, error) {
+func FindMachineImage(machineImages []api.MachineImage, name, version string, architecture *string) (*api.MachineImage, error) {
 	for _, machineImage := range machineImages {
-		if machineImage.Name == name && machineImage.Version == version {
+		if machineImage.Name == name && machineImage.Version == version && pointer.StringEqual(architecture, machineImage.Architecture) {
 			return &machineImage, nil
 		}
 	}
-	return nil, fmt.Errorf("no machine image with name %q, version %q found", name, version)
+	return nil, fmt.Errorf("no machine image found with name %q, architecture %q and version %q", name, *architecture, version)
 }
 
 // FindImageFromCloudProfile takes a list of machine images, and the desired image name and version. It tries
-// to find the image with the given name and version in the desired cloud profile. If it cannot be found then an error
+// to find the image with the given name, architecture and version in the desired cloud profile. If it cannot be found then an error
 // is returned.
-func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, imageName, imageVersion string) (string, error) {
+func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, imageName, imageVersion string, architecture *string) (string, error) {
 	if cloudProfileConfig != nil {
 		for _, machineImage := range cloudProfileConfig.MachineImages {
 			if machineImage.Name != imageName {
 				continue
 			}
 			for _, version := range machineImage.Versions {
-				if imageVersion == version.Version {
+				if imageVersion == version.Version && pointer.StringEqual(architecture, version.Architecture) {
 					return version.Image, nil
 				}
 			}
 		}
 	}
 
-	return "", fmt.Errorf("could not find an image for name %q in version %q", imageName, imageVersion)
+	return "", fmt.Errorf("could not find an image for name %q and architecture %q in version %q", imageName, *architecture, imageVersion)
 }

@@ -47,8 +47,8 @@ func (w *workerDelegate) UpdateMachineImagesStatus(ctx context.Context) error {
 	return nil
 }
 
-func (w *workerDelegate) findMachineImage(name, version string) (string, error) {
-	machineImage, err := helper.FindImageFromCloudProfile(w.cloudProfileConfig, name, version)
+func (w *workerDelegate) findMachineImage(name, version string, architecture *string) (string, error) {
+	machineImage, err := helper.FindImageFromCloudProfile(w.cloudProfileConfig, name, version, architecture)
 	if err == nil {
 		return machineImage, nil
 	}
@@ -60,19 +60,19 @@ func (w *workerDelegate) findMachineImage(name, version string) (string, error) 
 			return "", fmt.Errorf("could not decode worker status of worker '%s': %w", kutil.ObjectName(w.worker), err)
 		}
 
-		machineImage, err := helper.FindMachineImage(workerStatus.MachineImages, name, version)
+		machineImage, err := helper.FindMachineImage(workerStatus.MachineImages, name, version, architecture)
 		if err != nil {
-			return "", worker.ErrorMachineImageNotFound(name, version)
+			return "", worker.ErrorMachineImageNotFound(name, version, *architecture)
 		}
 
 		return machineImage.Image, nil
 	}
 
-	return "", worker.ErrorMachineImageNotFound(name, version)
+	return "", worker.ErrorMachineImageNotFound(name, version, *architecture)
 }
 
 func appendMachineImage(machineImages []api.MachineImage, machineImage api.MachineImage) []api.MachineImage {
-	if _, err := helper.FindMachineImage(machineImages, machineImage.Name, machineImage.Version); err != nil {
+	if _, err := helper.FindMachineImage(machineImages, machineImage.Name, machineImage.Version, machineImage.Architecture); err != nil {
 		return append(machineImages, machineImage)
 	}
 	return machineImages

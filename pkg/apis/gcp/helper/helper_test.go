@@ -17,6 +17,7 @@ package helper_test
 import (
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	"k8s.io/utils/pointer"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -43,23 +44,24 @@ var _ = Describe("Helper", func() {
 	)
 
 	DescribeTable("#FindMachineImage",
-		func(machineImages []api.MachineImage, name, version string, expectedMachineImage *api.MachineImage, expectErr bool) {
-			machineImage, err := FindMachineImage(machineImages, name, version)
+		func(machineImages []api.MachineImage, name, version string, architecture *string, expectedMachineImage *api.MachineImage, expectErr bool) {
+			machineImage, err := FindMachineImage(machineImages, name, version, architecture)
 			expectResults(machineImage, expectedMachineImage, err, expectErr)
 		},
 
-		Entry("list is nil", nil, "foo", "1.2.3", nil, true),
-		Entry("empty list", []api.MachineImage{}, "foo", "1.2.3", nil, true),
-		Entry("entry not found (no name)", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123"}}, "foo", "1.2.3", nil, true),
-		Entry("entry not found (no version)", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123"}}, "foo", "1.2.4", nil, true),
-		Entry("entry exists", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123"}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", Image: "image123"}, false),
+		Entry("list is nil", nil, "foo", "1.2.3", pointer.String("foo"), nil, true),
+		Entry("empty list", []api.MachineImage{}, "foo", "1.2.3", pointer.String("foo"), nil, true),
+		Entry("entry not found (no name)", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123"}}, "foo", "1.2.3", pointer.String("foo"), nil, true),
+		Entry("entry not found (no version)", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123"}}, "foo", "1.2.4", pointer.String("foo"), nil, true),
+		Entry("entry not found (no architecture)", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123", Architecture: pointer.String("foo")}}, "foo", "1.2.4", pointer.String("foo"), nil, true),
+		Entry("entry exists", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123", Architecture: pointer.String("foo")}}, "bar", "1.2.3", pointer.String("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", Image: "image123", Architecture: pointer.String("foo")}, false),
 	)
 
 	DescribeTable("#FindImage",
-		func(profileImages []api.MachineImages, imageName, version string, expectedImage string) {
+		func(profileImages []api.MachineImages, imageName, version string, architecture *string, expectedImage string) {
 			cfg := &api.CloudProfileConfig{}
 			cfg.MachineImages = profileImages
-			image, err := FindImageFromCloudProfile(cfg, imageName, version)
+			image, err := FindImageFromCloudProfile(cfg, imageName, version, architecture)
 
 			Expect(image).To(Equal(expectedImage))
 			if expectedImage != "" {
@@ -69,20 +71,22 @@ var _ = Describe("Helper", func() {
 			}
 		},
 
-		Entry("list is nil", nil, "ubuntu", "1", ""),
+		Entry("list is nil", nil, "ubuntu", "1", pointer.String("foo"), ""),
 
-		Entry("profile empty list", []api.MachineImages{}, "ubuntu", "1", ""),
-		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1"), "ubuntu", "1", ""),
-		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2"), "ubuntu", "1", ""),
-		Entry("profile entry", makeProfileMachineImages("ubuntu", "1"), "ubuntu", "1", profileImage),
+		Entry("profile empty list", []api.MachineImages{}, "ubuntu", "1", pointer.String("foo"), ""),
+		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1", pointer.String("foo")), "ubuntu", "1", pointer.String("foo"), ""),
+		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2", pointer.String("foo")), "ubuntu", "1", pointer.String("foo"), ""),
+		Entry("profile entry not found (no architecture)", makeProfileMachineImages("ubuntu", "2", pointer.String("bar")), "ubuntu", "1", pointer.String("foo"), ""),
+		Entry("profile entry", makeProfileMachineImages("ubuntu", "1", pointer.String("foo")), "ubuntu", "1", pointer.String("foo"), profileImage),
 	)
 })
 
-func makeProfileMachineImages(name, version string) []api.MachineImages {
+func makeProfileMachineImages(name, version string, architecture *string) []api.MachineImages {
 	var versions []api.MachineImageVersion
 	versions = append(versions, api.MachineImageVersion{
-		Version: version,
-		Image:   profileImage,
+		Version:      version,
+		Image:        profileImage,
+		Architecture: architecture,
 	})
 
 	return []api.MachineImages{

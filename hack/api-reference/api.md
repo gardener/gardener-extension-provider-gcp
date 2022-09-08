@@ -537,6 +537,18 @@ string
 <p>Image is the path to the image.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>architecture</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Architecture is the CPU architecture of the machine image.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion
@@ -576,6 +588,18 @@ string
 </td>
 <td>
 <p>Image is the path to the image.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>architecture</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Architecture is the CPU architecture of the machine image.</p>
 </td>
 </tr>
 </tbody>

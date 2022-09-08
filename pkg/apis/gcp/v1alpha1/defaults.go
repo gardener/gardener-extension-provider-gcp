@@ -15,9 +15,19 @@
 package v1alpha1
 
 import (
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 )
 
 func addDefaultingFuncs(scheme *runtime.Scheme) error {
 	return RegisterDefaults(scheme)
+}
+
+// SetDefaults_MachineImageVersion set the architecture of machine image.
+func SetDefaults_MachineImageVersion(obj *MachineImageVersion) {
+	if obj.Architecture == nil {
+		obj.Architecture = pointer.String(v1beta1constants.ArchitectureAMD64)
+	}
 }

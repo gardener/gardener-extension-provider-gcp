@@ -23,6 +23,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/pointer"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -107,14 +108,18 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 			return err
 		}
 
-		machineImage, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version)
+		arch := pointer.StringDeref(pool.Architecture, v1beta1constants.ArchitectureAMD64)
+
+		machineImage, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version, &arch)
 		if err != nil {
 			return err
 		}
+
 		machineImages = appendMachineImage(machineImages, apisgcp.MachineImage{
-			Name:    pool.MachineImage.Name,
-			Version: pool.MachineImage.Version,
-			Image:   machineImage,
+			Name:         pool.MachineImage.Name,
+			Version:      pool.MachineImage.Version,
+			Image:        machineImage,
+			Architecture: &arch,
 		})
 
 		disks := make([]map[string]interface{}, 0)

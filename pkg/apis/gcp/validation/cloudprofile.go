@@ -21,7 +21,9 @@ import (
 
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/helper"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/strings/slices"
 )
 
 // ValidateCloudProfileConfig validates a CloudProfileConfig object.
@@ -56,6 +58,9 @@ func validateVersions(versionsConfig []apisgcp.MachineImageVersion, versions []c
 			if version.Version == versionConfig.Version {
 				if len(versionConfig.Image) == 0 {
 					allErrs = append(allErrs, field.Required(jdxPath.Child("image"), "must provide an image"))
+				}
+				if !slices.Contains(v1beta1constants.ValidArchitectures, *versionConfig.Architecture) {
+					allErrs = append(allErrs, field.NotSupported(jdxPath.Child("architecture"), *versionConfig.Architecture, v1beta1constants.ValidArchitectures))
 				}
 				processed = true
 				break
