@@ -18,12 +18,15 @@ spec:
         cpu: {{ .Values.resources.mcmProviderGCP.requests.cpu }}
         memory: {{ .Values.resources.mcmProviderGCP.requests.memory }}
       maxAllowed:
-        cpu: {{.Values.resources.mcmProviderGCP.maxAllowed.cpu}}
-        memory: {{.Values.resources.mcmProviderGCP.maxAllowed.memory}}
+        cpu: {{ .Values.vpa.resourcePolicy.mcmProviderGCP.maxAllowed.cpu }}
+        memory: {{ .Values.vpa.resourcePolicy.mcmProviderGCP.maxAllowed.memory }}
       controlledValues: RequestsOnly
     - containerName: gcp-machine-controller-manager
       minAllowed:
         cpu: {{ .Values.resources.mcm.requests.cpu }}
         memory: {{ .Values.resources.mcm.requests.memory }}
+      maxAllowed:
+        cpu: {{ .Values.vpa.resourcePolicy.mcm.maxAllowed.cpu }}
+        memory: {{ .Values.vpa.resourcePolicy.mcm.maxAllowed.memory }}
       controlledValues: RequestsOnly
 {{- end }}

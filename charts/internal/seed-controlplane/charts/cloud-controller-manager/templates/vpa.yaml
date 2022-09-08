@@ -17,6 +17,6 @@ spec:
         cpu: {{ .Values.resources.requests.cpu }}
         memory: {{ .Values.resources.requests.memory }}
       maxAllowed:
-        cpu: {{ .Values.resources.maxAllowed.cpu }}
-        memory: {{ .Values.resources.maxAllowed.memory }}
+        cpu: {{ .Values.vpa.resourcePolicy.maxAllowed.cpu }}
+        memory: {{ .Values.vpa.resourcePolicy.maxAllowed.memory }}
       controlledValues: RequestsOnly

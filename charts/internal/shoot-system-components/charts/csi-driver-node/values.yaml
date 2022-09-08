@@ -20,26 +20,32 @@ resources:
       memory: 50Mi
     limits:
       memory: 400Mi
-    maxAllowed:
-      cpu: 2
-      memory: 4G
   nodeDriverRegistrar:
     requests:
       cpu: 11m
       memory: 32Mi
     limits:
       memory: 50Mi
-    maxAllowed:
-      cpu: 1
-      memory: 2G
   livenessProbe:
     requests:
       cpu: 11m
       memory: 32Mi
     limits:
       memory: 300Mi
-    maxAllowed:
-      cpu: 1
-      memory: 4G
 
 pspDisabled: false
+
+vpa:
+  resourcePolicy:
+    driver:
+      maxAllowed:
+        cpu: 2
+        memory: 4G
+    nodeDriverRegistrar:
+      maxAllowed:
+        cpu: 1
+        memory: 3G
+    livenessProbe:
+      maxAllowed:
+        cpu: 1
+        memory: 3G
