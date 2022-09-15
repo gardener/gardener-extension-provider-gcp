@@ -32,6 +32,10 @@ import (
 type ComputeClient interface {
 	// GetExternalAddresses returns a list of all external IP addresses mapped to the names of their users.
 	GetExternalAddresses(ctx context.Context, region string) (map[string][]string, error)
+	// GetVPC returns a name of VPC
+	GetVPC(ctx context.Context, network string) (*compute.Network, error)
+	// GetSubenet returns a subnet info.
+	GetSubenet(ctx context.Context, region, subnet string) (*compute.Subnetwork, error)
 }
 
 type computeClient struct {
@@ -87,4 +91,22 @@ func (s *computeClient) GetExternalAddresses(ctx context.Context, region string)
 		return nil, err
 	}
 	return addresses, nil
+}
+
+// GetVPC returns a VPC info.
+func (s *computeClient) GetVPC(ctx context.Context, network string) (*compute.Network, error) {
+	resp, err := s.service.Networks.Get(s.projectID, network).Context(ctx).Do()
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// GetSubenet returns a subnet info.
+func (s *computeClient) GetSubenet(ctx context.Context, region, subnet string) (*compute.Subnetwork, error) {
+	resp, err := s.service.Subnetworks.Get(s.projectID, region, subnet).Context(ctx).Do()
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }

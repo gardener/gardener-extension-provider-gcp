@@ -10,6 +10,7 @@ import (
 
 	client "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	gomock "github.com/golang/mock/gomock"
+	compute "google.golang.org/api/compute/v1"
 	v1 "k8s.io/api/core/v1"
 	client0 "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -199,4 +200,34 @@ func (m *MockComputeClient) GetExternalAddresses(arg0 context.Context, arg1 stri
 func (mr *MockComputeClientMockRecorder) GetExternalAddresses(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExternalAddresses", reflect.TypeOf((*MockComputeClient)(nil).GetExternalAddresses), arg0, arg1)
+}
+
+// GetSubenet mocks base method.
+func (m *MockComputeClient) GetSubenet(arg0 context.Context, arg1, arg2 string) (*compute.Subnetwork, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSubenet", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*compute.Subnetwork)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSubenet indicates an expected call of GetSubenet.
+func (mr *MockComputeClientMockRecorder) GetSubenet(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubenet", reflect.TypeOf((*MockComputeClient)(nil).GetSubenet), arg0, arg1, arg2)
+}
+
+// GetVPC mocks base method.
+func (m *MockComputeClient) GetVPC(arg0 context.Context, arg1 string) (*compute.Network, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetVPC", arg0, arg1)
+	ret0, _ := ret[0].(*compute.Network)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetVPC indicates an expected call of GetVPC.
+func (mr *MockComputeClientMockRecorder) GetVPC(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVPC", reflect.TypeOf((*MockComputeClient)(nil).GetVPC), arg0, arg1)
 }
