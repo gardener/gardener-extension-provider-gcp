@@ -102,7 +102,7 @@ var _ = Describe("Service Account", func() {
 				}
 			)
 			c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret) error {
+				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
 					*actual = *secret
 					return nil
 				})
@@ -127,7 +127,7 @@ var _ = Describe("Service Account", func() {
 				}
 			)
 			c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret) error {
+				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
 					*actual = *secret
 					return nil
 				})
