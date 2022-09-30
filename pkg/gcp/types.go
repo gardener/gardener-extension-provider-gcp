@@ -81,8 +81,8 @@ const (
 	CSINodeDriverRegistrarName = "csi-node-driver-registrar"
 	// CSILivenessProbeName is a constant for the name of the csi-liveness-probe component.
 	CSILivenessProbeName = "csi-liveness-probe"
-	// CSISnapshotValidation is the constant for the name of the csi-snapshot-validation-webhook component.
-	CSISnapshotValidation = "csi-snapshot-validation"
+	// CSISnapshotValidationName is the constant for the name of the csi-snapshot-validation-webhook component.
+	CSISnapshotValidationName = "csi-snapshot-validation"
 	// MachineControllerManagerName is a constant for the name of the machine-controller-manager.
 	MachineControllerManagerName = "machine-controller-manager"
 	// MachineControllerManagerVpaName is the name of the VerticalPodAutoscaler of the machine-controller-manager deployment.
