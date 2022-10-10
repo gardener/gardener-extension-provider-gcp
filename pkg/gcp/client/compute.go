@@ -34,8 +34,8 @@ type ComputeClient interface {
 	GetExternalAddresses(ctx context.Context, region string) (map[string][]string, error)
 	// GetVPC returns a name of VPC
 	GetVPC(ctx context.Context, network string) (*compute.Network, error)
-	// GetSubenet returns a subnet info.
-	GetSubenet(ctx context.Context, region, subnet string) (*compute.Subnetwork, error)
+	// GetSubnet returns a subnet info.
+	GetSubnet(ctx context.Context, region, subnet string) (*compute.Subnetwork, error)
 }
 
 type computeClient struct {
@@ -102,8 +102,8 @@ func (s *computeClient) GetVPC(ctx context.Context, network string) (*compute.Ne
 	return resp, nil
 }
 
-// GetSubenet returns a subnet info.
-func (s *computeClient) GetSubenet(ctx context.Context, region, subnet string) (*compute.Subnetwork, error) {
+// GetSubnet returns a subnet info.
+func (s *computeClient) GetSubnet(ctx context.Context, region, subnet string) (*compute.Subnetwork, error) {
 	resp, err := s.service.Subnetworks.Get(s.projectID, region, subnet).Context(ctx).Do()
 	if err != nil {
 		return nil, err

@@ -54,7 +54,7 @@ func (c *configValidator) Validate(ctx context.Context, bastion *extensionsv1alp
 
 	logger := c.logger.WithValues("bastion", client.ObjectKeyFromObject(bastion))
 
-	infrastructureStatus, err := getInfrastructureStatus(ctx, c.Client(), cluster)
+	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, c.Client(), cluster)
 	if err != nil {
 		allErrs = append(allErrs, field.InternalError(nil, err))
 		return allErrs
@@ -74,41 +74,53 @@ func (c *configValidator) Validate(ctx context.Context, bastion *extensionsv1alp
 
 	// Validate bastion config
 	logger.Info("Validating bastion configuration")
-	allErrs = append(allErrs, c.validateInfrastructureStatus(ctx, computeClient, cluster.Shoot.Spec.Region, infrastructureStatus)...)
+	allErrs = append(allErrs, c.validateInfrastructureStatus(ctx, computeClient, cluster.Shoot.Spec.Region, infrastructureStatus, subnet)...)
 
 	return allErrs
 }
 
-func getInfrastructureStatus(ctx context.Context, c client.Client, cluster *extensions.Cluster) (*gcp.InfrastructureStatus, error) {
+func getInfrastructureStatus(ctx context.Context, c client.Client, cluster *extensions.Cluster) (*gcp.InfrastructureStatus, string, error) {
 	var infrastructureStatus *gcp.InfrastructureStatus
+	var nodeSubnet string
 
 	worker := &extensionsv1alpha1.Worker{}
 
 	err := c.Get(ctx, client.ObjectKey{Namespace: cluster.ObjectMeta.Name, Name: cluster.Shoot.Name}, worker)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if worker == nil || worker.Spec.InfrastructureProviderStatus == nil {
-		return nil, errors.New("infrastructure provider status must be not empty for worker")
+		return nil, "", errors.New("infrastructure provider status must be not empty for worker")
 	}
 
 	if infrastructureStatus, err = helper.InfrastructureStatusFromRaw(worker.Spec.InfrastructureProviderStatus); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if infrastructureStatus.Networks.VPC.Name == "" {
-		return nil, errors.New("virtual network must be not empty for infrastructure provider status")
+		return nil, "", errors.New("virtual network must be not empty for infrastructure provider status")
 	}
 
 	if len(infrastructureStatus.Networks.Subnets) == 0 || infrastructureStatus.Networks.Subnets[0].Name == "" {
-		return nil, errors.New("subnet must be not empty for infrastructure provider status")
+		return nil, "", errors.New("subnet must be not empty for infrastructure provider status")
 	}
 
-	return infrastructureStatus, nil
+	for _, s := range infrastructureStatus.Networks.Subnets {
+		if s.Purpose == gcp.PurposeNodes && s.Name != "" {
+			nodeSubnet = s.Name
+			break
+		}
+	}
+
+	if nodeSubnet == "" {
+		return nil, "", errors.New("could not get subnet purpose node from infrastructure status")
+	}
+
+	return infrastructureStatus, nodeSubnet, nil
 }
 
-func (c *configValidator) validateInfrastructureStatus(ctx context.Context, computeClient gcpclient.ComputeClient, region string, infrastructureStatus *gcp.InfrastructureStatus) field.ErrorList {
+func (c *configValidator) validateInfrastructureStatus(ctx context.Context, computeClient gcpclient.ComputeClient, region string, infrastructureStatus *gcp.InfrastructureStatus, nodeSubnet string) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	vpc, err := computeClient.GetVPC(ctx, infrastructureStatus.Networks.VPC.Name)
@@ -117,9 +129,9 @@ func (c *configValidator) validateInfrastructureStatus(ctx context.Context, comp
 		return allErrs
 	}
 
-	subnet, err := computeClient.GetSubenet(ctx, region, infrastructureStatus.Networks.Subnets[0].Name)
+	subnet, err := computeClient.GetSubnet(ctx, region, nodeSubnet)
 	if err != nil || subnet == nil || subnet.Name == "" {
-		allErrs = append(allErrs, field.InternalError(field.NewPath("subnet"), fmt.Errorf("could not get subnet %s from gcp provider: %w", infrastructureStatus.Networks.Subnets[0].Name, err)))
+		allErrs = append(allErrs, field.InternalError(field.NewPath("subnet"), fmt.Errorf("could not get subnet %s from gcp provider: %w", nodeSubnet, err)))
 		return allErrs
 	}
 

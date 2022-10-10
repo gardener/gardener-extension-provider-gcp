@@ -82,8 +82,11 @@ var _ = Describe("ConfigValidator", func() {
 						Name: name,
 					},
 				},
-				Subnets: []apisgcp.Subnet{{Name: name}},
-				NatIPs:  []apisgcp.NatIP{},
+				Subnets: []apisgcp.Subnet{{
+					Name:    name,
+					Purpose: apisgcp.PurposeNodes,
+				}},
+				NatIPs: []apisgcp.NatIP{},
 			},
 		}
 
@@ -115,7 +118,7 @@ var _ = Describe("ConfigValidator", func() {
 
 		It("should succeed if there are infrastructureStatus passed", func() {
 			gcpComputeClient.EXPECT().GetVPC(ctx, name).Return(&compute.Network{Name: name}, nil)
-			gcpComputeClient.EXPECT().GetSubenet(ctx, region, name).Return(&compute.Subnetwork{Name: name}, nil)
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, name).Return(&compute.Subnetwork{Name: name}, nil)
 			errorList := cv.Validate(ctx, bastion, cluster)
 			Expect(errorList).To(BeEmpty())
 		})
@@ -133,7 +136,7 @@ var _ = Describe("ConfigValidator", func() {
 
 		It("should fail with InternalError if getting subnet failed", func() {
 			gcpComputeClient.EXPECT().GetVPC(ctx, name).Return(&compute.Network{Name: name}, nil)
-			gcpComputeClient.EXPECT().GetSubenet(ctx, region, name).Return(&compute.Subnetwork{Name: ""}, nil)
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, name).Return(&compute.Subnetwork{Name: ""}, nil)
 			errorList := cv.Validate(ctx, bastion, cluster)
 			Expect(errorList).To(ConsistOfFields(
 				gstruct.Fields{

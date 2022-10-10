@@ -202,19 +202,19 @@ func (mr *MockComputeClientMockRecorder) GetExternalAddresses(arg0, arg1 interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExternalAddresses", reflect.TypeOf((*MockComputeClient)(nil).GetExternalAddresses), arg0, arg1)
 }
 
-// GetSubenet mocks base method.
-func (m *MockComputeClient) GetSubenet(arg0 context.Context, arg1, arg2 string) (*compute.Subnetwork, error) {
+// GetSubnet mocks base method.
+func (m *MockComputeClient) GetSubnet(arg0 context.Context, arg1, arg2 string) (*compute.Subnetwork, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSubenet", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetSubnet", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*compute.Subnetwork)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetSubenet indicates an expected call of GetSubenet.
-func (mr *MockComputeClientMockRecorder) GetSubenet(arg0, arg1, arg2 interface{}) *gomock.Call {
+// GetSubnet indicates an expected call of GetSubnet.
+func (mr *MockComputeClientMockRecorder) GetSubnet(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubenet", reflect.TypeOf((*MockComputeClient)(nil).GetSubenet), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubnet", reflect.TypeOf((*MockComputeClient)(nil).GetSubnet), arg0, arg1, arg2)
 }
 
 // GetVPC mocks base method.
