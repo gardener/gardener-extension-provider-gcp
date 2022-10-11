@@ -24,6 +24,7 @@ import (
 	"time"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
@@ -35,6 +36,7 @@ import (
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -226,9 +228,10 @@ func runTest(
 	iamService *iam.Service,
 ) error {
 	var (
-		namespace *corev1.Namespace
-		cluster   *extensionsv1alpha1.Cluster
-		infra     *extensionsv1alpha1.Infrastructure
+		namespace     *corev1.Namespace
+		priorityClass *schedulingv1.PriorityClass
+		cluster       *extensionsv1alpha1.Cluster
+		infra         *extensionsv1alpha1.Infrastructure
 	)
 
 	var cleanupHandle framework.CleanupActionHandle
@@ -294,6 +297,17 @@ func runTest(
 		},
 	}
 	if err := c.Create(ctx, cluster); err != nil {
+		return err
+	}
+	priorityClass = &schedulingv1.PriorityClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1beta1constants.PriorityClassNameShootControlPlane300,
+		},
+		Description:   "PriorityClass for Shoot control plane components",
+		GlobalDefault: false,
+		Value:         999998300,
+	}
+	if err := c.Create(ctx, priorityClass); client.IgnoreAlreadyExists(err) != nil {
 		return err
 	}
 
