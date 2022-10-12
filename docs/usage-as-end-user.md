@@ -76,7 +76,10 @@ If you want to get a fresh VPC for the shoot then just omit the `networks.vpc` f
 * If a VPC name is not given then we will create the cloud router + NAT gateway to ensure that worker nodes don't get external IPs.
 
 * If a VPC name is given then a cloud router name must also be given, failure to do so would result in validation errors
-and possibly clusters without egress connectivity.
+and possibly clusters without egress connectivity. 
+
+* If a VPC name is given and calico shoot clusters are created without a network overlay within one VPC make sure that the pod CIDR specified in `shoot.spec.networking.pods` is not overlapping with any other pod CIDR used in that VPC.
+Overlapping pod CIDRs will lead to disfunctional shoot clusters.
 
 The `networks.workers` section describes the CIDR for a subnet that is used for all shoot worker nodes, i.e., VMs which later run your applications.
 
