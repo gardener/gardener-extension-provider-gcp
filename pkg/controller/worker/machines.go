@@ -179,7 +179,14 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 				"description":        fmt.Sprintf("Machine of Shoot %s created by machine-controller-manager.", w.worker.Name),
 				"disks":              disks,
 				"labels":             gceInstanceLabels,
-				"machineType":        pool.MachineType,
+				// TODO: make this configurable for the user
+				"metadata": []map[string]string{
+					{
+						"key":   "block-project-ssh-keys",
+						"value": "TRUE",
+					},
+				},
+				"machineType": pool.MachineType,
 				"networkInterfaces": []map[string]interface{}{
 					{
 						"subnetwork":        nodesSubnet.Name,
