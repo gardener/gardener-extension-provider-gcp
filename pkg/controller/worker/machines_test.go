@@ -422,7 +422,13 @@ var _ = Describe("Machines", func() {
 								},
 							},
 						},
-						"labels":      gceInstanceLabels,
+						"labels": gceInstanceLabels,
+						"metadata": []map[string]string{
+							{
+								"key":   "block-project-ssh-keys",
+								"value": "TRUE",
+							},
+						},
 						"machineType": machineType,
 						"networkInterfaces": []map[string]interface{}{
 							{
