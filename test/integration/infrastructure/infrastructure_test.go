@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
@@ -52,6 +53,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	. "github.com/gardener/gardener-extension-provider-gcp/test/integration/infrastructure"
 )
 
@@ -117,7 +119,7 @@ var _ = BeforeSuite(func() {
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
-		UseExistingCluster: pointer.BoolPtr(true),
+		UseExistingCluster: pointer.Bool(true),
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
@@ -172,7 +174,7 @@ var _ = Describe("Infrastructure tests", func() {
 		})
 
 		It("should successfully create and delete", func() {
-			providerConfig := newProviderConfig(nil)
+			providerConfig := newProviderConfig(nil, nil)
 
 			namespace, err := generateNamespaceName()
 			Expect(err).NotTo(HaveOccurred())
@@ -182,7 +184,7 @@ var _ = Describe("Infrastructure tests", func() {
 		})
 	})
 
-	Context("with infrastructure that uses existing vpc", func() {
+	Context("with infrastructure that uses existing vpc, cloud router and cloud nat", func() {
 		AfterEach(func() {
 			framework.RunCleanupActions()
 		})
@@ -193,25 +195,40 @@ var _ = Describe("Infrastructure tests", func() {
 
 			networkName := namespace
 			cloudRouterName := networkName + "-cloud-router"
-
-			err = prepareNewNetwork(ctx, log, project, computeService, networkName, cloudRouterName)
-			Expect(err).NotTo(HaveOccurred())
+			ipAddressNames := []string{networkName + "-manual-nat1", networkName + "-manual-nat2"}
 
 			var cleanupHandle framework.CleanupActionHandle
 			cleanupHandle = framework.AddCleanupAction(func() {
 				err := teardownNetwork(ctx, log, project, computeService, networkName, cloudRouterName)
 				Expect(err).NotTo(HaveOccurred())
+				err = teardownIPAddresses(ctx, log, project, computeService, ipAddressNames)
+				Expect(err).NotTo(HaveOccurred())
 
 				framework.RemoveCleanupAction(cleanupHandle)
 			})
 
-			providerConfig := newProviderConfig(&gcpv1alpha1.VPC{
+			err = prepareNewNetwork(ctx, log, project, computeService, networkName, cloudRouterName)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = prepareNewIPAddresses(ctx, log, project, computeService, ipAddressNames)
+			Expect(err).NotTo(HaveOccurred())
+
+			vpc := &gcpv1alpha1.VPC{
 				Name: networkName,
 				CloudRouter: &gcpv1alpha1.CloudRouter{
 					Name: cloudRouterName,
 				},
 				EnablePrivateGoogleAccess: true,
-			})
+			}
+			var natIPNames []gcpv1alpha1.NatIPName
+			for _, ipAddressName := range ipAddressNames {
+				natIPNames = append(natIPNames, gcpv1alpha1.NatIPName{Name: ipAddressName})
+			}
+			cloudNAT := &gcpv1alpha1.CloudNAT{
+				MinPortsPerVM: pointer.Int32(2048),
+				NatIPNames:    natIPNames,
+			}
+			providerConfig := newProviderConfig(vpc, cloudNAT)
 
 			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
 			Expect(err).NotTo(HaveOccurred())
@@ -357,7 +374,7 @@ func runTest(
 	return nil
 }
 
-func newProviderConfig(vpc *gcpv1alpha1.VPC) *gcpv1alpha1.InfrastructureConfig {
+func newProviderConfig(vpc *gcpv1alpha1.VPC, cloudNAT *gcpv1alpha1.CloudNAT) *gcpv1alpha1.InfrastructureConfig {
 	return &gcpv1alpha1.InfrastructureConfig{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: gcpv1alpha1.SchemeGroupVersion.String(),
@@ -365,12 +382,13 @@ func newProviderConfig(vpc *gcpv1alpha1.VPC) *gcpv1alpha1.InfrastructureConfig {
 		},
 		Networks: gcpv1alpha1.NetworkConfig{
 			VPC:      vpc,
+			CloudNAT: cloudNAT,
 			Workers:  workersSubnetCIDR,
-			Internal: pointer.StringPtr(internalSubnetCIDR),
+			Internal: pointer.String(internalSubnetCIDR),
 			FlowLogs: &gcpv1alpha1.FlowLogs{
-				AggregationInterval: pointer.StringPtr("INTERVAL_5_SEC"),
-				FlowSampling:        pointer.Float32Ptr(0.2),
-				Metadata:            pointer.StringPtr("INCLUDE_ALL_METADATA"),
+				AggregationInterval: pointer.String("INTERVAL_5_SEC"),
+				FlowSampling:        pointer.Float32(0.2),
+				Metadata:            pointer.String("INCLUDE_ALL_METADATA"),
 			},
 		},
 	}
@@ -452,21 +470,70 @@ func teardownNetwork(ctx context.Context, logger logr.Logger, project string, co
 
 	routerOp, err := computeService.Routers.Delete(project, *region, routerName).Context(ctx).Do()
 	if err != nil {
-		return err
-	}
-
-	logger.Info("Waiting until router is deleted...", "router", routerName)
-	if err := waitForOperation(ctx, project, computeService, routerOp); err != nil {
-		return err
+		if gcpclient.IsErrorCode(err, http.StatusNotFound) {
+			logger.Info("The router is gone", "router", routerName)
+		} else {
+			return err
+		}
+	} else {
+		logger.Info("Waiting until router is deleted...", "router", routerName)
+		if err = waitForOperation(ctx, project, computeService, routerOp); err != nil {
+			return err
+		}
 	}
 
 	networkOp, err := computeService.Networks.Delete(project, networkName).Context(ctx).Do()
 	if err != nil {
-		return err
+		if gcpclient.IsErrorCode(err, http.StatusNotFound) {
+			logger.Info("The network is gone", "network", networkName)
+		} else {
+			return err
+		}
+	} else {
+		logger.Info("Waiting until network is deleted...", "network", networkName)
+		if err = waitForOperation(ctx, project, computeService, networkOp); err != nil {
+			return err
+		}
 	}
 
-	logger.Info("Waiting until network is deleted...", "network", networkName)
-	return waitForOperation(ctx, project, computeService, networkOp)
+	return nil
+}
+
+func prepareNewIPAddresses(ctx context.Context, logger logr.Logger, project string, computeService *compute.Service, ipAddressNames []string) error {
+	logger = logger.WithValues("project", project)
+	for _, ipAddressName := range ipAddressNames {
+		address := &compute.Address{
+			Name: ipAddressName,
+		}
+		insertAddressOp, err := computeService.Addresses.Insert(project, *region, address).Context(ctx).Do()
+		if err != nil {
+			return err
+		}
+		logger.Info("Waiting until ip address is reserved...", "address", ipAddressName)
+		if err = waitForOperation(ctx, project, computeService, insertAddressOp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func teardownIPAddresses(ctx context.Context, logger logr.Logger, project string, computeService *compute.Service, ipAddressNames []string) error {
+	logger = logger.WithValues("project", project)
+	for _, ipAddressName := range ipAddressNames {
+		deleteAddressOp, err := computeService.Addresses.Delete(project, *region, ipAddressName).Context(ctx).Do()
+		if err != nil {
+			if gcpclient.IsErrorCode(err, http.StatusNotFound) {
+				logger.Info("The ip address is gone", "address", ipAddressName)
+				continue
+			}
+			return err
+		}
+		logger.Info("Waiting until ip address is released...", "address", ipAddressName)
+		if err = waitForOperation(ctx, project, computeService, deleteAddressOp); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func waitForOperation(ctx context.Context, project string, computeService *compute.Service, op *compute.Operation) error {
@@ -546,7 +613,6 @@ func verifyCreation(
 
 	routerNAT := router.Nats[0]
 	Expect(routerNAT.Name).To(Equal(infra.Namespace + "-cloud-nat"))
-	Expect(routerNAT.NatIpAllocateOption).To(Equal("AUTO_ONLY"))
 	Expect(routerNAT.SourceSubnetworkIpRangesToNat).To(Equal("LIST_OF_SUBNETWORKS"))
 	Expect(routerNAT.MinPortsPerVm).To(Equal(int64(2048)))
 	Expect(routerNAT.LogConfig.Enable).To(BeTrue())
@@ -554,6 +620,24 @@ func verifyCreation(
 	Expect(routerNAT.Subnetworks).To(HaveLen(1))
 	Expect(routerNAT.Subnetworks[0].Name).To(Equal(subnetNodes.SelfLink))
 	Expect(routerNAT.Subnetworks[0].SourceIpRangesToNat).To(Equal([]string{"ALL_IP_RANGES"}))
+
+	if providerConfig.Networks.CloudNAT != nil && len(providerConfig.Networks.CloudNAT.NatIPNames) > 0 {
+		Expect(routerNAT.NatIpAllocateOption).To(Equal("MANUAL_ONLY"))
+		Expect(routerNAT.NatIps).To(HaveLen(len(providerConfig.Networks.CloudNAT.NatIPNames)))
+
+		// ip addresses
+		var ipAddresses = make(map[string]bool)
+		for _, natIPName := range providerConfig.Networks.CloudNAT.NatIPNames {
+			address, err := computeService.Addresses.Get(project, *region, natIPName.Name).Context(ctx).Do()
+			Expect(err).NotTo(HaveOccurred())
+			ipAddresses[address.SelfLink] = true
+		}
+		for _, natIP := range routerNAT.NatIps {
+			Expect(ipAddresses).Should(HaveKey(natIP))
+		}
+	} else {
+		Expect(routerNAT.NatIpAllocateOption).To(Equal("AUTO_ONLY"))
+	}
 
 	// firewalls
 
