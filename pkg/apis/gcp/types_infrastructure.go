@@ -95,6 +95,8 @@ type VPC struct {
 	Name string
 	// CloudRouter indicates whether to use an existing CloudRouter or create a new one
 	CloudRouter *CloudRouter
+	// EnablePrivateGoogleAccess enables PrivateGoogleAccess for the workers subnet.
+	EnablePrivateGoogleAccess bool
 }
 
 // CloudRouter contains information about the the CloudRouter configuration

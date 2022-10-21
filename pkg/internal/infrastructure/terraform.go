@@ -68,11 +68,12 @@ func ComputeTerraformerTemplateValues(
 	createSA bool,
 ) (map[string]interface{}, error) {
 	var (
-		vpcName           = DefaultVPCName
-		createVPC         = true
-		createCloudRouter = true
-		cloudRouterName   string
-		cN                = map[string]interface{}{"minPortsPerVM": int32(2048)}
+		vpcName             = DefaultVPCName
+		createVPC           = true
+		createCloudRouter   = true
+		cloudRouterName     string
+		cN                  = map[string]interface{}{"minPortsPerVM": int32(2048)}
+		privateGoogleAccess = false
 	)
 
 	if config.Networks.VPC != nil {
@@ -82,6 +83,10 @@ func ComputeTerraformerTemplateValues(
 
 		if config.Networks.VPC.CloudRouter != nil && len(config.Networks.VPC.CloudRouter.Name) > 0 {
 			cloudRouterName = config.Networks.VPC.CloudRouter.Name
+		}
+
+		if config.Networks.VPC.EnablePrivateGoogleAccess {
+			privateGoogleAccess = true
 		}
 	}
 
@@ -139,9 +144,10 @@ func ComputeTerraformerTemplateValues(
 		"vpc":         vpc,
 		"clusterName": infra.Namespace,
 		"networks": map[string]interface{}{
-			"workers":  workersCIDR,
-			"internal": config.Networks.Internal,
-			"cloudNAT": cN,
+			"workers":                   workersCIDR,
+			"internal":                  config.Networks.Internal,
+			"cloudNAT":                  cN,
+			"enablePrivateGoogleAccess": privateGoogleAccess,
 		},
 		"podCIDR":    *podCIDR,
 		"outputKeys": outputKeys,

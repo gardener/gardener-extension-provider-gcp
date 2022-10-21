@@ -44,7 +44,9 @@ resource "google_compute_subnetwork" "subnetwork-nodes" {
     {{ if .networks.flowLogs.metadata }}metadata             = "{{ .networks.flowLogs.metadata }}"{{ end }}
   }
 {{- end }}
-
+{{- if .networks.enablePrivateGoogleAccess }}
+  private_ip_google_access = true
+{{- end }}
   timeouts {
     create = "5m"
     update = "5m"
