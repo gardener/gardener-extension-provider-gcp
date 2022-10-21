@@ -102,7 +102,7 @@ type VPC struct {
 	// +optional
 	CloudRouter *CloudRouter `json:"cloudRouter,omitempty"`
 	// EnablePrivateGoogleAccess enables PrivateGoogleAccess for the workers subnet.
-	EnablePrivateGoogleAccess bool `json:"enablePrivateGoogleAccess"`
+	EnablePrivateGoogleAccess bool `json:"enablePrivateGoogleAccess,omitempty"`
 }
 
 // CloudRouter contains information about the the CloudRouter configuration
