@@ -124,6 +124,10 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 		}
 	}
 
+	if infra.Networks.CloudNAT != nil && len(infra.Networks.CloudNAT.NatIPNames) == 0 {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("cloudNAT", "natIPNames"), "should not be empty array"))
+	}
+
 	return allErrs
 }
 
