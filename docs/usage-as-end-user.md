@@ -164,7 +164,7 @@ gpu:
 Please find below an example `Shoot` manifest:
 
 ```yaml
-apiVersion: core.gardener.cloud/v1alpha1
+apiVersion: core.gardener.cloud/v1beta1
 kind: Shoot
 metadata:
   name: johndoe-gcp
@@ -205,9 +205,9 @@ spec:
       kubernetesVersion: true
       machineImageVersion: true
   addons:
-    kubernetes-dashboard:
+    kubernetesDashboard:
       enabled: true
-    nginx-ingress:
+    nginxIngress:
       enabled: true
 ```
 
