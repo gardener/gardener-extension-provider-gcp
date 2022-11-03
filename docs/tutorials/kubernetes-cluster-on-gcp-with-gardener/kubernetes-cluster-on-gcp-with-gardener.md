@@ -1,5 +1,5 @@
 ---
-title: Create a Кubernetes cluster on GCP with Gardener
+title: Create a Кubernetes Cluster on GCP with Gardener
 level: beginner
 category: Getting Started
 scope: app-developer
@@ -44,7 +44,7 @@ Gardener allows you to create a Kubernetes cluster on different infrastructure p
 
         <img src="images/gcp-create-service-account-1.png">
 
-4. Create a key for your service:
+1. Create a key for your service:
 
     1. Locate your service account, then choose *Actions* and *Manage keys*.
 
@@ -59,7 +59,9 @@ Gardener allows you to create a Kubernetes cluster on different infrastructure p
         <img src="images/gcp-create-key-2.png">
         <img src="images/gcp-create-key-3.png">
 
-        > Note: Save the key of the user, it’s used later to create secrets for Gardener.
+    {{% alert color="info"  title="Note" %}}
+    Save the key of the user, it’s used later to create secrets for Gardener.
+    {{% /alert %}}
 
 1. Enable the [Google Compute API](https://console.developers.google.com/apis/library/compute.googleapis.com) by following [these steps](https://cloud.google.com/endpoints/docs/openapi/enable-api).
     > When you are finished, you should see the following page:
@@ -67,19 +69,19 @@ Gardener allows you to create a Kubernetes cluster on different infrastructure p
     <img src="images/gcp-compute-engine-api.png">
 
 
-1. Enable the [Google IAM API](https://console.developers.google.com/apis/library/iam.googleapis.com) by following [these steps](https://cloud.google.com/endpoints/docs/openapi/enable-api).
+2. Enable the [Google IAM API](https://console.developers.google.com/apis/library/iam.googleapis.com) by following [these steps](https://cloud.google.com/endpoints/docs/openapi/enable-api).
     > When you are finished, you should see the following page:
 
     <img src="images/gcp-iam-api.png">
 
-1. On the Gardener dashboard, choose *Secrets* and then the plus sign <img src="images/plus-icon.png">. Select *GCP* from the drop down menu to add a new GCP secret.
+3. On the Gardener dashboard, choose *Secrets* and then the plus sign <img src="images/plus-icon.png">. Select *GCP* from the drop down menu to add a new GCP secret.
 
-1. Create your secret.
+4. Create your secret.
 
     1. Type the name of your secret.
-    1. Select your *Cloud Profile*.
-    1. Copy and paste the contents of the *.JSON* file you saved when you created the secret key on GCP.
-    3. Choose *Add secret*.
+    2. Select your *Cloud Profile*.
+    3. Copy and paste the contents of the *.JSON* file you saved when you created the secret key on GCP.
+    4. Choose *Add secret*.
     <img src="images/add-gcp-secret.png">
 
     > After completing these steps, you should see your newly created secret in the *Infrastructure Secrets* section.
@@ -87,19 +89,19 @@ Gardener allows you to create a Kubernetes cluster on different infrastructure p
     <img src="images/secret-stored.png">
 
 
-1. To create a new cluster, choose *Clusters* and then the plus sign in the upper right corner.
+5. To create a new cluster, choose *Clusters* and then the plus sign in the upper right corner.
 
     <img src="images/new-cluster.png">
 
-1. In the *Create Cluster* section:
+6. In the *Create Cluster* section:
     1. Select *GCP* in the *Infrastructure* tab.
-    1. Type the name of your cluster in the *Cluster Details* tab.
-    1. Choose the secret you created before in the *Infrastructure Details* tab.
-    1. Choose *Create*.
+    2. Type the name of your cluster in the *Cluster Details* tab.
+    3. Choose the secret you created before in the *Infrastructure Details* tab.
+    4. Choose *Create*.
 
     <img src="images/create-cluster.png">
 
-1. Wait for your cluster to get created.
+7. Wait for your cluster to get created.
 
     <img src="images/processing-cluster.png">
 
