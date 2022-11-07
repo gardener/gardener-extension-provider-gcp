@@ -58,20 +58,19 @@ var _ = Describe("Service Account", func() {
 
 	Describe("#ExtractServiceAccountProjectID", func() {
 		It("should correctly extract the project ID", func() {
-			actualProjectID, err := ExtractServiceAccountProjectID(serviceAccountData)
-
+			sa, err := GetServiceAccountFromJSON(serviceAccountData)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(actualProjectID).To(Equal(projectID))
+			Expect(sa.ProjectID).To(Equal(projectID))
 		})
 
 		It("should error if the project ID is empty", func() {
-			_, err := ExtractServiceAccountProjectID([]byte(`{"project_id": ""`))
+			_, err := GetServiceAccountFromJSON([]byte(`{"project_id": ""`))
 
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should error on malformed json", func() {
-			_, err := ExtractServiceAccountProjectID([]byte(`{"project_id: "foo"}"`))
+			_, err := GetServiceAccountFromJSON([]byte(`{"project_id": ""`))
 
 			Expect(err).To(HaveOccurred())
 		})
