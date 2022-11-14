@@ -18,13 +18,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/validator"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/validator"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
@@ -104,7 +105,7 @@ var _ = Describe("SecretBinding validator", func() {
 			apiReader.EXPECT().Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
 					secret := &corev1.Secret{Data: map[string][]byte{
-						gcp.ServiceAccountJSONField: []byte(`{"project_id": "project"}`),
+						gcp.ServiceAccountJSONField: []byte(`{"project_id": "project", "type": "service_account"}`),
 					}}
 					*obj = *secret
 					return nil

@@ -15,10 +15,11 @@
 package validation
 
 import (
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 var validVolumeLocalSSDInterfacesTypes = sets.NewString("NVME", "SCSI")

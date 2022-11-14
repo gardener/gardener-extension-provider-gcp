@@ -26,11 +26,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
+
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	bastionctrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -179,7 +180,8 @@ var _ = BeforeSuite(func() {
 	flag.Parse()
 	validateFlags()
 
-	project, err = gcp.ExtractServiceAccountProjectID([]byte(*serviceAccount))
+	sa, err := gcp.GetServiceAccountFromJSON([]byte(*serviceAccount))
+	project = sa.ProjectID
 	Expect(err).NotTo(HaveOccurred())
 	computeService, err = compute.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(compute.CloudPlatformScope))
 	Expect(err).NotTo(HaveOccurred())
@@ -582,13 +584,13 @@ func verifyCreation(ctx context.Context, project string, computeService *compute
 	Expect(firewall.DestinationRanges[0]).To(Equal(options.WorkersCIDR))
 
 	By("checking bastion instance")
-	//bastion instance
+	// bastion instance
 	createdInstance, err := computeService.Instances.Get(project, options.Zone, options.BastionInstanceName).Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(createdInstance.Name).To(Equal(options.BastionInstanceName))
 
 	By("checking bastion ingress IPs exist")
-	//bastion ingress IPs exist
+	// bastion ingress IPs exist
 	networkInterfaces := createdInstance.NetworkInterfaces
 	internalIP := &networkInterfaces[0].NetworkIP
 	externalIP := &networkInterfaces[0].AccessConfigs[0].NatIP
@@ -596,13 +598,13 @@ func verifyCreation(ctx context.Context, project string, computeService *compute
 	Expect(externalIP).NotTo(BeNil())
 
 	By("checking bastion disks exists")
-	//bastion Disk exists
+	// bastion Disk exists
 	createdDisk, err := computeService.Disks.Get(project, options.Zone, bastionctrl.DiskResourceName(options.BastionInstanceName)).Context(ctx).Do()
 	Expect(ignoreNotFoundError(err)).NotTo(HaveOccurred())
 	Expect(createdDisk.Name).To(Equal(bastionctrl.DiskResourceName(options.BastionInstanceName)))
 
 	By("checking userData matches the constant")
-	//userdata ssh-public-key validation
+	// userdata ssh-public-key validation
 	Expect(*createdInstance.Metadata.Items[0].Value).To(Equal(userDataConst))
 }
 

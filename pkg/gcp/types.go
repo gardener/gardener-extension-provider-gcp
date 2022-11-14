@@ -52,6 +52,9 @@ const (
 	// ServiceAccountJSONField is the field in a secret where the service account JSON is stored at.
 	ServiceAccountJSONField = "serviceaccount.json"
 
+	// ServiceAccountCredentialType is the type of the credentials contained in the serviceaccount.json file.
+	ServiceAccountCredentialType = "service_account"
+
 	// CloudControllerManagerName is a constant for the name of the CloudController deployed by the worker controller.
 	CloudControllerManagerName = "cloud-controller-manager"
 	// CSIControllerName is a constant for the name of the CSI controller deployment in the seed.

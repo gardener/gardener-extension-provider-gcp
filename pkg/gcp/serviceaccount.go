@@ -33,6 +33,8 @@ type ServiceAccount struct {
 	ProjectID string
 	// Email is the email associated with the service account.
 	Email string
+	// Type is the type of credentials.
+	Type string
 }
 
 // GetServiceAccountFromSecretReference retrieves the ServiceAccount from the secret with the given secret reference.
@@ -51,14 +53,15 @@ func GetServiceAccountFromSecret(secret *corev1.Secret) (*ServiceAccount, error)
 	if err != nil {
 		return nil, err
 	}
-	return getServiceAccountFromJSON(data)
+	return GetServiceAccountFromJSON(data)
 }
 
-// getServiceAccountFromJSON returns a ServiceAccount from the given
-func getServiceAccountFromJSON(data []byte) (*ServiceAccount, error) {
+// GetServiceAccountFromJSON returns a ServiceAccount from the given
+func GetServiceAccountFromJSON(data []byte) (*ServiceAccount, error) {
 	var serviceAccount struct {
 		ProjectID string `json:"project_id"`
 		Email     string `json:"client_email"`
+		Type      string `json:"type"`
 	}
 
 	if err := json.Unmarshal(data, &serviceAccount); err != nil {
@@ -72,6 +75,7 @@ func getServiceAccountFromJSON(data []byte) (*ServiceAccount, error) {
 		Raw:       data,
 		ProjectID: serviceAccount.ProjectID,
 		Email:     serviceAccount.Email,
+		Type:      serviceAccount.Type,
 	}, nil
 }
 
@@ -83,13 +87,4 @@ func readServiceAccountSecret(secret *corev1.Secret) ([]byte, error) {
 	}
 
 	return data, nil
-}
-
-// ExtractServiceAccountProjectID extracts the project id from the given service account JSON.
-func ExtractServiceAccountProjectID(serviceAccountJSON []byte) (string, error) {
-	sa, err := getServiceAccountFromJSON(serviceAccountJSON)
-	if err != nil {
-		return "", err
-	}
-	return sa.ProjectID, nil
 }
