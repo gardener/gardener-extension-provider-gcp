@@ -999,17 +999,6 @@ CloudRouter
 <p>CloudRouter indicates whether to use an existing CloudRouter or create a new one</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>enablePrivateGoogleAccess</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<p>EnablePrivateGoogleAccess enables PrivateGoogleAccess for the workers subnet.</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.Volume">Volume
