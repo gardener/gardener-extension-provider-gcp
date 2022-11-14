@@ -39,12 +39,12 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		return fmt.Errorf("failed to create GCP client: %w", err)
 	}
 
-	vNet, subnet, err := getNetAndSubnet(ctx, a, cluster)
+	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, a.Client(), cluster)
 	if err != nil {
 		return err
 	}
 
-	opt, err := DetermineOptions(bastion, cluster, serviceAccount.ProjectID, vNet, subnet)
+	opt, err := DetermineOptions(bastion, cluster, serviceAccount.ProjectID, infrastructureStatus.Networks.VPC.Name, subnet)
 	if err != nil {
 		return fmt.Errorf("failed to determine Options: %w", err)
 	}
