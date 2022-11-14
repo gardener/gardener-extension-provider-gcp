@@ -312,6 +312,37 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
 				Expect(errorList).To(BeEmpty())
 			})
+			It("should allow CloudNAT config with valid NatIPNames", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.CloudNAT = &apisgcp.CloudNAT{
+					NatIPNames: []apisgcp.NatIPName{
+						{Name: "test"},
+					},
+				}
+
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(BeEmpty())
+			})
+			It("should allow CloudNAT config without NatIPNames present", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.CloudNAT = &apisgcp.CloudNAT{}
+
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(BeEmpty())
+			})
+			It("should forbid empty array for NAT IP names when CloudNAT is present", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.CloudNAT = &apisgcp.CloudNAT{
+					NatIPNames: []apisgcp.NatIPName{},
+				}
+
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.cloudNAT.natIPNames"),
+					"Detail": Equal("nat IP names cannot be empty"),
+				}))
+			})
 		})
 	})
 
