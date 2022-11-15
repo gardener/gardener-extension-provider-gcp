@@ -19,11 +19,10 @@ import (
 	"fmt"
 	"strconv"
 
-	mockterraformer "github.com/gardener/gardener/extensions/pkg/terraformer/mock"
-
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	mockterraformer "github.com/gardener/gardener/extensions/pkg/terraformer/mock"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/golang/mock/gomock"
@@ -222,9 +221,8 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"workers":                   config.Networks.Workers,
-					"internal":                  config.Networks.Internal,
-					"enablePrivateGoogleAccess": false,
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
 						"minPortsPerVM": minPortsPerVM,
 					},
@@ -262,9 +260,8 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"workers":                   config.Networks.Workers,
-					"internal":                  config.Networks.Internal,
-					"enablePrivateGoogleAccess": false,
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
 						"minPortsPerVM": minPortsPerVM,
 					},
@@ -327,9 +324,8 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"workers":                   config.Networks.Workers,
-					"internal":                  config.Networks.Internal,
-					"enablePrivateGoogleAccess": false,
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
 						"minPortsPerVM": minPortsPerVM,
 						"natIPNames":    natIPNamesOutput,
@@ -391,9 +387,8 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"workers":                   config.Networks.Workers,
-					"internal":                  config.Networks.Internal,
-					"enablePrivateGoogleAccess": false,
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
 						"minPortsPerVM": minPortsPerVM,
 					},
@@ -434,9 +429,8 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"workers":                   config.Networks.Workers,
-					"internal":                  config.Networks.Internal,
-					"enablePrivateGoogleAccess": false,
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
 						"minPortsPerVM": minPortsPerVM,
 					},

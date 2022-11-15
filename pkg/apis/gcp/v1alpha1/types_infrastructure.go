@@ -101,8 +101,6 @@ type VPC struct {
 	// CloudRouter indicates whether to use an existing CloudRouter or create a new one
 	// +optional
 	CloudRouter *CloudRouter `json:"cloudRouter,omitempty"`
-	// EnablePrivateGoogleAccess enables PrivateGoogleAccess for the workers subnet.
-	EnablePrivateGoogleAccess bool `json:"enablePrivateGoogleAccess,omitempty"`
 }
 
 // CloudRouter contains information about the the CloudRouter configuration

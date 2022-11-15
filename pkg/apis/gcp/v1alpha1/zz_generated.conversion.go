@@ -676,7 +676,6 @@ func Convert_gcp_Subnet_To_v1alpha1_Subnet(in *gcp.Subnet, out *Subnet, s conver
 func autoConvert_v1alpha1_VPC_To_gcp_VPC(in *VPC, out *gcp.VPC, s conversion.Scope) error {
 	out.Name = in.Name
 	out.CloudRouter = (*gcp.CloudRouter)(unsafe.Pointer(in.CloudRouter))
-	out.EnablePrivateGoogleAccess = in.EnablePrivateGoogleAccess
 	return nil
 }
 
@@ -688,7 +687,6 @@ func Convert_v1alpha1_VPC_To_gcp_VPC(in *VPC, out *gcp.VPC, s conversion.Scope) 
 func autoConvert_gcp_VPC_To_v1alpha1_VPC(in *gcp.VPC, out *VPC, s conversion.Scope) error {
 	out.Name = in.Name
 	out.CloudRouter = (*CloudRouter)(unsafe.Pointer(in.CloudRouter))
-	out.EnablePrivateGoogleAccess = in.EnablePrivateGoogleAccess
 	return nil
 }
 
