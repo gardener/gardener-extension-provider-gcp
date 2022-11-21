@@ -18,12 +18,13 @@ import (
 	"context"
 	"time"
 
+	calicov1alpha1 "github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1"
+	ciliumv1alpha1 "github.com/gardener/gardener-extension-networking-cilium/pkg/apis/cilium/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/mutator"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
-
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/mutator"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,6 +42,7 @@ var _ = Describe("Shoot mutator", func() {
 		var (
 			shootMutator extensionswebhook.Mutator
 			shoot        *gardencorev1beta1.Shoot
+			oldShoot     *gardencorev1beta1.Shoot
 			ctx          = context.TODO()
 			now          = metav1.Now()
 		)
@@ -68,11 +70,29 @@ var _ = Describe("Shoot mutator", func() {
 					},
 				},
 			}
+
+			oldShoot = &gardencorev1beta1.Shoot{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: namespace,
+				},
+				Spec: gardencorev1beta1.ShootSpec{
+					SeedName: pointer.String("gcp"),
+					Provider: gardencorev1beta1.Provider{
+						Type: gcp.Type,
+					},
+					Region: "us-west1",
+					Networking: gardencorev1beta1.Networking{
+						Nodes: pointer.String("10.250.0.0/16"),
+						Type:  "calico",
+					},
+				},
+			}
 		})
 
-		// TODO (DockToFuture): mutator tests need to be complemented.
-		Context("Mutate shoot", func() {
-			It("should return nil when shoot is in scheduled to new seed phase", func() {
+		Context("Mutate shoot networking providerconfig for type calico", func() {
+
+			It("should return without mutation when shoot is in scheduled to new seed phase", func() {
 				shoot.Status.LastOperation = &gardencorev1beta1.LastOperation{
 					Description:    "test",
 					LastUpdateTime: metav1.Time{Time: metav1.Now().Add(time.Second * -1000)},
@@ -87,7 +107,7 @@ var _ = Describe("Shoot mutator", func() {
 				Expect(shoot).To(DeepEqual(shootExpected))
 			})
 
-			It("should return nil when shoot is in migration or restore phase", func() {
+			It("should return without mutation when shoot is in migration or restore phase", func() {
 				shoot.Status.LastOperation = &gardencorev1beta1.LastOperation{
 					Description:    "test",
 					LastUpdateTime: metav1.Time{Time: metav1.Now().Add(time.Second * -1000)},
@@ -102,7 +122,7 @@ var _ = Describe("Shoot mutator", func() {
 				Expect(shoot).To(DeepEqual(shootExpected))
 			})
 
-			It("should return nil when shoot is in deletion phase", func() {
+			It("should return without mutation when shoot is in deletion phase", func() {
 				shoot.DeletionTimestamp = &now
 				shootExpected := shoot.DeepCopy()
 				err := shootMutator.Mutate(ctx, shoot, nil)
@@ -110,7 +130,7 @@ var _ = Describe("Shoot mutator", func() {
 				Expect(shoot).To(DeepEqual(shootExpected))
 			})
 
-			It("should return nil when shoot specs have not changes", func() {
+			It("should return nil when shoot specs have not changed", func() {
 				shootWithAnnotations := shoot.DeepCopy()
 				shootWithAnnotations.Annotations = map[string]string{"foo": "bar"}
 				shootExpected := shootWithAnnotations.DeepCopy()
@@ -118,6 +138,126 @@ var _ = Describe("Shoot mutator", func() {
 				err := shootMutator.Mutate(ctx, shootWithAnnotations, shoot)
 				Expect(err).To(BeNil())
 				Expect(shootWithAnnotations).To(DeepEqual(shootExpected))
+			})
+
+			It("should disable overlay for a new shoot", func() {
+				err := shootMutator.Mutate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shoot.Spec.Networking.ProviderConfig).To(Equal(&runtime.RawExtension{
+					Object: &calicov1alpha1.NetworkConfig{
+						Overlay: &calicov1alpha1.Overlay{
+							Enabled: false,
+						},
+					},
+				}))
+			})
+
+			It("should take overlay field value from old shoot when unspecified in new shoot", func() {
+				oldShoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"overlay":{"enabled":true}}`),
+					Object: &calicov1alpha1.NetworkConfig{
+						Overlay: &calicov1alpha1.Overlay{
+							Enabled: true,
+						},
+					},
+				}
+				err := shootMutator.Mutate(ctx, shoot, oldShoot)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shoot.Spec.Networking.ProviderConfig).To(Equal(&runtime.RawExtension{
+					Object: &calicov1alpha1.NetworkConfig{
+						Overlay: &calicov1alpha1.Overlay{
+							Enabled: true,
+						},
+					},
+				}))
+			})
+		})
+
+		Context("Mutate shoot networking providerconfig for type cilium", func() {
+
+			BeforeEach(func() {
+				shoot.Spec.Networking.Type = "cilium"
+				oldShoot.Spec.Networking.Type = "cilium"
+			})
+
+			It("should return without mutation when shoot is in scheduled to new seed phase", func() {
+				shoot.Status.LastOperation = &gardencorev1beta1.LastOperation{
+					Description:    "test",
+					LastUpdateTime: metav1.Time{Time: metav1.Now().Add(time.Second * -1000)},
+					Progress:       0,
+					Type:           gardencorev1beta1.LastOperationTypeReconcile,
+					State:          gardencorev1beta1.LastOperationStateProcessing,
+				}
+				shoot.Status.SeedName = pointer.String("aws")
+				shootExpected := shoot.DeepCopy()
+				err := shootMutator.Mutate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shoot).To(DeepEqual(shootExpected))
+			})
+
+			It("should return without mutation when shoot is in migration or restore phase", func() {
+				shoot.Status.LastOperation = &gardencorev1beta1.LastOperation{
+					Description:    "test",
+					LastUpdateTime: metav1.Time{Time: metav1.Now().Add(time.Second * -1000)},
+					Progress:       0,
+					Type:           gardencorev1beta1.LastOperationTypeMigrate,
+					State:          gardencorev1beta1.LastOperationStateProcessing,
+				}
+				shoot.Status.SeedName = pointer.String("gcp")
+				shootExpected := shoot.DeepCopy()
+				err := shootMutator.Mutate(ctx, shoot, shoot)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shoot).To(DeepEqual(shootExpected))
+			})
+
+			It("should return without mutation when shoot is in deletion phase", func() {
+				shoot.DeletionTimestamp = &now
+				shootExpected := shoot.DeepCopy()
+				err := shootMutator.Mutate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shoot).To(DeepEqual(shootExpected))
+			})
+
+			It("should return nil when shoot specs have not changed", func() {
+				shootWithAnnotations := shoot.DeepCopy()
+				shootWithAnnotations.Annotations = map[string]string{"foo": "bar"}
+				shootExpected := shootWithAnnotations.DeepCopy()
+
+				err := shootMutator.Mutate(ctx, shootWithAnnotations, shoot)
+				Expect(err).To(BeNil())
+				Expect(shootWithAnnotations).To(DeepEqual(shootExpected))
+			})
+
+			It("should disable overlay for a new shoot", func() {
+				err := shootMutator.Mutate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shoot.Spec.Networking.ProviderConfig).To(Equal(&runtime.RawExtension{
+					Object: &ciliumv1alpha1.NetworkConfig{
+						Overlay: &ciliumv1alpha1.Overlay{
+							Enabled: false,
+						},
+					},
+				}))
+			})
+
+			It("should take overlay field value from old shoot when unspecified in new shoot", func() {
+				oldShoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"overlay":{"enabled":true}}`),
+					Object: &ciliumv1alpha1.NetworkConfig{
+						Overlay: &ciliumv1alpha1.Overlay{
+							Enabled: true,
+						},
+					},
+				}
+				err := shootMutator.Mutate(ctx, shoot, oldShoot)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shoot.Spec.Networking.ProviderConfig).To(Equal(&runtime.RawExtension{
+					Object: &ciliumv1alpha1.NetworkConfig{
+						Overlay: &ciliumv1alpha1.Overlay{
+							Enabled: true,
+						},
+					},
+				}))
 			})
 		})
 	})
