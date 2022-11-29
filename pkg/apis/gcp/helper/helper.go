@@ -19,6 +19,8 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"k8s.io/utils/pointer"
+
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 )
 
 // FindSubnetByPurpose takes a list of subnets and tries to find the first entry
@@ -38,6 +40,9 @@ func FindSubnetByPurpose(subnets []api.Subnet, purpose api.SubnetPurpose) (*api.
 // found then an error will be returned.
 func FindMachineImage(machineImages []api.MachineImage, name, version string, architecture *string) (*api.MachineImage, error) {
 	for _, machineImage := range machineImages {
+		if machineImage.Architecture == nil {
+			machineImage.Architecture = pointer.String(v1beta1constants.ArchitectureAMD64)
+		}
 		if machineImage.Name == name && machineImage.Version == version && pointer.StringEqual(architecture, machineImage.Architecture) {
 			return &machineImage, nil
 		}
