@@ -18,8 +18,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupentry/genericactuator"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	"github.com/go-logr/logr"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -46,8 +48,8 @@ func (a *actuator) GetETCDSecretData(ctx context.Context, _ logr.Logger, be *ext
 func (a *actuator) Delete(ctx context.Context, _ logr.Logger, be *extensionsv1alpha1.BackupEntry) error {
 	storageClient, err := gcpclient.NewStorageClientFromSecretRef(ctx, a.client, be.Spec.SecretRef)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	return storageClient.DeleteObjectsWithPrefix(ctx, be.Spec.BucketName, fmt.Sprintf("%s/", be.Name))
+	return util.DetermineError(storageClient.DeleteObjectsWithPrefix(ctx, be.Spec.BucketName, fmt.Sprintf("%s/", be.Name)), helper.KnownCodes)
 }
