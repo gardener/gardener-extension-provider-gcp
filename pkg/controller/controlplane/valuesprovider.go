@@ -33,7 +33,6 @@ import (
 	"github.com/gardener/gardener/pkg/utils/secrets"
 	secretutils "github.com/gardener/gardener/pkg/utils/secrets"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
-	"github.com/gardener/gardener/pkg/utils/version"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -259,7 +258,7 @@ type valuesProvider struct {
 func (vp *valuesProvider) GetConfigChartValues(
 	ctx context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
-	cluster *extensionscontroller.Cluster,
+	_ *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
 	// Decode providerConfig
 	cpConfig := &apisgcp.ControlPlaneConfig{}
@@ -325,41 +324,6 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	error,
 ) {
 	return getControlPlaneShootChartValues(cluster, cp, secretsReader)
-}
-
-// GetControlPlaneShootCRDsChartValues returns the values for the control plane shoot CRDs chart applied by the generic actuator.
-// Currently the provider extension does not specify a control plane shoot CRDs chart. That's why we simply return empty values.
-func (vp *valuesProvider) GetControlPlaneShootCRDsChartValues(
-	_ context.Context,
-	_ *extensionsv1alpha1.ControlPlane,
-	cluster *extensionscontroller.Cluster,
-) (map[string]interface{}, error) {
-	k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", gcp.CSIMigrationKubernetesVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string]interface{}{
-		"volumesnapshots": map[string]interface{}{
-			"enabled": !k8sVersionLessThan118,
-		},
-	}, nil
-}
-
-// GetStorageClassesChartValues returns the values for the storage classes chart applied by the generic actuator.
-func (vp *valuesProvider) GetStorageClassesChartValues(
-	_ context.Context,
-	_ *extensionsv1alpha1.ControlPlane,
-	cluster *extensionscontroller.Cluster,
-) (map[string]interface{}, error) {
-	k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", gcp.CSIMigrationKubernetesVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string]interface{}{
-		"useLegacyProvisioner": k8sVersionLessThan118,
-	}, nil
 }
 
 // getConfigChartValues collects and returns the configuration chart values.
@@ -469,15 +433,6 @@ func getCSIControllerChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
-	k8sVersionLessThan118, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", gcp.CSIMigrationKubernetesVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	if k8sVersionLessThan118 {
-		return map[string]interface{}{"enabled": false}, nil
-	}
-
 	serverSecret, found := secretsReader.Get(csiSnapshotValidationServerName)
 	if !found {
 		return nil, fmt.Errorf("secret %q not found", csiSnapshotValidationServerName)
@@ -510,11 +465,6 @@ func getControlPlaneShootChartValues(
 	secretsReader secretsmanager.Reader,
 ) (map[string]interface{}, error) {
 	kubernetesVersion := cluster.Shoot.Spec.Kubernetes.Version
-	k8sVersionLessThan118, err := version.CompareVersions(kubernetesVersion, "<", gcp.CSIMigrationKubernetesVersion)
-	if err != nil {
-		return nil, err
-	}
-
 	caSecret, found := secretsReader.Get(caNameControlPlane)
 	if !found {
 		return nil, fmt.Errorf("secret %q not found", caNameControlPlane)
@@ -523,7 +473,7 @@ func getControlPlaneShootChartValues(
 	return map[string]interface{}{
 		gcp.CloudControllerManagerName: map[string]interface{}{"enabled": true},
 		gcp.CSINodeName: map[string]interface{}{
-			"enabled":           !k8sVersionLessThan118,
+			"enabled":           true,
 			"kubernetesVersion": kubernetesVersion,
 			"vpaEnabled":        gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 			"webhookConfig": map[string]interface{}{
@@ -535,7 +485,7 @@ func getControlPlaneShootChartValues(
 	}, nil
 }
 
-// getNetworkNames determines the network and sub-network names from the given infrastructure status and controlplane.
+// getNetworkNames determines the network and subnetwork names from the given infrastructure status and controlplane.
 func getNetworkNames(
 	infraStatus *apisgcp.InfrastructureStatus,
 	cp *extensionsv1alpha1.ControlPlane,

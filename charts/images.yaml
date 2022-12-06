@@ -15,48 +15,6 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
-  tag: "v1.17.17"
-  targetVersion: "1.17.x"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'high'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: cloud-controller-manager
-  sourceRepository: github.com/gardener/cloud-provider-gcp
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
-  tag: "v1.18.20"
-  targetVersion: "1.18.x"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'high'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: cloud-controller-manager
-  sourceRepository: github.com/gardener/cloud-provider-gcp
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
-  tag: "v1.19.14"
-  targetVersion: "1.19.x"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'high'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: cloud-controller-manager
-  sourceRepository: github.com/gardener/cloud-provider-gcp
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
   tag: "v1.20.15"
   targetVersion: "1.20.x"
   labels:
@@ -252,36 +210,7 @@ images:
 - name: csi-snapshotter
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/csi-snapshotter
-  tag: "v3.0.3"
-  targetVersion: "< 1.20"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'private'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'low'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: csi-snapshotter
-  sourceRepository: github.com/kubernetes-csi/external-snapshotter
-  repository: registry.k8s.io/sig-storage/csi-snapshotter
   tag: "v6.1.0"
-  targetVersion: ">= 1.20"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'private'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'low'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: csi-snapshot-validation-webhook
-  sourceRepository: github.com/kubernetes-csi/external-snapshotter
-  repository: registry.k8s.io/sig-storage/snapshot-validation-webhook
-  tag: "v3.0.3"
-  targetVersion: "< 1.20"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -295,21 +224,6 @@ images:
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/snapshot-validation-webhook
   tag: "v6.1.0"
-  targetVersion: ">= 1.20"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'private'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'low'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: csi-snapshot-controller
-  sourceRepository: github.com/kubernetes-csi/external-snapshotter
-  repository: registry.k8s.io/sig-storage/snapshot-controller
-  tag: "v3.0.3"
-  targetVersion: "< 1.20"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -323,7 +237,6 @@ images:
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/snapshot-controller
   tag: "v6.1.0"
-  targetVersion: ">= 1.20"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:

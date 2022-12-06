@@ -84,33 +84,13 @@ var _ = Describe("Shoot validation", func() {
 				},
 			}
 		})
-		It("should pass when the kubernetes version is equal to the CSI migration version", func() {
-			workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.18.0")}
+
+		It("should pass successfully", func() {
+			workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.24.0")}
 
 			errorList := ValidateWorkers(workers, field.NewPath(""))
 
 			Expect(errorList).To(BeEmpty())
-		})
-
-		It("should pass when the kubernetes version is higher to the CSI migration version", func() {
-			workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.19.0")}
-
-			errorList := ValidateWorkers(workers, field.NewPath(""))
-
-			Expect(errorList).To(BeEmpty())
-		})
-
-		It("should not allow when the kubernetes version is lower than the CSI migration version", func() {
-			workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.17.0")}
-
-			errorList := ValidateWorkers(workers, field.NewPath("workers"))
-
-			Expect(errorList).To(ConsistOf(
-				PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeForbidden),
-					"Field": Equal("workers[0].kubernetes.version"),
-				})),
-			))
 		})
 	})
 })
