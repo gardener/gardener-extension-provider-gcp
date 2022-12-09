@@ -56,7 +56,7 @@ const (
 	caNameControlPlane                   = "ca-" + gcp.Name + "-controlplane"
 	cloudControllerManagerDeploymentName = "cloud-controller-manager"
 	cloudControllerManagerServerName     = "cloud-controller-manager-server"
-	csiSnapshotValidationServerName      = gcp.CSISnapshotValidation + "-server"
+	csiSnapshotValidationServerName      = gcp.CSISnapshotValidationName + "-server"
 )
 
 func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfigWithOptions {
@@ -82,8 +82,8 @@ func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfig
 		{
 			Config: &secretutils.CertificateSecretConfig{
 				Name:                        csiSnapshotValidationServerName,
-				CommonName:                  gcp.UsernamePrefix + gcp.CSISnapshotValidation,
-				DNSNames:                    kutil.DNSNamesForService(gcp.CSISnapshotValidation, namespace),
+				CommonName:                  gcp.UsernamePrefix + gcp.CSISnapshotValidationName,
+				DNSNames:                    kutil.DNSNamesForService(gcp.CSISnapshotValidationName, namespace),
 				CertType:                    secretutils.ServerCert,
 				SkipPublishingCACertificate: true,
 			},
@@ -102,6 +102,7 @@ func shootAccessSecretsFunc(namespace string) []*gutil.ShootAccessSecret {
 		gutil.NewShootAccessSecret(gcp.CSISnapshotterName, namespace),
 		gutil.NewShootAccessSecret(gcp.CSIResizerName, namespace),
 		gutil.NewShootAccessSecret(gcp.CSISnapshotControllerName, namespace),
+		gutil.NewShootAccessSecret(gcp.CSISnapshotValidationName, namespace),
 	}
 }
 
@@ -150,8 +151,8 @@ var (
 					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotControllerName},
 					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: gcp.CSISnapshotControllerName + "-vpa"},
 					// csi-snapshot-validation-webhook
-					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotValidation},
-					{Type: &corev1.Service{}, Name: gcp.CSISnapshotValidation},
+					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotValidationName},
+					{Type: &corev1.Service{}, Name: gcp.CSISnapshotValidationName},
 					{Type: &networkingv1.NetworkPolicy{}, Name: "allow-kube-apiserver-to-csi-snapshot-validation"},
 				},
 			},
@@ -214,7 +215,9 @@ var (
 					{Type: &rbacv1.Role{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
 					{Type: &rbacv1.RoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
 					// csi-snapshot-validation-webhook
-					{Type: &admissionregistrationv1.ValidatingWebhookConfiguration{}, Name: gcp.CSISnapshotValidation},
+					{Type: &admissionregistrationv1.ValidatingWebhookConfiguration{}, Name: gcp.CSISnapshotValidationName},
+					{Type: &rbacv1.ClusterRole{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotValidationName},
+					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotValidationName},
 				},
 			},
 		},
@@ -524,7 +527,7 @@ func getControlPlaneShootChartValues(
 			"kubernetesVersion": kubernetesVersion,
 			"vpaEnabled":        gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 			"webhookConfig": map[string]interface{}{
-				"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+				"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 				"caBundle": string(caSecret.Data[secretutils.DataKeyCertificateBundle]),
 			},
 			"pspDisabled": gardencorev1beta1helper.IsPSPDisabled(cluster.Shoot),

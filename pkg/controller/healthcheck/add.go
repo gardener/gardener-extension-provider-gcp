@@ -87,7 +87,7 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
-				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.CSISnapshotValidation),
+				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.CSISnapshotValidationName),
 				PreCheckFunc:  csiEnabledPreCheckFunc,
 			},
 			{

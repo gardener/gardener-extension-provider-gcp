@@ -300,7 +300,7 @@ var _ = Describe("ValuesProvider", func() {
 					"kubernetesVersion": "1.17.1",
 					"vpaEnabled":        false,
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -317,7 +317,7 @@ var _ = Describe("ValuesProvider", func() {
 						"kubernetesVersion": "1.18.0",
 						"vpaEnabled":        true,
 						"webhookConfig": map[string]interface{}{
-							"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+							"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 							"caBundle": "",
 						},
 						"pspDisabled": false,
@@ -343,7 +343,7 @@ var _ = Describe("ValuesProvider", func() {
 						"kubernetesVersion": "1.18.0",
 						"vpaEnabled":        true,
 						"webhookConfig": map[string]interface{}{
-							"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+							"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 							"caBundle": "",
 						},
 						"pspDisabled": false,
@@ -367,7 +367,7 @@ var _ = Describe("ValuesProvider", func() {
 						"kubernetesVersion": "1.18.0",
 						"vpaEnabled":        true,
 						"webhookConfig": map[string]interface{}{
-							"url":      "https://" + gcp.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+							"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 							"caBundle": "",
 						},
 						"pspDisabled": true,
