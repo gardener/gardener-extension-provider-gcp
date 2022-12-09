@@ -80,10 +80,8 @@ func (s *storageClient) CreateBucketIfNotExists(ctx context.Context, bucketName,
 }
 
 func (s *storageClient) DeleteBucketIfExists(ctx context.Context, bucketName string) error {
-	if err := s.client.Bucket(bucketName).Delete(ctx); err != nil && err != storage.ErrBucketNotExist {
-		return err
-	}
-	return nil
+	err := s.client.Bucket(bucketName).Delete(ctx)
+	return IgnoreNotFoundError(err)
 }
 
 func (s *storageClient) DeleteObjectsWithPrefix(ctx context.Context, bucketName, prefix string) error {
