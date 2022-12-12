@@ -18,11 +18,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/mutator"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/mutator"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -107,6 +108,16 @@ var _ = Describe("Shoot mutator", func() {
 				err := shootMutator.Mutate(ctx, shoot, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(shoot).To(DeepEqual(shootExpected))
+			})
+
+			It("should return nil when shoot specs have not changes", func() {
+				shootWithAnnotations := shoot.DeepCopy()
+				shootWithAnnotations.Annotations = map[string]string{"foo": "bar"}
+				shootExpected := shootWithAnnotations.DeepCopy()
+
+				err := shootMutator.Mutate(ctx, shootWithAnnotations, shoot)
+				Expect(err).To(BeNil())
+				Expect(shootWithAnnotations).To(DeepEqual(shootExpected))
 			})
 		})
 	})
