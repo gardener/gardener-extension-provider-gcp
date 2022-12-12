@@ -15,6 +15,8 @@
 package client
 
 import (
+	"net/http"
+
 	"google.golang.org/api/googleapi"
 )
 
@@ -45,4 +47,9 @@ func IgnoreErrorCodes(err error, codes ...int) error {
 	}
 
 	return err
+}
+
+// IgnoreNotFoundError returns nil if the error is a NotFound error. Otherwise, it returns the original error.
+func IgnoreNotFoundError(err error) error {
+	return IgnoreErrorCodes(err, http.StatusNotFound)
 }
