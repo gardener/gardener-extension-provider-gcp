@@ -68,14 +68,13 @@ func (s *shoot) Mutate(ctx context.Context, new, old client.Object) error {
 	if oldShoot != nil && isShootInMigrationOrRestorePhase(shoot) {
 		return nil
 	}
-
-	// Skip if shoot is in deletion phase
-	if shoot.DeletionTimestamp != nil || oldShoot != nil && oldShoot.DeletionTimestamp != nil {
+	// Skip if specs are matching
+	if oldShoot != nil && reflect.DeepEqual(shoot.Spec, oldShoot.Spec) {
 		return nil
 	}
 
-	// Skip if specs are matching
-	if reflect.DeepEqual(shoot.Spec, oldShoot.Spec) {
+	// Skip if shoot is in deletion phase
+	if shoot.DeletionTimestamp != nil || oldShoot != nil && oldShoot.DeletionTimestamp != nil {
 		return nil
 	}
 
