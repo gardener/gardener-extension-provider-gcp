@@ -151,7 +151,7 @@ images:
 - name: csi-driver
   sourceRepository: github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
   repository: registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver
-  tag: "v1.8.1"
+  tag: "v1.7.3"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
