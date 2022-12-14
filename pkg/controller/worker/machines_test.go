@@ -22,11 +22,6 @@ import (
 	"strings"
 	"time"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
-	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
@@ -48,6 +43,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
+
+	"github.com/gardener/gardener-extension-provider-gcp/charts"
+	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
+	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
 )
 
 var _ = Describe("Machines", func() {
@@ -570,9 +570,10 @@ var _ = Describe("Machines", func() {
 
 					workerDelegateCloudRouter, _ := NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", workerCloudRouter, cluster)
 					// Test workerDelegate.DeployMachineClasses()
-					chartApplier.EXPECT().Apply(
+					chartApplier.EXPECT().ApplyFromEmbeddedFS(
 						context.TODO(),
-						filepath.Join(gcp.InternalChartsPath, "machineclass"),
+						charts.InternalChart,
+						filepath.Join("internal", "machineclass"),
 						namespace,
 						"machineclass",
 						kubernetes.Values(machineClasses),
