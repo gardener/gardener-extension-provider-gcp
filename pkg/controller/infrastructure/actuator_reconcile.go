@@ -17,16 +17,16 @@ package infrastructure
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
 )
@@ -47,11 +47,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		return err
 	}
 
-	iam, err := gcpclient.NewIAMClient(ctx, serviceAccount)
-	if err != nil {
-		return err
-	}
-	createSA, err := shouldCreateServiceAccount(iam, cluster.ObjectMeta.Name)
+	createSA, err := shouldCreateServiceAccount(infra)
 	if err != nil {
 		return err
 	}
@@ -76,18 +72,37 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 }
 
 // shouldCreateServiceAccount checkes whether terraform needs to create/reconcile a gardener-managed service account.
-// If we do have ServiceAccount permissions and there is already a service acccount with the shoot name, continue
-// to reconcile it in the terraform.
-func shouldCreateServiceAccount(iam gcpclient.IAMClient, clusterName string) (bool, error) {
-	if !features.ExtensionFeatureGate.Enabled(features.DisableGardenerServiceAccountCreation) {
-		return true, nil
-	}
-
-	if _, err := iam.GetServiceAccount(context.Background(), clusterName); err != nil {
-		if gcpclient.IsErrorCode(err, http.StatusNotFound, http.StatusUnauthorized) {
-			return false, nil
-		}
+// For existing infrastructure the existence of a created service account is retrieved from the terraformer state.
+func shouldCreateServiceAccount(infra *extensionsv1alpha1.Infrastructure) (bool, error) {
+	var newCluster, hasServiceAccount bool
+	rawState, err := getTerraformerRawState(infra.Status.State)
+	if err != nil {
 		return false, err
 	}
-	return true, nil
+
+	if rawState == nil {
+		newCluster = true
+	} else {
+		state, err := shared.UnmarshalTerraformStateFromTerraformer(rawState)
+		if err != nil {
+			return false, err
+		}
+		hasServiceAccount = len(state.FindManagedResourcesByType("google_service_account")) > 0
+	}
+
+	if newCluster && !features.ExtensionFeatureGate.Enabled(features.DisableGardenerServiceAccountCreation) {
+		return true, nil
+	}
+	return hasServiceAccount, nil
+}
+
+func getTerraformerRawState(state *runtime.RawExtension) (*terraformer.RawState, error) {
+	if state == nil {
+		return nil, nil
+	}
+	tfRawState, err := terraformer.UnmarshalRawState(state)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode terraform raw state: %+v", err)
+	}
+	return tfRawState, nil
 }
