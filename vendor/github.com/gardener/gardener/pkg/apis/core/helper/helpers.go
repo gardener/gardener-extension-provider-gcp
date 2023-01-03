@@ -20,7 +20,6 @@ import (
 
 	"github.com/Masterminds/semver"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -29,7 +28,6 @@ import (
 
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 )
 
 // GetConditionIndex returns the index of the condition with the given <conditionType> out of the list of <conditions>.
@@ -364,7 +362,7 @@ func ShootWantsVerticalPodAutoscaler(shoot *core.Shoot) bool {
 }
 
 // GetShootCARotationPhase returns the specified shoot CA rotation phase or an empty string
-func GetShootCARotationPhase(credentials *core.ShootCredentials) core.ShootCredentialsRotationPhase {
+func GetShootCARotationPhase(credentials *core.ShootCredentials) core.CredentialsRotationPhase {
 	if credentials != nil && credentials.Rotation != nil && credentials.Rotation.CertificateAuthorities != nil {
 		return credentials.Rotation.CertificateAuthorities.Phase
 	}
@@ -373,7 +371,7 @@ func GetShootCARotationPhase(credentials *core.ShootCredentials) core.ShootCrede
 
 // GetShootServiceAccountKeyRotationPhase returns the specified shoot service account key rotation phase or an empty
 // string.
-func GetShootServiceAccountKeyRotationPhase(credentials *core.ShootCredentials) core.ShootCredentialsRotationPhase {
+func GetShootServiceAccountKeyRotationPhase(credentials *core.ShootCredentials) core.CredentialsRotationPhase {
 	if credentials != nil && credentials.Rotation != nil && credentials.Rotation.ServiceAccountKey != nil {
 		return credentials.Rotation.ServiceAccountKey.Phase
 	}
@@ -382,7 +380,7 @@ func GetShootServiceAccountKeyRotationPhase(credentials *core.ShootCredentials) 
 
 // GetShootETCDEncryptionKeyRotationPhase returns the specified shoot ETCD encryption key rotation phase or an empty
 // string.
-func GetShootETCDEncryptionKeyRotationPhase(credentials *core.ShootCredentials) core.ShootCredentialsRotationPhase {
+func GetShootETCDEncryptionKeyRotationPhase(credentials *core.ShootCredentials) core.CredentialsRotationPhase {
 	if credentials != nil && credentials.Rotation != nil && credentials.Rotation.ETCDEncryptionKey != nil {
 		return credentials.Rotation.ETCDEncryptionKey.Phase
 	}
@@ -473,15 +471,12 @@ func GetAllZonesFromShoot(shoot *core.Shoot) sets.String {
 	return out
 }
 
-// IsHAControlPlaneConfigured returns true if HA configuration for the shoot control plane has been set either
-// via an alpha-annotation or ControlPlane Spec.
+// IsHAControlPlaneConfigured returns true if HA configuration for the shoot control plane has been set.
 func IsHAControlPlaneConfigured(shoot *core.Shoot) bool {
-	return metav1.HasAnnotation(shoot.ObjectMeta, v1beta1constants.ShootAlphaControlPlaneHighAvailability) || shoot.Spec.ControlPlane != nil && shoot.Spec.ControlPlane.HighAvailability != nil
+	return shoot.Spec.ControlPlane != nil && shoot.Spec.ControlPlane.HighAvailability != nil
 }
 
 // IsMultiZonalShootControlPlane checks if the shoot should have a multi-zonal control plane.
 func IsMultiZonalShootControlPlane(shoot *core.Shoot) bool {
-	hasZonalAnnotation := shoot.ObjectMeta.Annotations[v1beta1constants.ShootAlphaControlPlaneHighAvailability] == v1beta1constants.ShootAlphaControlPlaneHighAvailabilityMultiZone
-	hasZoneFailureToleranceTypeSetInSpec := shoot.Spec.ControlPlane != nil && shoot.Spec.ControlPlane.HighAvailability != nil && shoot.Spec.ControlPlane.HighAvailability.FailureTolerance.Type == core.FailureToleranceTypeZone
-	return hasZonalAnnotation || hasZoneFailureToleranceTypeSetInSpec
+	return shoot.Spec.ControlPlane != nil && shoot.Spec.ControlPlane.HighAvailability != nil && shoot.Spec.ControlPlane.HighAvailability.FailureTolerance.Type == core.FailureToleranceTypeZone
 }
