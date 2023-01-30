@@ -70,6 +70,9 @@ func (s *storageClient) CreateBucketIfNotExists(ctx context.Context, bucketName,
 	if err := s.client.Bucket(bucketName).Create(ctx, s.serviceAccount.ProjectID, &storage.BucketAttrs{
 		Name:     bucketName,
 		Location: region,
+		UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+			Enabled: true,
+		},
 	}); err != nil {
 		if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == errCodeBucketAlreadyOwnedByYou {
 			return nil
