@@ -1,6 +1,5 @@
-{{- if not .Values.useLegacyProvisioner }}
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: default
@@ -14,7 +13,7 @@ parameters:
 volumeBindingMode: WaitForFirstConsumer
 
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: gce-sc-hdd
@@ -27,7 +26,7 @@ parameters:
 volumeBindingMode: WaitForFirstConsumer
 
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: gce-sc-fast
@@ -48,4 +47,3 @@ metadata:
   name: default
 driver: pd.csi.storage.gke.io
 deletionPolicy: Delete
-{{- end }}

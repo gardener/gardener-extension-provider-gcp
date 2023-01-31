@@ -100,8 +100,8 @@ var _ = Describe("ValuesProvider", func() {
 			},
 		}
 
-		cidr                  = "10.250.0.0/19"
-		clusterK8sLessThan118 = &extensionscontroller.Cluster{
+		cidr                 = "10.250.0.0/19"
+		clusterK8sAtLeast120 = &extensionscontroller.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{
 					"generic-token-kubeconfig.secret.gardener.cloud/name": genericTokenKubeconfigSecretName,
@@ -113,24 +113,7 @@ var _ = Describe("ValuesProvider", func() {
 						Pods: &cidr,
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
-						Version: "1.17.1",
-					},
-				},
-			},
-		}
-		clusterK8sAtLeast118 = &extensionscontroller.Cluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					"generic-token-kubeconfig.secret.gardener.cloud/name": genericTokenKubeconfigSecretName,
-				},
-			},
-			Shoot: &gardencorev1beta1.Shoot{
-				Spec: gardencorev1beta1.ShootSpec{
-					Networking: gardencorev1beta1.Networking{
-						Pods: &cidr,
-					},
-					Kubernetes: gardencorev1beta1.Kubernetes{
-						Version: "1.18.0",
+						Version: "1.20.0",
 						VerticalPodAutoscaler: &gardencorev1beta1.VerticalPodAutoscaler{
 							Enabled: true,
 						},
@@ -159,8 +142,7 @@ var _ = Describe("ValuesProvider", func() {
 			internal.CloudProviderConfigName:         "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
 		}
 
-		enabledTrue  = map[string]interface{}{"enabled": true}
-		enabledFalse = map[string]interface{}{"enabled": false}
+		enabledTrue = map[string]interface{}{"enabled": true}
 
 		fakeClient         client.Client
 		fakeSecretsManager secretsmanager.Interface
@@ -189,7 +171,7 @@ var _ = Describe("ValuesProvider", func() {
 		It("should return correct config chart values", func() {
 			c.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
 
-			values, err := vp.GetConfigChartValues(ctx, cp, clusterK8sLessThan118)
+			values, err := vp.GetConfigChartValues(ctx, cp, clusterK8sAtLeast120)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"projectID":      projectID,
@@ -238,29 +220,15 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
 		})
 
-		It("should return correct control plane chart values (k8s < 1.18)", func() {
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sLessThan118, fakeSecretsManager, checksums, false)
+		It("should return correct control plane chart values", func() {
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"global": map[string]interface{}{
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": clusterK8sLessThan118.Shoot.Spec.Kubernetes.Version,
-				}),
-				gcp.CSIControllerName: enabledFalse,
-			}))
-		})
-
-		It("should return correct control plane chart values (k8s >= 1.18)", func() {
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast118, fakeSecretsManager, checksums, false)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{
-				"global": map[string]interface{}{
-					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
-				},
-				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": clusterK8sAtLeast118.Shoot.Spec.Kubernetes.Version,
+					"kubernetesVersion": clusterK8sAtLeast120.Shoot.Spec.Kubernetes.Version,
 				}),
 				gcp.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas":  1,
@@ -291,14 +259,14 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
 		})
 
-		It("should return correct shoot control plane chart values (k8s < 1.18)", func() {
-			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sLessThan118, fakeSecretsManager, nil)
+		It("should return correct shoot control plane chart values", func() {
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, nil)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				gcp.CloudControllerManagerName: enabledTrue,
-				gcp.CSINodeName: utils.MergeMaps(enabledFalse, map[string]interface{}{
-					"kubernetesVersion": "1.17.1",
-					"vpaEnabled":        false,
+				gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"kubernetesVersion": "1.20.0",
+					"vpaEnabled":        true,
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
@@ -307,40 +275,22 @@ var _ = Describe("ValuesProvider", func() {
 				}),
 			}))
 		})
-		Context("shoot control plane chart values (k8s >= 1.18)", func() {
-			It("should return correct shoot control plane chart when ca is secret found", func() {
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast118, fakeSecretsManager, nil)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					gcp.CloudControllerManagerName: enabledTrue,
-					gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-						"kubernetesVersion": "1.18.0",
-						"vpaEnabled":        true,
-						"webhookConfig": map[string]interface{}{
-							"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-							"caBundle": "",
-						},
-						"pspDisabled": false,
-					}),
-				}))
-			})
-		})
 
 		Context("podSecurityPolicy", func() {
 			It("should return correct shoot control plane chart when PodSecurityPolicy admission plugin is not disabled in the shoot", func() {
-				clusterK8sAtLeast118.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
+				clusterK8sAtLeast120.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
 					AdmissionPlugins: []gardencorev1beta1.AdmissionPlugin{
 						{
 							Name: "PodSecurityPolicy",
 						},
 					},
 				}
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast118, fakeSecretsManager, nil)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					gcp.CloudControllerManagerName: enabledTrue,
 					gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-						"kubernetesVersion": "1.18.0",
+						"kubernetesVersion": "1.20.0",
 						"vpaEnabled":        true,
 						"webhookConfig": map[string]interface{}{
 							"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
@@ -351,7 +301,7 @@ var _ = Describe("ValuesProvider", func() {
 				}))
 			})
 			It("should return correct shoot control plane chart when PodSecurityPolicy admission plugin is disabled in the shoot", func() {
-				clusterK8sAtLeast118.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
+				clusterK8sAtLeast120.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
 					AdmissionPlugins: []gardencorev1beta1.AdmissionPlugin{
 						{
 							Name:     "PodSecurityPolicy",
@@ -359,12 +309,12 @@ var _ = Describe("ValuesProvider", func() {
 						},
 					},
 				}
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast118, fakeSecretsManager, nil)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					gcp.CloudControllerManagerName: enabledTrue,
 					gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-						"kubernetesVersion": "1.18.0",
+						"kubernetesVersion": "1.20.0",
 						"vpaEnabled":        true,
 						"webhookConfig": map[string]interface{}{
 							"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
@@ -374,34 +324,6 @@ var _ = Describe("ValuesProvider", func() {
 					}),
 				}))
 			})
-		})
-	})
-
-	Describe("#GetControlPlaneShootCRDsChartValues", func() {
-		It("should return correct control plane shoot CRDs chart values (k8s < 1.18)", func() {
-			values, err := vp.GetControlPlaneShootCRDsChartValues(ctx, cp, clusterK8sLessThan118)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{"volumesnapshots": map[string]interface{}{"enabled": false}}))
-		})
-
-		It("should return correct control plane shoot CRDs chart values (k8s >= 1.18)", func() {
-			values, err := vp.GetControlPlaneShootCRDsChartValues(ctx, cp, clusterK8sAtLeast118)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{"volumesnapshots": map[string]interface{}{"enabled": true}}))
-		})
-	})
-
-	Describe("#GetStorageClassesChartValues", func() {
-		It("should return correct storage class chart values (k8s < 1.18)", func() {
-			values, err := vp.GetStorageClassesChartValues(ctx, cp, clusterK8sLessThan118)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{"useLegacyProvisioner": true}))
-		})
-
-		It("should return correct storage class chart values (k8s >= 1.18)", func() {
-			values, err := vp.GetStorageClassesChartValues(ctx, cp, clusterK8sAtLeast118)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{"useLegacyProvisioner": false}))
 		})
 	})
 })

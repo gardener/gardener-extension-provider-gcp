@@ -15,13 +15,11 @@
 package healthcheck
 
 import (
-	"context"
 	"time"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 
 	healthcheckconfig "github.com/gardener/gardener/extensions/pkg/apis/config"
-	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	genericcontrolplaneactuator "github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck/general"
@@ -30,7 +28,6 @@ import (
 	extensionspredicate "github.com/gardener/gardener/extensions/pkg/predicate"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/utils/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -54,14 +51,6 @@ var (
 
 // RegisterHealthChecks registers health checks for each extension resource
 func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
-	csiEnabledPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, cluster *extensionscontroller.Cluster) bool {
-		csiEnabled, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, ">=", gcp.CSIMigrationKubernetesVersion)
-		if err != nil {
-			return false
-		}
-		return csiEnabled
-	}
-
 	if err := healthcheck.DefaultRegistration(
 		gcp.Type,
 		extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.ControlPlaneResource),
@@ -78,17 +67,14 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.CSIControllerName),
-				PreCheckFunc:  csiEnabledPreCheckFunc,
 			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.CSISnapshotControllerName),
-				PreCheckFunc:  csiEnabledPreCheckFunc,
 			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.CSISnapshotValidationName),
-				PreCheckFunc:  csiEnabledPreCheckFunc,
 			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootSystemComponentsHealthy),
