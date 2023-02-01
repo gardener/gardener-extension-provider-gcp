@@ -19,9 +19,10 @@ import (
 
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 // ValidateInfrastructureConfig validates a InfrastructureConfig object.
@@ -150,8 +151,23 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.Infrastruc
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newVPC.Name, oldVPC.Name, vpcPath.Child("name"))...)
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newVPC.CloudRouter, oldVPC.CloudRouter, vpcPath.Child("cloudRouter"))...)
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Internal, oldConfig.Networks.Internal, networksPath.Child("internal"))...)
-		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, networksPath.Child("workers"))...)
-		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Worker, oldConfig.Networks.Worker, networksPath.Child("worker"))...)
+	}
+
+	newWorkerCIDR := newConfig.Networks.Worker
+	newWorker := cidrvalidation.NewCIDR(newWorkerCIDR, networksPath.Child("worker"))
+	if len(newConfig.Networks.Workers) > 0 {
+		newWorkerCIDR = newConfig.Networks.Workers
+		newWorker = cidrvalidation.NewCIDR(newWorkerCIDR, networksPath.Child("workers"))
+	}
+
+	oldWorkerCIDR := oldConfig.Networks.Worker
+	oldWorker := cidrvalidation.NewCIDR(oldWorkerCIDR, networksPath.Child("worker"))
+	if len(oldConfig.Networks.Workers) > 0 {
+		oldWorkerCIDR = oldConfig.Networks.Workers
+		oldWorker = cidrvalidation.NewCIDR(oldWorkerCIDR, networksPath.Child("workers"))
+	}
+	if len(newWorker.ValidateSubset(oldWorker)) > 0 {
+		allErrs = append(allErrs, field.Invalid(newWorker.GetFieldPath(), newWorker.GetCIDR(), "worker CIDR blocks can only be expanded"))
 	}
 
 	return allErrs
