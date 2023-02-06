@@ -15,9 +15,10 @@
 package validation_test
 
 import (
+	"k8s.io/utils/pointer"
+
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
-	"k8s.io/utils/pointer"
 
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
@@ -388,13 +389,10 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				"Field": Equal("networks.vpc.cloudRouter"),
 			}, Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
-				"Field": Equal("networks.workers"),
-			}, Fields{
-				"Type":  Equal(field.ErrorTypeInvalid),
-				"Field": Equal("networks.worker"),
-			}, Fields{
-				"Type":  Equal(field.ErrorTypeInvalid),
 				"Field": Equal("networks.internal"),
+			}, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.workers"),
 			}))
 		})
 
@@ -406,6 +404,25 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			Expect(errorList).To(ConsistOfFields(Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
 				"Field": Equal("networks.vpc"),
+			}))
+		})
+
+		It("should allow expanding the worker subnet", func() {
+			newInfrastructureConfig := infrastructureConfig.DeepCopy()
+			newInfrastructureConfig.Networks.Workers = "10.250.0.0/15"
+
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should forbid shrinking the worker subnet", func() {
+			newInfrastructureConfig := infrastructureConfig.DeepCopy()
+			newInfrastructureConfig.Networks.Workers = "10.250.0.0/17"
+
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+			Expect(errorList).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.workers"),
 			}))
 		})
 	})
