@@ -15,10 +15,10 @@
 package admission
 
 import (
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-
 	"github.com/gardener/gardener/extensions/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 // DecodeWorkerConfig decodes the `WorkerConfig` from the given `RawExtension`.

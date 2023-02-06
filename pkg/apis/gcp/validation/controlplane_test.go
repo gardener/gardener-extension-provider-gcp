@@ -15,14 +15,14 @@
 package validation_test
 
 import (
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
 
 var _ = Describe("ControlPlaneConfig validation", func() {

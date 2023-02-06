@@ -17,12 +17,12 @@ package main
 import (
 	"os"
 
-	"github.com/gardener/gardener-extension-provider-gcp/cmd/gardener-extension-provider-gcp/app"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
 	"github.com/gardener/gardener/pkg/logger"
-
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+
+	"github.com/gardener/gardener-extension-provider-gcp/cmd/gardener-extension-provider-gcp/app"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
 )
 
 func main() {

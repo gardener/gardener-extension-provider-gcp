@@ -19,11 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	infractrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client/mock"
-
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
@@ -39,6 +34,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	infractrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client/mock"
 )
 
 const (

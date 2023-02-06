@@ -20,20 +20,6 @@ import (
 	"os"
 
 	druidv1alpha1 "github.com/gardener/etcd-druid/api/v1alpha1"
-	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
-	gcpcmd "github.com/gardener/gardener-extension-provider-gcp/pkg/cmd"
-	gcpbackupbucket "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupbucket"
-	gcpbackupentry "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupentry"
-	gcpbastion "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
-	gcpcontrolplane "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/controlplane"
-	gcpdnsrecord "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/dnsrecord"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/healthcheck"
-	gcpinfrastructure "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
-	gcpworker "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-
-	gcpcontrolplaneexposure "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplaneexposure"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
@@ -51,6 +37,20 @@ import (
 	"k8s.io/component-base/version/verflag"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
+	gcpcmd "github.com/gardener/gardener-extension-provider-gcp/pkg/cmd"
+	gcpbackupbucket "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupbucket"
+	gcpbackupentry "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupentry"
+	gcpbastion "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
+	gcpcontrolplane "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/controlplane"
+	gcpdnsrecord "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/dnsrecord"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/healthcheck"
+	gcpinfrastructure "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
+	gcpworker "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	gcpcontrolplaneexposure "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplaneexposure"
 )
 
 // NewControllerManagerCommand creates a new command for running a GCP provider controller.

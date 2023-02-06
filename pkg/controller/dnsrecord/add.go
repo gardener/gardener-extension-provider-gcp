@@ -15,12 +15,12 @@
 package dnsrecord
 
 import (
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
-
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 var (

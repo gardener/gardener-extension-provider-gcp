@@ -19,11 +19,7 @@ import (
 	"fmt"
 	"strconv"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	mockterraformer "github.com/gardener/gardener/extensions/pkg/terraformer/mock"
-
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
@@ -31,6 +27,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 var _ = Describe("Terraform", func() {

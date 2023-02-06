@@ -15,16 +15,15 @@
 package validation_test
 
 import (
-	"k8s.io/utils/pointer"
-
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
-
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/pointer"
+
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
 
 var _ = Describe("InfrastructureConfig validation", func() {

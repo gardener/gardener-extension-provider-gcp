@@ -17,10 +17,6 @@ package dnsrecord_test
 import (
 	"context"
 
-	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/dnsrecord"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client/mock"
-
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
@@ -34,6 +30,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+
+	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/dnsrecord"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client/mock"
 )
 
 const (

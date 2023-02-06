@@ -18,14 +18,14 @@ import (
 	"context"
 	"strings"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 // ComputeClient is an interface which must be implemented by GCP compute clients.

@@ -26,13 +26,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-logr/logr"
-
-	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
-	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
-	bastionctrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -40,6 +33,7 @@ import (
 	"github.com/gardener/gardener/pkg/logger"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/test/framework"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/api/compute/v1"
@@ -56,6 +50,11 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
+	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
+	bastionctrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 var workersSubnetCIDR = "10.250.0.0/16"

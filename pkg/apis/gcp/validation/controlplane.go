@@ -15,12 +15,12 @@
 package validation
 
 import (
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-
 	featurevalidation "github.com/gardener/gardener/pkg/utils/validation/features"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 // ValidateControlPlaneConfig validates a ControlPlaneConfig object.

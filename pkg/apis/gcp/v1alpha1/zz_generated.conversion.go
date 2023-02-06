@@ -24,9 +24,10 @@ package v1alpha1
 import (
 	unsafe "unsafe"
 
-	gcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+
+	gcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 func init() {

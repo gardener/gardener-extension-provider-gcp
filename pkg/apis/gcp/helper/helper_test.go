@@ -15,12 +15,12 @@
 package helper_test
 
 import (
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	"k8s.io/utils/pointer"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/pointer"
+
+	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 )
 
 const profileImage = "project/path/to/profile/image"
