@@ -215,11 +215,6 @@ func SeedSettingSchedulingVisible(settings *core.SeedSettings) bool {
 	return settings == nil || settings.Scheduling == nil || settings.Scheduling.Visible
 }
 
-// SeedSettingShootDNSEnabled returns true if the 'shoot dns' setting is enabled.
-func SeedSettingShootDNSEnabled(settings *core.SeedSettings) bool {
-	return settings == nil || settings.ShootDNS == nil || settings.ShootDNS.Enabled
-}
-
 // SeedSettingOwnerChecksEnabled returns true if the 'ownerChecks' setting is enabled.
 func SeedSettingOwnerChecksEnabled(settings *core.SeedSettings) bool {
 	return settings == nil || settings.OwnerChecks == nil || settings.OwnerChecks.Enabled
@@ -443,6 +438,15 @@ func CalculateSeedUsage(shootList []*core.Shoot) map[string]int {
 	return m
 }
 
+// CalculateEffectiveKubernetesVersion if a shoot has kubernetes version specified by worker group, return this,
+// otherwise the shoot kubernetes version
+func CalculateEffectiveKubernetesVersion(controlPlaneVersion *semver.Version, workerKubernetes *core.WorkerKubernetes) (*semver.Version, error) {
+	if workerKubernetes != nil && workerKubernetes.Version != nil {
+		return semver.NewVersion(*workerKubernetes.Version)
+	}
+	return controlPlaneVersion, nil
+}
+
 // GetSecretBindingTypes returns the SecretBinding provider types.
 func GetSecretBindingTypes(secretBinding *core.SecretBinding) []string {
 	return strings.Split(secretBinding.Provider.Type, ",")
@@ -479,4 +483,12 @@ func IsHAControlPlaneConfigured(shoot *core.Shoot) bool {
 // IsMultiZonalShootControlPlane checks if the shoot should have a multi-zonal control plane.
 func IsMultiZonalShootControlPlane(shoot *core.Shoot) bool {
 	return shoot.Spec.ControlPlane != nil && shoot.Spec.ControlPlane.HighAvailability != nil && shoot.Spec.ControlPlane.HighAvailability.FailureTolerance.Type == core.FailureToleranceTypeZone
+}
+
+// DeterminePrimaryIPFamily determines the primary IP family out of a specified list of IP families.
+func DeterminePrimaryIPFamily(ipFamilies []core.IPFamily) core.IPFamily {
+	if len(ipFamilies) == 0 {
+		return core.IPFamilyIPv4
+	}
+	return ipFamilies[0]
 }
