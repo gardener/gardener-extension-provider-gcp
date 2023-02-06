@@ -95,8 +95,8 @@ type validationContext struct {
 	cloudProfileConfig   *apisgcp.CloudProfileConfig
 }
 
-func workersZones(workers []core.Worker) sets.String {
-	var workerZones = sets.NewString()
+func workersZones(workers []core.Worker) sets.Set[string] {
+	var workerZones = sets.New[string]()
 	for _, worker := range workers {
 		workerZones.Insert(worker.Zones...)
 	}
@@ -104,11 +104,11 @@ func workersZones(workers []core.Worker) sets.String {
 }
 
 // getAllowedRegionZonesFromCloudProfile fetches the set of allowed zones from the Cloud Profile.
-func getAllowedRegionZonesFromCloudProfile(shoot *core.Shoot, cloudProfile *gardencorev1beta1.CloudProfile) sets.String {
+func getAllowedRegionZonesFromCloudProfile(shoot *core.Shoot, cloudProfile *gardencorev1beta1.CloudProfile) sets.Set[string] {
 	shootRegion := shoot.Spec.Region
 	for _, region := range cloudProfile.Spec.Regions {
 		if region.Name == shootRegion {
-			gcpZones := sets.NewString()
+			gcpZones := sets.New[string]()
 			for _, gcpZone := range region.Zones {
 				gcpZones.Insert(gcpZone.Name)
 			}

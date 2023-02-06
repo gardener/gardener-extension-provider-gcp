@@ -24,7 +24,7 @@ import (
 )
 
 // ValidateControlPlaneConfig validates a ControlPlaneConfig object.
-func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, allowedZones, workerZones sets.String, version string, fldPath *field.Path) field.ErrorList {
+func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, allowedZones, workerZones sets.Set[string], version string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(controlPlaneConfig.Zone) == 0 {
@@ -53,7 +53,7 @@ func ValidateControlPlaneConfigUpdate(oldConfig, newConfig *apisgcp.ControlPlane
 	return allErrs
 }
 
-func validateZoneConstraints(allowedZones sets.String, zone string) (bool, []string) {
+func validateZoneConstraints(allowedZones sets.Set[string], zone string) (bool, []string) {
 	if allowedZones.Has(zone) {
 		return true, nil
 	}
