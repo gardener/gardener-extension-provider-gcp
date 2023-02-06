@@ -279,11 +279,11 @@ func metadataItemsDefine(userData []byte) []*compute.MetadataItems {
 	return []*compute.MetadataItems{
 		{
 			Key:   "startup-script",
-			Value: pointer.StringPtr(string(userData)),
+			Value: pointer.String(string(userData)),
 		},
 		{
 			Key:   "block-project-ssh-keys",
-			Value: pointer.StringPtr("TRUE"),
+			Value: pointer.String("TRUE"),
 		},
 	}
 }
