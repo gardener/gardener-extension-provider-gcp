@@ -20,9 +20,11 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
@@ -56,7 +58,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 
 	gcpClient, err := createGCPClient(ctx, serviceAccount)
 	if err != nil {
-		return fmt.Errorf("failed to create GCP client: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to create GCP client: %w", err), helper.KnownCodes)
 	}
 
 	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, a.Client(), cluster)
@@ -72,7 +74,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 	if opt.Zone == "" {
 		opt.Zone, err = getDefaultGCPZone(ctx, gcpClient, opt, cluster.Shoot.Spec.Region)
 		if err != nil {
-			return err
+			return util.DetermineError(err, helper.KnownCodes)
 		}
 	}
 
@@ -89,17 +91,17 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 
 	err = ensureFirewallRules(ctx, log, gcpClient, bastion, opt)
 	if err != nil {
-		return fmt.Errorf("failed to ensure firewall rule: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to ensure firewall rule: %w", err), helper.KnownCodes)
 	}
 
 	err = ensureDisk(ctx, log, gcpClient, opt)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	instance, err := ensureComputeInstance(ctx, log, bastion, gcpClient, opt)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	// check if the instance already exists and has an IP

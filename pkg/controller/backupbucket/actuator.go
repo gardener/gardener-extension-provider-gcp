@@ -17,8 +17,10 @@ package backupbucket
 import (
 	"context"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	"github.com/go-logr/logr"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -42,17 +44,17 @@ func (a *actuator) InjectClient(client client.Client) error {
 func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, bb *extensionsv1alpha1.BackupBucket) error {
 	storageClient, err := gcpclient.NewStorageClientFromSecretRef(ctx, a.client, bb.Spec.SecretRef)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	return storageClient.CreateBucketIfNotExists(ctx, bb.Name, bb.Spec.Region)
+	return util.DetermineError(storageClient.CreateBucketIfNotExists(ctx, bb.Name, bb.Spec.Region), helper.KnownCodes)
 }
 
 func (a *actuator) Delete(ctx context.Context, _ logr.Logger, bb *extensionsv1alpha1.BackupBucket) error {
 	storageClient, err := gcpclient.NewStorageClientFromSecretRef(ctx, a.client, bb.Spec.SecretRef)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	return storageClient.DeleteBucketIfExists(ctx, bb.Name)
+	return util.DetermineError(storageClient.DeleteBucketIfExists(ctx, bb.Name), helper.KnownCodes)
 }

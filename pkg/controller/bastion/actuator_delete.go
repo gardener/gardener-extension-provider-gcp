@@ -20,9 +20,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
@@ -36,7 +38,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 
 	gcpClient, err := createGCPClient(ctx, serviceAccount)
 	if err != nil {
-		return fmt.Errorf("failed to create GCP client: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to create GCP client: %w", err), helper.KnownCodes)
 	}
 
 	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, a.Client(), cluster)
@@ -52,17 +54,17 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 	if opt.Zone == "" {
 		opt.Zone, err = getDefaultGCPZone(ctx, gcpClient, opt, cluster.Shoot.Spec.Region)
 		if err != nil {
-			return err
+			return util.DetermineError(err, helper.KnownCodes)
 		}
 	}
 
 	if err := removeBastionInstance(ctx, log, gcpClient, opt); err != nil {
-		return fmt.Errorf("failed to remove bastion instance: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to remove bastion instance: %w", err), helper.KnownCodes)
 	}
 
 	deleted, err := isInstanceDeleted(ctx, gcpClient, opt)
 	if err != nil {
-		return fmt.Errorf("failed to check for bastion instance: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to check for bastion instance: %w", err), helper.KnownCodes)
 	}
 
 	if !deleted {
@@ -73,11 +75,11 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 	}
 
 	if err := removeDisk(ctx, log, gcpClient, opt); err != nil {
-		return fmt.Errorf("failed to remove disk: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to remove disk: %w", err), helper.KnownCodes)
 	}
 
 	if err := removeFirewallRules(ctx, log, gcpClient, opt); err != nil {
-		return fmt.Errorf("failed to remove firewall rule: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to remove firewall rule: %w", err), helper.KnownCodes)
 	}
 
 	return nil

@@ -20,6 +20,7 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/go-logr/logr"
@@ -74,7 +75,7 @@ func (a *actuator) cleanupKubernetesRoutes(
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
 	tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	// terraform pod from previous reconciliation might still be running, ensure they are gone before doing any operations
@@ -107,7 +108,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 
 	gcpClient, err := gcpclient.NewFromServiceAccount(ctx, serviceAccount.Raw)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	configExists, err := tf.ConfigExists(ctx)
@@ -145,7 +146,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 	)
 
 	if err := f.Run(ctx, flow.Opts{}); err != nil {
-		return flow.Causes(err)
+		return util.DetermineError(flow.Errors(err), helper.KnownCodes)
 	}
 	return nil
 }
