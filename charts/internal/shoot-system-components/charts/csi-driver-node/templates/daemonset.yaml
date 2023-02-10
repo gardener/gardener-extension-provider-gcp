@@ -5,6 +5,7 @@ metadata:
   name: csi-driver-node
   namespace: {{ .Release.Namespace }}
   labels:
+    node.gardener.cloud/critical-component: "true"
     app: csi
     role: disk-driver
 spec:
@@ -15,6 +16,7 @@ spec:
   template:
     metadata:
       labels:
+        node.gardener.cloud/critical-component: "true"
         app: csi
         role: disk-driver
     spec:
