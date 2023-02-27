@@ -20,10 +20,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	calicov1alpha1 "github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1"
+	"github.com/gardener/gardener-extension-networking-calico/pkg/calico"
+	ciliumv1alpha1 "github.com/gardener/gardener-extension-networking-cilium/pkg/apis/cilium/v1alpha1"
+	"github.com/gardener/gardener-extension-networking-cilium/pkg/cilium"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -309,7 +314,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
 
-	return getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, serviceAccount, checksums, scaledDown)
+	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, serviceAccount, checksums, scaledDown)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
@@ -347,7 +352,7 @@ func getConfigChartValues(
 }
 
 // getControlPlaneChartValues collects and returns the control plane chart values.
-func getControlPlaneChartValues(
+func (vp *valuesProvider) getControlPlaneChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
@@ -359,7 +364,7 @@ func getControlPlaneChartValues(
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown)
+	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown)
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +384,7 @@ func getControlPlaneChartValues(
 }
 
 // getCCMChartValues collects and returns the CCM chart values.
-func getCCMChartValues(
+func (vp *valuesProvider) getCCMChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
@@ -419,6 +424,12 @@ func getCCMChartValues(
 	if cpConfig.CloudControllerManager != nil {
 		values["featureGates"] = cpConfig.CloudControllerManager.FeatureGates
 	}
+
+	ok, err := vp.isOverlayEnabled(cluster.Shoot.Spec.Networking)
+	if err != nil {
+		return nil, err
+	}
+	values["configureCloudRoutes"] = !ok
 
 	return values, nil
 }
@@ -502,4 +513,41 @@ func getNetworkNames(
 	}
 
 	return networkName, subNetworkName
+}
+
+func (vp *valuesProvider) isOverlayEnabled(network v1beta1.Networking) (bool, error) {
+	if network.ProviderConfig == nil {
+		return true, nil
+	}
+
+	// should not happen in practice because we will receive a RawExtension with Raw populated in production.
+	networkProviderConfig, err := network.ProviderConfig.MarshalJSON()
+	if err != nil {
+		return false, err
+	}
+	if string(networkProviderConfig) == "null" {
+		return true, nil
+	}
+
+	switch network.Type {
+	case calico.ReleaseName:
+		networkConfig := &calicov1alpha1.NetworkConfig{}
+		if _, _, err := vp.Decoder().Decode(networkProviderConfig, nil, networkConfig); err != nil {
+			return false, err
+		}
+		o := networkConfig.Overlay
+		return o == nil || o.Enabled, nil
+	case cilium.ReleaseName:
+		networkConfig := &ciliumv1alpha1.NetworkConfig{}
+		if _, _, err := vp.Decoder().Decode(networkProviderConfig, nil, networkConfig); err != nil {
+			return false, err
+		}
+		o := networkConfig.Overlay
+		if o == nil {
+			return true, nil
+		}
+		return o == nil || o.Enabled, nil
+	}
+
+	return true, nil
 }
