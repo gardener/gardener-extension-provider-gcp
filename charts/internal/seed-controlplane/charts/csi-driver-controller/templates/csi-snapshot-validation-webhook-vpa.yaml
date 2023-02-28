@@ -9,7 +9,6 @@ spec:
     - containerName: gcp-csi-snapshot-validation
       minAllowed:
         memory: {{ .Values.csiSnapshotValidationWebhook.resources.requests.memory }}  
-        cpu: {{ .Values.csiSnapshotValidationWebhook.resources.requests.cpu }}  
       controlledValues: RequestsOnly
   targetRef:
     apiVersion: apps/v1
