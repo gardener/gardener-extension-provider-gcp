@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 
+	calicov1alpha1 "github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1"
+	"github.com/gardener/gardener-extension-networking-calico/pkg/calico"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -161,6 +163,27 @@ var _ = Describe("ValuesProvider", func() {
 
 		fakeClient = fakeclient.NewClientBuilder().Build()
 		fakeSecretsManager = fakesecretsmanager.New(fakeClient, namespace)
+
+		clusterK8sAtLeast120 = &extensionscontroller.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"generic-token-kubeconfig.secret.gardener.cloud/name": genericTokenKubeconfigSecretName,
+				},
+			},
+			Shoot: &gardencorev1beta1.Shoot{
+				Spec: gardencorev1beta1.ShootSpec{
+					Networking: gardencorev1beta1.Networking{
+						Pods: &cidr,
+					},
+					Kubernetes: gardencorev1beta1.Kubernetes{
+						Version: "1.20.0",
+						VerticalPodAutoscaler: &gardencorev1beta1.VerticalPodAutoscaler{
+							Enabled: true,
+						},
+					},
+				},
+			},
+		}
 	})
 
 	AfterEach(func() {
@@ -209,6 +232,7 @@ var _ = Describe("ValuesProvider", func() {
 			"secrets": map[string]interface{}{
 				"server": "cloud-controller-manager-server",
 			},
+			"configureCloudRoutes": false,
 		})
 
 		BeforeEach(func() {
@@ -248,6 +272,25 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				}),
 			}))
+		})
+
+		It("should return correct control plane chart values for clusters without overlay", func() {
+			shootWithoutOverlay := clusterK8sAtLeast120.Shoot.DeepCopy()
+			shootWithoutOverlay.Spec.Networking.Type = calico.Type
+			shootWithoutOverlay.Spec.Networking.ProviderConfig = &runtime.RawExtension{
+				Object: &calicov1alpha1.NetworkConfig{
+					Overlay: &calicov1alpha1.Overlay{
+						Enabled: false,
+					},
+				},
+			}
+			clusterK8sAtLeast120.Shoot = shootWithoutOverlay
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, checksums, false)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values[gcp.CloudControllerManagerName]).To(Equal(utils.MergeMaps(ccmChartValues, map[string]interface{}{
+				"kubernetesVersion":    clusterK8sAtLeast120.Shoot.Spec.Kubernetes.Version,
+				"configureCloudRoutes": true,
+			})))
 		})
 	})
 
