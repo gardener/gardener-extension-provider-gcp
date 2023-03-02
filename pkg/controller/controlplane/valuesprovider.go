@@ -36,7 +36,6 @@ import (
 	"github.com/gardener/gardener/pkg/utils/chart"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
-	"github.com/gardener/gardener/pkg/utils/secrets"
 	secretutils "github.com/gardener/gardener/pkg/utils/secrets"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -68,7 +67,7 @@ func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfig
 			Config: &secretutils.CertificateSecretConfig{
 				Name:       caNameControlPlane,
 				CommonName: caNameControlPlane,
-				CertType:   secrets.CACert,
+				CertType:   secretutils.CACert,
 			},
 			Options: []secretsmanager.GenerateOption{secretsmanager.Persist()},
 		},
