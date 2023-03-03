@@ -18,14 +18,14 @@ import (
 	"context"
 	"fmt"
 
-	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
-
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
 
 type secretBinding struct {

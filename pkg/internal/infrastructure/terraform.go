@@ -21,13 +21,13 @@ import (
 	"strconv"
 	"strings"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 const (

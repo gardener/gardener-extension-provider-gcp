@@ -20,9 +20,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
-
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -33,6 +30,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 )
 
 // bastionEndpoints collects the endpoints the bastion host provides; the
@@ -279,11 +279,11 @@ func metadataItemsDefine(userData []byte) []*compute.MetadataItems {
 	return []*compute.MetadataItems{
 		{
 			Key:   "startup-script",
-			Value: pointer.StringPtr(string(userData)),
+			Value: pointer.String(string(userData)),
 		},
 		{
 			Key:   "block-project-ssh-keys",
-			Value: pointer.StringPtr("TRUE"),
+			Value: pointer.String("TRUE"),
 		},
 	}
 }

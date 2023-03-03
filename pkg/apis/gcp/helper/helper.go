@@ -17,10 +17,10 @@ package helper
 import (
 	"fmt"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"k8s.io/utils/pointer"
 
-	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 // FindSubnetByPurpose takes a list of subnets and tries to find the first entry

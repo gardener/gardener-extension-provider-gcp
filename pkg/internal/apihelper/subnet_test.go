@@ -15,11 +15,11 @@
 package apihelper_test
 
 import (
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	. "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/apihelper"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	. "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/apihelper"
 )
 
 var _ = Describe("Subnet", func() {

@@ -21,10 +21,6 @@ import (
 	"regexp"
 	"strings"
 
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/utils/pointer"
-
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -32,6 +28,9 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	computev1 "google.golang.org/api/compute/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/charts"

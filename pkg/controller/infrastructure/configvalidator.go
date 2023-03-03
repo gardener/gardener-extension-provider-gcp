@@ -19,16 +19,16 @@ import (
 	"fmt"
 	"strings"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
-
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 // configValidator implements ConfigValidator for GCP infrastructure resources.

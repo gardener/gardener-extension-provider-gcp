@@ -21,19 +21,19 @@ import (
 	"net/http"
 	"strings"
 
-	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
-	"github.com/go-logr/logr"
-
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/go-logr/logr"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 	corev1 "k8s.io/api/core/v1"
+
+	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 )
 
 const (

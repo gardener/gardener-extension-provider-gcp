@@ -20,11 +20,9 @@ import (
 	"reflect"
 
 	calicov1alpha1 "github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1"
-	ciliumv1alpha1 "github.com/gardener/gardener-extension-networking-cilium/pkg/apis/cilium/v1alpha1"
-
 	"github.com/gardener/gardener-extension-networking-calico/pkg/calico"
+	ciliumv1alpha1 "github.com/gardener/gardener-extension-networking-cilium/pkg/apis/cilium/v1alpha1"
 	"github.com/gardener/gardener-extension-networking-cilium/pkg/cilium"
-
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"

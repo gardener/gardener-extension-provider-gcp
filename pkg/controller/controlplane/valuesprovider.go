@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	calicov1alpha1 "github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1"
 	"github.com/gardener/gardener-extension-networking-calico/pkg/calico"
 	ciliumv1alpha1 "github.com/gardener/gardener-extension-networking-cilium/pkg/apis/cilium/v1alpha1"
@@ -35,16 +36,8 @@ import (
 	"github.com/gardener/gardener/pkg/utils/chart"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
-	"github.com/gardener/gardener/pkg/utils/secrets"
 	secretutils "github.com/gardener/gardener/pkg/utils/secrets"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
-
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/apihelper"
-
-	"github.com/Masterminds/semver"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -54,6 +47,11 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/apihelper"
 )
 
 const (
@@ -69,7 +67,7 @@ func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfig
 			Config: &secretutils.CertificateSecretConfig{
 				Name:       caNameControlPlane,
 				CommonName: caNameControlPlane,
-				CertType:   secrets.CACert,
+				CertType:   secretutils.CACert,
 			},
 			Options: []secretsmanager.GenerateOption{secretsmanager.Persist()},
 		},

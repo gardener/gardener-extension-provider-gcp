@@ -17,9 +17,8 @@ package validation
 import (
 	"reflect"
 
-	apivalidation "k8s.io/apimachinery/pkg/api/validation"
-
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
+	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"

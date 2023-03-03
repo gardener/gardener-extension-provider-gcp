@@ -19,9 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
-
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
@@ -33,6 +30,9 @@ import (
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 const (

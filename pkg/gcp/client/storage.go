@@ -17,14 +17,14 @@ package client
 import (
 	"context"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 const (

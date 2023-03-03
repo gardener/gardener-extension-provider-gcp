@@ -19,10 +19,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
-
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -32,6 +28,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 type configValidator struct {

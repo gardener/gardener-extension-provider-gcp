@@ -15,17 +15,6 @@
 package cmd
 
 import (
-	backupbucketcontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupbucket"
-	backupentrycontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupentry"
-	bastioncontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
-	controlplanecontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/controlplane"
-	dnsrecordcontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/dnsrecord"
-	healthcheckcontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/healthcheck"
-	infrastructurecontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
-	workercontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
-	controlplanewebhook "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplane"
-	controlplaneexposurewebhook "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplaneexposure"
-
 	extensionsbackupbucketcontroller "github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	extensionsbackupentrycontroller "github.com/gardener/gardener/extensions/pkg/controller/backupentry"
 	extensionsbastioncontroller "github.com/gardener/gardener/extensions/pkg/controller/bastion"
@@ -38,6 +27,17 @@ import (
 	extensionsworkercontroller "github.com/gardener/gardener/extensions/pkg/controller/worker"
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 	extensioncontrolplanewebhook "github.com/gardener/gardener/extensions/pkg/webhook/controlplane"
+
+	backupbucketcontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupbucket"
+	backupentrycontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupentry"
+	bastioncontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
+	controlplanecontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/controlplane"
+	dnsrecordcontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/dnsrecord"
+	healthcheckcontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/healthcheck"
+	infrastructurecontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
+	workercontroller "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
+	controlplanewebhook "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplane"
+	controlplaneexposurewebhook "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/controlplaneexposure"
 )
 
 // ControllerSwitchOptions are the controllercmd.SwitchOptions for the provider controllers.

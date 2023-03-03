@@ -29,11 +29,6 @@ import (
 	"github.com/gardener/gardener/pkg/utils"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	fakesecretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager/fake"
-
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
-
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -44,6 +39,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 )
 
 const (

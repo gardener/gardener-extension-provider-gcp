@@ -15,16 +15,16 @@
 package validation
 
 import (
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-
 	featurevalidation "github.com/gardener/gardener/pkg/utils/validation/features"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 // ValidateControlPlaneConfig validates a ControlPlaneConfig object.
-func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, allowedZones, workerZones sets.String, version string, fldPath *field.Path) field.ErrorList {
+func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, allowedZones, workerZones sets.Set[string], version string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(controlPlaneConfig.Zone) == 0 {
@@ -53,7 +53,7 @@ func ValidateControlPlaneConfigUpdate(oldConfig, newConfig *apisgcp.ControlPlane
 	return allErrs
 }
 
-func validateZoneConstraints(allowedZones sets.String, zone string) (bool, []string) {
+func validateZoneConstraints(allowedZones sets.Set[string], zone string) (bool, []string) {
 	if allowedZones.Has(zone) {
 		return true, nil
 	}
