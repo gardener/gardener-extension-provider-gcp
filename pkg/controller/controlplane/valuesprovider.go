@@ -46,6 +46,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -155,7 +156,6 @@ var (
 					// csi-snapshot-validation-webhook
 					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotValidationName},
 					{Type: &corev1.Service{}, Name: gcp.CSISnapshotValidationName},
-					{Type: &networkingv1.NetworkPolicy{}, Name: "allow-kube-apiserver-to-csi-snapshot-validation"},
 				},
 			},
 		},
@@ -310,6 +310,11 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, vp.Client(), cp.Spec.SecretRef)
 	if err != nil {
 		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
+	}
+
+	// TODO(oliver-goetz): Delete this in a future release.
+	if err := kutil.DeleteObject(ctx, vp.Client(), &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: "allow-kube-apiserver-to-csi-snapshot-validation", Namespace: cp.Namespace}}); err != nil {
+		return nil, fmt.Errorf("failed deleting legacy csi-snapshot-validation network policy: %w", err)
 	}
 
 	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, serviceAccount, checksums, scaledDown)
