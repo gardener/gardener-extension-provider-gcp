@@ -38,6 +38,8 @@ type AddOptions struct {
 	Controller controller.Options
 	// IgnoreOperationAnnotation specifies whether to ignore the operation annotation or not.
 	IgnoreOperationAnnotation bool
+	// WebhookServerNamespace is the namespace in which the webhook server runs.
+	WebhookServerNamespace string
 }
 
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
@@ -48,7 +50,7 @@ func AddToManagerWithOptions(mgr manager.Manager, opts AddOptions) error {
 			secretConfigsFunc, shootAccessSecretsFunc, nil, nil,
 			configChart, controlPlaneChart, controlPlaneShootChart, controlPlaneShootCRDsChart, storageClassChart, nil,
 			NewValuesProvider(), extensionscontroller.ChartRendererFactoryFunc(util.NewChartRendererForShoot),
-			imagevector.ImageVector(), internal.CloudProviderConfigName, nil, mgr.GetWebhookServer().Port),
+			imagevector.ImageVector(), internal.CloudProviderConfigName, nil, opts.WebhookServerNamespace, mgr.GetWebhookServer().Port),
 		ControllerOptions: opts.Controller,
 		Predicates:        controlplane.DefaultPredicates(opts.IgnoreOperationAnnotation),
 		Type:              gcp.Type,
