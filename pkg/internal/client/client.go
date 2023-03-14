@@ -67,6 +67,9 @@ type regionsService struct {
 type regionsGetCall struct {
 	regionsGetCall *compute.RegionsGetCall
 }
+type imagesService struct {
+	imagesService *compute.ImagesService
+}
 type firewallsListCall struct {
 	firewallsListCall *compute.FirewallsListCall
 }
@@ -93,6 +96,10 @@ type firewallsPatchCall struct {
 
 type routesDeleteCall struct {
 	routesDeleteCall *compute.RoutesDeleteCall
+}
+
+type imagesListCall struct {
+	imagesListCall *compute.ImagesListCall
 }
 
 // NewFromServiceAccount creates a new client from the given service account.
@@ -139,6 +146,11 @@ func (c *client) Disks() DisksService {
 // Regions implements Interface.
 func (c *client) Regions() RegionsService {
 	return &regionsService{c.service.Regions}
+}
+
+// Images implements Interface.
+func (c *client) Images() ImagesService {
+	return &imagesService{c.service.Images}
 }
 
 // Get implements InstancesService.
@@ -214,6 +226,11 @@ func (d *disksService) Get(projectID string, zone string, disk string) DisksGetC
 // Delete implements DisksService.
 func (d *disksService) Delete(projectID string, zone string, disk string) DisksDeleteCall {
 	return &disksDeleteCall{d.disksService.Delete(projectID, zone, disk)}
+}
+
+// List implements ImagesService.
+func (i *imagesService) List(projectID string) ImagesListCall {
+	return &imagesListCall{i.imagesService.List(projectID)}
 }
 
 // Context implements FirewallsDeleteCall.
@@ -339,4 +356,19 @@ func (r *regionsGetCall) Do(opts ...googleapi.CallOption) (*compute.Region, erro
 // Context implements RegionsGetCall.
 func (r *regionsGetCall) Context(ctx context.Context) RegionsGetCall {
 	return &regionsGetCall{r.regionsGetCall.Context(ctx)}
+}
+
+// Do implements ImagesListCall.
+func (i *imagesListCall) Do(opts ...googleapi.CallOption) (*compute.ImageList, error) {
+	return i.imagesListCall.Do(opts...)
+}
+
+// Fields implements ImagesListCall.
+func (i *imagesListCall) Fields(s ...googleapi.Field) *compute.ImagesListCall {
+	return i.imagesListCall.Fields(s...)
+}
+
+// OrderBy implements ImagesListCall
+func (i *imagesListCall) OrderBy(orderBy string) *compute.ImagesListCall {
+	return i.imagesListCall.OrderBy(orderBy)
 }

@@ -33,6 +33,8 @@ type Interface interface {
 	Disks() DisksService
 	// Regions retrieves the GCP Regions Service
 	Regions() RegionsService
+	// Images retrieves the GCP Images Service
+	Images() ImagesService
 }
 
 // FirewallsService is the interface for the GCP firewalls service.
@@ -81,6 +83,12 @@ type DisksService interface {
 type RegionsService interface {
 	// Get initiates a RegionsServiceCall
 	Get(projectID string, region string) RegionsGetCall
+}
+
+// ImagesService is the interface for the GCP Image service.
+type ImagesService interface {
+	// List initiates a ImagesListCall
+	List(projectID string) ImagesListCall
 }
 
 // FirewallsListCall is a list call to the firewalls service.
@@ -192,4 +200,14 @@ type RegionsGetCall interface {
 	Do(opts ...googleapi.CallOption) (*compute.Region, error)
 	// Context sets the context for the get call.
 	Context(context.Context) RegionsGetCall
+}
+
+// ImagesListCall is a list call to the Image service.
+type ImagesListCall interface {
+	// Do executes the image list call.
+	Do(opts ...googleapi.CallOption) (*compute.ImageList, error)
+	// Fields allows partial responses to be retrieved.
+	Fields(s ...googleapi.Field) *compute.ImagesListCall
+	// OrderBy sets the optional parameter "orderBy": Sorts list results by a certain order.
+	OrderBy(orderBy string) *compute.ImagesListCall
 }
