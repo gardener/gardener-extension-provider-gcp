@@ -33,8 +33,8 @@ import (
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"google.golang.org/api/compute/v1"
-	"google.golang.org/api/iam/v1"
+	compute "google.golang.org/api/compute/v1"
+	iam "google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
@@ -611,6 +611,7 @@ func verifyCreation(
 	Expect(routerNAT.Name).To(Equal(infra.Namespace + "-cloud-nat"))
 	Expect(routerNAT.SourceSubnetworkIpRangesToNat).To(Equal("LIST_OF_SUBNETWORKS"))
 	Expect(routerNAT.MinPortsPerVm).To(Equal(int64(2048)))
+	Expect(routerNAT.EnableEndpointIndependentMapping).To(Equal(false))
 	Expect(routerNAT.LogConfig.Enable).To(BeTrue())
 	Expect(routerNAT.LogConfig.Filter).To(Equal("ERRORS_ONLY"))
 	Expect(routerNAT.Subnetworks).To(HaveLen(1))

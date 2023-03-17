@@ -72,7 +72,10 @@ func ComputeTerraformerTemplateValues(
 		createVPC         = true
 		createCloudRouter = true
 		cloudRouterName   string
-		cN                = map[string]interface{}{"minPortsPerVM": int32(2048)}
+		cN                = map[string]interface{}{
+			"minPortsPerVM":                    int32(2048),
+			"enableEndpointIndependentMapping": false,
+		}
 	)
 
 	if config.Networks.VPC != nil {
@@ -95,6 +98,9 @@ func ComputeTerraformerTemplateValues(
 				natIPNames = append(natIPNames, v.Name)
 			}
 			cN["natIPNames"] = natIPNames
+		}
+		if config.Networks.CloudNAT.EndpointIndependentMapping != nil {
+			cN["enableEndpointIndependentMapping"] = config.Networks.CloudNAT.EndpointIndependentMapping.Enabled
 		}
 	}
 
