@@ -102,27 +102,7 @@ var _ = Describe("ValuesProvider", func() {
 			},
 		}
 
-		cidr                 = "10.250.0.0/19"
-		clusterK8sAtLeast120 = &extensionscontroller.Cluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					"generic-token-kubeconfig.secret.gardener.cloud/name": genericTokenKubeconfigSecretName,
-				},
-			},
-			Shoot: &gardencorev1beta1.Shoot{
-				Spec: gardencorev1beta1.ShootSpec{
-					Networking: gardencorev1beta1.Networking{
-						Pods: &cidr,
-					},
-					Kubernetes: gardencorev1beta1.Kubernetes{
-						Version: "1.20.0",
-						VerticalPodAutoscaler: &gardencorev1beta1.VerticalPodAutoscaler{
-							Enabled: true,
-						},
-					},
-				},
-			},
-		}
+		cidr = "10.250.0.0/19"
 
 		projectID = "abc"
 		zone      = "europe-west1a"
@@ -148,6 +128,8 @@ var _ = Describe("ValuesProvider", func() {
 
 		fakeClient         client.Client
 		fakeSecretsManager secretsmanager.Interface
+
+		clusterK8sAtLeast120 *extensionscontroller.Cluster
 	)
 
 	BeforeEach(func() {
@@ -170,6 +152,7 @@ var _ = Describe("ValuesProvider", func() {
 					"generic-token-kubeconfig.secret.gardener.cloud/name": genericTokenKubeconfigSecretName,
 				},
 			},
+			Seed: &gardencorev1beta1.Seed{},
 			Shoot: &gardencorev1beta1.Shoot{
 				Spec: gardencorev1beta1.ShootSpec{
 					Networking: gardencorev1beta1.Networking{
@@ -271,6 +254,7 @@ var _ = Describe("ValuesProvider", func() {
 						"secrets": map[string]interface{}{
 							"server": "csi-snapshot-validation-server",
 						},
+						"topologyAwareRoutingEnabled": false,
 					},
 				}),
 			}))
@@ -294,6 +278,53 @@ var _ = Describe("ValuesProvider", func() {
 				"configureCloudRoutes": true,
 			})))
 		})
+
+		DescribeTable("topologyAwareRoutingEnabled value",
+			func(seedSettings *gardencorev1beta1.SeedSettings, shootControlPlane *gardencorev1beta1.ControlPlane, expected bool) {
+				clusterK8sAtLeast120.Seed = &gardencorev1beta1.Seed{
+					Spec: gardencorev1beta1.SeedSpec{
+						Settings: seedSettings,
+					},
+				}
+				clusterK8sAtLeast120.Shoot.Spec.ControlPlane = shootControlPlane
+
+				values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, checksums, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(HaveKey(gcp.CSIControllerName))
+				Expect(values[gcp.CSIControllerName]).To(HaveKeyWithValue("csiSnapshotValidationWebhook", HaveKeyWithValue("topologyAwareRoutingEnabled", expected)))
+			},
+
+			Entry("seed setting is nil, shoot control plane is not HA",
+				nil,
+				&gardencorev1beta1.ControlPlane{HighAvailability: nil},
+				false,
+			),
+			Entry("seed setting is disabled, shoot control plane is not HA",
+				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: false}},
+				&gardencorev1beta1.ControlPlane{HighAvailability: nil},
+				false,
+			),
+			Entry("seed setting is enabled, shoot control plane is not HA",
+				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: true}},
+				&gardencorev1beta1.ControlPlane{HighAvailability: nil},
+				false,
+			),
+			Entry("seed setting is nil, shoot control plane is HA with failure tolerance type 'zone'",
+				nil,
+				&gardencorev1beta1.ControlPlane{HighAvailability: &gardencorev1beta1.HighAvailability{FailureTolerance: gardencorev1beta1.FailureTolerance{Type: gardencorev1beta1.FailureToleranceTypeZone}}},
+				false,
+			),
+			Entry("seed setting is disabled, shoot control plane is HA with failure tolerance type 'zone'",
+				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: false}},
+				&gardencorev1beta1.ControlPlane{HighAvailability: &gardencorev1beta1.HighAvailability{FailureTolerance: gardencorev1beta1.FailureTolerance{Type: gardencorev1beta1.FailureToleranceTypeZone}}},
+				false,
+			),
+			Entry("seed setting is enabled, shoot control plane is HA with failure tolerance type 'zone'",
+				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: true}},
+				&gardencorev1beta1.ControlPlane{HighAvailability: &gardencorev1beta1.HighAvailability{FailureTolerance: gardencorev1beta1.FailureTolerance{Type: gardencorev1beta1.FailureToleranceTypeZone}}},
+				true,
+			),
+		)
 	})
 
 	Describe("#GetControlPlaneShootChartValues", func() {
