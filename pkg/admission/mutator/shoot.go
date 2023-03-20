@@ -100,7 +100,10 @@ func (s *shoot) Mutate(ctx context.Context, new, old client.Object) error {
 			if oldNetworkConfig.Overlay != nil {
 				networkConfig.Overlay = oldNetworkConfig.Overlay
 			}
+		}
 
+		if networkConfig.Overlay != nil && !networkConfig.Overlay.Enabled {
+			networkConfig.SnatToUpstreamDNS = &calicov1alpha1.SnatToUpstreamDNS{Enabled: false}
 		}
 
 		shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
@@ -130,6 +133,7 @@ func (s *shoot) Mutate(ctx context.Context, new, old client.Object) error {
 			}
 
 		}
+
 		shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
 			Object: networkConfig,
 		}

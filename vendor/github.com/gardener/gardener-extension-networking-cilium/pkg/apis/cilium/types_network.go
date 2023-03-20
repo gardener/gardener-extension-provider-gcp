@@ -81,8 +81,6 @@ type Store string
 const (
 	// Kubernetes defines the kubernetes CRD store type
 	Kubernetes Store = "kubernetes"
-	// ETCD defines the ETCD store type
-	ETCD Store = "etcd"
 )
 
 // InstallIPTableRules configuration for cilium
@@ -140,6 +138,11 @@ type Overlay struct {
 	Enabled bool
 }
 
+// SnatToUpstreamDNS  enables the masquerading of packets to the upstream dns server
+type SnatToUpstreamDNS struct {
+	Enabled bool
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -175,4 +178,6 @@ type NetworkConfig struct {
 	IPv4NativeRoutingCIDREnabled *bool
 	// Overlay enables the network overlay
 	Overlay *Overlay
+	// SnatToUpstreamDNS enables the masquerading of packets to the upstream dns server
+	SnatToUpstreamDNS *SnatToUpstreamDNS
 }

@@ -82,8 +82,6 @@ type Store string
 const (
 	// Kubernetes defines the kubernetes CRD store type
 	Kubernetes Store = "kubernetes"
-	// ETCD defines the ETCD store type
-	ETCD Store = "etcd"
 )
 
 // Hubble enablement for cilium
@@ -129,6 +127,11 @@ type KubeProxy struct {
 // Overlay configuration for cilium
 type Overlay struct {
 	// Enabled enables the network overlay.
+	Enabled bool `json:"enabled"`
+}
+
+// SnatToUpstreamDNS  enables the masquerading of packets to the upstream dns server
+type SnatToUpstreamDNS struct {
 	Enabled bool `json:"enabled"`
 }
 
@@ -181,4 +184,7 @@ type NetworkConfig struct {
 	// Overlay enables the network overlay
 	// +optional
 	Overlay *Overlay `json:"overlay,omitempty"`
+	// SnatToUpstreamDNS enables the masquerading of packets to the upstream dns server
+	// +optional
+	SnatToUpstreamDNS *SnatToUpstreamDNS `json:"snatToUpstreamDNS,omitempty"`
 }
