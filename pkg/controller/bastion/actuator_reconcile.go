@@ -253,7 +253,7 @@ func ensureDisk(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interf
 
 	log.Info("create new bastion compute instance disk")
 
-	osFamily, err := getosImage(gcpclient)
+	osFamily, err := getOSImage(gcpclient)
 	if err != nil {
 		return err
 	}
@@ -335,7 +335,7 @@ func diskDefine(zone string, diskName, osFamily string) *compute.Disk {
 	}
 }
 
-func getosImage(gcpClient gcpclient.Interface) (string, error) {
+func getOSImage(gcpClient gcpclient.Interface) (string, error) {
 	resp, err := gcpClient.Images().List(osImage).OrderBy("creationTimestamp desc").Fields("items(name,creationTimestamp,family)").Do()
 	if err != nil {
 		return "", err
