@@ -59,6 +59,8 @@ networks:
 # internal: 10.251.0.0/16
 # cloudNAT:
 #   minPortsPerVM: 2048
+#   endpointIndependentMapping:
+#     enabled: false
 #   natIPNames:
 #   - name: manualnat1
 #   - name: manualnat2
