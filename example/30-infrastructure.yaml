@@ -62,6 +62,8 @@ spec:
     #   natIPNames:
     #   - name: manualnat1
     #   - name: manualnat2
+    #    endpointIndependentMapping:
+    #      enabled: true
     # flowLogs:
     #   aggregationInterval: INTERVAL_5_SEC
     #   flowSampling: 0.2

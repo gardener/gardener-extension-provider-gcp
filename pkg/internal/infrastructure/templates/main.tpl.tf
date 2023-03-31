@@ -86,6 +86,7 @@ resource "google_compute_router_nat" "nat" {
     source_ip_ranges_to_nat = ["ALL_IP_RANGES"]
   }
   min_ports_per_vm = "{{ .networks.cloudNAT.minPortsPerVM }}"
+  enable_endpoint_independent_mapping = {{ .networks.cloudNAT.enableEndpointIndependentMapping }}
 
   log_config {
     enable = true

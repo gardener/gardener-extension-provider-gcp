@@ -59,6 +59,8 @@ networks:
 # internal: 10.251.0.0/16
 # cloudNAT:
 #   minPortsPerVM: 2048
+#   endpointIndependentMapping:
+#     enabled: false
 #   natIPNames:
 #   - name: manualnat1
 #   - name: manualnat2
@@ -88,6 +90,8 @@ The `networks.internal` section is optional and can describe a CIDR for a subnet
 The `networks.cloudNAT.minPortsPerVM` is optional and is used to define the [minimum number of ports allocated to a VM for the CloudNAT](https://cloud.google.com/nat/docs/overview#number_of_nat_ports_and_connections)
 
 The `networks.cloudNAT.natIPNames` is optional and is used to specify the names of the manual ip addresses which should be used by the nat gateway
+
+The `networks.cloudNAT.endpointIndependentMapping` is optional and is used to define the [endpoint mapping behavior](https://cloud.google.com/nat/docs/ports-and-addresses#ports-reuse-endpoints).
 
 The specified CIDR ranges must be contained in the VPC CIDR specified above, or the VPC CIDR of your already existing VPC.
 You can freely choose these CIDRs and it is your responsibility to properly design the network layout to suit your needs.

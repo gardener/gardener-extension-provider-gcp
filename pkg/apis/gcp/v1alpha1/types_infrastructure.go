@@ -111,6 +111,8 @@ type CloudRouter struct {
 
 // CloudNAT contains configuration about the the CloudNAT resource
 type CloudNAT struct {
+	// EndpointIndependentMapping controls if endpoint independent mapping is enabled.
+	EndpointIndependentMapping *EndpointIndependentMapping `json:"endpointIndependentMapping,omitempty"`
 	// MinPortsPerVM is the minimum number of ports allocated to a VM in the NAT config.
 	// The default value is 2048 ports.
 	// +optional
@@ -118,6 +120,11 @@ type CloudNAT struct {
 	// NatIPNames is a list of all user provided external premium ips which can be used by the nat gateway
 	// +optional
 	NatIPNames []NatIPName `json:"natIPNames,omitempty"`
+}
+
+// EndpointIndependentMapping controls if endpoint independent mapping is enabled.
+type EndpointIndependentMapping struct {
+	Enabled bool `json:"enabled"`
 }
 
 // NatIP is a user provided external ip which can be used by the nat gateway

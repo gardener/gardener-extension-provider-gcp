@@ -611,6 +611,7 @@ func verifyCreation(
 	Expect(routerNAT.Name).To(Equal(infra.Namespace + "-cloud-nat"))
 	Expect(routerNAT.SourceSubnetworkIpRangesToNat).To(Equal("LIST_OF_SUBNETWORKS"))
 	Expect(routerNAT.MinPortsPerVm).To(Equal(int64(2048)))
+	Expect(routerNAT.EnableEndpointIndependentMapping).To(Equal(false))
 	Expect(routerNAT.LogConfig.Enable).To(BeTrue())
 	Expect(routerNAT.LogConfig.Filter).To(Equal("ERRORS_ONLY"))
 	Expect(routerNAT.Subnetworks).To(HaveLen(1))

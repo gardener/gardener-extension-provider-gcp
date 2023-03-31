@@ -295,6 +295,19 @@ map[string]bool
 <tbody>
 <tr>
 <td>
+<code>endpointIndependentMapping</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.EndpointIndependentMapping">
+EndpointIndependentMapping
+</a>
+</em>
+</td>
+<td>
+<p>EndpointIndependentMapping controls if endpoint independent mapping is enabled.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>minPortsPerVM</code></br>
 <em>
 int32
@@ -348,6 +361,35 @@ string
 </td>
 <td>
 <p>Name is the CloudRouter name.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.EndpointIndependentMapping">EndpointIndependentMapping
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CloudNAT">CloudNAT</a>)
+</p>
+<p>
+<p>EndpointIndependentMapping controls if endpoint independent mapping is enabled.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>

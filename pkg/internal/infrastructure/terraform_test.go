@@ -224,7 +224,8 @@ var _ = Describe("Terraform", func() {
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
-						"minPortsPerVM": minPortsPerVM,
+						"minPortsPerVM":                    minPortsPerVM,
+						"enableEndpointIndependentMapping": false,
 					},
 				},
 				"podCIDR": podCIDR,
@@ -263,7 +264,8 @@ var _ = Describe("Terraform", func() {
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
-						"minPortsPerVM": minPortsPerVM,
+						"minPortsPerVM":                    minPortsPerVM,
+						"enableEndpointIndependentMapping": false,
 					},
 				},
 				"podCIDR": podCIDR,
@@ -278,7 +280,7 @@ var _ = Describe("Terraform", func() {
 			}))
 		})
 
-		It("should correctly compute the terraformer chart values with external cloud nat ips", func() {
+		It("should correctly compute the terraformer chart values with external CloudNAT IPs and EIM", func() {
 			infra.Spec.Region = "europe-west1"
 			projectID = "project"
 			internalCIDR := "192.168.0.0/16"
@@ -298,6 +300,9 @@ var _ = Describe("Terraform", func() {
 					CloudNAT: &api.CloudNAT{
 						MinPortsPerVM: &minPortsPerVM,
 						NatIPNames:    natIPNamesInput,
+						EndpointIndependentMapping: &api.EndpointIndependentMapping{
+							Enabled: true,
+						},
 					},
 					Internal: &internalCIDR,
 					Workers:  "10.1.0.0/16",
@@ -327,8 +332,9 @@ var _ = Describe("Terraform", func() {
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
-						"minPortsPerVM": minPortsPerVM,
-						"natIPNames":    natIPNamesOutput,
+						"minPortsPerVM":                    minPortsPerVM,
+						"natIPNames":                       natIPNamesOutput,
+						"enableEndpointIndependentMapping": true,
 					},
 				},
 				"podCIDR": podCIDR,
@@ -390,7 +396,8 @@ var _ = Describe("Terraform", func() {
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
-						"minPortsPerVM": minPortsPerVM,
+						"minPortsPerVM":                    minPortsPerVM,
+						"enableEndpointIndependentMapping": false,
 					},
 					"flowLogs": map[string]interface{}{
 						"aggregationInterval": *config.Networks.FlowLogs.AggregationInterval,
@@ -432,7 +439,8 @@ var _ = Describe("Terraform", func() {
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
-						"minPortsPerVM": minPortsPerVM,
+						"minPortsPerVM":                    minPortsPerVM,
+						"enableEndpointIndependentMapping": false,
 					},
 				},
 				"podCIDR": podCIDR,
