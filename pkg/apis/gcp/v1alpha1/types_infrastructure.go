@@ -122,8 +122,9 @@ type CloudNAT struct {
 	NatIPNames []NatIPName `json:"natIPNames,omitempty"`
 }
 
-// EndpointIndependentMapping controls if endpoint independent mapping is enabled.
+// EndpointIndependentMapping contains endpoint independent mapping options.
 type EndpointIndependentMapping struct {
+	// Enabled controls if endpoint independent mapping is enabled. Default is false.
 	Enabled bool `json:"enabled"`
 }
 
