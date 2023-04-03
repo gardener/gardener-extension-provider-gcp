@@ -372,7 +372,7 @@ string
 <a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CloudNAT">CloudNAT</a>)
 </p>
 <p>
-<p>EndpointIndependentMapping controls if endpoint independent mapping is enabled.</p>
+<p>EndpointIndependentMapping contains endpoint independent mapping options.</p>
 </p>
 <table>
 <thead>
@@ -390,6 +390,7 @@ bool
 </em>
 </td>
 <td>
+<p>Enabled controls if endpoint independent mapping is enabled. Default is false.</p>
 </td>
 </tr>
 </tbody>
