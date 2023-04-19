@@ -65,6 +65,20 @@ func (mr *MockInterfaceMockRecorder) Firewalls() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Firewalls", reflect.TypeOf((*MockInterface)(nil).Firewalls))
 }
 
+// Images mocks base method.
+func (m *MockInterface) Images() gcp.ImagesService {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Images")
+	ret0, _ := ret[0].(gcp.ImagesService)
+	return ret0
+}
+
+// Images indicates an expected call of Images.
+func (mr *MockInterfaceMockRecorder) Images() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Images", reflect.TypeOf((*MockInterface)(nil).Images))
+}
+
 // Instances mocks base method.
 func (m *MockInterface) Instances() gcp.InstancesService {
 	m.ctrl.T.Helper()

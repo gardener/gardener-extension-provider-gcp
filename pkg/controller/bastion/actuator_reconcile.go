@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -33,6 +34,10 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
+)
+
+const (
+	osImage = "debian-cloud"
 )
 
 // bastionEndpoints collects the endpoints the bastion host provides; the
@@ -247,7 +252,13 @@ func ensureDisk(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interf
 	}
 
 	log.Info("create new bastion compute instance disk")
-	disk = diskDefine(opt.Zone, opt.DiskName)
+
+	osFamily, err := getOSImage(gcpclient)
+	if err != nil {
+		return err
+	}
+
+	disk = diskDefine(opt.Zone, opt.DiskName, osFamily)
 	_, err = gcpclient.Disks().Insert(opt.ProjectID, opt.Zone, disk).Context(ctx).Do()
 	if err != nil {
 		return fmt.Errorf("failed to create compute instance disk: %w", err)
@@ -314,12 +325,33 @@ func disksDefine(opt *Options) []*compute.AttachedDisk {
 	}
 }
 
-func diskDefine(zone string, diskName string) *compute.Disk {
+func diskDefine(zone string, diskName, osFamily string) *compute.Disk {
 	return &compute.Disk{
 		Description: "Gardenctl Bastion disk",
 		Name:        diskName,
 		SizeGb:      10,
-		SourceImage: "projects/debian-cloud/global/images/family/debian-10",
+		SourceImage: fmt.Sprintf("projects/%s/global/images/family/%s", osImage, osFamily),
 		Zone:        zone,
 	}
+}
+
+func getOSImage(gcpClient gcpclient.Interface) (string, error) {
+	resp, err := gcpClient.Images().List(osImage).OrderBy("creationTimestamp desc").Fields("items(name,creationTimestamp,family)").Do()
+	if err != nil {
+		return "", err
+	}
+
+	if resp == nil || len(resp.Items) == 0 {
+		return "", fmt.Errorf("no available os image find")
+	}
+
+	// looking for fist os x86 arch version sorted by creationTimestamp
+	for _, k := range resp.Items {
+		if strings.Contains(k.Family, "-arm64") {
+			continue
+		}
+		return k.Family, nil
+	}
+
+	return "", nil
 }
