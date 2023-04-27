@@ -160,8 +160,11 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 			})
 		} else if len(infrastructureStatus.ServiceAccountEmail) != 0 {
 			serviceAccounts = append(serviceAccounts, map[string]interface{}{
-				"email":  infrastructureStatus.ServiceAccountEmail,
-				"scopes": []string{computev1.ComputeScope},
+				"email": infrastructureStatus.ServiceAccountEmail,
+				"scopes": []string{
+					computev1.ComputeScope,
+					"https://www.googleapis.com/auth/logging.write",
+				},
 			})
 		}
 
