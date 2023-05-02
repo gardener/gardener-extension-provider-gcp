@@ -16,7 +16,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gstruct"
-	"google.golang.org/api/compute/v1"
+	compute "google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -60,7 +60,7 @@ var _ = Describe("ConfigValidator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
-		cv = NewConfigValidator(gcpClientFactory, logger)
+		cv = NewConfigValidator(logger, gcpClientFactory)
 		err := cv.(inject.Client).InjectClient(c)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -113,36 +113,36 @@ var _ = Describe("ConfigValidator", func() {
 					worker.DeepCopyInto(obj)
 					return nil
 				})
-			gcpClientFactory.EXPECT().NewComputeClient(ctx, c, secretBinding.SecretRef).Return(gcpComputeClient, nil)
+			gcpClientFactory.EXPECT().Compute(ctx, c, secretBinding.SecretRef).Return(gcpComputeClient, nil)
 		})
 
 		It("should succeed if there are infrastructureStatus passed", func() {
-			gcpComputeClient.EXPECT().GetVPC(ctx, name).Return(&compute.Network{Name: name}, nil)
+			gcpComputeClient.EXPECT().GetNetwork(ctx, name).Return(&compute.Network{Name: name}, nil)
 			gcpComputeClient.EXPECT().GetSubnet(ctx, region, name).Return(&compute.Subnetwork{Name: name}, nil)
 			errorList := cv.Validate(ctx, bastion, cluster)
 			Expect(errorList).To(BeEmpty())
 		})
 
 		It("should fail with InternalError if getting vpc failed", func() {
-			gcpComputeClient.EXPECT().GetVPC(ctx, name).Return(&compute.Network{Name: ""}, nil)
+			gcpComputeClient.EXPECT().GetNetwork(ctx, name).Return(nil, nil)
 			errorList := cv.Validate(ctx, bastion, cluster)
 			Expect(errorList).To(ConsistOfFields(
 				gstruct.Fields{
 					"Type":   Equal(field.ErrorTypeInternal),
 					"Field":  Equal("vpc"),
-					"Detail": Equal("could not get vpc bastion from gcp provider: %!w(<nil>)"),
+					"Detail": Equal("could not get vpc bastion from gcp provider: Not Found"),
 				}))
 		})
 
 		It("should fail with InternalError if getting subnet failed", func() {
-			gcpComputeClient.EXPECT().GetVPC(ctx, name).Return(&compute.Network{Name: name}, nil)
-			gcpComputeClient.EXPECT().GetSubnet(ctx, region, name).Return(&compute.Subnetwork{Name: ""}, nil)
+			gcpComputeClient.EXPECT().GetNetwork(ctx, name).Return(&compute.Network{Name: name}, nil)
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, name).Return(nil, nil)
 			errorList := cv.Validate(ctx, bastion, cluster)
 			Expect(errorList).To(ConsistOfFields(
 				gstruct.Fields{
 					"Type":   Equal(field.ErrorTypeInternal),
 					"Field":  Equal("subnet"),
-					"Detail": Equal("could not get subnet bastion from gcp provider: %!w(<nil>)"),
+					"Detail": Equal("could not get subnet bastion from gcp provider: Not Found"),
 				}))
 		})
 	})

@@ -19,15 +19,29 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 )
 
 // Restore implements infrastructure.Actuator.
 func (a *actuator) Restore(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	terraformState, err := terraformer.UnmarshalRawState(infra.Status.State)
+	useFlow, err := shouldUseFlow(infra, cluster)
 	if err != nil {
 		return err
 	}
-	return a.reconcile(ctx, log, infra, cluster, terraformer.CreateOrUpdateState{State: &terraformState.Data})
+
+	var stateConfigMapInitializer terraformer.StateConfigMapInitializer
+	if !useFlow {
+		terraformState, err := terraformer.UnmarshalRawState(infra.Status.State)
+		if err != nil {
+			return err
+		}
+		stateConfigMapInitializer = terraformer.CreateOrUpdateState{State: &terraformState.Data}
+	}
+
+	err = a.reconcile(ctx, log, infra, cluster, stateConfigMapInitializer)
+	return util.DetermineError(err, helper.KnownCodes)
 }

@@ -23,87 +23,47 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow"
 )
 
 // Reconcile implements infrastructure.Actuator.
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	return a.reconcile(ctx, log, infra, cluster, terraformer.StateConfigMapInitializerFunc(terraformer.CreateState))
+	return util.DetermineError(a.reconcile(ctx, log, infra, cluster, terraformer.StateConfigMapInitializerFunc(terraformer.CreateState)), helper.KnownCodes)
 }
 
-func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, stateInitializer terraformer.StateConfigMapInitializer) error {
-	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
+func (a *actuator) reconcile(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, terraformState terraformer.StateConfigMapInitializer) error {
+	useFlow, err := shouldUseFlow(infra, cluster)
 	if err != nil {
 		return err
 	}
 
-	serviceAccount, err := infrastructure.GetServiceAccountFromInfrastructure(ctx, a.Client(), infra)
-	if err != nil {
-		return err
-	}
-
-	createSA, err := shouldCreateServiceAccount(infra)
-	if err != nil {
-		return err
-	}
-
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, serviceAccount, config, cluster.Shoot.Spec.Networking.Pods, createSA)
-	if err != nil {
-		return err
-	}
-
-	tf, err := internal.NewTerraformerWithAuth(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
-	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
-	}
-
-	if err := tf.
-		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
-		Apply(ctx); err != nil {
-		return util.DetermineError(fmt.Errorf("failed to apply the terraform config: %w", err), helper.KnownCodes)
-	}
-
-	return a.updateProviderStatus(ctx, tf, infra, config, createSA)
-}
-
-// shouldCreateServiceAccount checkes whether terraform needs to create/reconcile a gardener-managed service account.
-// For existing infrastructure the existence of a created service account is retrieved from the terraformer state.
-func shouldCreateServiceAccount(infra *extensionsv1alpha1.Infrastructure) (bool, error) {
-	var newCluster, hasServiceAccount bool
-	rawState, err := getTerraformerRawState(infra.Status.State)
-	if err != nil {
-		return false, err
-	}
-
-	if rawState == nil {
-		newCluster = true
-	} else {
-		state, err := shared.UnmarshalTerraformStateFromTerraformer(rawState)
+	// Terraform case
+	if !useFlow {
+		reconciler := NewTerraformReconciler(a.Client(), a.RESTConfig(), terraformState, a.disableProjectedTokenMount)
+		status, state, err := reconciler.Reconcile(ctx, log, cluster, infra)
 		if err != nil {
-			return false, err
+			return err
 		}
-		hasServiceAccount = len(state.FindManagedResourcesByType("google_service_account")) > 0
+
+		return a.updateProviderStatus(ctx, infra, status, state)
 	}
 
-	if newCluster && !features.ExtensionFeatureGate.Enabled(features.DisableGardenerServiceAccountCreation) {
-		return true, nil
+	// Flow case
+	if err := a.cleanupTerraformerResources(ctx, log, infra); err != nil {
+		return fmt.Errorf("cleaning up terraformer resources failed: %w", err)
 	}
-	return hasServiceAccount, nil
-}
 
-func getTerraformerRawState(state *runtime.RawExtension) (*terraformer.RawState, error) {
-	if state == nil {
-		return nil, nil
-	}
-	tfRawState, err := terraformer.UnmarshalRawState(state)
+	flow, err := infraflow.NewFlowReconciler(ctx, log, infra, cluster, a.Client())
 	if err != nil {
-		return nil, fmt.Errorf("could not decode terraform raw state: %+v", err)
+		return err
 	}
-	return tfRawState, nil
+
+	status, state, err := flow.Reconcile(ctx)
+	if err != nil {
+		return err
+	}
+
+	return a.updateProviderStatus(ctx, infra, status, state)
 }

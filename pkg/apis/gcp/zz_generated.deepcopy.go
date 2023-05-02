@@ -183,7 +183,7 @@ func (in *FlowLogs) DeepCopyInto(out *FlowLogs) {
 	}
 	if in.FlowSampling != nil {
 		in, out := &in.FlowSampling, &out.FlowSampling
-		*out = new(float32)
+		*out = new(float64)
 		**out = **in
 	}
 	if in.Metadata != nil {

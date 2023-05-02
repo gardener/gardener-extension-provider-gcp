@@ -42,7 +42,7 @@ type AddOptions struct {
 func AddToManagerWithOptions(mgr manager.Manager, opts AddOptions) error {
 	return bastion.Add(mgr, bastion.AddArgs{
 		Actuator:          newActuator(),
-		ConfigValidator:   NewConfigValidator(gcpclient.NewFactory(), log.Log),
+		ConfigValidator:   NewConfigValidator(log.Log, gcpclient.New()),
 		ControllerOptions: opts.Controller,
 		Predicates:        bastion.DefaultPredicates(opts.IgnoreOperationAnnotation),
 		Type:              gcp.Type,

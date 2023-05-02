@@ -33,8 +33,8 @@ import (
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	compute "google.golang.org/api/compute/v1"
-	iam "google.golang.org/api/iam/v1"
+	computev1 "google.golang.org/api/compute/v1"
+	iamv1 "google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
@@ -63,6 +63,12 @@ const (
 	podCIDR            = "100.96.0.0/11"
 )
 
+const (
+	useTerraform = iota
+	migrateFromTerraform
+	useFlow
+)
+
 var (
 	serviceAccount = flag.String("service-account", "", "Service account containing credentials for the GCP API")
 	region         = flag.String("region", "", "GCP region")
@@ -87,8 +93,8 @@ var (
 	c         client.Client
 
 	project        string
-	computeService *compute.Service
-	iamService     *iam.Service
+	computeService *computev1.Service
+	iamService     *iamv1.Service
 )
 
 var _ = BeforeSuite(func() {
@@ -162,9 +168,9 @@ var _ = BeforeSuite(func() {
 	sa, err := gcp.GetServiceAccountFromJSON([]byte(*serviceAccount))
 	project = sa.ProjectID
 	Expect(err).NotTo(HaveOccurred())
-	computeService, err = compute.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(compute.CloudPlatformScope))
+	computeService, err = computev1.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(computev1.CloudPlatformScope))
 	Expect(err).NotTo(HaveOccurred())
-	iamService, err = iam.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)))
+	iamService, err = iamv1.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)))
 	Expect(err).NotTo(HaveOccurred())
 })
 
@@ -174,15 +180,19 @@ var _ = Describe("Infrastructure tests", func() {
 			framework.RunCleanupActions()
 		})
 
-		It("should successfully create and delete", func() {
+		DescribeTable("should successfully create and delete", func(flowType int) {
 			providerConfig := newProviderConfig(nil, nil)
 
 			namespace, err := generateNamespaceName()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
+			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService, flowType)
 			Expect(err).NotTo(HaveOccurred())
-		})
+		},
+			Entry("terraform", useTerraform),
+			Entry("migrate", migrateFromTerraform),
+			Entry("flow", useFlow),
+		)
 	})
 
 	Context("with infrastructure that uses existing vpc, cloud router and cloud nat", func() {
@@ -190,7 +200,7 @@ var _ = Describe("Infrastructure tests", func() {
 			framework.RunCleanupActions()
 		})
 
-		It("should successfully create and delete", func() {
+		DescribeTable("should successfully create and delete", func(flowType int) {
 			namespace, err := generateNamespaceName()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -229,9 +239,13 @@ var _ = Describe("Infrastructure tests", func() {
 			}
 			providerConfig := newProviderConfig(vpc, cloudNAT)
 
-			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
+			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService, flowType)
 			Expect(err).NotTo(HaveOccurred())
-		})
+		},
+			Entry("terraform", useTerraform),
+			Entry("migrate", migrateFromTerraform),
+			Entry("flow", useFlow),
+		)
 	})
 })
 
@@ -241,8 +255,9 @@ func runTest(
 	namespaceName string,
 	providerConfig *gcpv1alpha1.InfrastructureConfig,
 	project string,
-	computeService *compute.Service,
-	iamService *iam.Service,
+	computeService *computev1.Service,
+	iamService *iamv1.Service,
+	flowType int,
 ) error {
 	var (
 		namespace     *corev1.Namespace
@@ -299,6 +314,12 @@ func runTest(
 			},
 		},
 	}
+	if flowType == useFlow {
+		shoot.Annotations = map[string]string{
+			gcp.AnnotationKeyUseFlow: "true",
+		}
+	}
+
 	shootJSON, err := json.Marshal(shoot)
 	if err != nil {
 		return err
@@ -370,6 +391,27 @@ func runTest(
 	By("verify infrastructure creation")
 	verifyCreation(ctx, project, computeService, iamService, infra, providerConfig)
 
+	By("triggering infrastructure reconciliation")
+	infraCopy := infra.DeepCopy()
+	if flowType == migrateFromTerraform {
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, gcp.AnnotationKeyUseFlow, "true")
+	}
+	Expect(c.Patch(ctx, infra, client.MergeFrom(infraCopy))).To(Succeed())
+
+	By("wait until infrastructure is reconciled")
+	if err := extensions.WaitUntilExtensionObjectReady(
+		ctx,
+		c,
+		log,
+		infra,
+		"Infrastucture",
+		10*time.Second,
+		30*time.Second,
+		16*time.Minute,
+		nil,
+	); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -432,13 +474,13 @@ func generateNamespaceName() (string, error) {
 	return "gcp-infrastructure-it--" + suffix, nil
 }
 
-func prepareNewNetwork(ctx context.Context, logger logr.Logger, project string, computeService *compute.Service, networkName, routerName string) error {
+func prepareNewNetwork(ctx context.Context, logger logr.Logger, project string, computeService *computev1.Service, networkName, routerName string) error {
 	logger = logger.WithValues("project", project)
 
-	network := &compute.Network{
+	network := &computev1.Network{
 		Name:                  networkName,
 		AutoCreateSubnetworks: false,
-		RoutingConfig: &compute.NetworkRoutingConfig{
+		RoutingConfig: &computev1.NetworkRoutingConfig{
 			RoutingMode: "REGIONAL",
 		},
 		ForceSendFields: []string{"AutoCreateSubnetworks"},
@@ -452,7 +494,7 @@ func prepareNewNetwork(ctx context.Context, logger logr.Logger, project string, 
 		return err
 	}
 
-	router := &compute.Router{
+	router := &computev1.Router{
 		Name:    routerName,
 		Network: networkOp.TargetLink,
 	}
@@ -464,7 +506,7 @@ func prepareNewNetwork(ctx context.Context, logger logr.Logger, project string, 
 	return waitForOperation(ctx, project, computeService, routerOp)
 }
 
-func teardownNetwork(ctx context.Context, logger logr.Logger, project string, computeService *compute.Service, networkName, routerName string) error {
+func teardownNetwork(ctx context.Context, logger logr.Logger, project string, computeService *computev1.Service, networkName, routerName string) error {
 	logger = logger.WithValues("project", project)
 
 	routerOp, err := computeService.Routers.Delete(project, *region, routerName).Context(ctx).Do()
@@ -498,10 +540,10 @@ func teardownNetwork(ctx context.Context, logger logr.Logger, project string, co
 	return nil
 }
 
-func prepareNewIPAddresses(ctx context.Context, logger logr.Logger, project string, computeService *compute.Service, ipAddressNames []string) error {
+func prepareNewIPAddresses(ctx context.Context, logger logr.Logger, project string, computeService *computev1.Service, ipAddressNames []string) error {
 	logger = logger.WithValues("project", project)
 	for _, ipAddressName := range ipAddressNames {
-		address := &compute.Address{
+		address := &computev1.Address{
 			Name: ipAddressName,
 		}
 		insertAddressOp, err := computeService.Addresses.Insert(project, *region, address).Context(ctx).Do()
@@ -516,7 +558,7 @@ func prepareNewIPAddresses(ctx context.Context, logger logr.Logger, project stri
 	return nil
 }
 
-func teardownIPAddresses(ctx context.Context, logger logr.Logger, project string, computeService *compute.Service, ipAddressNames []string) error {
+func teardownIPAddresses(ctx context.Context, logger logr.Logger, project string, computeService *computev1.Service, ipAddressNames []string) error {
 	logger = logger.WithValues("project", project)
 	for _, ipAddressName := range ipAddressNames {
 		deleteAddressOp, err := computeService.Addresses.Delete(project, *region, ipAddressName).Context(ctx).Do()
@@ -535,10 +577,10 @@ func teardownIPAddresses(ctx context.Context, logger logr.Logger, project string
 	return nil
 }
 
-func waitForOperation(ctx context.Context, project string, computeService *compute.Service, op *compute.Operation) error {
+func waitForOperation(ctx context.Context, project string, computeService *computev1.Service, op *computev1.Operation) error {
 	return wait.PollUntil(5*time.Second, func() (bool, error) {
 		var (
-			currentOp *compute.Operation
+			currentOp *computev1.Operation
 			err       error
 		)
 
@@ -564,8 +606,8 @@ func getResourceNameFromSelfLink(link string) string {
 func verifyCreation(
 	ctx context.Context,
 	project string,
-	computeService *compute.Service,
-	iamService *iam.Service,
+	computeService *computev1.Service,
+	iamService *iamv1.Service,
 	infra *extensionsv1alpha1.Infrastructure,
 	providerConfig *gcpv1alpha1.InfrastructureConfig,
 ) {
@@ -644,7 +686,7 @@ func verifyCreation(
 	Expect(allowInternalAccess.Network).To(Equal(network.SelfLink))
 	Expect(allowInternalAccess.SourceRanges).To(HaveLen(3))
 	Expect(allowInternalAccess.SourceRanges).To(ConsistOf(workersSubnetCIDR, internalSubnetCIDR, podCIDR))
-	Expect(allowInternalAccess.Allowed).To(ConsistOf([]*compute.FirewallAllowed{
+	Expect(allowInternalAccess.Allowed).To(ConsistOf([]*computev1.FirewallAllowed{
 		{
 			IPProtocol: "icmp",
 		},
@@ -666,7 +708,7 @@ func verifyCreation(
 
 	Expect(allowExternalAccess.Network).To(Equal(network.SelfLink))
 	Expect(allowExternalAccess.SourceRanges).To(Equal([]string{"0.0.0.0/0"}))
-	Expect(allowExternalAccess.Allowed).To(ConsistOf([]*compute.FirewallAllowed{
+	Expect(allowExternalAccess.Allowed).To(ConsistOf([]*computev1.FirewallAllowed{
 		{
 			IPProtocol: "tcp",
 			Ports:      []string{"443"},
@@ -683,7 +725,7 @@ func verifyCreation(
 		"209.85.152.0/22",
 		"130.211.0.0/22",
 	}))
-	Expect(allowHealthChecks.Allowed).To(ConsistOf([]*compute.FirewallAllowed{
+	Expect(allowHealthChecks.Allowed).To(ConsistOf([]*computev1.FirewallAllowed{
 		{
 			IPProtocol: "tcp",
 			Ports:      []string{"30000-32767"},
@@ -698,8 +740,8 @@ func verifyCreation(
 func verifyDeletion(
 	ctx context.Context,
 	project string,
-	computeService *compute.Service,
-	iamService *iam.Service,
+	computeService *computev1.Service,
+	iamService *iamv1.Service,
 	infra *extensionsv1alpha1.Infrastructure,
 	providerConfig *gcpv1alpha1.InfrastructureConfig,
 ) {

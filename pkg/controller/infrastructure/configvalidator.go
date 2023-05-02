@@ -34,15 +34,15 @@ import (
 // configValidator implements ConfigValidator for GCP infrastructure resources.
 type configValidator struct {
 	common.ClientContext
-	gcpClientFactory gcpclient.Factory
-	logger           logr.Logger
+	logger logr.Logger
+	client gcpclient.Factory
 }
 
 // NewConfigValidator creates a new ConfigValidator.
-func NewConfigValidator(gcpClientFactory gcpclient.Factory, logger logr.Logger) infrastructure.ConfigValidator {
+func NewConfigValidator(logger logr.Logger, client gcpclient.Factory) infrastructure.ConfigValidator {
 	return &configValidator{
-		gcpClientFactory: gcpClientFactory,
-		logger:           logger.WithName("gcp-infrastructure-config-validator"),
+		logger: logger.WithName("gcp-infrastructure-config-validator"),
+		client: client,
 	}
 }
 
@@ -60,7 +60,7 @@ func (c *configValidator) Validate(ctx context.Context, infra *extensionsv1alpha
 	}
 
 	// Create GCP compute client
-	computeClient, err := c.gcpClientFactory.NewComputeClient(ctx, c.Client(), infra.Spec.SecretRef)
+	computeClient, err := c.client.Compute(ctx, c.Client(), infra.Spec.SecretRef)
 	if err != nil {
 		allErrs = append(allErrs, field.InternalError(nil, err))
 		return allErrs

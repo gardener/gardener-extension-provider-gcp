@@ -15,6 +15,7 @@
 package client
 
 import (
+	"fmt"
 	"net/http"
 
 	"google.golang.org/api/googleapi"
@@ -52,4 +53,26 @@ func IgnoreErrorCodes(err error, codes ...int) error {
 // IgnoreNotFoundError returns nil if the error is a NotFound error. Otherwise, it returns the original error.
 func IgnoreNotFoundError(err error) error {
 	return IgnoreErrorCodes(err, http.StatusNotFound)
+}
+
+// IsNotFoundError returns true if the error has a HTTP 404 status code.
+func IsNotFoundError(err error) bool {
+	return IsErrorCode(err, http.StatusNotFound)
+}
+
+// InvalidUpdateError indicates an impossible update. When InvalidUpdateError is returned it means that an update was
+// attempted on an immutable or unsupported field.
+type InvalidUpdateError struct {
+	fields []string
+}
+
+// NewInvalidUpdateError returns a new InvalidUpdateError.
+func NewInvalidUpdateError(fields ...string) *InvalidUpdateError {
+	return &InvalidUpdateError{
+		fields: fields,
+	}
+}
+
+func (i InvalidUpdateError) Error() string {
+	return fmt.Sprintf("updating the following fields is not possible: %v", i.fields)
 }

@@ -17,35 +17,30 @@ package client
 import (
 	"context"
 	"fmt"
+	"regexp"
 
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	iam "google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
+var (
+	serviceAccountIDRegex           = regexp.MustCompile(`^projects/.*/serviceAccounts/.*@.*\.iam\.gserviceaccount\.com$`)
+	_                     IAMClient = &iamClient{}
+)
+
 // IAMClient is the client interface for the IAM API.
 type IAMClient interface {
-	GetServiceAccount(ctx context.Context, name string) (*iam.ServiceAccount, error)
+	GetServiceAccount(ctx context.Context, name string) (*ServiceAccount, error)
+	CreateServiceAccount(ctx context.Context, accountID string) (*ServiceAccount, error)
+	DeleteServiceAccount(context.Context, string) error
 }
 
 type iamClient struct {
 	service   *iam.Service
 	projectID string
-}
-
-// NewIAMClientFromSecretRef creates a new compute client from the given client and secret reference.
-func NewIAMClientFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (IAMClient, error) {
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, c, secretRef)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewIAMClient(ctx, serviceAccount)
 }
 
 // NewIAMClient returns a new IAM client.
@@ -55,8 +50,7 @@ func NewIAMClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (IAMC
 		return nil, err
 	}
 
-	client := oauth2.NewClient(ctx, credentials.TokenSource)
-	service, err := iam.NewService(ctx, option.WithHTTPClient(client))
+	service, err := iam.NewService(ctx, option.WithCredentials(credentials))
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +61,39 @@ func NewIAMClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (IAMC
 	}, nil
 }
 
-func (i *iamClient) GetServiceAccount(ctx context.Context, name string) (*iam.ServiceAccount, error) {
-	return i.service.Projects.ServiceAccounts.Get(i.serviceAccountID(name)).Context(ctx).Do()
+func (i *iamClient) GetServiceAccount(ctx context.Context, name string) (*ServiceAccount, error) {
+	accountID := name
+	if !serviceAccountIDRegex.MatchString(accountID) {
+		accountID = i.serviceAccountID(name)
+	}
+
+	sa, err := i.service.Projects.ServiceAccounts.Get(accountID).Context(ctx).Do()
+	if err != nil {
+		return nil, IgnoreNotFoundError(err)
+	}
+	return sa, nil
 }
 
 func (i *iamClient) serviceAccountID(baseName string) string {
 	return fmt.Sprintf("projects/%s/serviceAccounts/%s@%s.iam.gserviceaccount.com", i.projectID, baseName, i.projectID)
+}
+
+func (i *iamClient) CreateServiceAccount(ctx context.Context, accountId string) (*ServiceAccount, error) {
+	name := "projects/" + i.projectID
+	return i.service.Projects.ServiceAccounts.Create(name, &iam.CreateServiceAccountRequest{
+		AccountId: accountId,
+		ServiceAccount: &iam.ServiceAccount{
+			DisplayName: accountId,
+		},
+	}).Context(ctx).Do()
+}
+
+func (i *iamClient) DeleteServiceAccount(ctx context.Context, name string) error {
+	accountID := name
+	if !serviceAccountIDRegex.MatchString(accountID) {
+		accountID = i.serviceAccountID(name)
+	}
+
+	_, err := i.service.Projects.ServiceAccounts.Delete(accountID).Context(ctx).Do()
+	return IgnoreNotFoundError(err)
 }

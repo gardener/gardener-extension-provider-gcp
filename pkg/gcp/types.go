@@ -89,6 +89,15 @@ const (
 	MachineControllerManagerVpaName = "machine-controller-manager-vpa"
 	// MachineControllerManagerMonitoringConfigName is the name of the ConfigMap containing monitoring stack configurations for machine-controller-manager.
 	MachineControllerManagerMonitoringConfigName = "machine-controller-manager-monitoring-config"
+
+	// AnnotationKeyUseFlow marks how the infrastructure should be reconciled. When this is used reconciliation with flow
+	// will take place. Otherwrise, Terraformer will be used.
+	AnnotationKeyUseFlow = "gcp.provider.extensions.gardener.cloud/use-flow"
+	// SeedLabelKeyUseFlow is the label for seeds to enable flow reconciliation for all of its shoots if value is `true`
+	// or for new shoots only with value `new`
+	SeedLabelKeyUseFlow = AnnotationKeyUseFlow
+	// SeedLabelUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
+	SeedLabelUseFlowValueNew = "new"
 )
 
 var (

@@ -109,7 +109,7 @@ type CloudRouter struct {
 	Name string `json:"name,omitempty"`
 }
 
-// CloudNAT contains configuration about the the CloudNAT resource
+// CloudNAT contains configuration about the CloudNAT resource
 type CloudNAT struct {
 	// EndpointIndependentMapping controls if endpoint independent mapping is enabled.
 	EndpointIndependentMapping *EndpointIndependentMapping `json:"endpointIndependentMapping,omitempty"`

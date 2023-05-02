@@ -30,6 +30,7 @@ import (
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -113,8 +114,8 @@ func getDisk(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) (
 	return disk, nil
 }
 
-func getServiceAccount(ctx context.Context, a *actuator, bastion *v1alpha1.Bastion) (*gcp.ServiceAccount, error) {
-	return gcp.GetServiceAccountFromSecretReference(ctx, a.Client(), corev1.SecretReference{Namespace: bastion.Namespace, Name: constants.SecretNameCloudProvider})
+func getServiceAccount(ctx context.Context, c client.Client, bastion *v1alpha1.Bastion) (*gcp.ServiceAccount, error) {
+	return gcp.GetServiceAccountFromSecretReference(ctx, c, corev1.SecretReference{Namespace: bastion.Namespace, Name: constants.SecretNameCloudProvider})
 }
 
 func createGCPClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (gcpclient.Interface, error) {

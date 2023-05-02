@@ -1,4 +1,4 @@
-// Copyright (c) 2022 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+// Copyright (c) 2021 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ type configValidator struct {
 }
 
 // NewConfigValidator creates a new ConfigValidator.
-func NewConfigValidator(gcpClientFactory gcpclient.Factory, logger logr.Logger) bastion.ConfigValidator {
+func NewConfigValidator(logger logr.Logger, gcpClientFactory gcpclient.Factory) bastion.ConfigValidator {
 	return &configValidator{
 		gcpClientFactory: gcpClientFactory,
 		logger:           logger.WithName("gcp-bastion-config-validator"),
@@ -60,13 +60,13 @@ func (c *configValidator) Validate(ctx context.Context, bastion *extensionsv1alp
 		return allErrs
 	}
 
-	secretReference := &corev1.SecretReference{
+	secretReference := corev1.SecretReference{
 		Namespace: cluster.ObjectMeta.Name,
 		Name:      v1beta1constants.SecretNameCloudProvider,
 	}
 
 	// Create GCP compute client
-	computeClient, err := c.gcpClientFactory.NewComputeClient(ctx, c.Client(), *secretReference)
+	computeClient, err := c.gcpClientFactory.Compute(ctx, c.Client(), secretReference)
 	if err != nil {
 		allErrs = append(allErrs, field.InternalError(nil, err))
 		return allErrs
@@ -123,15 +123,24 @@ func getInfrastructureStatus(ctx context.Context, c client.Client, cluster *exte
 func (c *configValidator) validateInfrastructureStatus(ctx context.Context, computeClient gcpclient.ComputeClient, region string, infrastructureStatus *gcp.InfrastructureStatus, nodeSubnet string) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	vpc, err := computeClient.GetVPC(ctx, infrastructureStatus.Networks.VPC.Name)
-	if err != nil || vpc == nil || vpc.Name == "" {
+	vpc, err := computeClient.GetNetwork(ctx, infrastructureStatus.Networks.VPC.Name)
+	if err != nil {
 		allErrs = append(allErrs, field.InternalError(field.NewPath("vpc"), fmt.Errorf("could not get vpc %s from gcp provider: %w", infrastructureStatus.Networks.VPC.Name, err)))
+		return allErrs
+	}
+	if vpc == nil {
+		allErrs = append(allErrs, field.InternalError(field.NewPath("vpc"), fmt.Errorf("could not get vpc %s from gcp provider: Not Found", infrastructureStatus.Networks.VPC.Name)))
 		return allErrs
 	}
 
 	subnet, err := computeClient.GetSubnet(ctx, region, nodeSubnet)
-	if err != nil || subnet == nil || subnet.Name == "" {
+	if err != nil {
 		allErrs = append(allErrs, field.InternalError(field.NewPath("subnet"), fmt.Errorf("could not get subnet %s from gcp provider: %w", nodeSubnet, err)))
+		return allErrs
+	}
+
+	if subnet == nil {
+		allErrs = append(allErrs, field.InternalError(field.NewPath("subnet"), fmt.Errorf("could not get subnet %s from gcp provider: Not Found", nodeSubnet)))
 		return allErrs
 	}
 

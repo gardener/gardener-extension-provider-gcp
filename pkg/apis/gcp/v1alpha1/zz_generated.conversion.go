@@ -397,7 +397,13 @@ func Convert_gcp_EndpointIndependentMapping_To_v1alpha1_EndpointIndependentMappi
 
 func autoConvert_v1alpha1_FlowLogs_To_gcp_FlowLogs(in *FlowLogs, out *gcp.FlowLogs, s conversion.Scope) error {
 	out.AggregationInterval = (*string)(unsafe.Pointer(in.AggregationInterval))
-	out.FlowSampling = (*float32)(unsafe.Pointer(in.FlowSampling))
+	if in.FlowSampling != nil {
+		in, out := &in.FlowSampling, &out.FlowSampling
+		*out = new(float64)
+		**out = float64(**in)
+	} else {
+		out.FlowSampling = nil
+	}
 	out.Metadata = (*string)(unsafe.Pointer(in.Metadata))
 	return nil
 }
@@ -409,7 +415,13 @@ func Convert_v1alpha1_FlowLogs_To_gcp_FlowLogs(in *FlowLogs, out *gcp.FlowLogs, 
 
 func autoConvert_gcp_FlowLogs_To_v1alpha1_FlowLogs(in *gcp.FlowLogs, out *FlowLogs, s conversion.Scope) error {
 	out.AggregationInterval = (*string)(unsafe.Pointer(in.AggregationInterval))
-	out.FlowSampling = (*float32)(unsafe.Pointer(in.FlowSampling))
+	if in.FlowSampling != nil {
+		in, out := &in.FlowSampling, &out.FlowSampling
+		*out = new(float32)
+		**out = float32(**in)
+	} else {
+		out.FlowSampling = nil
+	}
 	out.Metadata = (*string)(unsafe.Pointer(in.Metadata))
 	return nil
 }
@@ -609,7 +621,15 @@ func autoConvert_v1alpha1_NetworkConfig_To_gcp_NetworkConfig(in *NetworkConfig, 
 	out.Internal = (*string)(unsafe.Pointer(in.Internal))
 	out.Worker = in.Worker
 	out.Workers = in.Workers
-	out.FlowLogs = (*gcp.FlowLogs)(unsafe.Pointer(in.FlowLogs))
+	if in.FlowLogs != nil {
+		in, out := &in.FlowLogs, &out.FlowLogs
+		*out = new(gcp.FlowLogs)
+		if err := Convert_v1alpha1_FlowLogs_To_gcp_FlowLogs(*in, *out, s); err != nil {
+			return err
+		}
+	} else {
+		out.FlowLogs = nil
+	}
 	return nil
 }
 
@@ -624,7 +644,15 @@ func autoConvert_gcp_NetworkConfig_To_v1alpha1_NetworkConfig(in *gcp.NetworkConf
 	out.Internal = (*string)(unsafe.Pointer(in.Internal))
 	out.Worker = in.Worker
 	out.Workers = in.Workers
-	out.FlowLogs = (*FlowLogs)(unsafe.Pointer(in.FlowLogs))
+	if in.FlowLogs != nil {
+		in, out := &in.FlowLogs, &out.FlowLogs
+		*out = new(FlowLogs)
+		if err := Convert_gcp_FlowLogs_To_v1alpha1_FlowLogs(*in, *out, s); err != nil {
+			return err
+		}
+	} else {
+		out.FlowLogs = nil
+	}
 	return nil
 }
 

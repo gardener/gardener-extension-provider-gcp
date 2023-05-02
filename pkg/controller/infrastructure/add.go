@@ -45,7 +45,7 @@ type AddOptions struct {
 func AddToManagerWithOptions(mgr manager.Manager, options AddOptions) error {
 	return infrastructure.Add(mgr, infrastructure.AddArgs{
 		Actuator:          NewActuator(options.DisableProjectedTokenMount),
-		ConfigValidator:   NewConfigValidator(gcpclient.NewFactory(), log.Log),
+		ConfigValidator:   NewConfigValidator(log.Log, gcpclient.New()),
 		ControllerOptions: options.Controller,
 		Predicates:        infrastructure.DefaultPredicates(options.IgnoreOperationAnnotation),
 		Type:              gcp.Type,

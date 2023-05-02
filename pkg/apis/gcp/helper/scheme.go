@@ -65,12 +65,12 @@ func InfrastructureConfigFromInfrastructure(infra *extensionsv1alpha1.Infrastruc
 // InfrastructureStatusFromRaw extracts the InfrastructureStatus from the
 // ProviderStatus section of the given Infrastructure.
 func InfrastructureStatusFromRaw(raw *runtime.RawExtension) (*api.InfrastructureStatus, error) {
-	config := &api.InfrastructureStatus{}
+	status := &api.InfrastructureStatus{}
 	if raw != nil && raw.Raw != nil {
-		if _, _, err := lenientDecoder.Decode(raw.Raw, nil, config); err != nil {
+		if _, _, err := lenientDecoder.Decode(raw.Raw, nil, status); err != nil {
 			return nil, err
 		}
-		return config, nil
+		return status, nil
 	}
 	return nil, fmt.Errorf("provider status is not set on the infrastructure resource")
 }

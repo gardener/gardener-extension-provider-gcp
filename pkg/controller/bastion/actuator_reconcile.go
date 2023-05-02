@@ -56,7 +56,7 @@ func (be *bastionEndpoints) Ready() bool {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	serviceAccount, err := getServiceAccount(ctx, a, bastion)
+	serviceAccount, err := getServiceAccount(ctx, a.Client(), bastion)
 	if err != nil {
 		return fmt.Errorf("failed to get service account: %w", err)
 	}

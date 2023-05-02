@@ -69,7 +69,7 @@ var _ = Describe("ConfigValidator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
-		cv = infractrl.NewConfigValidator(gcpClientFactory, logger)
+		cv = infractrl.NewConfigValidator(logger, gcpClientFactory)
 		err := cv.(inject.Client).InjectClient(c)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -109,7 +109,7 @@ var _ = Describe("ConfigValidator", func() {
 
 	Describe("#Validate", func() {
 		BeforeEach(func() {
-			gcpClientFactory.EXPECT().NewComputeClient(ctx, c, infra.Spec.SecretRef).Return(gcpComputeClient, nil)
+			gcpClientFactory.EXPECT().Compute(ctx, c, infra.Spec.SecretRef).Return(gcpComputeClient, nil)
 		})
 
 		It("should succeed if there are no NAT IP names", func() {

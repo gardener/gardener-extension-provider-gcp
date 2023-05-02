@@ -48,10 +48,11 @@ func GetServiceAccountFromSecretReference(ctx context.Context, c client.Client, 
 
 // GetServiceAccountFromSecret retrieves the ServiceAccount from the secret.
 func GetServiceAccountFromSecret(secret *corev1.Secret) (*ServiceAccount, error) {
-	data, err := readServiceAccountSecret(secret)
-	if err != nil {
-		return nil, err
+	data, ok := secret.Data[ServiceAccountJSONField]
+	if !ok {
+		return nil, fmt.Errorf("secret %s/%s doesn't have a service account json (expected field: %q)", secret.Namespace, secret.Name, ServiceAccountJSONField)
 	}
+
 	return GetServiceAccountFromJSON(data)
 }
 
@@ -86,4 +87,13 @@ func readServiceAccountSecret(secret *corev1.Secret) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+// ExtractServiceAccountProjectID extracts the project id from the given service account JSON.
+func ExtractServiceAccountProjectID(serviceAccountJSON []byte) (string, error) {
+	sa, err := GetServiceAccountFromJSON(serviceAccountJSON)
+	if err != nil {
+		return "", err
+	}
+	return sa.ProjectID, nil
 }

@@ -23,8 +23,6 @@ import (
 	"golang.org/x/oauth2/google"
 	googledns "google.golang.org/api/dns/v1"
 	"google.golang.org/api/option"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
@@ -41,7 +39,8 @@ type dnsClient struct {
 	projectID string
 }
 
-func newDNSClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (DNSClient, error) {
+// NewDNSClient returns a client for GCP's CloudDNS service.
+func NewDNSClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (DNSClient, error) {
 	credentials, err := google.CredentialsFromJSON(ctx, serviceAccount.Raw, googledns.NdevClouddnsReadwriteScope)
 	if err != nil {
 		return nil, err
@@ -56,16 +55,6 @@ func newDNSClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (DNSC
 		service:   service,
 		projectID: credentials.ProjectID,
 	}, nil
-}
-
-// NewDNSClientFromSecretRef creates a new DNS client from the given client and secret reference.
-func NewDNSClientFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (DNSClient, error) {
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, c, secretRef)
-	if err != nil {
-		return nil, err
-	}
-
-	return newDNSClient(ctx, serviceAccount)
 }
 
 // GetManagedZones returns a map of all managed zone DNS names mapped to their IDs, composed of the project ID and
