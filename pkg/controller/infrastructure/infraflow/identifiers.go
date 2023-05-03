@@ -1,11 +1,6 @@
 package infraflow
 
 const (
-	// MarkerMigratedFromTerraform is a marker to describe if the infrastructure has already migrated from Terraform.
-	MarkerMigratedFromTerraform = "MigratedFromTerraform"
-	// MarkerTerraformCleanedUp is a marker to describe if the Terraform resources are already cleaned up.
-	MarkerTerraformCleanedUp = "TerraformCleanedUp"
-
 	// ObjectKeyServiceAccount is the key to store the service account object.
 	ObjectKeyServiceAccount = "service-account"
 	// ObjectKeyVPC is the key to store the VPC object.
