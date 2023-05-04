@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -90,6 +91,9 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 		machineDeployments = worker.MachineDeployments{}
 		machineClasses     []map[string]interface{}
 		machineImages      []apisgcp.MachineImage
+	)
+	const (
+		csiMigrationVersion = "1.21"
 	)
 
 	infrastructureStatus := &apisgcp.InfrastructureStatus{}
@@ -171,6 +175,10 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 		gceInstanceLabels := getGceInstanceLabels(w.worker.Name, pool)
 		isLiveMigrationAllowed := true
 
+		csiEnabled, _, err := csimigration.CheckCSIConditions(w.cluster, csiMigrationVersion)
+		if err != nil {
+			return err
+		}
 		for zoneIndex, zone := range pool.Zones {
 			zoneIdx := int32(zoneIndex)
 			machineClassSpec := map[string]interface{}{
@@ -224,7 +232,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 				Maximum:              worker.DistributeOverZones(zoneIdx, pool.Maximum, zoneLen),
 				MaxSurge:             worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxSurge, zoneLen, pool.Maximum),
 				MaxUnavailable:       worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxUnavailable, zoneLen, pool.Minimum),
-				Labels:               addTopologyLabel(pool.Labels, w.worker.Spec.Region, zone),
+				Labels:               addTopologyLabel(pool.Labels, csiEnabled, zone),
 				Annotations:          pool.Annotations,
 				Taints:               pool.Taints,
 				MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
@@ -371,6 +379,9 @@ func sanitizeGcpLabelOrValue(label string, startWithCharacter bool) string {
 	return v
 }
 
-func addTopologyLabel(labels map[string]string, region string, zone string) map[string]string {
-	return utils.MergeStringMaps(labels, map[string]string{CSIDiskDriverTopologyKey: region + "-" + zone})
+func addTopologyLabel(labels map[string]string, csiEnabled bool, zone string) map[string]string {
+	if csiEnabled {
+		return utils.MergeStringMaps(labels, map[string]string{CSIDiskDriverTopologyKey: zone})
+	}
+	return labels
 }
