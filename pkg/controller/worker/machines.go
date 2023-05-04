@@ -26,6 +26,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
+	"github.com/gardener/gardener/pkg/utils"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	computev1 "google.golang.org/api/compute/v1"
 	v1 "k8s.io/api/core/v1"
@@ -44,6 +45,8 @@ const (
 	maxGcpLabelCharactersSize = 63
 	// ResourceGPU is the GPU resource . It should be a non-negative integer.
 	ResourceGPU v1.ResourceName = "gpu"
+	// CSIDiskDriverTopologyKey is the label on persistent volumes that represents availability by zone.
+	CSIDiskDriverTopologyKey = "topology.gke.io/zone"
 )
 
 // MachineClassKind yields the name of the machine class kind used by GCP provider.
@@ -221,7 +224,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 				Maximum:              worker.DistributeOverZones(zoneIdx, pool.Maximum, zoneLen),
 				MaxSurge:             worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxSurge, zoneLen, pool.Maximum),
 				MaxUnavailable:       worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxUnavailable, zoneLen, pool.Minimum),
-				Labels:               pool.Labels,
+				Labels:               addTopologyLabel(pool.Labels, w.worker.Spec.Region, zone),
 				Annotations:          pool.Annotations,
 				Taints:               pool.Taints,
 				MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
@@ -366,4 +369,8 @@ func sanitizeGcpLabelOrValue(label string, startWithCharacter bool) string {
 		return v[0:maxGcpLabelCharactersSize]
 	}
 	return v
+}
+
+func addTopologyLabel(labels map[string]string, region string, zone string) map[string]string {
+	return utils.MergeStringMaps(labels, map[string]string{CSIDiskDriverTopologyKey: region + "-" + zone})
 }
