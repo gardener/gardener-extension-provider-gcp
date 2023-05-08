@@ -170,9 +170,6 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 		gceInstanceLabels := getGceInstanceLabels(w.worker.Name, pool)
 		isLiveMigrationAllowed := true
 
-		if err != nil {
-			return err
-		}
 		for zoneIndex, zone := range pool.Zones {
 			zoneIdx := int32(zoneIndex)
 			machineClassSpec := map[string]interface{}{
