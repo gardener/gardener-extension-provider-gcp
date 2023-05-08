@@ -40,7 +40,7 @@ type AddOptions struct {
 // The opts.Reconciler is being set with a newly instantiated actuator.
 func AddToManagerWithOptions(mgr manager.Manager, opts AddOptions) error {
 	return dnsrecord.Add(mgr, dnsrecord.AddArgs{
-		Actuator:          NewActuator(gcpclient.NewFactory()),
+		Actuator:          NewActuator(gcpclient.New()),
 		ControllerOptions: opts.Controller,
 		Predicates:        dnsrecord.DefaultPredicates(opts.IgnoreOperationAnnotation),
 		Type:              gcp.DNSType,

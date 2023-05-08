@@ -1,19 +1,16 @@
-/*
- * // Copyright (c) 2022 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
- * //
- * // Licensed under the Apache License, Version 2.0 (the "License");
- * // you may not use this file except in compliance with the License.
- * // You may obtain a copy of the License at
- * //
- * //      http://www.apache.org/licenses/LICENSE-2.0
- * //
- * // Unless required by applicable law or agreed to in writing, software
- * // distributed under the License is distributed on an "AS IS" BASIS,
- * // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * // See the License for the specific language governing permissions and
- * // limitations under the License.
- *
- */
+// Copyright (c) 2022 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package shared
 
@@ -46,8 +43,8 @@ type TerraformState struct {
 
 // TFOutput holds the value and type for a terraformer state output variable.
 type TFOutput struct {
-	Value interface{} `json:"value"`
-	Type  string      `json:"type"`
+	Value string `json:"value"`
+	Type  string `json:"type"`
 }
 
 // TFResource holds the attributes of a terraformer state resource.
@@ -76,6 +73,31 @@ func LoadTerraformStateFromConfigMapData(data map[string]string) (*TerraformStat
 	}
 
 	return UnmarshalTerraformState([]byte(content))
+}
+
+// UnmarshalTerraformStateFromTerraformer unmarshalls the Terraformer state from the raw state.
+func UnmarshalTerraformStateFromTerraformer(state *terraformer.RawState) (*TerraformState, error) {
+	var (
+		tfState *TerraformState
+		err     error
+		data    []byte
+	)
+
+	switch state.Encoding {
+	case "base64":
+		data, err = base64.StdEncoding.DecodeString(state.Data)
+		if err != nil {
+			return nil, fmt.Errorf("could not decode terraform raw state data: %w", err)
+		}
+	case "none":
+		data = []byte(state.Data)
+	default:
+		return nil, fmt.Errorf("unknown encoding of Terraformer raw state: %s", state.Encoding)
+	}
+	if tfState, err = UnmarshalTerraformState(data); err != nil {
+		return nil, fmt.Errorf("could not decode terraform state: %w", err)
+	}
+	return tfState, nil
 }
 
 // UnmarshalTerraformState unmarshalls the terraformer state from a byte array.
@@ -162,29 +184,4 @@ func AttributeAsString(attributes map[string]interface{}, key string) (svalue st
 		found = true
 	}
 	return
-}
-
-// UnmarshalTerraformStateFromTerraformer unmarshalls the terraformer state from RawState.
-func UnmarshalTerraformStateFromTerraformer(state *terraformer.RawState) (*TerraformState, error) {
-	var (
-		tfState *TerraformState
-		err     error
-		data    []byte
-	)
-
-	switch state.Encoding {
-	case "base64":
-		data, err = base64.StdEncoding.DecodeString(state.Data)
-		if err != nil {
-			return nil, fmt.Errorf("could not decode terraform raw state data: %w", err)
-		}
-	case "none":
-		data = []byte(state.Data)
-	default:
-		return nil, fmt.Errorf("unknown encoding of Terraformer raw state: %s", state.Encoding)
-	}
-	if tfState, err = UnmarshalTerraformState(data); err != nil {
-		return nil, fmt.Errorf("could not decode terraform state: %w", err)
-	}
-	return tfState, nil
 }

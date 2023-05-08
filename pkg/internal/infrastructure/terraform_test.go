@@ -354,7 +354,7 @@ var _ = Describe("Terraform", func() {
 			internalCIDR := "192.168.0.0/16"
 			aggregationInterval := "INTERVAL_30_SEC"
 			metadata := "INCLUDE_ALL_METADATA"
-			flowSampling := float32(0.5)
+			flowSampling := float64(0.5)
 			config = &api.InfrastructureConfig{
 				Networks: api.NetworkConfig{
 					VPC: &api.VPC{

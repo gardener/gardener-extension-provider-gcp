@@ -57,7 +57,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				FlowLogs: &apisgcp.FlowLogs{
 					AggregationInterval: pointer.String("INTERVAL_5_SEC"),
 					Metadata:            pointer.String("INCLUDE_ALL_METADATA"),
-					FlowSampling:        pointer.Float32(0.4),
+					FlowSampling:        pointer.Float64(0.4),
 				},
 				Internal: &internal,
 				Workers:  "10.250.0.0/16",
@@ -72,7 +72,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.Workers = invalidCIDR
 
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
-
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.workers"),
@@ -189,7 +188,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 			It("should forbid wrong VPC flow log config", func() {
 				aggregationInterval := "foo"
-				flowSampling := float32(1.2)
+				flowSampling := float64(1.2)
 				metadata := "foo"
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{AggregationInterval: &aggregationInterval, FlowSampling: &flowSampling, Metadata: &metadata}
 
@@ -271,7 +270,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 			It("should forbid wrong VPC flow log config", func() {
 				aggregationInterval := "foo"
-				flowSampling := float32(1.2)
+				flowSampling := float64(1.2)
 				metadata := "foo"
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{AggregationInterval: &aggregationInterval, FlowSampling: &flowSampling, Metadata: &metadata}
 
@@ -292,7 +291,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 			It("should allow correct VPC flow log config", func() {
 				aggregationInterval := "INTERVAL_1_MIN"
-				flowSampling := float32(0.5)
+				flowSampling := float64(0.5)
 				metadata := "INCLUDE_ALL_METADATA"
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{AggregationInterval: &aggregationInterval, FlowSampling: &flowSampling, Metadata: &metadata}
 
@@ -306,7 +305,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newInfrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{
 					AggregationInterval: pointer.String("INTERVAL_1_MIN"),
 					Metadata:            pointer.String("INCLUDE_ALL_METADATA"),
-					FlowSampling:        pointer.Float32(0.5),
+					FlowSampling:        pointer.Float64(0.5),
 				}
 
 				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)

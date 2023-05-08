@@ -108,7 +108,7 @@ var _ = Describe("Actuator", func() {
 
 	Describe("#Reconcile", func() {
 		It("should reconcile the DNSRecord", func() {
-			gcpClientFactory.EXPECT().NewDNSClient(ctx, c, dns.Spec.SecretRef).Return(gcpDNSClient, nil)
+			gcpClientFactory.EXPECT().DNS(ctx, c, dns.Spec.SecretRef).Return(gcpDNSClient, nil)
 			gcpDNSClient.EXPECT().GetManagedZones(ctx).Return(zones, nil)
 			gcpDNSClient.EXPECT().CreateOrUpdateRecordSet(ctx, zone, domainName, string(extensionsv1alpha1.DNSRecordTypeA), []string{address}, int64(120)).Return(nil)
 			gcpDNSClient.EXPECT().DeleteRecordSet(ctx, zone, "comment-"+domainName, "TXT").Return(nil)
@@ -129,7 +129,7 @@ var _ = Describe("Actuator", func() {
 	Describe("#Delete", func() {
 		It("should delete the DNSRecord", func() {
 			dns.Status.Zone = pointer.String(zone)
-			gcpClientFactory.EXPECT().NewDNSClient(ctx, c, dns.Spec.SecretRef).Return(gcpDNSClient, nil)
+			gcpClientFactory.EXPECT().DNS(ctx, c, dns.Spec.SecretRef).Return(gcpDNSClient, nil)
 			gcpDNSClient.EXPECT().DeleteRecordSet(ctx, zone, domainName, string(extensionsv1alpha1.DNSRecordTypeA)).Return(nil)
 
 			err := a.Delete(ctx, logger, dns, nil)

@@ -137,7 +137,7 @@ type FlowLogs struct {
 	// AggregationInterval for collecting flow logs.
 	AggregationInterval *string
 	// FlowSampling sets the sampling rate of VPC flow logs within the subnetwork where 1.0 means all collected logs are reported and 0.0 means no logs are reported.
-	FlowSampling *float32
+	FlowSampling *float64
 	// Metadata configures whether metadata fields should be added to the reported VPC flow logs.
 	Metadata *string
 }

@@ -23,20 +23,9 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
 )
 
 // Migrate implements infrastructure.Actuator.
 func (a *actuator) Migrate(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
-	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
-	}
-
-	if err := tf.CleanupConfiguration(ctx); err != nil {
-		return err
-	}
-
-	return tf.RemoveTerraformerFinalizerFromConfig(ctx) //Explicitly clean up the terraformer finalizers
+	return util.DetermineError(a.cleanupTerraformerResources(ctx, log, infra), helper.KnownCodes)
 }

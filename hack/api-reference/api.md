@@ -283,7 +283,7 @@ map[string]bool
 <a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
 </p>
 <p>
-<p>CloudNAT contains configuration about the the CloudNAT resource</p>
+<p>CloudNAT contains configuration about the CloudNAT resource</p>
 </p>
 <table>
 <thead>

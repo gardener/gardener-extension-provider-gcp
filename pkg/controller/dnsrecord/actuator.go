@@ -44,20 +44,18 @@ const (
 
 type actuator struct {
 	common.ClientContext
-	gcpClientFactory gcpclient.Factory
+	client gcpclient.Factory
 }
 
 // NewActuator creates a new dnsrecord.Actuator.
-func NewActuator(gcpClientFactory gcpclient.Factory) dnsrecord.Actuator {
-	return &actuator{
-		gcpClientFactory: gcpClientFactory,
-	}
+func NewActuator(client gcpclient.Factory) dnsrecord.Actuator {
+	return &actuator{client: client}
 }
 
 // Reconcile reconciles the DNSRecord.
-func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
 	// Create GCP DNS client
-	dnsClient, err := a.gcpClientFactory.NewDNSClient(ctx, a.Client(), dns.Spec.SecretRef)
+	dnsClient, err := a.client.DNS(ctx, a.Client(), dns.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
@@ -97,9 +95,9 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 }
 
 // Delete deletes the DNSRecord.
-func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
 	// Create GCP DNS client
-	dnsClient, err := a.gcpClientFactory.NewDNSClient(ctx, a.Client(), dns.Spec.SecretRef)
+	dnsClient, err := a.client.DNS(ctx, a.Client(), dns.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
