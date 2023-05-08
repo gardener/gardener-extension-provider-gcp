@@ -49,6 +49,7 @@ import (
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 var _ = Describe("Machines", func() {
@@ -500,8 +501,8 @@ var _ = Describe("Machines", func() {
 						machineClassPool2Zone2,
 					}}
 
-					labelsZone1 := utils.MergeStringMaps(labels, map[string]string{CSIDiskDriverTopologyKey: zone1})
-					labelsZone2 := utils.MergeStringMaps(labels, map[string]string{CSIDiskDriverTopologyKey: zone2})
+					labelsZone1 := utils.MergeStringMaps(labels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone1})
+					labelsZone2 := utils.MergeStringMaps(labels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone2})
 					machineDeployments = worker.MachineDeployments{
 						{
 							Name:                 machineClassNamePool1Zone1,

@@ -21,7 +21,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -38,6 +37,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 var labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
@@ -46,8 +46,6 @@ const (
 	maxGcpLabelCharactersSize = 63
 	// ResourceGPU is the GPU resource . It should be a non-negative integer.
 	ResourceGPU v1.ResourceName = "gpu"
-	// CSIDiskDriverTopologyKey is the label on persistent volumes that represents availability by zone.
-	CSIDiskDriverTopologyKey = "topology.gke.io/zone"
 )
 
 // MachineClassKind yields the name of the machine class kind used by GCP provider.
@@ -175,7 +173,6 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 		gceInstanceLabels := getGceInstanceLabels(w.worker.Name, pool)
 		isLiveMigrationAllowed := true
 
-		csiEnabled, _, err := csimigration.CheckCSIConditions(w.cluster, csiMigrationVersion)
 		if err != nil {
 			return err
 		}
@@ -232,7 +229,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 				Maximum:              worker.DistributeOverZones(zoneIdx, pool.Maximum, zoneLen),
 				MaxSurge:             worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxSurge, zoneLen, pool.Maximum),
 				MaxUnavailable:       worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxUnavailable, zoneLen, pool.Minimum),
-				Labels:               addTopologyLabel(pool.Labels, csiEnabled, zone),
+				Labels:               addTopologyLabel(pool.Labels, zone),
 				Annotations:          pool.Annotations,
 				Taints:               pool.Taints,
 				MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
@@ -379,9 +376,6 @@ func sanitizeGcpLabelOrValue(label string, startWithCharacter bool) string {
 	return v
 }
 
-func addTopologyLabel(labels map[string]string, csiEnabled bool, zone string) map[string]string {
-	if csiEnabled {
-		return utils.MergeStringMaps(labels, map[string]string{CSIDiskDriverTopologyKey: zone})
-	}
-	return labels
+func addTopologyLabel(labels map[string]string, zone string) map[string]string {
+	return utils.MergeStringMaps(labels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone})
 }

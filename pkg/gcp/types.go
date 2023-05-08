@@ -32,6 +32,8 @@ const (
 	CSIProvisionerImageName = "csi-provisioner"
 	// CSIAttacherImageName is the name of the csi-attacher image.
 	CSIAttacherImageName = "csi-attacher"
+	// CSIDiskDriverTopologyKey is the label on persistent volumes that represents availability by zone.
+	CSIDiskDriverTopologyKey = "topology.gke.io/zone"
 	// CSISnapshotterImageName is the name of the csi-snapshotter image.
 	CSISnapshotterImageName = "csi-snapshotter"
 	// CSIResizerImageName is the name of the csi-resizer image.
