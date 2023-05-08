@@ -32,6 +32,7 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	mockkubernetes "github.com/gardener/gardener/pkg/client/kubernetes/mock"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	"github.com/gardener/gardener/pkg/utils"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
@@ -48,6 +49,7 @@ import (
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 var _ = Describe("Machines", func() {
@@ -214,7 +216,7 @@ var _ = Describe("Machines", func() {
 
 				machineConfiguration = &machinev1alpha1.MachineConfiguration{}
 
-				shootVersionMajorMinor = "1.2"
+				shootVersionMajorMinor = "1.21"
 				shootVersion = shootVersionMajorMinor + ".3"
 
 				clusterWithoutImages = &extensionscontroller.Cluster{
@@ -499,6 +501,8 @@ var _ = Describe("Machines", func() {
 						machineClassPool2Zone2,
 					}}
 
+					labelsZone1 := utils.MergeStringMaps(labels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone1})
+					labelsZone2 := utils.MergeStringMaps(labels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone2})
 					machineDeployments = worker.MachineDeployments{
 						{
 							Name:                 machineClassNamePool1Zone1,
@@ -508,7 +512,7 @@ var _ = Describe("Machines", func() {
 							Maximum:              worker.DistributeOverZones(0, maxPool1, 2),
 							MaxSurge:             worker.DistributePositiveIntOrPercent(0, maxSurgePool1, 2, maxPool1),
 							MaxUnavailable:       worker.DistributePositiveIntOrPercent(0, maxUnavailablePool1, 2, minPool1),
-							Labels:               labels,
+							Labels:               labelsZone1,
 							MachineConfiguration: machineConfiguration,
 						},
 						{
@@ -519,7 +523,7 @@ var _ = Describe("Machines", func() {
 							Maximum:              worker.DistributeOverZones(1, maxPool1, 2),
 							MaxSurge:             worker.DistributePositiveIntOrPercent(1, maxSurgePool1, 2, maxPool1),
 							MaxUnavailable:       worker.DistributePositiveIntOrPercent(1, maxUnavailablePool1, 2, minPool1),
-							Labels:               labels,
+							Labels:               labelsZone2,
 							MachineConfiguration: machineConfiguration,
 						},
 						{
@@ -530,7 +534,7 @@ var _ = Describe("Machines", func() {
 							Maximum:              worker.DistributeOverZones(0, maxPool2, 2),
 							MaxSurge:             worker.DistributePositiveIntOrPercent(0, maxSurgePool2, 2, maxPool2),
 							MaxUnavailable:       worker.DistributePositiveIntOrPercent(0, maxUnavailablePool2, 2, minPool2),
-							Labels:               labels,
+							Labels:               labelsZone1,
 							MachineConfiguration: machineConfiguration,
 						},
 						{
@@ -541,7 +545,7 @@ var _ = Describe("Machines", func() {
 							Maximum:              worker.DistributeOverZones(1, maxPool2, 2),
 							MaxSurge:             worker.DistributePositiveIntOrPercent(1, maxSurgePool2, 2, maxPool2),
 							MaxUnavailable:       worker.DistributePositiveIntOrPercent(1, maxUnavailablePool2, 2, minPool2),
-							Labels:               labels,
+							Labels:               labelsZone2,
 							MachineConfiguration: machineConfiguration,
 						},
 					}

@@ -26,6 +26,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
+	"github.com/gardener/gardener/pkg/utils"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	computev1 "google.golang.org/api/compute/v1"
 	v1 "k8s.io/api/core/v1"
@@ -36,6 +37,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 var labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
@@ -221,7 +223,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 				Maximum:              worker.DistributeOverZones(zoneIdx, pool.Maximum, zoneLen),
 				MaxSurge:             worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxSurge, zoneLen, pool.Maximum),
 				MaxUnavailable:       worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxUnavailable, zoneLen, pool.Minimum),
-				Labels:               pool.Labels,
+				Labels:               addTopologyLabel(pool.Labels, zone),
 				Annotations:          pool.Annotations,
 				Taints:               pool.Taints,
 				MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
@@ -366,4 +368,8 @@ func sanitizeGcpLabelOrValue(label string, startWithCharacter bool) string {
 		return v[0:maxGcpLabelCharactersSize]
 	}
 	return v
+}
+
+func addTopologyLabel(labels map[string]string, zone string) map[string]string {
+	return utils.MergeStringMaps(labels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone})
 }
