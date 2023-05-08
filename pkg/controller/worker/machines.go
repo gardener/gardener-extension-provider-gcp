@@ -90,9 +90,6 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 		machineClasses     []map[string]interface{}
 		machineImages      []apisgcp.MachineImage
 	)
-	const (
-		csiMigrationVersion = "1.21"
-	)
 
 	infrastructureStatus := &apisgcp.InfrastructureStatus{}
 	if _, _, err := w.Decoder().Decode(w.worker.Spec.InfrastructureProviderStatus.Raw, nil, infrastructureStatus); err != nil {
