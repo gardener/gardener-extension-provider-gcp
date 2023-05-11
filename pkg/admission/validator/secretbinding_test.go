@@ -33,7 +33,6 @@ import (
 )
 
 var _ = Describe("SecretBinding validator", func() {
-
 	Describe("#Validate", func() {
 		const (
 			namespace = "garden-dev"
