@@ -22,7 +22,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
-var validVolumeLocalSSDInterfacesTypes = sets.NewString("NVME", "SCSI")
+var validVolumeLocalSSDInterfacesTypes = sets.New("NVME", "SCSI")
 
 // ValidateWorkerConfig validates a WorkerConfig object.
 func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.DataVolume) field.ErrorList {
@@ -34,7 +34,7 @@ func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.Dat
 				allErrs = append(allErrs, field.Required(field.NewPath("volume", "localSSDInterface"), "must be set when using SCRATCH volumes"))
 			} else {
 				if !validVolumeLocalSSDInterfacesTypes.Has(*workerConfig.Volume.LocalSSDInterface) {
-					allErrs = append(allErrs, field.NotSupported(field.NewPath("volume", "localSSDInterface"), *workerConfig.Volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.List()))
+					allErrs = append(allErrs, field.NotSupported(field.NewPath("volume", "localSSDInterface"), *workerConfig.Volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.UnsortedList()))
 				}
 			}
 		}

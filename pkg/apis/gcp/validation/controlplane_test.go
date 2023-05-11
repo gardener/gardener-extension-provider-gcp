@@ -28,8 +28,8 @@ import (
 var _ = Describe("ControlPlaneConfig validation", func() {
 	var (
 		zone         = "some-zone"
-		allowedZones = sets.New[string]("zone1", "zone2", "some-zone")
-		workerZones  = sets.New[string]("zone1", "zone2", "some-zone")
+		allowedZones = sets.New("zone1", "zone2", "some-zone")
+		workerZones  = sets.New("zone1", "zone2", "some-zone")
 		controlPlane *apisgcp.ControlPlaneConfig
 		fldPath      *field.Path
 	)
@@ -47,7 +47,7 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 
 		It("should require that the control-plane config zone be part of the worker pool zone configuration", func() {
 			controlPlane.Zone = ""
-			workerZonesNotSupported := sets.New[string]("zone3", "zone4")
+			workerZonesNotSupported := sets.New("zone3", "zone4")
 			errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZonesNotSupported, "", fldPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
