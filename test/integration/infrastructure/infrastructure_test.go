@@ -309,7 +309,7 @@ func runTest(
 			APIVersion: gardencorev1beta1.SchemeGroupVersion.String(),
 		},
 		Spec: gardencorev1beta1.ShootSpec{
-			Networking: gardencorev1beta1.Networking{
+			Networking: &gardencorev1beta1.Networking{
 				Pods: pointer.String(podCIDR),
 			},
 		},

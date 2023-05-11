@@ -428,7 +428,7 @@ func (vp *valuesProvider) getCCMChartValues(
 		values["featureGates"] = cpConfig.CloudControllerManager.FeatureGates
 	}
 
-	ok, err := vp.isOverlayEnabled(cluster.Shoot.Spec.Networking)
+	ok, err := vp.isOverlayEnabled(*cluster.Shoot.Spec.Networking)
 	if err != nil {
 		return nil, err
 	}
@@ -533,24 +533,26 @@ func (vp *valuesProvider) isOverlayEnabled(network v1beta1.Networking) (bool, er
 		return true, nil
 	}
 
-	switch network.Type {
-	case calico.ReleaseName:
-		networkConfig := &calicov1alpha1.NetworkConfig{}
-		if _, _, err := vp.Decoder().Decode(networkProviderConfig, nil, networkConfig); err != nil {
-			return false, err
+	if network.Type != nil {
+		switch *network.Type {
+		case calico.ReleaseName:
+			networkConfig := &calicov1alpha1.NetworkConfig{}
+			if _, _, err := vp.Decoder().Decode(networkProviderConfig, nil, networkConfig); err != nil {
+				return false, err
+			}
+			o := networkConfig.Overlay
+			return o == nil || o.Enabled, nil
+		case cilium.ReleaseName:
+			networkConfig := &ciliumv1alpha1.NetworkConfig{}
+			if _, _, err := vp.Decoder().Decode(networkProviderConfig, nil, networkConfig); err != nil {
+				return false, err
+			}
+			o := networkConfig.Overlay
+			if o == nil {
+				return true, nil
+			}
+			return o == nil || o.Enabled, nil
 		}
-		o := networkConfig.Overlay
-		return o == nil || o.Enabled, nil
-	case cilium.ReleaseName:
-		networkConfig := &ciliumv1alpha1.NetworkConfig{}
-		if _, _, err := vp.Decoder().Decode(networkProviderConfig, nil, networkConfig); err != nil {
-			return false, err
-		}
-		o := networkConfig.Overlay
-		if o == nil {
-			return true, nil
-		}
-		return o == nil || o.Enabled, nil
 	}
 
 	return true, nil
