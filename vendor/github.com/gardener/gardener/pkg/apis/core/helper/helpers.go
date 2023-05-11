@@ -213,6 +213,22 @@ func SeedSettingTopologyAwareRoutingEnabled(settings *core.SeedSettings) bool {
 	return settings != nil && settings.TopologyAwareRouting != nil && settings.TopologyAwareRouting.Enabled
 }
 
+// FindMachineImageVersion finds the machine image version in the <cloudProfile> for the given <name> and <version>.
+// In case no machine image version can be found with the given <name> or <version>, false is being returned.
+func FindMachineImageVersion(machineImages []core.MachineImage, name, version string) (core.MachineImageVersion, bool) {
+	for _, image := range machineImages {
+		if image.Name == name {
+			for _, imageVersion := range image.Versions {
+				if imageVersion.Version == version {
+					return imageVersion, true
+				}
+			}
+		}
+	}
+
+	return core.MachineImageVersion{}, false
+}
+
 // ShootUsesUnmanagedDNS returns true if the shoot's DNS section is marked as 'unmanaged'.
 func ShootUsesUnmanagedDNS(shoot *core.Shoot) bool {
 	if shoot.Spec.DNS == nil {
@@ -456,7 +472,7 @@ func SecretBindingHasType(secretBinding *core.SecretBinding, providerType string
 		return false
 	}
 
-	return sets.New[string](types...).Has(providerType)
+	return sets.New(types...).Has(providerType)
 }
 
 // GetAllZonesFromShoot returns the set of all availability zones defined in the worker pools of the Shoot specification.
@@ -476,6 +492,11 @@ func IsHAControlPlaneConfigured(shoot *core.Shoot) bool {
 // IsMultiZonalShootControlPlane checks if the shoot should have a multi-zonal control plane.
 func IsMultiZonalShootControlPlane(shoot *core.Shoot) bool {
 	return shoot.Spec.ControlPlane != nil && shoot.Spec.ControlPlane.HighAvailability != nil && shoot.Spec.ControlPlane.HighAvailability.FailureTolerance.Type == core.FailureToleranceTypeZone
+}
+
+// IsWorkerless checks if the shoot has zero workers.
+func IsWorkerless(shoot *core.Shoot) bool {
+	return len(shoot.Spec.Provider.Workers) == 0
 }
 
 // DeterminePrimaryIPFamily determines the primary IP family out of a specified list of IP families.
