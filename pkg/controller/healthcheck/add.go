@@ -78,8 +78,7 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.CSISnapshotValidationName),
 			},
 		},
-		// TODO(acumino): Remove this condition in a future release.
-		sets.New[gardencorev1beta1.ConditionType](gardencorev1beta1.ShootSystemComponentsHealthy),
+		sets.New[gardencorev1beta1.ConditionType](),
 	); err != nil {
 		return err
 	}
@@ -105,8 +104,7 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 				},
 			},
 		},
-		// TODO(acumino): Remove this condition in a future release.
-		sets.New[gardencorev1beta1.ConditionType](gardencorev1beta1.ShootSystemComponentsHealthy),
+		sets.New[gardencorev1beta1.ConditionType](),
 	)
 }
 

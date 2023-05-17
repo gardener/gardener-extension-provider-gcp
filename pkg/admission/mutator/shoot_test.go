@@ -62,11 +62,16 @@ var _ = Describe("Shoot mutator", func() {
 					SeedName: pointer.String("gcp"),
 					Provider: gardencorev1beta1.Provider{
 						Type: gcp.Type,
+						Workers: []gardencorev1beta1.Worker{
+							{
+								Name: "worker",
+							},
+						},
 					},
 					Region: "us-west1",
-					Networking: gardencorev1beta1.Networking{
+					Networking: &gardencorev1beta1.Networking{
 						Nodes: pointer.String("10.250.0.0/16"),
-						Type:  "calico",
+						Type:  pointer.String("calico"),
 					},
 				},
 			}
@@ -80,18 +85,35 @@ var _ = Describe("Shoot mutator", func() {
 					SeedName: pointer.String("gcp"),
 					Provider: gardencorev1beta1.Provider{
 						Type: gcp.Type,
+						Workers: []gardencorev1beta1.Worker{
+							{
+								Name: "worker",
+							},
+						},
 					},
 					Region: "us-west1",
-					Networking: gardencorev1beta1.Networking{
+					Networking: &gardencorev1beta1.Networking{
 						Nodes: pointer.String("10.250.0.0/16"),
-						Type:  "calico",
+						Type:  pointer.String("calico"),
 					},
 				},
 			}
 		})
 
-		Context("Mutate shoot networking providerconfig for type calico", func() {
+		Context("Workerless Shoot", func() {
+			BeforeEach(func() {
+				shoot.Spec.Provider.Workers = nil
+			})
 
+			It("should return without mutation", func() {
+				shootExpected := shoot.DeepCopy()
+				err := shootMutator.Mutate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shoot).To(DeepEqual(shootExpected))
+			})
+		})
+
+		Context("Mutate shoot networking providerconfig for type calico", func() {
 			It("should return without mutation when shoot is in scheduled to new seed phase", func() {
 				shoot.Status.LastOperation = &gardencorev1beta1.LastOperation{
 					Description:    "test",
@@ -175,10 +197,9 @@ var _ = Describe("Shoot mutator", func() {
 		})
 
 		Context("Mutate shoot networking providerconfig for type cilium", func() {
-
 			BeforeEach(func() {
-				shoot.Spec.Networking.Type = "cilium"
-				oldShoot.Spec.Networking.Type = "cilium"
+				shoot.Spec.Networking.Type = pointer.String("cilium")
+				oldShoot.Spec.Networking.Type = pointer.String("cilium")
 			})
 
 			It("should return without mutation when shoot is in scheduled to new seed phase", func() {

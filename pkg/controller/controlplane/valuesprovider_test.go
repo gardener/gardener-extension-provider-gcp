@@ -155,7 +155,7 @@ var _ = Describe("ValuesProvider", func() {
 			Seed: &gardencorev1beta1.Seed{},
 			Shoot: &gardencorev1beta1.Shoot{
 				Spec: gardencorev1beta1.ShootSpec{
-					Networking: gardencorev1beta1.Networking{
+					Networking: &gardencorev1beta1.Networking{
 						Pods: &cidr,
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
@@ -262,7 +262,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		It("should return correct control plane chart values for clusters without overlay", func() {
 			shootWithoutOverlay := clusterK8sAtLeast120.Shoot.DeepCopy()
-			shootWithoutOverlay.Spec.Networking.Type = calico.Type
+			shootWithoutOverlay.Spec.Networking.Type = pointer.String(calico.Type)
 			shootWithoutOverlay.Spec.Networking.ProviderConfig = &runtime.RawExtension{
 				Object: &calicov1alpha1.NetworkConfig{
 					Overlay: &calicov1alpha1.Overlay{
