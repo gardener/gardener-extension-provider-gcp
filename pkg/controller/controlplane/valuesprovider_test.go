@@ -155,6 +155,13 @@ var _ = Describe("ValuesProvider", func() {
 			Seed: &gardencorev1beta1.Seed{},
 			Shoot: &gardencorev1beta1.Shoot{
 				Spec: gardencorev1beta1.ShootSpec{
+					Provider: gardencorev1beta1.Provider{
+						Workers: []gardencorev1beta1.Worker{
+							{
+								Name: "worker",
+							},
+						},
+					},
 					Networking: &gardencorev1beta1.Networking{
 						Pods: &cidr,
 					},
