@@ -49,6 +49,7 @@ type Volume struct {
 	LocalSSDInterface *string `json:"interface,omitempty"`
 
 	// Encryption refers to the disk encryption details for this volume
+	// +optional
 	Encryption *DiskEncryption `json:"encryption,omitempty"`
 }
 

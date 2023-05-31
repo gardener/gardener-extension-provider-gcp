@@ -1136,6 +1136,7 @@ DiskEncryption
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Encryption refers to the disk encryption details for this volume</p>
 </td>
 </tr>
