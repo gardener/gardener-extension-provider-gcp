@@ -365,6 +365,59 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.DiskEncryption">DiskEncryption
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Volume">Volume</a>)
+</p>
+<p>
+<p>DiskEncryption encapsulates the encryption configuration for a disk.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>kmsKeyName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>KmsKeyName specifies the customer-managed encryption key (CMEK) used for encryption of the volume.
+For creating keys, see <a href="https://cloud.google.com/kms/docs/create-key">https://cloud.google.com/kms/docs/create-key</a>.
+For using keys to encrypt resources, see:
+<a href="https://cloud.google.com/compute/docs/disks/customer-managed-encryption#encrypt_a_new_persistent_disk_with_your_own_keys">https://cloud.google.com/compute/docs/disks/customer-managed-encryption#encrypt_a_new_persistent_disk_with_your_own_keys</a>
+This field is being kept optional since this would allow CSEK fields in future in lieu of CMEK fields</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>kmsKeyServiceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>KmsKeyServiceAccount specifies the service account granted the <code>roles/cloudkms.cryptoKeyEncrypterDecrypter</code> for the key name.
+If nil/empty, then the role should be given to the Compute Engine Service Agent Account. The CESA usually has the format
+service-PROJECT_NUMBER@compute-system.iam.gserviceaccount.com.
+See: <a href="https://cloud.google.com/iam/docs/service-agents#compute-engine-service-agent">https://cloud.google.com/iam/docs/service-agents#compute-engine-service-agent</a>
+One can add IAM roles using the gcloud CLI:
+gcloud projects add-iam-policy-binding projectId &ndash;member
+serviceAccount:name@projectIdgserviceaccount.com &ndash;role roles/cloudkms.cryptoKeyEncrypterDecrypter</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.EndpointIndependentMapping">EndpointIndependentMapping
 </h3>
 <p>
@@ -1051,7 +1104,7 @@ CloudRouter
 <a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
 </p>
 <p>
-<p>Volume contains configuration for the additional disks attached to VMs.</p>
+<p>Volume contains configuration for the disks attached to VMs.</p>
 </p>
 <table>
 <thead>
@@ -1071,6 +1124,19 @@ string
 <td>
 <em>(Optional)</em>
 <p>LocalSSDInterface is the interface of that the local ssd disk supports.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>encryption</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.DiskEncryption">
+DiskEncryption
+</a>
+</em>
+</td>
+<td>
+<p>Encryption refers to the disk encryption details for this volume</p>
 </td>
 </tr>
 </tbody>

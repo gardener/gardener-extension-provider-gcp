@@ -15,6 +15,8 @@
 package validation
 
 import (
+	"strings"
+
 	"github.com/gardener/gardener/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -43,6 +45,9 @@ func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.Dat
 	if workerConfig != nil {
 		allErrs = append(allErrs, validateGPU(workerConfig.GPU, field.NewPath("gpu"))...)
 		allErrs = append(allErrs, validateServiceAccount(workerConfig.ServiceAccount, field.NewPath("serviceAccount"))...)
+		if workerConfig.Volume != nil {
+			allErrs = append(allErrs, validateDiskEncryption(workerConfig.Volume.Encryption, field.NewPath("volume", "encryption"))...)
+		}
 	}
 
 	return allErrs
@@ -92,6 +97,23 @@ func validateServiceAccount(sa *gcp.ServiceAccount, fldPath *field.Path) field.E
 				existingScopes.Insert(scope)
 			}
 		}
+	}
+
+	return allErrs
+}
+
+// validateDiskEncryption validates the provider specific disk encryption configuration for a volume
+func validateDiskEncryption(encryption *gcp.DiskEncryption, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if encryption == nil {
+		return allErrs
+	}
+
+	if encryption.KmsKeyName == nil || strings.TrimSpace(*encryption.KmsKeyName) == "" {
+		// Currently DiskEncryption only contains CMEK fields. Hence if not nil, then kmsKeyName is a must
+		// Validation logic will need to be modified when CSEK fields are possibly added to gcp.DiskEncryption in the future.
+		allErrs = append(allErrs, field.Required(fldPath.Child("kmsKeyName"), "must be specified when configuring disk encryption"))
 	}
 
 	return allErrs
