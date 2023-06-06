@@ -2,7 +2,7 @@ images:
 - name: terraformer
   sourceRepository: github.com/gardener/terraformer
   repository: eu.gcr.io/gardener-project/gardener/terraformer-gcp
-  tag: "v2.21.0"
+  tag: "v2.22.0"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -114,7 +114,7 @@ images:
 - name: machine-controller-manager
   sourceRepository: github.com/gardener/machine-controller-manager
   repository: eu.gcr.io/gardener-project/gardener/machine-controller-manager
-  tag: "v0.49.1"
+  tag: "v0.49.2"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -141,7 +141,7 @@ images:
 - name: csi-driver
   sourceRepository: github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
   repository: registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver
-  tag: "v1.9.4"
+  tag: "v1.9.5"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
