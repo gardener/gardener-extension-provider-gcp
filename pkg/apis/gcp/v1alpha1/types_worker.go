@@ -42,11 +42,36 @@ type WorkerConfig struct {
 	ServiceAccount *ServiceAccount `json:"serviceAccount,omitempty"`
 }
 
-// Volume contains configuration for the additional disks attached to VMs.
+// Volume contains configuration for the disks attached to VMs.
 type Volume struct {
 	// LocalSSDInterface is the interface of that the local ssd disk supports.
 	// +optional
 	LocalSSDInterface *string `json:"interface,omitempty"`
+
+	// Encryption refers to the disk encryption details for this volume
+	// +optional
+	Encryption *DiskEncryption `json:"encryption,omitempty"`
+}
+
+// DiskEncryption encapsulates the encryption configuration for a disk.
+type DiskEncryption struct {
+	// KmsKeyName specifies the customer-managed encryption key (CMEK) used for encryption of the volume.
+	// For creating keys, see https://cloud.google.com/kms/docs/create-key.
+	// For using keys to encrypt resources, see:
+	// https://cloud.google.com/compute/docs/disks/customer-managed-encryption#encrypt_a_new_persistent_disk_with_your_own_keys
+	// This field is being kept optional since this would allow CSEK fields in future in lieu of CMEK fields
+	// +optional
+	KmsKeyName *string `json:"kmsKeyName"`
+
+	// KmsKeyServiceAccount specifies the service account granted the `roles/cloudkms.cryptoKeyEncrypterDecrypter` for the key name.
+	// If nil/empty, then the role should be given to the Compute Engine Service Agent Account. The CESA usually has the format
+	// service-PROJECT_NUMBER@compute-system.iam.gserviceaccount.com.
+	//  See: https://cloud.google.com/iam/docs/service-agents#compute-engine-service-agent
+	// One can add IAM roles using the gcloud CLI:
+	//  gcloud projects add-iam-policy-binding projectId --member
+	//	serviceAccount:name@projectIdgserviceaccount.com --role roles/cloudkms.cryptoKeyEncrypterDecrypter
+	// +optional
+	KmsKeyServiceAccount *string `json:"kmsKeyServiceAccount,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

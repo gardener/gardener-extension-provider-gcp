@@ -15,6 +15,11 @@ machineClasses:
     image: projects/coreos-cloud/global/images/coreos-stable-1576-5-0-v20180105
     labels:
       name: my-disk
+#   CMEK Encryption
+#   encryption:
+#     kmsKeyName: projects/projId/locations/zone/keyRings/keyRingName/cryptoKeys/keyName
+#     kmsKeyServiceAccount: name@projId.iam.gserviceaccount.com
+
 #  local SSD
 #  - autoDelete: true
 #    boot: false

@@ -123,6 +123,13 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 			Architecture: &arch,
 		})
 
+		workerConfig := &apisgcp.WorkerConfig{}
+		if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
+			if _, _, err := w.Decoder().Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
+				return fmt.Errorf("could not decode provider config: %+v", err)
+			}
+		}
+
 		disks := make([]map[string]interface{}, 0)
 		// root volume
 		if pool.Volume != nil {
@@ -130,17 +137,13 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 			if err != nil {
 				return err
 			}
-
+			if workerConfig.Volume != nil {
+				addDiskEncryptionDetails(disk, workerConfig.Volume.Encryption)
+			}
 			disks = append(disks, disk)
 		}
 
 		// additional volumes
-		workerConfig := &apisgcp.WorkerConfig{}
-		if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
-			if _, _, err := w.Decoder().Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
-				return fmt.Errorf("could not decode provider config: %+v", err)
-			}
-		}
 		for _, volume := range pool.DataVolumes {
 			disk, err := createDiskSpecForDataVolume(volume, w.worker.Name, false)
 			if err != nil {
@@ -149,6 +152,12 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 
 			if volume.Type != nil && *volume.Type == "SCRATCH" && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
 				disk["interface"] = *workerConfig.Volume.LocalSSDInterface
+			}
+
+			if workerConfig.Volume != nil && volume.Type != nil && *volume.Type != "SCRATCH" {
+				// Only add encryption details for non-scratch disks.
+				// See https://cloud.google.com/compute/docs/disks/customer-supplied-encryption#technical_restrictions
+				addDiskEncryptionDetails(disk, workerConfig.Volume.Encryption)
 			}
 
 			disks = append(disks, disk)
@@ -304,6 +313,20 @@ func createDiskSpec(size, workerName string, boot bool, machineImage, volumeType
 	}
 
 	return disk, nil
+}
+
+func addDiskEncryptionDetails(disk map[string]interface{}, encryption *apisgcp.DiskEncryption) {
+	if encryption == nil {
+		return
+	}
+	var encryptionMap = make(map[string]interface{})
+	if encryption.KmsKeyName != nil {
+		encryptionMap["kmsKeyName"] = *encryption.KmsKeyName
+	}
+	if encryption.KmsKeyServiceAccount != nil {
+		encryptionMap["kmsKeyServiceAccount"] = *encryption.KmsKeyServiceAccount
+	}
+	disk["encryption"] = encryptionMap
 }
 
 func getGceInstanceLabels(name string, pool v1alpha1.WorkerPool) map[string]interface{} {

@@ -181,6 +181,23 @@ var _ = Describe("#ValidateWorkers", func() {
 		))
 	})
 
+	It("should forbid because volume.encryption.kmsKeyName should be specified", func() {
+		errorList := ValidateWorkerConfig(&gcp.WorkerConfig{
+			Volume: &gcp.Volume{
+				Encryption: &gcp.DiskEncryption{
+					KmsKeyName: pointer.String("  "),
+				},
+			},
+		}, nil)
+
+		Expect(errorList).To(ConsistOf(
+			PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("volume.encryption.kmsKeyName"),
+			})),
+		))
+	})
+
 	It("should forbid because service account scope is empty", func() {
 		errorList := ValidateWorkerConfig(&gcp.WorkerConfig{
 			ServiceAccount: &gcp.ServiceAccount{
