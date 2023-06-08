@@ -84,15 +84,20 @@ spec:
     volume:
       type: pd-standard
       size: 20Gi
-    # workerconfig is used to specify the interface of gcp local ssd
-    #dataVolumes:
-    #  - type: SCRATCH
-    # providerConfig:
-    #   apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
-    #   kind: WorkerConfig
-    #   serviceAccount:
-    #     email: foo@bar.com
-    #     scopes:
-    #     - https://www.googleapis.com/auth/cloud-platform
+  # dataVolumes:
+  #   - name: alpha
+  #   - type: SCRATCH
+  # providerConfig: # GCP provider specific config
+  #   apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+  #   kind: WorkerConfig
+  #   volume: # provider specific volume configuration
+  #     interface: "SCSI" # applies only for scratch disks, the local SSD Interface.
+  #     encryption: # Encryption Details
+  #       kmsKeyName: "projects/projectId/locations/<zoneName>/keyRings/<keyRingName>/cryptoKeys/alpha"
+  #       kmsKeyServiceAccount: "user@projectId.iam.gserviceaccount.com"
+  #   serviceAccount:
+  #     email: foo@bar.com
+  #     scopes:
+  #     - https://www.googleapis.com/auth/cloud-platform
     zones:
     - europe-west1-b

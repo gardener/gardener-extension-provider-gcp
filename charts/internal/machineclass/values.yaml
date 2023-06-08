@@ -16,9 +16,9 @@ machineClasses:
     labels:
       name: my-disk
 #   CMEK Encryption
-#     encryption:
-#       kmsKeyName: projects/projId/locations/zone/keyRings/keyRingName/cryptoKeys/keyName
-#       kmsKeyServiceAccount: name@projId.iam.gserviceaccount.com
+#   encryption:
+#     kmsKeyName: projects/projId/locations/zone/keyRings/keyRingName/cryptoKeys/keyName
+#     kmsKeyServiceAccount: name@projId.iam.gserviceaccount.com
 
 #  local SSD
 #  - autoDelete: true

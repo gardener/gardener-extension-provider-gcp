@@ -138,6 +138,17 @@ The worker configuration contains:
 
   If you attach the disk with `SCRATCH` type, either an `NVMe` interface or a `SCSI` interface must be specified.
   It is only meaningful to provide this volume interface if only `SCRATCH` data volumes are used.
+* Volume Encryption config that specifies values for `kmsKeyName` and `kmsKeyServiceAccountName`. 
+  * The `kmsKeyName` is the 
+  key name of the cloud kms disk encryption key and must be specified if CMEK disk encryption is needed. 
+  *  The `kmsKeyServiceAccount` is the service account granted the `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the `kmsKeyName`
+  If empty, then the role should be given to the Compute Engine Service Agent Account. This CESA account usually has the name: 
+   `service-PROJECT_NUMBER@compute-system.iam.gserviceaccount.com`. See: https://cloud.google.com/iam/docs/service-agents#compute-engine-service-agent
+  * Prior to use, the operator should add IAM policy binding using the gcloud CLI:
+    ```
+    gcloud projects add-iam-policy-binding projectId --member
+    serviceAccount:name@projectIdgserviceaccount.com --role roles/cloudkms.cryptoKeyEncrypterDecrypter
+    ```
 * Service Account with their specified scopes, authorized for this worker.
 
   Service accounts created in advance that generate access tokens that can be accessed through the metadata server and used to authenticate applications on the instance.
