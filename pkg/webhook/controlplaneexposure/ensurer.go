@@ -58,7 +58,7 @@ func (e *ensurer) InjectClient(client client.Client) error {
 }
 
 // EnsureKubeAPIServerDeployment ensures that the kube-apiserver deployment conforms to the provider requirements.
-func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, old *appsv1.Deployment) error {
+func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, _ gcontext.GardenContext, new, _ *appsv1.Deployment) error {
 	if v1beta1helper.IsAPIServerExposureManaged(new) {
 		return nil
 	}
@@ -85,7 +85,7 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gconte
 }
 
 // EnsureETCD ensures that the etcd conform to the provider requirements.
-func (e *ensurer) EnsureETCD(ctx context.Context, gctx gcontext.GardenContext, new, old *druidv1alpha1.Etcd) error {
+func (e *ensurer) EnsureETCD(_ context.Context, _ gcontext.GardenContext, new, _ *druidv1alpha1.Etcd) error {
 	capacity := resource.MustParse("10Gi")
 	class := ""
 

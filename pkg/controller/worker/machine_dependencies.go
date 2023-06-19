@@ -22,7 +22,7 @@ func (w *workerDelegate) DeployMachineDependencies(_ context.Context) error {
 	return nil
 }
 
-func (w *workerDelegate) CleanupMachineDependencies(ctx context.Context) error {
+func (w *workerDelegate) CleanupMachineDependencies(_ context.Context) error {
 	return nil
 }
 

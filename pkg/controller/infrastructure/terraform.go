@@ -177,10 +177,9 @@ func (t *TerraformReconciler) Delete(ctx context.Context, log logr.Logger, _ *ex
 		f = g.Compile()
 	)
 
-	if err := f.Run(ctx, flow.Opts{}); err != nil {
-		return err
-	}
-	return nil
+	err = f.Run(ctx, flow.Opts{})
+
+	return err
 }
 
 // shouldCreateServiceAccount checks whether terraform needs to create/reconcile a gardener-managed service account.
