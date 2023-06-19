@@ -47,7 +47,7 @@ func (s *shoot) InjectScheme(scheme *runtime.Scheme) error {
 }
 
 // Mutate mutates the given shoot object.
-func (s *shoot) Mutate(ctx context.Context, new, old client.Object) error {
+func (s *shoot) Mutate(_ context.Context, new, old client.Object) error {
 
 	shoot, ok := new.(*gardencorev1beta1.Shoot)
 	if !ok {

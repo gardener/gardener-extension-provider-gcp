@@ -26,20 +26,23 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	v1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils"
 	kubernetesutils "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/gardener/gardener/pkg/utils/kubernetes/health"
 	"github.com/gardener/gardener/pkg/utils/retry"
-	"github.com/gardener/gardener/test/utils/shoots/access"
+	"github.com/gardener/gardener/test/utils/access"
 )
 
 // WaitUntilDaemonSetIsRunning waits until the daemon set with <daemonSetName> is running
@@ -79,6 +82,30 @@ func (f *CommonFramework) WaitUntilStatefulSetIsRunning(ctx context.Context, nam
 
 		log.Info("StatefulSet is ready now")
 		return retry.Ok()
+	})
+}
+
+// WaitUntilIngressIsReady waits until the given ingress is ready
+func (f *CommonFramework) WaitUntilIngressIsReady(ctx context.Context, name string, namespace string, k8sClient kubernetes.Interface) error {
+	return retry.Until(ctx, defaultPollInterval, func(ctx context.Context) (done bool, err error) {
+		ingress := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name}}
+		log := f.Logger.WithValues("ingress", client.ObjectKeyFromObject(ingress))
+
+		if err := k8sClient.Client().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, ingress); err != nil {
+			if apierrors.IsNotFound(err) {
+				log.Info("Waiting for ingress to be ready")
+				return retry.MinorError(fmt.Errorf("ingress %q in namespace %q does not exist", name, namespace))
+			}
+			return retry.SevereError(err)
+		}
+
+		if len(ingress.Status.LoadBalancer.Ingress) > 0 {
+			log.Info("Ingress is ready now")
+			return retry.Ok()
+		}
+
+		log.Info("Waiting for Ingress to be ready")
+		return retry.MinorError(fmt.Errorf("ingress %q in namespace %q is not healthy", name, namespace))
 	})
 }
 
@@ -321,12 +348,17 @@ func ShootReconciliationSuccessful(shoot *gardencorev1beta1.Shoot) (bool, string
 		return false, "no conditions and last operation present yet"
 	}
 
-	shootConditions := map[gardencorev1beta1.ConditionType]struct{}{
-		gardencorev1beta1.ShootAPIServerAvailable:             {},
-		gardencorev1beta1.ShootControlPlaneHealthy:            {},
-		gardencorev1beta1.ShootObservabilityComponentsHealthy: {},
-		gardencorev1beta1.ShootEveryNodeReady:                 {},
-		gardencorev1beta1.ShootSystemComponentsHealthy:        {},
+	shootConditions := sets.New(
+		gardencorev1beta1.ShootAPIServerAvailable,
+		gardencorev1beta1.ShootControlPlaneHealthy,
+		gardencorev1beta1.ShootObservabilityComponentsHealthy,
+		gardencorev1beta1.ShootSystemComponentsHealthy,
+	)
+
+	if !v1beta1helper.IsWorkerless(shoot) {
+		shootConditions.Insert(
+			gardencorev1beta1.ShootEveryNodeReady,
+		)
 	}
 
 	for _, condition := range shoot.Status.Conditions {
@@ -335,7 +367,7 @@ func ShootReconciliationSuccessful(shoot *gardencorev1beta1.Shoot) (bool, string
 			// the `gardenlet` that operates the seed has already been shut down as part of the hibernation, the seed conditions will never
 			// be updated to True if they were previously not True.
 			hibernation := shoot.Spec.Hibernation
-			if _, ok := shootConditions[condition.Type]; !ok && hibernation != nil && hibernation.Enabled != nil && *hibernation.Enabled {
+			if !shootConditions.Has(condition.Type) && hibernation != nil && pointer.BoolDeref(hibernation.Enabled, false) {
 				continue
 			}
 			return false, fmt.Sprintf("condition type %s is not true yet, had message %s with reason %s", condition.Type, condition.Message, condition.Reason)

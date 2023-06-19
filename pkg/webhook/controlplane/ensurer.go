@@ -266,13 +266,13 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(_ context.Context, _ gcontext.
 		opt.Value = extensionswebhook.SerializeCommandLine(command, 1, " \\\n    ")
 	}
 
-	new = extensionswebhook.EnsureUnitOption(new, &unit.UnitOption{
+	newOption := extensionswebhook.EnsureUnitOption(new, &unit.UnitOption{
 		Section: "Service",
 		Name:    "ExecStartPre",
 		Value:   `/bin/sh -c 'hostnamectl set-hostname $(wget -q -O- --header "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/hostname | cut -d '.' -f 1)'`,
 	})
 
-	return new, nil
+	return newOption, nil
 }
 
 func ensureKubeletCommandLineArgs(command []string, kubeletVersion *semver.Version) []string {

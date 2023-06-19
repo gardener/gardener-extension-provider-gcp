@@ -399,7 +399,7 @@ func runTest(
 	Expect(c.Patch(ctx, infra, client.MergeFrom(infraCopy))).To(Succeed())
 
 	By("wait until infrastructure is reconciled")
-	if err := extensions.WaitUntilExtensionObjectReady(
+	err = extensions.WaitUntilExtensionObjectReady(
 		ctx,
 		c,
 		log,
@@ -409,10 +409,9 @@ func runTest(
 		30*time.Second,
 		16*time.Minute,
 		nil,
-	); err != nil {
-		return err
-	}
-	return nil
+	)
+
+	return err
 }
 
 func newProviderConfig(vpc *gcpv1alpha1.VPC, cloudNAT *gcpv1alpha1.CloudNAT) *gcpv1alpha1.InfrastructureConfig {

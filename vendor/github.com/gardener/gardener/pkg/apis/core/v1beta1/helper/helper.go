@@ -495,7 +495,7 @@ func SeedSettingVerticalPodAutoscalerEnabled(settings *gardencorev1beta1.SeedSet
 
 // SeedSettingOwnerChecksEnabled returns true if the 'ownerChecks' setting is enabled.
 func SeedSettingOwnerChecksEnabled(settings *gardencorev1beta1.SeedSettings) bool {
-	return settings == nil || settings.OwnerChecks == nil || settings.OwnerChecks.Enabled
+	return settings != nil && settings.OwnerChecks != nil && settings.OwnerChecks.Enabled
 }
 
 // SeedSettingDependencyWatchdogWeederEnabled returns true if the dependency-watchdog-weeder is enabled.
@@ -654,6 +654,8 @@ func WrapWithLastError(err error, lastError *gardencorev1beta1.LastError) error 
 // IsAPIServerExposureManaged returns true, if the Object is managed by Gardener for API server exposure.
 // This indicates to extensions that they should not mutate the object.
 // Gardener marks the kube-apiserver Service and Deployment as managed by it when it uses SNI to expose them.
+// Deprecated: This function is deprecated and will be removed after Gardener v1.80 has been released.
+// TODO(rfranzke): Drop this after v1.80 has been released.
 func IsAPIServerExposureManaged(obj metav1.Object) bool {
 	if obj == nil {
 		return false
@@ -991,23 +993,23 @@ func ShootDNSProviderSecretNamesEqual(oldDNS, newDNS *gardencorev1beta1.DNS) boo
 	return oldNames.Equal(newNames)
 }
 
-// ShootSecretResourceReferencesEqual returns true when at least one of the Secret resource references inside a Shoot
+// ShootResourceReferencesEqual returns true when at least one of the Secret/ConfigMap resource references inside a Shoot
 // has been changed.
-func ShootSecretResourceReferencesEqual(oldResources, newResources []gardencorev1beta1.NamedResourceReference) bool {
+func ShootResourceReferencesEqual(oldResources, newResources []gardencorev1beta1.NamedResourceReference) bool {
 	var (
 		oldNames = sets.New[string]()
 		newNames = sets.New[string]()
 	)
 
 	for _, resource := range oldResources {
-		if resource.ResourceRef.APIVersion == "v1" && resource.ResourceRef.Kind == "Secret" {
-			oldNames.Insert(resource.ResourceRef.Name)
+		if resource.ResourceRef.APIVersion == "v1" && sets.New("Secret", "ConfigMap").Has(resource.ResourceRef.Kind) {
+			oldNames.Insert(resource.ResourceRef.Kind + "/" + resource.ResourceRef.Name)
 		}
 	}
 
 	for _, resource := range newResources {
-		if resource.ResourceRef.APIVersion == "v1" && resource.ResourceRef.Kind == "Secret" {
-			newNames.Insert(resource.ResourceRef.Name)
+		if resource.ResourceRef.APIVersion == "v1" && sets.New("Secret", "ConfigMap").Has(resource.ResourceRef.Kind) {
+			newNames.Insert(resource.ResourceRef.Kind + "/" + resource.ResourceRef.Name)
 		}
 	}
 
@@ -1348,6 +1350,11 @@ func MutateShootETCDEncryptionKeyRotation(shoot *gardencorev1beta1.Shoot, f func
 
 // IsPSPDisabled returns true if the PodSecurityPolicy plugin is explicitly disabled in the ShootSpec or the cluster version is >= 1.25.
 func IsPSPDisabled(shoot *gardencorev1beta1.Shoot) bool {
+	// we have disabled the policy/v1beta1/podsecuritypolicies API for workerless Shoots
+	if IsWorkerless(shoot) {
+		return true
+	}
+
 	if versionutils.ConstraintK8sGreaterEqual125.Check(semver.MustParse(shoot.Spec.Kubernetes.Version)) {
 		return true
 	}
@@ -1389,7 +1396,8 @@ func IsWorkerless(shoot *gardencorev1beta1.Shoot) bool {
 
 // ShootEnablesSSHAccess returns true if ssh access to worker nodes should be allowed for the given shoot.
 func ShootEnablesSSHAccess(shoot *gardencorev1beta1.Shoot) bool {
-	return shoot.Spec.Provider.WorkersSettings == nil || shoot.Spec.Provider.WorkersSettings.SSHAccess == nil || shoot.Spec.Provider.WorkersSettings.SSHAccess.Enabled
+	return !IsWorkerless(shoot) &&
+		(shoot.Spec.Provider.WorkersSettings == nil || shoot.Spec.Provider.WorkersSettings.SSHAccess == nil || shoot.Spec.Provider.WorkersSettings.SSHAccess.Enabled)
 }
 
 // GetFailureToleranceType determines the failure tolerance type of the given shoot.

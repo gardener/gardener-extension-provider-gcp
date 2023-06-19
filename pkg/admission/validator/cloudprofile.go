@@ -47,7 +47,7 @@ func (cp *cloudProfile) InjectScheme(scheme *runtime.Scheme) error {
 var cpProviderConfigPath = specPath.Child("providerConfig")
 
 // Validate validates the given cloud profile objects.
-func (cp *cloudProfile) Validate(ctx context.Context, new, old client.Object) error {
+func (cp *cloudProfile) Validate(_ context.Context, new, _ client.Object) error {
 	cloudProfile, ok := new.(*core.CloudProfile)
 	if !ok {
 		return fmt.Errorf("wrong object type %T", new)
