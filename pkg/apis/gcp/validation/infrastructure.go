@@ -36,14 +36,15 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 		metadata                 = []string{"INCLUDE_ALL_METADATA"}
 	)
 
+	networkingPath := field.NewPath("networking")
 	if nodesCIDR != nil {
-		nodes = cidrvalidation.NewCIDR(*nodesCIDR, nil)
+		nodes = cidrvalidation.NewCIDR(*nodesCIDR, networkingPath.Child("nodes"))
 	}
 	if podsCIDR != nil {
-		pods = cidrvalidation.NewCIDR(*podsCIDR, nil)
+		pods = cidrvalidation.NewCIDR(*podsCIDR, networkingPath.Child("pods"))
 	}
 	if servicesCIDR != nil {
-		services = cidrvalidation.NewCIDR(*servicesCIDR, nil)
+		services = cidrvalidation.NewCIDR(*servicesCIDR, networkingPath.Child("services"))
 	}
 
 	networksPath := fldPath.Child("networks")
