@@ -15,4 +15,4 @@ spec:
     --service-account="${SERVICEACCOUNT_JSON}"
     --region=$REGION
 
-  image: golang:1.19.7
+  image: golang:1.19.10
