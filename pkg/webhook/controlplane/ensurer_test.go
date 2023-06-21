@@ -105,7 +105,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(logger, false)
 		})
 
 		It("should add missing elements to kube-apiserver deployment (k8s = 1.20)", func() {
@@ -181,7 +181,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(logger, false)
 		})
 
 		It("should add missing elements to kube-controller-manager deployment (k8s = 1.20)", func() {
@@ -262,7 +262,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(logger, false)
 		})
 
 		It("should add missing elements to kube-scheduler deployment (k8s = 1.20)", func() {
@@ -302,7 +302,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(logger, false)
 		})
 
 		It("should not add anything to cluster-autoscaler deployment (k8s = 1.20)", func() {
@@ -328,7 +328,7 @@ var _ = Describe("Ensurer", func() {
 		)
 
 		BeforeEach(func() {
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(logger, false)
 			oldUnitOptions = []*unit.UnitOption{
 				{
 					Section: "Service",
@@ -382,7 +382,7 @@ var _ = Describe("Ensurer", func() {
 		)
 
 		BeforeEach(func() {
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(logger, false)
 			oldKubeletConfig = &kubeletconfigv1beta1.KubeletConfiguration{
 				FeatureGates: map[string]bool{
 					"Foo": true,
@@ -423,7 +423,7 @@ var _ = Describe("Ensurer", func() {
 		var ensurer genericmutator.Ensurer
 
 		BeforeEach(func() {
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(logger, false)
 		})
 
 		It("should modify existing elements of kubernetes general configuration", func() {
