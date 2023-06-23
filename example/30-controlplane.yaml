@@ -59,7 +59,7 @@ spec:
     zone: europe-west1a
     cloudControllerManager:
       featureGates:
-        CustomResourceValidation: true
+        RotateKubeletServerCertificate: true
   infrastructureProviderStatus:
     apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
     kind: InfrastructureStatus

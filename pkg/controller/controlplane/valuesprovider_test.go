@@ -78,7 +78,7 @@ var _ = Describe("ValuesProvider", func() {
 							Zone: "europe-west1a",
 							CloudControllerManager: &apisgcp.CloudControllerManagerConfig{
 								FeatureGates: map[string]bool{
-									"CustomResourceValidation": true,
+									"RotateKubeletServerCertificate": true,
 								},
 							},
 						}),
@@ -209,7 +209,7 @@ var _ = Describe("ValuesProvider", func() {
 				"maintenance.gardener.cloud/restart": "true",
 			},
 			"featureGates": map[string]bool{
-				"CustomResourceValidation": true,
+				"RotateKubeletServerCertificate": true,
 			},
 			"tlsCipherSuites": []string{
 				"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
