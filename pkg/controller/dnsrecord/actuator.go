@@ -20,7 +20,6 @@ import (
 	"time"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -29,6 +28,7 @@ import (
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -43,19 +43,22 @@ const (
 )
 
 type actuator struct {
-	common.ClientContext
-	client gcpclient.Factory
+	client           client.Client
+	decoder          runtime.Decoder
+	gcpClientFactory gcpclient.Factory
 }
 
 // NewActuator creates a new dnsrecord.Actuator.
-func NewActuator(client gcpclient.Factory) dnsrecord.Actuator {
-	return &actuator{client: client}
+func NewActuator(gcpClientFactory gcpclient.Factory) dnsrecord.Actuator {
+	return &actuator{
+		gcpClientFactory: gcpClientFactory,
+	}
 }
 
 // Reconcile reconciles the DNSRecord.
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
 	// Create GCP DNS client
-	dnsClient, err := a.client.DNS(ctx, a.Client(), dns.Spec.SecretRef)
+	dnsClient, err := a.gcpClientFactory.DNS(ctx, a.client, dns.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
@@ -91,13 +94,13 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 	// Update resource status
 	patch := client.MergeFrom(dns.DeepCopy())
 	dns.Status.Zone = &managedZone
-	return a.Client().Status().Patch(ctx, dns, patch)
+	return a.client.Status().Patch(ctx, dns, patch)
 }
 
 // Delete deletes the DNSRecord.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
 	// Create GCP DNS client
-	dnsClient, err := a.client.DNS(ctx, a.Client(), dns.Spec.SecretRef)
+	dnsClient, err := a.gcpClientFactory.DNS(ctx, a.client, dns.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}

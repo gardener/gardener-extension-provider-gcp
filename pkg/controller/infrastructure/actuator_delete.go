@@ -38,10 +38,10 @@ func (a *actuator) delete(ctx context.Context, log logr.Logger, infra *extension
 	}
 
 	if !withFlow {
-		return NewTerraformReconciler(a.Client(), a.RESTConfig(), nil, a.disableProjectedTokenMount).Delete(ctx, log, cluster, infra)
+		return NewTerraformReconciler(a.client, a.restConfig, nil, a.disableProjectedTokenMount).Delete(ctx, log, cluster, infra)
 	}
 
-	flow, err := infraflow.NewFlowReconciler(ctx, log, infra, cluster, a.Client())
+	flow, err := infraflow.NewFlowReconciler(ctx, log, infra, cluster, a.client)
 	if err != nil {
 		return err
 	}

@@ -19,11 +19,11 @@ import (
 	"strings"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
@@ -34,7 +34,8 @@ import (
 )
 
 type actuator struct {
-	common.RESTConfigContext
+	client                     client.Client
+	restConfig                 *rest.Config
 	disableProjectedTokenMount bool
 }
 
@@ -54,11 +55,11 @@ func (a *actuator) updateProviderStatus(
 	patch := client.MergeFrom(infra.DeepCopy())
 	infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
 	infra.Status.State = state
-	return a.Client().Status().Patch(ctx, infra, patch)
+	return a.client.Status().Patch(ctx, infra, patch)
 }
 
 func (a *actuator) cleanupTerraformerResources(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure) error {
-	tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrainternal.TerraformerPurpose, infra, a.disableProjectedTokenMount)
+	tf, err := internal.NewTerraformer(log, a.restConfig, infrainternal.TerraformerPurpose, infra, a.disableProjectedTokenMount)
 	if err != nil {
 		return err
 	}

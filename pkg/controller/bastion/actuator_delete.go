@@ -31,7 +31,7 @@ import (
 )
 
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	serviceAccount, err := getServiceAccount(ctx, a.Client(), bastion)
+	serviceAccount, err := getServiceAccount(ctx, a.client, bastion)
 	if err != nil {
 		return fmt.Errorf("failed to get service account: %w", err)
 	}
@@ -41,7 +41,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		return util.DetermineError(fmt.Errorf("failed to create GCP client: %w", err), helper.KnownCodes)
 	}
 
-	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, a.Client(), cluster)
+	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, a.client, cluster)
 	if err != nil {
 		return err
 	}

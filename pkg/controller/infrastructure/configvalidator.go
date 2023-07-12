@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
@@ -33,16 +32,16 @@ import (
 
 // configValidator implements ConfigValidator for GCP infrastructure resources.
 type configValidator struct {
-	common.ClientContext
-	logger logr.Logger
-	client gcpclient.Factory
+	client           client.Client
+	logger           logr.Logger
+	gcpClientFactory gcpclient.Factory
 }
 
 // NewConfigValidator creates a new ConfigValidator.
-func NewConfigValidator(logger logr.Logger, client gcpclient.Factory) infrastructure.ConfigValidator {
+func NewConfigValidator(logger logr.Logger, gcpClientFactory gcpclient.Factory) infrastructure.ConfigValidator {
 	return &configValidator{
-		logger: logger.WithName("gcp-infrastructure-config-validator"),
-		client: client,
+		logger:           logger.WithName("gcp-infrastructure-config-validator"),
+		gcpClientFactory: gcpClientFactory,
 	}
 }
 
@@ -60,7 +59,7 @@ func (c *configValidator) Validate(ctx context.Context, infra *extensionsv1alpha
 	}
 
 	// Create GCP compute client
-	computeClient, err := c.client.Compute(ctx, c.Client(), infra.Spec.SecretRef)
+	computeClient, err := c.gcpClientFactory.Compute(ctx, c.client, infra.Spec.SecretRef)
 	if err != nil {
 		allErrs = append(allErrs, field.InternalError(nil, err))
 		return allErrs

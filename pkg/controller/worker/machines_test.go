@@ -23,7 +23,6 @@ import (
 	"time"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -73,7 +72,7 @@ var _ = Describe("Machines", func() {
 	})
 
 	Context("workerDelegate", func() {
-		workerDelegate, _ := NewWorkerDelegate(common.NewClientContext(nil, nil, nil), nil, "", nil, nil)
+		workerDelegate, _ := NewWorkerDelegate(nil, nil, nil, nil, "", nil, nil)
 
 		Describe("#MachineClassKind", func() {
 			It("should return the correct kind of the machine class", func() {
@@ -380,7 +379,7 @@ var _ = Describe("Machines", func() {
 				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster)
 				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster)
 
-				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, clusterWithoutImages)
+				workerDelegate, _ = NewWorkerDelegate(c, decoder, scheme, chartApplier, "", w, clusterWithoutImages)
 			})
 
 			Describe("machine images", func() {
@@ -572,7 +571,7 @@ var _ = Describe("Machines", func() {
 						}),
 					}
 
-					workerDelegateCloudRouter, _ := NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", workerCloudRouter, cluster)
+					workerDelegateCloudRouter, _ := NewWorkerDelegate(c, decoder, scheme, chartApplier, "", workerCloudRouter, cluster)
 					// Test workerDelegate.DeployMachineClasses()
 					chartApplier.EXPECT().ApplyFromEmbeddedFS(
 						context.TODO(),
@@ -622,7 +621,7 @@ var _ = Describe("Machines", func() {
 
 			It("should fail because the version is invalid", func() {
 				clusterWithoutImages.Shoot.Spec.Kubernetes.Version = "invalid"
-				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
+				workerDelegate, _ = NewWorkerDelegate(c, decoder, scheme, chartApplier, "", w, cluster)
 
 				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
 				Expect(err).To(HaveOccurred())
@@ -632,7 +631,7 @@ var _ = Describe("Machines", func() {
 			It("should fail because the infrastructure status cannot be decoded", func() {
 				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{}
 
-				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
+				workerDelegate, _ = NewWorkerDelegate(c, decoder, scheme, chartApplier, "", w, cluster)
 
 				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
 				Expect(err).To(HaveOccurred())
@@ -644,7 +643,7 @@ var _ = Describe("Machines", func() {
 					Raw: encode(&api.InfrastructureStatus{}),
 				}
 
-				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
+				workerDelegate, _ = NewWorkerDelegate(c, decoder, scheme, chartApplier, "", w, cluster)
 
 				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
 				Expect(err).To(HaveOccurred())
@@ -654,7 +653,7 @@ var _ = Describe("Machines", func() {
 			It("should fail because the machine image for given architecture cannot be found", func() {
 				w.Spec.Pools[0].Architecture = pointer.String(archARM)
 
-				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
+				workerDelegate, _ = NewWorkerDelegate(c, decoder, scheme, chartApplier, "", w, cluster)
 
 				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
 				Expect(err).To(HaveOccurred())
@@ -662,7 +661,7 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the machine image cannot be found", func() {
-				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, clusterWithoutImages)
+				workerDelegate, _ = NewWorkerDelegate(c, decoder, scheme, chartApplier, "", w, clusterWithoutImages)
 
 				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
 				Expect(err).To(HaveOccurred())
@@ -672,7 +671,7 @@ var _ = Describe("Machines", func() {
 			It("should fail because the volume size cannot be decoded", func() {
 				w.Spec.Pools[0].Volume.Size = "not-decodeable"
 
-				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
+				workerDelegate, _ = NewWorkerDelegate(c, decoder, scheme, chartApplier, "", w, cluster)
 
 				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
 				Expect(err).To(HaveOccurred())
@@ -693,7 +692,7 @@ var _ = Describe("Machines", func() {
 					NodeConditions:         testNodeConditions,
 				}
 
-				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
+				workerDelegate, _ = NewWorkerDelegate(c, decoder, scheme, chartApplier, "", w, cluster)
 
 				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
 				resultSettings := result[0].MachineConfiguration
