@@ -50,7 +50,7 @@ func NewWithOptions(mgr manager.Manager, opts AddOptions) (*extensionswebhook.We
 			{Obj: &appsv1.Deployment{}},
 			{Obj: &druidv1alpha1.Etcd{}},
 		},
-		Mutator: genericmutator.NewMutator(NewEnsurer(&opts.ETCDStorage, logger), nil, nil, nil, logger),
+		Mutator: genericmutator.NewMutator(mgr, NewEnsurer(&opts.ETCDStorage, logger), nil, nil, nil, logger),
 	})
 }
 

@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
@@ -34,14 +35,10 @@ type cloudProfile struct {
 }
 
 // NewCloudProfileValidator returns a new instance of a cloud profile validator.
-func NewCloudProfileValidator() extensionswebhook.Validator {
-	return &cloudProfile{}
-}
-
-// InjectScheme injects the given scheme into the validator.
-func (cp *cloudProfile) InjectScheme(scheme *runtime.Scheme) error {
-	cp.decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
-	return nil
+func NewCloudProfileValidator(mgr manager.Manager) extensionswebhook.Validator {
+	return &cloudProfile{
+		decoder: serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
+	}
 }
 
 var cpProviderConfigPath = specPath.Child("providerConfig")
