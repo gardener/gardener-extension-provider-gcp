@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -40,8 +41,9 @@ type configValidator struct {
 }
 
 // NewConfigValidator creates a new ConfigValidator.
-func NewConfigValidator(logger logr.Logger, gcpClientFactory gcpclient.Factory) bastion.ConfigValidator {
+func NewConfigValidator(mgr manager.Manager, logger logr.Logger, gcpClientFactory gcpclient.Factory) bastion.ConfigValidator {
 	return &configValidator{
+		client:           mgr.GetClient(),
 		gcpClientFactory: gcpClientFactory,
 		logger:           logger.WithName("gcp-bastion-config-validator"),
 	}

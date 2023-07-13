@@ -15,6 +15,8 @@
 package bastion
 
 import (
+	"context"
+
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -41,8 +43,8 @@ type AddOptions struct {
 // The opts.Reconciler is being set with a newly instantiated actuator.
 func AddToManagerWithOptions(mgr manager.Manager, opts AddOptions) error {
 	return bastion.Add(mgr, bastion.AddArgs{
-		Actuator:          newActuator(),
-		ConfigValidator:   NewConfigValidator(log.Log, gcpclient.New()),
+		Actuator:          newActuator(mgr),
+		ConfigValidator:   NewConfigValidator(mgr, log.Log, gcpclient.New()),
 		ControllerOptions: opts.Controller,
 		Predicates:        bastion.DefaultPredicates(opts.IgnoreOperationAnnotation),
 		Type:              gcp.Type,
@@ -50,6 +52,6 @@ func AddToManagerWithOptions(mgr manager.Manager, opts AddOptions) error {
 }
 
 // AddToManager adds a controller with the default Options.
-func AddToManager(mgr manager.Manager) error {
+func AddToManager(_ context.Context, mgr manager.Manager) error {
 	return AddToManagerWithOptions(mgr, DefaultAddOptions)
 }

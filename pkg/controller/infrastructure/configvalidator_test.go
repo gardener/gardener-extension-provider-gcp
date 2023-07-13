@@ -22,6 +22,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
@@ -33,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	infractrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
@@ -57,6 +57,7 @@ var _ = Describe("ConfigValidator", func() {
 		logger           logr.Logger
 		cv               infrastructure.ConfigValidator
 		infra            *extensionsv1alpha1.Infrastructure
+		mgr              *mockmanager.MockManager
 	)
 
 	BeforeEach(func() {
@@ -69,9 +70,10 @@ var _ = Describe("ConfigValidator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
-		cv = infractrl.NewConfigValidator(logger, gcpClientFactory)
-		err := cv.(inject.Client).InjectClient(c)
-		Expect(err).NotTo(HaveOccurred())
+		mgr = mockmanager.NewMockManager(ctrl)
+		mgr.EXPECT().GetClient().Return(c)
+
+		cv = infractrl.NewConfigValidator(mgr, logger, gcpClientFactory)
 
 		infra = &extensionsv1alpha1.Infrastructure{
 			ObjectMeta: metav1.ObjectMeta{

@@ -28,8 +28,8 @@ import (
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
@@ -44,13 +44,13 @@ const (
 
 type actuator struct {
 	client           client.Client
-	decoder          runtime.Decoder
 	gcpClientFactory gcpclient.Factory
 }
 
 // NewActuator creates a new dnsrecord.Actuator.
-func NewActuator(gcpClientFactory gcpclient.Factory) dnsrecord.Actuator {
+func NewActuator(mgr manager.Manager, gcpClientFactory gcpclient.Factory) dnsrecord.Actuator {
 	return &actuator{
+		client:           mgr.GetClient(),
 		gcpClientFactory: gcpClientFactory,
 	}
 }

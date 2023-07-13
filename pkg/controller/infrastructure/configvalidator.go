@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -38,8 +39,9 @@ type configValidator struct {
 }
 
 // NewConfigValidator creates a new ConfigValidator.
-func NewConfigValidator(logger logr.Logger, gcpClientFactory gcpclient.Factory) infrastructure.ConfigValidator {
+func NewConfigValidator(mgr manager.Manager, logger logr.Logger, gcpClientFactory gcpclient.Factory) infrastructure.ConfigValidator {
 	return &configValidator{
+		client:           mgr.GetClient(),
 		logger:           logger.WithName("gcp-infrastructure-config-validator"),
 		gcpClientFactory: gcpClientFactory,
 	}

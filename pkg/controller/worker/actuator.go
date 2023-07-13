@@ -26,9 +26,11 @@ import (
 	"github.com/gardener/gardener/pkg/utils/chart"
 	imagevectorutils "github.com/gardener/gardener/pkg/utils/imagevector"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -38,20 +40,23 @@ import (
 
 type delegateFactory struct {
 	client     client.Client
-	decoder    runtime.Decoder
 	restConfig *rest.Config
 	scheme     *runtime.Scheme
 }
 
 // NewActuator creates a new Actuator that updates the status of the handled WorkerPoolConfigs.
-func NewActuator(gardenletManagesMCM bool) worker.Actuator {
+func NewActuator(mgr manager.Manager, gardenletManagesMCM bool) (worker.Actuator, error) {
 	var (
 		mcmName              string
 		mcmChartSeed         *chart.Chart
 		mcmChartShoot        *chart.Chart
 		imageVector          imagevectorutils.ImageVector
 		chartRendererFactory extensionscontroller.ChartRendererFactory
-		workerDelegate       = &delegateFactory{}
+		workerDelegate       = &delegateFactory{
+			client:     mgr.GetClient(),
+			restConfig: mgr.GetConfig(),
+			scheme:     mgr.GetScheme(),
+		}
 	)
 
 	if !gardenletManagesMCM {
@@ -63,6 +68,7 @@ func NewActuator(gardenletManagesMCM bool) worker.Actuator {
 	}
 
 	return genericactuator.NewActuator(
+		mgr,
 		workerDelegate,
 		mcmName,
 		mcmChartSeed,
@@ -90,7 +96,6 @@ func (d *delegateFactory) WorkerDelegate(_ context.Context, worker *extensionsv1
 
 	return NewWorkerDelegate(
 		d.client,
-		d.decoder,
 		d.scheme,
 
 		seedChartApplier,
@@ -121,7 +126,6 @@ type workerDelegate struct {
 // NewWorkerDelegate creates a new context for a worker reconciliation.
 func NewWorkerDelegate(
 	client client.Client,
-	decoder runtime.Decoder,
 	scheme *runtime.Scheme,
 
 	seedChartApplier gardener.ChartApplier,
@@ -136,8 +140,8 @@ func NewWorkerDelegate(
 	}
 	return &workerDelegate{
 		client:  client,
-		decoder: decoder,
 		scheme:  scheme,
+		decoder: serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder(),
 
 		seedChartApplier: seedChartApplier,
 		serverVersion:    serverVersion,
