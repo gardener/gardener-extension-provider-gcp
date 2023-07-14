@@ -119,7 +119,7 @@ kind: ControlPlaneConfig
 zone: europe-west1-b
 cloudControllerManager:
   featureGates:
-    CustomResourceValidation: true
+    RotateKubeletServerCertificate: true
 ```
 
 The `zone` field tells the cloud-controller-manager in which zone it should mainly operate.

@@ -78,7 +78,7 @@ var _ = Describe("ValuesProvider", func() {
 							Zone: "europe-west1a",
 							CloudControllerManager: &apisgcp.CloudControllerManagerConfig{
 								FeatureGates: map[string]bool{
-									"CustomResourceValidation": true,
+									"RotateKubeletServerCertificate": true,
 								},
 							},
 						}),
@@ -166,7 +166,7 @@ var _ = Describe("ValuesProvider", func() {
 						Pods: &cidr,
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
-						Version: "1.20.0",
+						Version: "1.24.0",
 						VerticalPodAutoscaler: &gardencorev1beta1.VerticalPodAutoscaler{
 							Enabled: true,
 						},
@@ -209,15 +209,18 @@ var _ = Describe("ValuesProvider", func() {
 				"maintenance.gardener.cloud/restart": "true",
 			},
 			"featureGates": map[string]bool{
-				"CustomResourceValidation": true,
+				"RotateKubeletServerCertificate": true,
 			},
 			"tlsCipherSuites": []string{
 				"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 				"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+				"TLS_AES_128_GCM_SHA256",
+				"TLS_AES_256_GCM_SHA384",
+				"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+				"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+				"TLS_CHACHA20_POLY1305_SHA256",
+				"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
 				"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
-				"TLS_RSA_WITH_AES_128_CBC_SHA",
-				"TLS_RSA_WITH_AES_256_CBC_SHA",
-				"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
 			},
 			"secrets": map[string]interface{}{
 				"server": "cloud-controller-manager-server",
@@ -348,7 +351,7 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values).To(Equal(map[string]interface{}{
 				gcp.CloudControllerManagerName: enabledTrue,
 				gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-					"kubernetesVersion": "1.20.0",
+					"kubernetesVersion": "1.24.0",
 					"vpaEnabled":        true,
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
@@ -373,7 +376,7 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(values).To(Equal(map[string]interface{}{
 					gcp.CloudControllerManagerName: enabledTrue,
 					gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-						"kubernetesVersion": "1.20.0",
+						"kubernetesVersion": "1.24.0",
 						"vpaEnabled":        true,
 						"webhookConfig": map[string]interface{}{
 							"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
@@ -397,7 +400,7 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(values).To(Equal(map[string]interface{}{
 					gcp.CloudControllerManagerName: enabledTrue,
 					gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-						"kubernetesVersion": "1.20.0",
+						"kubernetesVersion": "1.24.0",
 						"vpaEnabled":        true,
 						"webhookConfig": map[string]interface{}{
 							"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",

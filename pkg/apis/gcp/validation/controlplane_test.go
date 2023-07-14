@@ -90,19 +90,14 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 		It("should fail with invalid CCM feature gates", func() {
 			controlPlane.CloudControllerManager = &apisgcp.CloudControllerManagerConfig{
 				FeatureGates: map[string]bool{
-					"AnyVolumeDataSource":      true,
-					"CustomResourceValidation": true,
-					"Foo":                      true,
+					"AnyVolumeDataSource": true,
+					"Foo":                 true,
 				},
 			}
 
 			errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "1.24.8", fldPath)
 
 			Expect(errorList).To(ConsistOf(
-				PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeForbidden),
-					"Field": Equal("cloudControllerManager.featureGates.CustomResourceValidation"),
-				})),
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeInvalid),
 					"Field": Equal("cloudControllerManager.featureGates.Foo"),
