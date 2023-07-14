@@ -231,9 +231,11 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			controlplanewebhook.GardenletManagesMCM = generalOpts.Completed().GardenletManagesMCM
 			healthcheck.GardenletManagesMCM = generalOpts.Completed().GardenletManagesMCM
 
-			if _, err := webhookOptions.Completed().AddToManager(ctx, mgr); err != nil {
+			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr)
+			if err != nil {
 				return fmt.Errorf("could not add webhooks to manager: %w", err)
 			}
+			gcpcontrolplane.DefaultAddOptions.ShootWebhookConfig = shootWebhookConfig
 			gcpcontrolplane.DefaultAddOptions.WebhookServerNamespace = webhookOptions.Server.Namespace
 
 			if err := controllerSwitches.Completed().AddToManager(mgr); err != nil {

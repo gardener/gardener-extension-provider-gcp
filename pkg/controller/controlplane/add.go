@@ -15,6 +15,8 @@
 package controlplane
 
 import (
+	"sync/atomic"
+
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
@@ -40,6 +42,8 @@ type AddOptions struct {
 	IgnoreOperationAnnotation bool
 	// WebhookServerNamespace is the namespace in which the webhook server runs.
 	WebhookServerNamespace string
+	// ShootWebhookConfig specifies the desired Shoot MutatingWebhooksConfiguration.
+	ShootWebhookConfig *atomic.Value
 }
 
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
@@ -50,7 +54,7 @@ func AddToManagerWithOptions(mgr manager.Manager, opts AddOptions) error {
 			secretConfigsFunc, shootAccessSecretsFunc, nil, nil,
 			configChart, controlPlaneChart, controlPlaneShootChart, controlPlaneShootCRDsChart, storageClassChart, nil,
 			NewValuesProvider(), extensionscontroller.ChartRendererFactoryFunc(util.NewChartRendererForShoot),
-			imagevector.ImageVector(), internal.CloudProviderConfigName, nil, opts.WebhookServerNamespace, mgr.GetWebhookServer().Port),
+			imagevector.ImageVector(), internal.CloudProviderConfigName, opts.ShootWebhookConfig, opts.WebhookServerNamespace, mgr.GetWebhookServer().Port),
 		ControllerOptions: opts.Controller,
 		Predicates:        controlplane.DefaultPredicates(opts.IgnoreOperationAnnotation),
 		Type:              gcp.Type,

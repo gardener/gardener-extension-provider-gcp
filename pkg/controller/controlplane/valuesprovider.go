@@ -428,10 +428,11 @@ func (vp *valuesProvider) getCCMChartValues(
 		values["featureGates"] = cpConfig.CloudControllerManager.FeatureGates
 	}
 
-	// TODO(KA) Temporarily always configure cloudroutes. This is due to a race condition between the node controller and
-	// Calico setting the node NetworkUnavailable status to True when the route controller is not working. The drawback
-	// from this change is that for users where they have large VPCs reused among many shoots, they can hit the route quotas.
-	values["configureCloudRoutes"] = true
+	ok, err := vp.isOverlayEnabled(*cluster.Shoot.Spec.Networking)
+	if err != nil {
+		return nil, err
+	}
+	values["configureCloudRoutes"] = !ok
 
 	return values, nil
 }
