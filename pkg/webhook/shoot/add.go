@@ -34,7 +34,7 @@ type AddOptions struct{}
 var logger = log.Log.WithName("gcp-shoot-webhook")
 
 // AddToManagerWithOptions creates a webhook with the given options and adds it to the manager.
-func AddToManagerWithOptions(mgr manager.Manager, opts AddOptions) (*extensionswebhook.Webhook, error) {
+func AddToManagerWithOptions(mgr manager.Manager, _ AddOptions) (*extensionswebhook.Webhook, error) {
 	logger.Info("Adding webhook to manager")
 	return shoot.New(mgr, shoot.Args{
 		Types: []extensionswebhook.Type{

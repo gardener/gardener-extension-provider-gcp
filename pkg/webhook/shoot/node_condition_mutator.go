@@ -25,7 +25,7 @@ const (
 	nodeCreatedWithoutRoute = "Node created without a route"
 )
 
-func (m *mutator) mutateNetworkUnavailableNodeCondition(ctx context.Context, new *corev1.Node, old *corev1.Node, logMutation func()) error {
+func (m *mutator) mutateNetworkUnavailableNodeCondition(_ context.Context, new *corev1.Node, old *corev1.Node, logMutation func()) error {
 	if new == nil || old == nil {
 		return nil
 	}
