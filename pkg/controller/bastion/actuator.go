@@ -23,7 +23,6 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
-	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
@@ -31,6 +30,7 @@ import (
 	"google.golang.org/api/googleapi"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -43,11 +43,13 @@ const (
 )
 
 type actuator struct {
-	common.ClientContext
+	client client.Client
 }
 
-func newActuator() bastion.Actuator {
-	return &actuator{}
+func newActuator(mgr manager.Manager) bastion.Actuator {
+	return &actuator{
+		client: mgr.GetClient(),
+	}
 }
 
 func getBastionInstance(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) (*compute.Instance, error) {

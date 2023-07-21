@@ -56,7 +56,7 @@ func (be *bastionEndpoints) Ready() bool {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	serviceAccount, err := getServiceAccount(ctx, a.Client(), bastion)
+	serviceAccount, err := getServiceAccount(ctx, a.client, bastion)
 	if err != nil {
 		return fmt.Errorf("failed to get service account: %w", err)
 	}
@@ -66,7 +66,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return util.DetermineError(fmt.Errorf("failed to create GCP client: %w", err), helper.KnownCodes)
 	}
 
-	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, a.Client(), cluster)
+	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, a.client, cluster)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 
 	patch := client.MergeFrom(bastion.DeepCopy())
 	bastion.Status.ProviderStatus = &runtime.RawExtension{Raw: bytes}
-	if err := a.Client().Status().Patch(ctx, bastion, patch); err != nil {
+	if err := a.client.Status().Patch(ctx, bastion, patch); err != nil {
 		return fmt.Errorf("failed to store status.providerStatus for zone: %s", opt.Zone)
 	}
 
@@ -128,7 +128,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 	// Bastion resource to notify upstream about the ready instance
 	patch = client.MergeFrom(bastion.DeepCopy())
 	bastion.Status.Ingress = endpoints.public
-	return a.Client().Status().Patch(ctx, bastion, patch)
+	return a.client.Status().Patch(ctx, bastion, patch)
 }
 
 func ensureFirewallRules(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interface, bastion *extensionsv1alpha1.Bastion, opt *Options) error {

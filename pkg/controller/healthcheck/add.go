@@ -15,6 +15,7 @@
 package healthcheck
 
 import (
+	"context"
 	"time"
 
 	healthcheckconfig "github.com/gardener/gardener/extensions/pkg/apis/config"
@@ -53,8 +54,9 @@ var (
 )
 
 // RegisterHealthChecks registers health checks for each extension resource
-func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
+func RegisterHealthChecks(ctx context.Context, mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
 	if err := healthcheck.DefaultRegistration(
+		ctx,
 		gcp.Type,
 		extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.ControlPlaneResource),
 		func() client.ObjectList { return &extensionsv1alpha1.ControlPlaneList{} },
@@ -105,6 +107,7 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 	}
 
 	return healthcheck.DefaultRegistration(
+		ctx,
 		gcp.Type,
 		extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.WorkerResource),
 		func() client.ObjectList { return &extensionsv1alpha1.WorkerList{} },
@@ -118,6 +121,6 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 }
 
 // AddToManager adds a controller with the default Options.
-func AddToManager(mgr manager.Manager) error {
-	return RegisterHealthChecks(mgr, DefaultAddOptions)
+func AddToManager(ctx context.Context, mgr manager.Manager) error {
+	return RegisterHealthChecks(ctx, mgr, DefaultAddOptions)
 }

@@ -10,6 +10,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
@@ -23,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client/mock"
@@ -39,6 +39,7 @@ var _ = Describe("ConfigValidator", func() {
 	var (
 		ctrl             *gomock.Controller
 		c                *mockclient.MockClient
+		mgr              *mockmanager.MockManager
 		gcpClientFactory *mockgcpclient.MockFactory
 		gcpComputeClient *mockgcpclient.MockComputeClient
 		ctx              context.Context
@@ -60,9 +61,9 @@ var _ = Describe("ConfigValidator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
-		cv = NewConfigValidator(logger, gcpClientFactory)
-		err := cv.(inject.Client).InjectClient(c)
-		Expect(err).NotTo(HaveOccurred())
+		mgr = mockmanager.NewMockManager(ctrl)
+		mgr.EXPECT().GetClient().Return(c)
+		cv = NewConfigValidator(mgr, logger, gcpClientFactory)
 
 		bastion = &extensionsv1alpha1.Bastion{}
 		cluster = &extensions.Cluster{}

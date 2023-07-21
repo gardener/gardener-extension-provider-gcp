@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
-	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
@@ -28,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -35,14 +35,15 @@ import (
 )
 
 type configValidator struct {
-	common.ClientContext
+	client           client.Client
 	gcpClientFactory gcpclient.Factory
 	logger           logr.Logger
 }
 
 // NewConfigValidator creates a new ConfigValidator.
-func NewConfigValidator(logger logr.Logger, gcpClientFactory gcpclient.Factory) bastion.ConfigValidator {
+func NewConfigValidator(mgr manager.Manager, logger logr.Logger, gcpClientFactory gcpclient.Factory) bastion.ConfigValidator {
 	return &configValidator{
+		client:           mgr.GetClient(),
 		gcpClientFactory: gcpClientFactory,
 		logger:           logger.WithName("gcp-bastion-config-validator"),
 	}
@@ -54,7 +55,7 @@ func (c *configValidator) Validate(ctx context.Context, bastion *extensionsv1alp
 
 	logger := c.logger.WithValues("bastion", client.ObjectKeyFromObject(bastion))
 
-	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, c.Client(), cluster)
+	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, c.client, cluster)
 	if err != nil {
 		allErrs = append(allErrs, field.InternalError(nil, err))
 		return allErrs
@@ -66,7 +67,7 @@ func (c *configValidator) Validate(ctx context.Context, bastion *extensionsv1alp
 	}
 
 	// Create GCP compute client
-	computeClient, err := c.gcpClientFactory.Compute(ctx, c.Client(), secretReference)
+	computeClient, err := c.gcpClientFactory.Compute(ctx, c.client, secretReference)
 	if err != nil {
 		allErrs = append(allErrs, field.InternalError(nil, err))
 		return allErrs

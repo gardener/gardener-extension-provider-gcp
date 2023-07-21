@@ -20,6 +20,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
@@ -29,7 +30,6 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/dnsrecord"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -49,6 +49,7 @@ var _ = Describe("Actuator", func() {
 	var (
 		ctrl             *gomock.Controller
 		c                *mockclient.MockClient
+		mgr              *mockmanager.MockManager
 		sw               *mockclient.MockStatusWriter
 		gcpClientFactory *mockgcpclient.MockFactory
 		gcpDNSClient     *mockgcpclient.MockDNSClient
@@ -63,6 +64,10 @@ var _ = Describe("Actuator", func() {
 		ctrl = gomock.NewController(GinkgoT())
 
 		c = mockclient.NewMockClient(ctrl)
+		mgr = mockmanager.NewMockManager(ctrl)
+
+		mgr.EXPECT().GetClient().Return(c)
+
 		sw = mockclient.NewMockStatusWriter(ctrl)
 		gcpClientFactory = mockgcpclient.NewMockFactory(ctrl)
 		gcpDNSClient = mockgcpclient.NewMockDNSClient(ctrl)
@@ -72,9 +77,7 @@ var _ = Describe("Actuator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
-		a = NewActuator(gcpClientFactory)
-		err := a.(inject.Client).InjectClient(c)
-		Expect(err).NotTo(HaveOccurred())
+		a = NewActuator(mgr, gcpClientFactory)
 
 		dns = &extensionsv1alpha1.DNSRecord{
 			ObjectMeta: metav1.ObjectMeta{

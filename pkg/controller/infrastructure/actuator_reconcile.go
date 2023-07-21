@@ -41,7 +41,7 @@ func (a *actuator) reconcile(ctx context.Context, log logr.Logger, infra *extens
 
 	// Terraform case
 	if !useFlow {
-		reconciler := NewTerraformReconciler(a.Client(), a.RESTConfig(), terraformState, a.disableProjectedTokenMount)
+		reconciler := NewTerraformReconciler(a.client, a.restConfig, terraformState, a.disableProjectedTokenMount)
 		status, state, err := reconciler.Reconcile(ctx, log, cluster, infra)
 		if err != nil {
 			return err
@@ -55,7 +55,7 @@ func (a *actuator) reconcile(ctx context.Context, log logr.Logger, infra *extens
 		return fmt.Errorf("cleaning up terraformer resources failed: %w", err)
 	}
 
-	flow, err := infraflow.NewFlowReconciler(ctx, log, infra, cluster, a.Client())
+	flow, err := infraflow.NewFlowReconciler(ctx, log, infra, cluster, a.client)
 	if err != nil {
 		return err
 	}

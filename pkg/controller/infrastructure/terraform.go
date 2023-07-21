@@ -40,7 +40,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
-	infrainternal "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
 )
 
 // TerraformReconciler can manage infrastructure resources using Terraformer.
@@ -221,7 +220,7 @@ func getTerraformerRawState(state *runtime.RawExtension) (*terraformer.RawState,
 func cleanupKubernetesFirewallRules(
 	ctx context.Context,
 	config *api.InfrastructureConfig,
-	client gcpclient.Interface,
+	gcpClient gcpclient.Interface,
 	tf terraformer.Terraformer,
 	account *gcp.ServiceAccount,
 	shootSeedNamespace string,
@@ -234,13 +233,13 @@ func cleanupKubernetesFirewallRules(
 		return err
 	}
 
-	return infrastructure.CleanupKubernetesFirewalls(ctx, client, account.ProjectID, state.VPCName, shootSeedNamespace)
+	return infrastructure.CleanupKubernetesFirewalls(ctx, gcpClient, account.ProjectID, state.VPCName, shootSeedNamespace)
 }
 
 func cleanupKubernetesRoutes(
 	ctx context.Context,
 	config *api.InfrastructureConfig,
-	client gcpclient.Interface,
+	gcpClient gcpclient.Interface,
 	tf terraformer.Terraformer,
 	account *gcp.ServiceAccount,
 	shootSeedNamespace string,
@@ -253,7 +252,7 @@ func cleanupKubernetesRoutes(
 		return err
 	}
 
-	return infrastructure.CleanupKubernetesRoutes(ctx, client, account.ProjectID, state.VPCName, shootSeedNamespace)
+	return infrastructure.CleanupKubernetesRoutes(ctx, gcpClient, account.ProjectID, state.VPCName, shootSeedNamespace)
 }
 
 func (t *TerraformReconciler) reconcileStatus(
@@ -262,7 +261,7 @@ func (t *TerraformReconciler) reconcileStatus(
 	config *api.InfrastructureConfig,
 	createSA bool,
 ) (*v1alpha1.InfrastructureStatus, *runtime.RawExtension, error) {
-	status, err := infrainternal.ComputeStatus(ctx, tf, config, createSA)
+	status, err := infrastructure.ComputeStatus(ctx, tf, config, createSA)
 	if err != nil {
 		return nil, nil, err
 	}

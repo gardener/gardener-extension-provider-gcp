@@ -26,6 +26,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/gardener/gardener/pkg/utils"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	fakesecretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager/fake"
@@ -39,7 +40,6 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -59,8 +59,9 @@ var _ = Describe("ValuesProvider", func() {
 		scheme = runtime.NewScheme()
 		_      = apisgcp.AddToScheme(scheme)
 
-		vp genericactuator.ValuesProvider
-		c  *mockclient.MockClient
+		vp  genericactuator.ValuesProvider
+		c   *mockclient.MockClient
+		mgr *mockmanager.MockManager
 
 		cp = &extensionsv1alpha1.ControlPlane{
 			ObjectMeta: metav1.ObjectMeta{
@@ -129,7 +130,7 @@ var _ = Describe("ValuesProvider", func() {
 		fakeClient         client.Client
 		fakeSecretsManager secretsmanager.Interface
 
-		clusterK8sAtLeast120 *extensionscontroller.Cluster
+		cluster *extensionscontroller.Cluster
 	)
 
 	BeforeEach(func() {
@@ -137,16 +138,15 @@ var _ = Describe("ValuesProvider", func() {
 
 		c = mockclient.NewMockClient(ctrl)
 
-		vp = NewValuesProvider()
-		err := vp.(inject.Scheme).InjectScheme(scheme)
-		Expect(err).NotTo(HaveOccurred())
-		err = vp.(inject.Client).InjectClient(c)
-		Expect(err).NotTo(HaveOccurred())
+		mgr = mockmanager.NewMockManager(ctrl)
+		mgr.EXPECT().GetClient().Return(c)
+		mgr.EXPECT().GetScheme().Return(scheme)
+		vp = NewValuesProvider(mgr)
 
 		fakeClient = fakeclient.NewClientBuilder().Build()
 		fakeSecretsManager = fakesecretsmanager.New(fakeClient, namespace)
 
-		clusterK8sAtLeast120 = &extensionscontroller.Cluster{
+		cluster = &extensionscontroller.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{
 					"generic-token-kubeconfig.secret.gardener.cloud/name": genericTokenKubeconfigSecretName,
@@ -184,7 +184,7 @@ var _ = Describe("ValuesProvider", func() {
 		It("should return correct config chart values", func() {
 			c.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
 
-			values, err := vp.GetConfigChartValues(ctx, cp, clusterK8sAtLeast120)
+			values, err := vp.GetConfigChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"projectID":      projectID,
@@ -240,14 +240,14 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		It("should return correct control plane chart values", func() {
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, checksums, false)
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"global": map[string]interface{}{
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": clusterK8sAtLeast120.Shoot.Spec.Kubernetes.Version,
+					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 				}),
 				gcp.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas":  1,
@@ -271,7 +271,7 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		It("should return correct control plane chart values for clusters without overlay", func() {
-			shootWithoutOverlay := clusterK8sAtLeast120.Shoot.DeepCopy()
+			shootWithoutOverlay := cluster.Shoot.DeepCopy()
 			shootWithoutOverlay.Spec.Networking.Type = pointer.String(calico.Type)
 			shootWithoutOverlay.Spec.Networking.ProviderConfig = &runtime.RawExtension{
 				Object: &calicov1alpha1.NetworkConfig{
@@ -280,25 +280,25 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				},
 			}
-			clusterK8sAtLeast120.Shoot = shootWithoutOverlay
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, checksums, false)
+			cluster.Shoot = shootWithoutOverlay
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values[gcp.CloudControllerManagerName]).To(Equal(utils.MergeMaps(ccmChartValues, map[string]interface{}{
-				"kubernetesVersion":    clusterK8sAtLeast120.Shoot.Spec.Kubernetes.Version,
+				"kubernetesVersion":    cluster.Shoot.Spec.Kubernetes.Version,
 				"configureCloudRoutes": true,
 			})))
 		})
 
 		DescribeTable("topologyAwareRoutingEnabled value",
 			func(seedSettings *gardencorev1beta1.SeedSettings, shootControlPlane *gardencorev1beta1.ControlPlane, expected bool) {
-				clusterK8sAtLeast120.Seed = &gardencorev1beta1.Seed{
+				cluster.Seed = &gardencorev1beta1.Seed{
 					Spec: gardencorev1beta1.SeedSpec{
 						Settings: seedSettings,
 					},
 				}
-				clusterK8sAtLeast120.Shoot.Spec.ControlPlane = shootControlPlane
+				cluster.Shoot.Spec.ControlPlane = shootControlPlane
 
-				values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, checksums, false)
+				values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(HaveKey(gcp.CSIControllerName))
 				Expect(values[gcp.CSIControllerName]).To(HaveKeyWithValue("csiSnapshotValidationWebhook", HaveKeyWithValue("topologyAwareRoutingEnabled", expected)))
@@ -346,7 +346,7 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		It("should return correct shoot control plane chart values", func() {
-			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, nil)
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, nil)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				gcp.CloudControllerManagerName: enabledTrue,
@@ -364,14 +364,14 @@ var _ = Describe("ValuesProvider", func() {
 
 		Context("podSecurityPolicy", func() {
 			It("should return correct shoot control plane chart when PodSecurityPolicy admission plugin is not disabled in the shoot", func() {
-				clusterK8sAtLeast120.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
+				cluster.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
 					AdmissionPlugins: []gardencorev1beta1.AdmissionPlugin{
 						{
 							Name: "PodSecurityPolicy",
 						},
 					},
 				}
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, nil)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					gcp.CloudControllerManagerName: enabledTrue,
@@ -387,7 +387,7 @@ var _ = Describe("ValuesProvider", func() {
 				}))
 			})
 			It("should return correct shoot control plane chart when PodSecurityPolicy admission plugin is disabled in the shoot", func() {
-				clusterK8sAtLeast120.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
+				cluster.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
 					AdmissionPlugins: []gardencorev1beta1.AdmissionPlugin{
 						{
 							Name:     "PodSecurityPolicy",
@@ -395,7 +395,7 @@ var _ = Describe("ValuesProvider", func() {
 						},
 					},
 				}
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast120, fakeSecretsManager, nil)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					gcp.CloudControllerManagerName: enabledTrue,

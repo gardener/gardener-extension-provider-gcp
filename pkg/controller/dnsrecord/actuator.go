@@ -20,7 +20,6 @@ import (
 	"time"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -30,6 +29,7 @@ import (
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
@@ -43,19 +43,22 @@ const (
 )
 
 type actuator struct {
-	common.ClientContext
-	client gcpclient.Factory
+	client           client.Client
+	gcpClientFactory gcpclient.Factory
 }
 
 // NewActuator creates a new dnsrecord.Actuator.
-func NewActuator(client gcpclient.Factory) dnsrecord.Actuator {
-	return &actuator{client: client}
+func NewActuator(mgr manager.Manager, gcpClientFactory gcpclient.Factory) dnsrecord.Actuator {
+	return &actuator{
+		client:           mgr.GetClient(),
+		gcpClientFactory: gcpClientFactory,
+	}
 }
 
 // Reconcile reconciles the DNSRecord.
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
 	// Create GCP DNS client
-	dnsClient, err := a.client.DNS(ctx, a.Client(), dns.Spec.SecretRef)
+	dnsClient, err := a.gcpClientFactory.DNS(ctx, a.client, dns.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
@@ -91,13 +94,13 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 	// Update resource status
 	patch := client.MergeFrom(dns.DeepCopy())
 	dns.Status.Zone = &managedZone
-	return a.Client().Status().Patch(ctx, dns, patch)
+	return a.client.Status().Patch(ctx, dns, patch)
 }
 
 // Delete deletes the DNSRecord.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
 	// Create GCP DNS client
-	dnsClient, err := a.client.DNS(ctx, a.Client(), dns.Spec.SecretRef)
+	dnsClient, err := a.gcpClientFactory.DNS(ctx, a.client, dns.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
