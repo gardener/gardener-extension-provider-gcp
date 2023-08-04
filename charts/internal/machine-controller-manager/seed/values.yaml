@@ -38,8 +38,6 @@ resources:
     requests:
       cpu: 31m
       memory: 72Mi
-    limits:
-      memory: 400Mi
   mcmProviderGCP:
     requests:
       cpu: 30m

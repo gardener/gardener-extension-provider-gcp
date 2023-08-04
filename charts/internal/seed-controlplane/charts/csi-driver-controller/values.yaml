@@ -20,38 +20,26 @@ resources:
     requests:
       cpu: 20m
       memory: 50Mi
-    limits:
-      memory: 210Mi
   provisioner:
     requests:
       cpu: 11m
       memory: 32Mi
-    limits:
-      memory: 200Mi
   attacher:
     requests:
       cpu: 10m
       memory: 50Mi
-    limits:
-      memory: 210Mi
   snapshotter:
     requests:
       cpu: 10m
       memory: 32Mi
-    limits:
-      memory: 256Mi
   resizer:
     requests:
       cpu: 10m
       memory: 32Mi
-    limits:
-      memory: 200Mi
   livenessProbe:
     requests:
       cpu: 10m
       memory: 32Mi
-    limits:
-      memory: 110Mi
 
 vpa:
   resourcePolicy:
@@ -87,8 +75,6 @@ csiSnapshotController:
     requests:
       cpu: 11m
       memory: 32Mi
-    limits:
-      memory: 2.2Gi
 
 csiSnapshotValidationWebhook:
   replica: 1
@@ -99,6 +85,4 @@ csiSnapshotValidationWebhook:
     requests:
       cpu: 10m
       memory: 32Mi
-    limits:
-      memory: 200Mi
   topologyAwareRoutingEnabled: false
