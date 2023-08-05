@@ -64,6 +64,7 @@ func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddO
 			imagevector.ImageVector(), internal.CloudProviderConfigName, opts.ShootWebhookConfig, opts.WebhookServerNamespace, mgr.GetWebhookServer().Port, gardenerClientset),
 		ControllerOptions: opts.Controller,
 		Predicates:        controlplane.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
+		Type:              gcp.Type,
 	})
 }
 
