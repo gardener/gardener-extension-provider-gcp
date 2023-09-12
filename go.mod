@@ -2,8 +2,6 @@ module github.com/gardener/gardener-extension-provider-gcp
 
 go 1.21
 
-toolchain go1.21.0
-
 require (
 	cloud.google.com/go/storage v1.27.0
 	github.com/Masterminds/semver v1.5.0
