@@ -93,11 +93,11 @@ github.com/fluent/fluent-operator/v2/pkg/utils
 # github.com/fsnotify/fsnotify v1.6.0
 ## explicit; go 1.16
 github.com/fsnotify/fsnotify
-# github.com/gardener/etcd-druid v0.18.1
+# github.com/gardener/etcd-druid v0.19.2
 ## explicit; go 1.20
 github.com/gardener/etcd-druid/api/v1alpha1
-# github.com/gardener/gardener v1.75.0
-## explicit; go 1.20
+# github.com/gardener/gardener v1.79.0
+## explicit; go 1.21
 github.com/gardener/gardener/.github
 github.com/gardener/gardener/.github/ISSUE_TEMPLATE
 github.com/gardener/gardener/extensions/pkg/apis/config
@@ -136,6 +136,7 @@ github.com/gardener/gardener/extensions/pkg/webhook/shoot
 github.com/gardener/gardener/hack
 github.com/gardener/gardener/hack/.ci
 github.com/gardener/gardener/hack/api-reference/template
+github.com/gardener/gardener/imagevector
 github.com/gardener/gardener/pkg/api/core
 github.com/gardener/gardener/pkg/api/extensions
 github.com/gardener/gardener/pkg/apis/authentication
@@ -182,6 +183,7 @@ github.com/gardener/gardener/pkg/controllerutils/mapper
 github.com/gardener/gardener/pkg/controllerutils/predicate
 github.com/gardener/gardener/pkg/controllerutils/reconciler
 github.com/gardener/gardener/pkg/extensions
+github.com/gardener/gardener/pkg/features
 github.com/gardener/gardener/pkg/gardenlet/apis/config
 github.com/gardener/gardener/pkg/gardenlet/apis/config/v1alpha1
 github.com/gardener/gardener/pkg/healthz
@@ -195,7 +197,6 @@ github.com/gardener/gardener/pkg/utils/context
 github.com/gardener/gardener/pkg/utils/errors
 github.com/gardener/gardener/pkg/utils/flow
 github.com/gardener/gardener/pkg/utils/gardener
-github.com/gardener/gardener/pkg/utils/images
 github.com/gardener/gardener/pkg/utils/imagevector
 github.com/gardener/gardener/pkg/utils/kubernetes
 github.com/gardener/gardener/pkg/utils/kubernetes/health
@@ -221,6 +222,8 @@ github.com/gardener/gardener/test/testmachinery/extensions/generator
 github.com/gardener/gardener/test/testmachinery/extensions/healthcheck
 github.com/gardener/gardener/test/testmachinery/extensions/operation
 github.com/gardener/gardener/test/utils/access
+github.com/gardener/gardener/third_party/controller-runtime/pkg/apiutil
+github.com/gardener/gardener/third_party/gopkg.in/yaml.v2
 # github.com/gardener/gardener-extension-networking-calico v1.31.0
 ## explicit; go 1.19
 github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico
@@ -580,6 +583,11 @@ go.opencensus.io/trace/tracestate
 # go.uber.org/atomic v1.9.0
 ## explicit; go 1.13
 go.uber.org/atomic
+# go.uber.org/mock v0.2.0
+## explicit; go 1.19
+go.uber.org/mock/gomock
+go.uber.org/mock/mockgen
+go.uber.org/mock/mockgen/model
 # go.uber.org/multierr v1.7.0
 ## explicit; go 1.14
 go.uber.org/multierr
@@ -1004,6 +1012,9 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
+# k8s.io/apiserver v0.27.5
+## explicit; go 1.20
+k8s.io/apiserver/pkg/util/feature
 # k8s.io/autoscaler/vertical-pod-autoscaler v0.14.0
 ## explicit; go 1.19
 k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1
@@ -1356,7 +1367,7 @@ sigs.k8s.io/controller-runtime/tools/setup-envtest/remote
 sigs.k8s.io/controller-runtime/tools/setup-envtest/store
 sigs.k8s.io/controller-runtime/tools/setup-envtest/versions
 sigs.k8s.io/controller-runtime/tools/setup-envtest/workflows
-# sigs.k8s.io/controller-tools v0.11.3
+# sigs.k8s.io/controller-tools v0.11.4
 ## explicit; go 1.19
 sigs.k8s.io/controller-tools/cmd/controller-gen
 sigs.k8s.io/controller-tools/pkg/crd
