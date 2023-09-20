@@ -369,7 +369,7 @@ func teardownNetwork(ctx context.Context, log logr.Logger, project string, compu
 }
 
 func waitForOperation(ctx context.Context, project string, computeService *compute.Service, op *compute.Operation) error {
-	return wait.PollUntil(5*time.Second, func() (bool, error) {
+	return wait.PollUntilContextCancel(ctx, 5*time.Second, false, func(_ context.Context) (bool, error) {
 		var (
 			currentOp *compute.Operation
 			err       error
@@ -386,7 +386,7 @@ func waitForOperation(ctx context.Context, project string, computeService *compu
 			return false, err
 		}
 		return currentOp.Status == "DONE", nil
-	}, ctx.Done())
+	})
 }
 
 func getResourceNameFromSelfLink(link string) string {
