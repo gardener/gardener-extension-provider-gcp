@@ -43,8 +43,8 @@ spec:
   type: gcp
   kubernetes:
     versions:
-    - version: 1.24.3
-    - version: 1.23.8
+    - version: 1.27.3
+    - version: 1.26.8
       expirationDate: "2022-10-31T23:59:59Z"
   machineImages:
   - name: coreos
