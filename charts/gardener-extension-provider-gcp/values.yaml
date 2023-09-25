@@ -92,3 +92,7 @@ gardener:
     featureGates: {}
   seed:
     provider: gcp
+    spec:
+      settings:
+        topologyAwareRouting:
+          enabled: true
