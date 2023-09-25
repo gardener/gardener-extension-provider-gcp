@@ -15,34 +15,6 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
-  tag: "v1.22.17"
-  targetVersion: "1.22.x"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'high'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: cloud-controller-manager
-  sourceRepository: github.com/gardener/cloud-provider-gcp
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
-  tag: "v1.23.15"
-  targetVersion: "1.23.x"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'high'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: cloud-controller-manager
-  sourceRepository: github.com/gardener/cloud-provider-gcp
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
   tag: "v1.24.13"
   targetVersion: "1.24.x"
   labels:
@@ -137,27 +109,11 @@ images:
       confidentiality_requirement: 'high'
       integrity_requirement: 'high'
       availability_requirement: 'low'
-# Use external-provisioner@v2.1.0 for "< 1.22" clusters to prevent creating new PVs affected by https://issues.k8s.io/109354.
-# For more details check the issue itself (incl. the recommended workaround).
-- name: csi-provisioner
-  sourceRepository: github.com/kubernetes-csi/external-provisioner
-  repository: registry.k8s.io/sig-storage/csi-provisioner
-  tag: "v2.1.0"
-  targetVersion: "< 1.22"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'private'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'low'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
 - name: csi-provisioner
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: registry.k8s.io/sig-storage/csi-provisioner
   tag: "v3.4.1"
-  targetVersion: ">= 1.22"
+  targetVersion: ">= 1.24"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
