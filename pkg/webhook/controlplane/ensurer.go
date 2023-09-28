@@ -310,10 +310,10 @@ func ensureKubeControllerManagerVolumes(ps *corev1.PodSpec) {
 }
 
 // EnsureKubeletServiceUnitOptions ensures that the kubelet.service unit options conform to the provider requirements.
-func (e *ensurer) EnsureKubeletServiceUnitOptions(_ context.Context, _ gcontext.GardenContext, kubeletVersion *semver.Version, new, _ []*unit.UnitOption) ([]*unit.UnitOption, error) {
+func (e *ensurer) EnsureKubeletServiceUnitOptions(_ context.Context, _ gcontext.GardenContext, _ *semver.Version, new, _ []*unit.UnitOption) ([]*unit.UnitOption, error) {
 	if opt := extensionswebhook.UnitOptionWithSectionAndName(new, "Service", "ExecStart"); opt != nil {
 		command := extensionswebhook.DeserializeCommandLine(opt.Value)
-		command = ensureKubeletCommandLineArgs(command, kubeletVersion)
+		command = ensureKubeletCommandLineArgs(command)
 		opt.Value = extensionswebhook.SerializeCommandLine(command, 1, " \\\n    ")
 	}
 
@@ -326,12 +326,8 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(_ context.Context, _ gcontext.
 	return newOption, nil
 }
 
-func ensureKubeletCommandLineArgs(command []string, kubeletVersion *semver.Version) []string {
-	command = extensionswebhook.EnsureStringWithPrefix(command, "--cloud-provider=", "external")
-	if !versionutils.ConstraintK8sGreaterEqual123.Check(kubeletVersion) {
-		command = extensionswebhook.EnsureStringWithPrefix(command, "--enable-controller-attach-detach=", "true")
-	}
-	return command
+func ensureKubeletCommandLineArgs(command []string) []string {
+	return extensionswebhook.EnsureStringWithPrefix(command, "--cloud-provider=", "external")
 }
 
 // EnsureKubeletConfiguration ensures that the kubelet configuration conforms to the provider requirements.
@@ -348,9 +344,7 @@ func (e *ensurer) EnsureKubeletConfiguration(_ context.Context, _ gcontext.Garde
 	// kubelets of new worker nodes can directly be started with the <csiMigrationCompleteFeatureGate> feature gate
 	new.FeatureGates["InTreePluginGCEUnregister"] = true
 
-	if versionutils.ConstraintK8sGreaterEqual123.Check(kubeletVersion) {
-		new.EnableControllerAttachDetach = pointer.Bool(true)
-	}
+	new.EnableControllerAttachDetach = pointer.Bool(true)
 
 	return nil
 }
