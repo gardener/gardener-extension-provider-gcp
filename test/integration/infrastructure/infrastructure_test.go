@@ -101,9 +101,7 @@ var _ = BeforeSuite(func() {
 	flag.Parse()
 	validateFlags()
 
-	internalChartsPath := gcp.InternalChartsPath
 	repoRoot := filepath.Join("..", "..", "..")
-	gcp.InternalChartsPath = filepath.Join(repoRoot, gcp.InternalChartsPath)
 
 	DeferCleanup(func() {
 		defer func() {
@@ -116,8 +114,6 @@ var _ = BeforeSuite(func() {
 
 		By("stopping test environment")
 		Expect(testEnv.Stop()).To(Succeed())
-
-		gcp.InternalChartsPath = internalChartsPath
 	})
 
 	runtimelog.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))

@@ -52,6 +52,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-gcp/charts"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
@@ -114,16 +115,18 @@ func shootAccessSecretsFunc(namespace string) []*gutil.AccessSecret {
 
 var (
 	configChart = &chart.Chart{
-		Name: "cloud-provider-config",
-		Path: filepath.Join(gcp.InternalChartsPath, "cloud-provider-config"),
+		Name:       "cloud-provider-config",
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, "cloud-provider-config"),
 		Objects: []*chart.Object{
 			{Type: &corev1.ConfigMap{}, Name: internal.CloudProviderConfigName},
 		},
 	}
 
 	controlPlaneChart = &chart.Chart{
-		Name: "seed-controlplane",
-		Path: filepath.Join(gcp.InternalChartsPath, "seed-controlplane"),
+		Name:       "seed-controlplane",
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, "seed-controlplane"),
 		SubCharts: []*chart.Chart{
 			{
 				Name:   gcp.CloudControllerManagerName,
@@ -165,12 +168,12 @@ var (
 	}
 
 	controlPlaneShootChart = &chart.Chart{
-		Name: "shoot-system-components",
-		Path: filepath.Join(gcp.InternalChartsPath, "shoot-system-components"),
+		Name:       "shoot-system-components",
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, "shoot-system-components"),
 		SubCharts: []*chart.Chart{
 			{
 				Name: "cloud-controller-manager",
-				Path: filepath.Join(gcp.InternalChartsPath, "cloud-controller-manager"),
 				Objects: []*chart.Object{
 					{Type: &rbacv1.ClusterRole{}, Name: "system:controller:cloud-node-controller"},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: "system:controller:cloud-node-controller"},
@@ -229,8 +232,9 @@ var (
 	}
 
 	controlPlaneShootCRDsChart = &chart.Chart{
-		Name: "shoot-crds",
-		Path: filepath.Join(gcp.InternalChartsPath, "shoot-crds"),
+		Name:       "shoot-crds",
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, "shoot-crds"),
 		SubCharts: []*chart.Chart{
 			{
 				Name: "volumesnapshots",
@@ -244,8 +248,9 @@ var (
 	}
 
 	storageClassChart = &chart.Chart{
-		Name: "shoot-storageclasses",
-		Path: filepath.Join(gcp.InternalChartsPath, "shoot-storageclasses"),
+		Name:       "shoot-storageclasses",
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, "shoot-storageclasses"),
 	}
 )
 

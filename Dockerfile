@@ -15,7 +15,6 @@ FROM gcr.io/distroless/static-debian11:nonroot AS base
 FROM base AS gardener-extension-provider-gcp
 WORKDIR /
 
-COPY charts /charts
 COPY --from=builder /go/bin/gardener-extension-provider-gcp /gardener-extension-provider-gcp
 ENTRYPOINT ["/gardener-extension-provider-gcp"]
 
