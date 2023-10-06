@@ -31,6 +31,11 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 	return util.DetermineError(a.delete(ctx, log, infra, cluster), helper.KnownCodes)
 }
 
+// ForceDelete forcefully deletes the Infrastructure.
+func (a *actuator) ForceDelete(_ context.Context, _ logr.Logger, _ *extensionsv1alpha1.Infrastructure, _ *controller.Cluster) error {
+	return nil
+}
+
 func (a *actuator) delete(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
 	withFlow, err := shouldDeleteWithFlow(infra)
 	if err != nil {

@@ -139,3 +139,7 @@ func removeDisk(ctx context.Context, logger logr.Logger, gcpclient gcpclient.Int
 	logger.Info("Disk removed", "disk", opt.DiskName)
 	return nil
 }
+
+func (a *actuator) ForceDelete(_ context.Context, _ logr.Logger, _ *extensionsv1alpha1.Bastion, _ *controller.Cluster) error {
+	return nil
+}
