@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Masterminds/semver/v3"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
@@ -404,11 +403,6 @@ func (vp *valuesProvider) getCCMChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
-	kubeVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
-	if err != nil {
-		return nil, err
-	}
-
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
 	if !found {
 		return nil, fmt.Errorf("secret %q not found", cloudControllerManagerServerName)
@@ -427,7 +421,7 @@ func (vp *valuesProvider) getCCMChartValues(
 		"podLabels": map[string]interface{}{
 			v1beta1constants.LabelPodMaintenanceRestart: "true",
 		},
-		"tlsCipherSuites": kutil.TLSCipherSuites(kubeVersion),
+		"tlsCipherSuites": kutil.TLSCipherSuites,
 		"secrets": map[string]interface{}{
 			"server": serverSecret.Name,
 		},
