@@ -16,15 +16,12 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/semver"
-	calicov1alpha1 "github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1"
-	"github.com/gardener/gardener-extension-networking-calico/pkg/calico"
-	ciliumv1alpha1 "github.com/gardener/gardener-extension-networking-cilium/pkg/apis/cilium/v1alpha1"
-	"github.com/gardener/gardener-extension-networking-cilium/pkg/cilium"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
@@ -440,7 +437,7 @@ func (vp *valuesProvider) getCCMChartValues(
 		values["featureGates"] = cpConfig.CloudControllerManager.FeatureGates
 	}
 
-	ok, err := vp.isOverlayEnabled(*cluster.Shoot.Spec.Networking)
+	ok, err := vp.isOverlayEnabled(cluster.Shoot.Spec.Networking)
 	if err != nil {
 		return nil, err
 	}
@@ -531,8 +528,8 @@ func getNetworkNames(
 	return networkName, subNetworkName
 }
 
-func (vp *valuesProvider) isOverlayEnabled(network v1beta1.Networking) (bool, error) {
-	if network.ProviderConfig == nil {
+func (vp *valuesProvider) isOverlayEnabled(network *v1beta1.Networking) (bool, error) {
+	if network == nil || network.ProviderConfig == nil {
 		return true, nil
 	}
 
@@ -544,28 +541,12 @@ func (vp *valuesProvider) isOverlayEnabled(network v1beta1.Networking) (bool, er
 	if string(networkProviderConfig) == "null" {
 		return true, nil
 	}
-
-	if network.Type != nil {
-		switch *network.Type {
-		case calico.ReleaseName:
-			networkConfig := &calicov1alpha1.NetworkConfig{}
-			if _, _, err := vp.decoder.Decode(networkProviderConfig, nil, networkConfig); err != nil {
-				return false, err
-			}
-			o := networkConfig.Overlay
-			return o == nil || o.Enabled, nil
-		case cilium.ReleaseName:
-			networkConfig := &ciliumv1alpha1.NetworkConfig{}
-			if _, _, err := vp.decoder.Decode(networkProviderConfig, nil, networkConfig); err != nil {
-				return false, err
-			}
-			o := networkConfig.Overlay
-			if o == nil {
-				return true, nil
-			}
-			return o == nil || o.Enabled, nil
-		}
+	var networkConfig map[string]interface{}
+	if err := json.Unmarshal(networkProviderConfig, &networkConfig); err != nil {
+		return false, err
 	}
-
+	if overlay, ok := networkConfig["overlay"].(map[string]interface{}); ok {
+		return overlay["enabled"].(bool), nil
+	}
 	return true, nil
 }
