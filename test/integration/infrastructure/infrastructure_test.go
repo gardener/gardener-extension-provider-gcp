@@ -47,6 +47,7 @@ import (
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
@@ -136,7 +137,9 @@ var _ = BeforeSuite(func() {
 
 	By("setup manager")
 	mgr, err := manager.New(cfg, manager.Options{
-		MetricsBindAddress: "0",
+		Metrics: server.Options{
+			BindAddress: "0",
+		},
 	})
 	Expect(err).NotTo(HaveOccurred())
 
