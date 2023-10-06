@@ -18,9 +18,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/mock/gomock"
 	"google.golang.org/api/compute/v1"
 
 	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/mock/client"

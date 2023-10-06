@@ -26,8 +26,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 
+	"github.com/gardener/gardener-extension-provider-gcp/imagevector"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/imagevector"
 )
 
 const (

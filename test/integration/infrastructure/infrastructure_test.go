@@ -47,6 +47,7 @@ import (
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
@@ -101,9 +102,7 @@ var _ = BeforeSuite(func() {
 	flag.Parse()
 	validateFlags()
 
-	internalChartsPath := gcp.InternalChartsPath
 	repoRoot := filepath.Join("..", "..", "..")
-	gcp.InternalChartsPath = filepath.Join(repoRoot, gcp.InternalChartsPath)
 
 	DeferCleanup(func() {
 		defer func() {
@@ -116,8 +115,6 @@ var _ = BeforeSuite(func() {
 
 		By("stopping test environment")
 		Expect(testEnv.Stop()).To(Succeed())
-
-		gcp.InternalChartsPath = internalChartsPath
 	})
 
 	runtimelog.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
@@ -140,7 +137,9 @@ var _ = BeforeSuite(func() {
 
 	By("setup manager")
 	mgr, err := manager.New(cfg, manager.Options{
-		MetricsBindAddress: "0",
+		Metrics: server.Options{
+			BindAddress: "0",
+		},
 	})
 	Expect(err).NotTo(HaveOccurred())
 
@@ -577,7 +576,7 @@ func teardownIPAddresses(ctx context.Context, logger logr.Logger, project string
 }
 
 func waitForOperation(ctx context.Context, project string, computeService *computev1.Service, op *computev1.Operation) error {
-	return wait.PollUntil(5*time.Second, func() (bool, error) {
+	return wait.PollUntilContextCancel(ctx, 5*time.Second, false, func(_ context.Context) (bool, error) {
 		var (
 			currentOp *computev1.Operation
 			err       error
@@ -594,7 +593,7 @@ func waitForOperation(ctx context.Context, project string, computeService *compu
 			return false, err
 		}
 		return currentOp.Status == "DONE", nil
-	}, ctx.Done())
+	})
 }
 
 func getResourceNameFromSelfLink(link string) string {

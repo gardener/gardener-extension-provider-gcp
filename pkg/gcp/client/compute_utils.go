@@ -16,7 +16,7 @@ const (
 
 // Wait waits for async operations to complete.
 func (c *computeClient) wait(ctx context.Context, op *compute.Operation) error {
-	return wait.PollImmediateUntil(pollInterval, c.waitOperation(op), ctx.Done())
+	return wait.PollUntilContextCancel(ctx, pollInterval, true, c.waitOperation(op))
 }
 
 func (c *computeClient) QueryOperation(op *compute.Operation) (*compute.Operation, error) {
@@ -30,8 +30,8 @@ func (c *computeClient) QueryOperation(op *compute.Operation) (*compute.Operatio
 	}
 }
 
-func (c *computeClient) waitOperation(op *compute.Operation) func() (bool, error) {
-	return func() (bool, error) {
+func (c *computeClient) waitOperation(op *compute.Operation) func(context.Context) (bool, error) {
+	return func(_ context.Context) (bool, error) {
 		result, err := c.QueryOperation(op)
 		if err != nil {
 			return false, fmt.Errorf("failed to query operation [Name=%s]: %s", op.Name, err)

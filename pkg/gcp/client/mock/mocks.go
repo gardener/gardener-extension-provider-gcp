@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	client "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 	compute "google.golang.org/api/compute/v1"
 	v1 "k8s.io/api/core/v1"
 	client0 "sigs.k8s.io/controller-runtime/pkg/client"
