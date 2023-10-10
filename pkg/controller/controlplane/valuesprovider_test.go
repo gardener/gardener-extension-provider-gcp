@@ -18,8 +18,6 @@ import (
 	"context"
 	"encoding/json"
 
-	calicov1alpha1 "github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1"
-	"github.com/gardener/gardener-extension-networking-calico/pkg/calico"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -272,13 +270,9 @@ var _ = Describe("ValuesProvider", func() {
 
 		It("should return correct control plane chart values for clusters without overlay", func() {
 			shootWithoutOverlay := cluster.Shoot.DeepCopy()
-			shootWithoutOverlay.Spec.Networking.Type = pointer.String(calico.Type)
+			shootWithoutOverlay.Spec.Networking.Type = pointer.String("calico")
 			shootWithoutOverlay.Spec.Networking.ProviderConfig = &runtime.RawExtension{
-				Object: &calicov1alpha1.NetworkConfig{
-					Overlay: &calicov1alpha1.Overlay{
-						Enabled: false,
-					},
-				},
+				Raw: []byte(`{"overlay":{"enabled":false}}`),
 			}
 			cluster.Shoot = shootWithoutOverlay
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
