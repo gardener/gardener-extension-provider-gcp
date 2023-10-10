@@ -201,8 +201,11 @@ func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 			"CSIMigration=true", ",")
 	}
 
-	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-		"CSIMigrationGCE=true", ",")
+	if !versionutils.ConstraintK8sGreaterEqual128.Check(k8sVersion) {
+		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+			"CSIMigrationGCE=true", ",")
+	}
+
 	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 		"InTreePluginGCEUnregister"+"=true", ",")
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-provider=")
@@ -220,8 +223,11 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 			"CSIMigration=true", ",")
 	}
 
-	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-		"CSIMigrationGCE=true", ",")
+	if !versionutils.ConstraintK8sGreaterEqual128.Check(k8sVersion) {
+		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+			"CSIMigrationGCE=true", ",")
+	}
+
 	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 		"InTreePluginGCEUnregister"+"=true", ",")
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-config=")
@@ -234,8 +240,11 @@ func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 			"CSIMigration=true", ",")
 	}
 
-	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-		"CSIMigrationGCE=true", ",")
+	if !versionutils.ConstraintK8sGreaterEqual128.Check(k8sVersion) {
+		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+			"CSIMigrationGCE=true", ",")
+	}
+
 	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 		"InTreePluginGCEUnregister"+"=true", ",")
 }
@@ -247,8 +256,11 @@ func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, k8sVersion *sem
 			"CSIMigration=true", ",")
 	}
 
-	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-		"CSIMigrationGCE=true", ",")
+	if !versionutils.ConstraintK8sGreaterEqual128.Check(k8sVersion) {
+		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+			"CSIMigrationGCE=true", ",")
+	}
+
 	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 		"InTreePluginGCEUnregister"+"=true", ",")
 }
@@ -340,7 +352,10 @@ func (e *ensurer) EnsureKubeletConfiguration(_ context.Context, _ gcontext.Garde
 		new.FeatureGates["CSIMigration"] = true
 	}
 
-	new.FeatureGates["CSIMigrationGCE"] = true
+	if !versionutils.ConstraintK8sGreaterEqual128.Check(kubeletVersion) {
+		new.FeatureGates["CSIMigrationGCE"] = true
+	}
+
 	// kubelets of new worker nodes can directly be started with the <csiMigrationCompleteFeatureGate> feature gate
 	new.FeatureGates["InTreePluginGCEUnregister"] = true
 
