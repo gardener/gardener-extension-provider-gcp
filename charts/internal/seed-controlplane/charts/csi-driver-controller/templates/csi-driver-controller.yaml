@@ -45,6 +45,7 @@ spec:
         - --endpoint=$(CSI_ENDPOINT)
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
         - --run-node-service=false
+        - --extra-labels=k8s-cluster-name={{ .Release.Namespace }}
         - --logtostderr
         - --v=3
         env:
