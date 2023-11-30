@@ -49,6 +49,9 @@ providerSpec:
   metadata:
 {{ toYaml $machineClass.metadata | indent 2 }}
 {{- end }}
+{{- if $machineClass.minCpuPlatform }}
+  minCpuPlatform: {{ $machineClass.minCpuPlatform }}
+{{- end }}
   networkInterfaces:
 {{ toYaml $machineClass.networkInterfaces | indent 2 }}
   scheduling:

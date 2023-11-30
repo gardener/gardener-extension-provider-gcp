@@ -31,6 +31,10 @@ type WorkerConfig struct {
 	// Volume contains configuration for the root disks attached to VMs.
 	Volume *Volume
 
+	// MinCpuPlatform is the name of the minimum CPU platform that is to be
+	// requested for the VM.
+	MinCpuPlatform *string
+
 	// Service account, with their specified scopes, authorized for this worker.
 	// Service accounts generate access tokens that can be accessed through
 	// the metadata server and used to authenticate applications on the

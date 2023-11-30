@@ -102,6 +102,8 @@ var _ = Describe("Machines", func() {
 				volumeType string
 				volumeSize int
 
+				minCpuPlatform string
+
 				localVolumeType      string
 				localVolumeInterface string
 
@@ -158,6 +160,8 @@ var _ = Describe("Machines", func() {
 
 				volumeType = "normal"
 				volumeSize = 20
+
+				minCpuPlatform = "Foo"
 
 				localVolumeType = "SCRATCH"
 				localVolumeInterface = "SCSI"
@@ -305,6 +309,7 @@ var _ = Describe("Machines", func() {
 										Volume: &api.Volume{
 											LocalSSDInterface: &localVolumeInterface,
 										},
+										MinCpuPlatform: &minCpuPlatform,
 									}),
 								},
 								Zones: []string{
@@ -336,6 +341,7 @@ var _ = Describe("Machines", func() {
 											Email:  "foo",
 											Scopes: []string{"bar"},
 										},
+										MinCpuPlatform: &minCpuPlatform,
 									}),
 								},
 								UserData: userData,
@@ -413,7 +419,8 @@ var _ = Describe("Machines", func() {
 								"value": "TRUE",
 							},
 						},
-						"machineType": machineType,
+						"machineType":    machineType,
+						"minCpuPlatform": minCpuPlatform,
 						"networkInterfaces": []map[string]interface{}{
 							{
 								"subnetwork":        subnetName,

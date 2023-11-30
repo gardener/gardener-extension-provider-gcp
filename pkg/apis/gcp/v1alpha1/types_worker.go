@@ -33,6 +33,10 @@ type WorkerConfig struct {
 	// +optional
 	Volume *Volume `json:"volume,omitempty"`
 
+	// MinCpuPlatform is the name of the minimum CPU platform that is to be
+	// requested for the VM.
+	MinCpuPlatform *string `json:"minCpuPlatform,omitempty"`
+
 	// Service account, with their specified scopes, authorized for this worker.
 	// Service accounts generate access tokens that can be accessed through
 	// the metadata server and used to authenticate applications on the
