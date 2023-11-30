@@ -112,7 +112,7 @@ spec:
       namespace: garden
   ...
 ```
-An example of the referenced secret containing the credentials for the GCP Cloud storage can be found in the [example folder](https://github.com/gardener/gardener-extension-provider-gcp/blob/master/example/30-etcd-backup-secret.yaml).
+An example of the referenced secret containing the credentials for the GCP Cloud storage can be found in the [example folder](../../example/30-etcd-backup-secret.yaml).
 
 #### Permissions for GCP Cloud Storage
 
