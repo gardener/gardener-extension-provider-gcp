@@ -62,7 +62,6 @@ start:
 		--config-file=./example/00-componentconfig.yaml \
 		--ignore-operation-annotation=$(IGNORE_OPERATION_ANNOTATION) \
 		--leader-election=$(LEADER_ELECTION) \
-		--leader-election-resource-lock=leases \
 		--webhook-config-server-host=0.0.0.0 \
 		--webhook-config-server-port=$(WEBHOOK_CONFIG_PORT) \
 		--webhook-config-mode=$(WEBHOOK_CONFIG_MODE) \
