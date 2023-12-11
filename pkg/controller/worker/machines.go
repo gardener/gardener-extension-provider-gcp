@@ -109,8 +109,9 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 			return err
 		}
 
-		arch := pointer.StringDeref(pool.Architecture, v1beta1constants.ArchitectureAMD64)
+		poolLabels := getGcePoolLabels(w.worker, pool)
 
+		arch := pointer.StringDeref(pool.Architecture, v1beta1constants.ArchitectureAMD64)
 		machineImage, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version, &arch)
 		if err != nil {
 			return err
@@ -133,7 +134,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 		disks := make([]map[string]interface{}, 0)
 		// root volume
 		if pool.Volume != nil {
-			disk, err := createDiskSpecForVolume(*pool.Volume, w.worker.Name, machineImage, true)
+			disk, err := createDiskSpecForVolume(*pool.Volume, machineImage, true, poolLabels)
 			if err != nil {
 				return err
 			}
@@ -145,7 +146,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 
 		// additional volumes
 		for _, volume := range pool.DataVolumes {
-			disk, err := createDiskSpecForDataVolume(volume, w.worker.Name, false)
+			disk, err := createDiskSpecForDataVolume(volume, false, poolLabels)
 			if err != nil {
 				return err
 			}
@@ -176,7 +177,6 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 			})
 		}
 
-		gceInstanceLabels := getGceInstanceLabels(w.worker.Name, pool)
 		isLiveMigrationAllowed := true
 
 		for zoneIndex, zone := range pool.Zones {
@@ -188,7 +188,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 				"deletionProtection": false,
 				"description":        fmt.Sprintf("Machine of Shoot %s created by machine-controller-manager.", w.worker.Name),
 				"disks":              disks,
-				"labels":             gceInstanceLabels,
+				"labels":             poolLabels,
 				// TODO: make this configurable for the user
 				"metadata": []map[string]string{
 					{
@@ -279,17 +279,17 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 	return nil
 }
 
-func createDiskSpecForVolume(volume v1alpha1.Volume, workerName string, machineImage string, boot bool) (map[string]interface{}, error) {
-	return createDiskSpec(volume.Size, workerName, boot, &machineImage, volume.Type)
+func createDiskSpecForVolume(volume v1alpha1.Volume, machineImage string, boot bool, labels map[string]interface{}) (map[string]interface{}, error) {
+	return createDiskSpec(volume.Size, boot, &machineImage, volume.Type, labels)
 }
 
-func createDiskSpecForDataVolume(volume v1alpha1.DataVolume, workerName string, boot bool) (map[string]interface{}, error) {
+func createDiskSpecForDataVolume(volume v1alpha1.DataVolume, boot bool, labels map[string]interface{}) (map[string]interface{}, error) {
 	// Don't set machine image for data volumes. Any pre-existing data on the disk can interfere with the boot disk.
 	// See https://github.com/gardener/gardener-extension-provider-gcp/issues/323
-	return createDiskSpec(volume.Size, workerName, boot, nil, volume.Type)
+	return createDiskSpec(volume.Size, boot, nil, volume.Type, labels)
 }
 
-func createDiskSpec(size, workerName string, boot bool, machineImage, volumeType *string) (map[string]interface{}, error) {
+func createDiskSpec(size string, boot bool, machineImage, volumeType *string, labels map[string]interface{}) (map[string]interface{}, error) {
 	volumeSize, err := worker.DiskSize(size)
 	if err != nil {
 		return nil, err
@@ -299,9 +299,10 @@ func createDiskSpec(size, workerName string, boot bool, machineImage, volumeType
 		"autoDelete": true,
 		"boot":       boot,
 		"sizeGb":     volumeSize,
-		"labels": map[string]interface{}{
-			"name": workerName,
-		},
+	}
+
+	if len(labels) != 0 {
+		disk["labels"] = labels
 	}
 
 	if machineImage != nil {
@@ -329,9 +330,11 @@ func addDiskEncryptionDetails(disk map[string]interface{}, encryption *apisgcp.D
 	disk["encryption"] = encryptionMap
 }
 
-func getGceInstanceLabels(name string, pool v1alpha1.WorkerPool) map[string]interface{} {
+func getGcePoolLabels(worker *v1alpha1.Worker, pool v1alpha1.WorkerPool) map[string]interface{} {
 	gceInstanceLabels := map[string]interface{}{
-		"name": SanitizeGcpLabelValue(name),
+		"name": SanitizeGcpLabelValue(worker.Name),
+		// Add shoot id to keep consistency with the label added to all disks by the csi-driver
+		"k8s-cluster-name": SanitizeGcpLabelValue(worker.Namespace),
 	}
 	for k, v := range pool.Labels {
 		if label := SanitizeGcpLabel(k); label != "" {
