@@ -153,18 +153,16 @@ func (t *TerraformReconciler) Delete(ctx context.Context, log logr.Logger, _ *ex
 			Name: "Destroying Kubernetes firewall rules",
 			Fn: flow.TaskFn(func(ctx context.Context) error {
 				return cleanupKubernetesFirewallRules(ctx, config, gcpClient, tf, serviceAccount, infra.Namespace)
-			}).
-				RetryUntilTimeout(10*time.Second, 5*time.Minute).
-				DoIf(configExists),
+			}).RetryUntilTimeout(10*time.Second, 5*time.Minute),
+			SkipIf: !configExists,
 		})
 
 		destroyKubernetesRoutes = g.Add(flow.Task{
 			Name: "Destroying Kubernetes route entries",
 			Fn: flow.TaskFn(func(ctx context.Context) error {
 				return cleanupKubernetesRoutes(ctx, config, gcpClient, tf, serviceAccount, infra.Namespace)
-			}).
-				RetryUntilTimeout(10*time.Second, 5*time.Minute).
-				DoIf(configExists),
+			}).RetryUntilTimeout(10*time.Second, 5*time.Minute),
+			SkipIf: !configExists,
 		})
 
 		_ = g.Add(flow.Task{

@@ -16,7 +16,9 @@
 
 package worker
 
-import "context"
+import (
+	"context"
+)
 
 func (w *workerDelegate) DeployMachineDependencies(_ context.Context) error {
 	return nil

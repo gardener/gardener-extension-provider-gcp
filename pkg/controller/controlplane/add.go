@@ -16,7 +16,6 @@ package controlplane
 
 import (
 	"context"
-	"fmt"
 	"sync/atomic"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
@@ -25,7 +24,6 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/gardener/gardener-extension-provider-gcp/imagevector"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -52,17 +50,11 @@ type AddOptions struct {
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
 // The opts.Reconciler is being set with a newly instantiated actuator.
 func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddOptions) error {
-	webhookServer := mgr.GetWebhookServer()
-	defaultServer, ok := webhookServer.(*webhook.DefaultServer)
-	if !ok {
-		return fmt.Errorf("expected *webhook.DefaultServer, got %T", webhookServer)
-	}
-
 	genericActuator, err := genericactuator.NewActuator(mgr, gcp.Name,
 		secretConfigsFunc, shootAccessSecretsFunc, nil, nil,
 		configChart, controlPlaneChart, controlPlaneShootChart, controlPlaneShootCRDsChart, storageClassChart, nil,
 		NewValuesProvider(mgr), extensionscontroller.ChartRendererFactoryFunc(util.NewChartRendererForShoot),
-		imagevector.ImageVector(), internal.CloudProviderConfigName, opts.ShootWebhookConfig, opts.WebhookServerNamespace, int32(defaultServer.Options.Port))
+		imagevector.ImageVector(), internal.CloudProviderConfigName, opts.ShootWebhookConfig, opts.WebhookServerNamespace)
 	if err != nil {
 		return err
 	}
