@@ -29,11 +29,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
-var (
-	logger = log.Log.WithName("gcp-controlplane-webhook")
-	// GardenletManagesMCM specifies whether the machine-controller-manager should be managed.
-	GardenletManagesMCM bool
-)
+var logger = log.Log.WithName("gcp-controlplane-webhook")
 
 // New creates a new control plane webhook.
 func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
@@ -47,7 +43,7 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 			{Obj: &vpaautoscalingv1.VerticalPodAutoscaler{}},
 			{Obj: &extensionsv1alpha1.OperatingSystemConfig{}},
 		},
-		Mutator: genericmutator.NewMutator(mgr, NewEnsurer(logger, GardenletManagesMCM), oscutils.NewUnitSerializer(),
+		Mutator: genericmutator.NewMutator(mgr, NewEnsurer(logger), oscutils.NewUnitSerializer(),
 			kubelet.NewConfigCodec(fciCodec), fciCodec, logger),
 	})
 }

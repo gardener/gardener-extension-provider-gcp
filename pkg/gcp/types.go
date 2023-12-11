@@ -44,8 +44,6 @@ const (
 	CSILivenessProbeImageName = "csi-liveness-probe"
 	// CSISnapshotValidationWebhookImageName is the name of the csi-snapshot-validation-webhook image.
 	CSISnapshotValidationWebhookImageName = "csi-snapshot-validation-webhook"
-	// MachineControllerManagerImageName is the name of the MachineControllerManager image.
-	MachineControllerManagerImageName = "machine-controller-manager"
 	// MachineControllerManagerProviderGCPImageName is the name of the MachineController GCP image.
 	MachineControllerManagerProviderGCPImageName = "machine-controller-manager-provider-gcp"
 
