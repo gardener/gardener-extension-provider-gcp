@@ -1,5 +1,5 @@
 image:
-  repository: eu.gcr.io/gardener-project/gardener/extensions/provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/public/gardener/extensions/provider-gcp
   tag: latest
   pullPolicy: IfNotPresent
 

@@ -3,11 +3,13 @@ gardener-extension-provider-gcp:
     traits:
       version:
         preprocess: 'inject-commit-hash'
+      component_descriptor:
+        ocm_repository: europe-docker.pkg.dev/gardener-project/snapshots
       publish:
         oci-builder: 'docker-buildx'
         dockerimages:
           gardener-extension-provider-gcp:
-            image: 'eu.gcr.io/gardener-project/gardener/extensions/provider-gcp'
+            image: europe-docker.pkg.dev/gardener-project/snapshots/gardener/extensions/provider-gcp
             dockerfile: 'Dockerfile'
             target: gardener-extension-provider-gcp
             resource_labels:
@@ -20,7 +22,7 @@ gardener-extension-provider-gcp:
                 integrity_requirement: 'high'
                 availability_requirement: 'high'
           gardener-extension-admission-gcp:
-            image: 'eu.gcr.io/gardener-project/gardener/extensions/admission-gcp'
+            image: europe-docker.pkg.dev/gardener-project/snapshots/gardener/extensions/admission-gcp
             dockerfile: 'Dockerfile'
             target: gardener-extension-admission-gcp
             resource_labels:
@@ -36,6 +38,8 @@ gardener-extension-provider-gcp:
     head-update:
       traits:
         component_descriptor:
+          ocm_repository_mappings:
+            - repository: europe-docker.pkg.dev/gardener-project/releases
           retention_policy: 'clean-snapshots'
         draft_release: ~
         options:
@@ -43,7 +47,9 @@ gardener-extension-provider-gcp:
     pull-request:
       traits:
         pull-request: ~
-        component_descriptor: ~
+        component_descriptor:
+          ocm_repository_mappings:
+            - repository: europe-docker.pkg.dev/gardener-project/releases
         options:
           public_build_logs: true
     release:
@@ -57,6 +63,8 @@ gardener-extension-provider-gcp:
       traits:
         version:
           preprocess: 'finalize'
+        component_descriptor:
+          ocm_repository: europe-docker.pkg.dev/gardener-project/releases
         release:
           nextversion: 'bump_minor'
           next_version_callback: '.ci/prepare_release'
@@ -67,11 +75,12 @@ gardener-extension-provider-gcp:
             internal_scp_workspace:
               channel_name: 'C9CEBQPGE' #sap-tech-gardener
               slack_cfg_name: 'scp_workspace'
-        component_descriptor: ~
         publish:
           oci-builder: 'docker-buildx'
           dockerimages:
             gardener-extension-provider-gcp:
+              image: europe-docker.pkg.dev/gardener-project/releases/gardener/extensions/provider-gcp
               tag_as_latest: true
             gardener-extension-admission-gcp:
+              image: europe-docker.pkg.dev/gardener-project/releases/gardener/extensions/admission-gcp
               tag_as_latest: true

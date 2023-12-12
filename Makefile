@@ -14,7 +14,7 @@
 
 EXTENSION_PREFIX            := gardener-extension
 NAME                        := provider-gcp
-REGISTRY                    := eu.gcr.io/gardener-project/gardener
+REGISTRY                    := europe-docker.pkg.dev/gardener-project/public/gardener
 ADMISSION_NAME              := admission-gcp
 IMAGE_PREFIX                := $(REGISTRY)/extensions
 REPO_ROOT                   := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))

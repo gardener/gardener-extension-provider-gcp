@@ -1,7 +1,7 @@
 images:
 - name: terraformer
   sourceRepository: github.com/gardener/terraformer
-  repository: eu.gcr.io/gardener-project/gardener/terraformer-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/gardener/terraformer-gcp
   tag: "v2.23.0"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -14,7 +14,7 @@ images:
       availability_requirement: 'low'
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
   tag: "v1.24.13"
   targetVersion: "1.24.x"
   labels:
@@ -28,7 +28,7 @@ images:
       availability_requirement: 'low'
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
   tag: "v1.25.14"
   targetVersion: "1.25.x"
   labels:
@@ -42,7 +42,7 @@ images:
       availability_requirement: 'low'
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
   tag: "v1.26.9"
   targetVersion: "1.26.x"
   labels:
@@ -56,7 +56,7 @@ images:
       availability_requirement: 'low'
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
   tag: "v1.27.6"
   targetVersion: "1.27.x"
   labels:
@@ -70,7 +70,7 @@ images:
       availability_requirement: 'low'
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
   tag: "v1.28.2"
   targetVersion: ">= 1.28"
   labels:
@@ -85,7 +85,7 @@ images:
 
 - name: machine-controller-manager
   sourceRepository: github.com/gardener/machine-controller-manager
-  repository: eu.gcr.io/gardener-project/gardener/machine-controller-manager
+  repository: europe-docker.pkg.dev/gardener-project/releases/gardener/machine-controller-manager
   tag: "v0.50.1"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -98,7 +98,7 @@ images:
       availability_requirement: 'low'
 - name: machine-controller-manager-provider-gcp
   sourceRepository: github.com/gardener/machine-controller-manager-provider-gcp
-  repository: eu.gcr.io/gardener-project/gardener/machine-controller-manager-provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/gardener/machine-controller-manager-provider-gcp
   tag: "v0.17.1"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
