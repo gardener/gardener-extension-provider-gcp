@@ -1,7 +1,5 @@
 gardener-extension-provider-gcp:
-  template: 'default'
   base_definition:
-    repo: ~
     traits:
       version:
         preprocess: 'inject-commit-hash'
@@ -9,7 +7,6 @@ gardener-extension-provider-gcp:
         oci-builder: 'docker-buildx'
         dockerimages:
           gardener-extension-provider-gcp:
-            registry: 'gcr-readwrite'
             image: 'eu.gcr.io/gardener-project/gardener/extensions/provider-gcp'
             dockerfile: 'Dockerfile'
             target: gardener-extension-provider-gcp
@@ -23,7 +20,6 @@ gardener-extension-provider-gcp:
                 integrity_requirement: 'high'
                 availability_requirement: 'high'
           gardener-extension-admission-gcp:
-            registry: 'gcr-readwrite'
             image: 'eu.gcr.io/gardener-project/gardener/extensions/admission-gcp'
             dockerfile: 'Dockerfile'
             target: gardener-extension-admission-gcp
