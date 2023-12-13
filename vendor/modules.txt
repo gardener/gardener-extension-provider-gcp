@@ -20,7 +20,7 @@ cloud.google.com/go/storage
 cloud.google.com/go/storage/internal
 cloud.google.com/go/storage/internal/apiv2
 cloud.google.com/go/storage/internal/apiv2/stubs
-# github.com/BurntSushi/toml v1.0.0
+# github.com/BurntSushi/toml v1.2.1
 ## explicit; go 1.16
 github.com/BurntSushi/toml
 github.com/BurntSushi/toml/internal
@@ -64,14 +64,6 @@ github.com/cyphar/filepath-securejoin
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dsnet/compress v0.0.1
-## explicit; go 1.9
-github.com/dsnet/compress
-github.com/dsnet/compress/bzip2
-github.com/dsnet/compress/bzip2/internal/sais
-github.com/dsnet/compress/internal
-github.com/dsnet/compress/internal/errors
-github.com/dsnet/compress/internal/prefix
 # github.com/emicklei/go-restful/v3 v3.11.0
 ## explicit; go 1.13
 github.com/emicklei/go-restful/v3
@@ -99,10 +91,10 @@ github.com/fluent/fluent-operator/v2/pkg/utils
 # github.com/fsnotify/fsnotify v1.6.0
 ## explicit; go 1.16
 github.com/fsnotify/fsnotify
-# github.com/gardener/etcd-druid v0.19.2
+# github.com/gardener/etcd-druid v0.20.1
 ## explicit; go 1.20
 github.com/gardener/etcd-druid/api/v1alpha1
-# github.com/gardener/gardener v1.81.6
+# github.com/gardener/gardener v1.83.3
 ## explicit; go 1.21
 github.com/gardener/gardener/.github
 github.com/gardener/gardener/.github/ISSUE_TEMPLATE
@@ -203,6 +195,7 @@ github.com/gardener/gardener/pkg/utils/context
 github.com/gardener/gardener/pkg/utils/errors
 github.com/gardener/gardener/pkg/utils/flow
 github.com/gardener/gardener/pkg/utils/gardener
+github.com/gardener/gardener/pkg/utils/gardener/shootstate
 github.com/gardener/gardener/pkg/utils/imagevector
 github.com/gardener/gardener/pkg/utils/kubernetes
 github.com/gardener/gardener/pkg/utils/kubernetes/health
@@ -233,8 +226,8 @@ github.com/gardener/gardener/third_party/gopkg.in/yaml.v2
 # github.com/gardener/hvpa-controller/api v0.5.0
 ## explicit; go 1.15
 github.com/gardener/hvpa-controller/api/v1alpha1
-# github.com/gardener/machine-controller-manager v0.48.1
-## explicit; go 1.19
+# github.com/gardener/machine-controller-manager v0.50.0
+## explicit; go 1.20
 github.com/gardener/machine-controller-manager/pkg/apis/machine
 github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1
 github.com/gardener/machine-controller-manager/pkg/client/clientset/versioned/scheme
@@ -318,9 +311,6 @@ github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/struct
 github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
-# github.com/golang/snappy v0.0.4
-## explicit
-github.com/golang/snappy
 # github.com/google/gnostic-models v0.6.8
 ## explicit; go 1.18
 github.com/google/gnostic-models/compiler
@@ -376,7 +366,7 @@ github.com/googleapis/gax-go/v2
 github.com/googleapis/gax-go/v2/apierror
 github.com/googleapis/gax-go/v2/apierror/internal/proto
 github.com/googleapis/gax-go/v2/internal
-# github.com/hashicorp/errwrap v1.0.0
+# github.com/hashicorp/errwrap v1.1.0
 ## explicit
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.1
@@ -429,9 +419,6 @@ github.com/mattn/go-isatty
 # github.com/matttproud/golang_protobuf_extensions v1.0.4
 ## explicit; go 1.9
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/mholt/archiver v3.1.1+incompatible
-## explicit
-github.com/mholt/archiver
 # github.com/mitchellh/copystructure v1.2.0
 ## explicit; go 1.15
 github.com/mitchellh/copystructure
@@ -457,9 +444,6 @@ github.com/modern-go/reflect2
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
-# github.com/nwaples/rardecode v1.1.2
-## explicit
-github.com/nwaples/rardecode
 # github.com/onsi/ginkgo/v2 v2.12.1
 ## explicit; go 1.18
 github.com/onsi/ginkgo/v2
@@ -503,10 +487,6 @@ github.com/pelletier/go-toml/v2/internal/characters
 github.com/pelletier/go-toml/v2/internal/danger
 github.com/pelletier/go-toml/v2/internal/tracker
 github.com/pelletier/go-toml/v2/unstable
-# github.com/pierrec/lz4 v2.6.1+incompatible
-## explicit
-github.com/pierrec/lz4
-github.com/pierrec/lz4/internal/xxh32
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
@@ -566,15 +546,6 @@ github.com/spf13/viper/internal/encoding/yaml
 # github.com/subosito/gotenv v1.4.2
 ## explicit; go 1.18
 github.com/subosito/gotenv
-# github.com/ulikunitz/xz v0.5.10
-## explicit; go 1.12
-github.com/ulikunitz/xz
-github.com/ulikunitz/xz/internal/hash
-github.com/ulikunitz/xz/internal/xlog
-github.com/ulikunitz/xz/lzma
-# github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
-## explicit
-github.com/xi2/xz
 # go.opencensus.io v0.24.0
 ## explicit; go 1.13
 go.opencensus.io
@@ -620,7 +591,6 @@ go.uber.org/zap/zapcore
 ## explicit; go 1.17
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
-golang.org/x/crypto/cast5
 golang.org/x/crypto/chacha20
 golang.org/x/crypto/chacha20poly1305
 golang.org/x/crypto/cryptobyte
@@ -630,13 +600,6 @@ golang.org/x/crypto/curve25519/internal/field
 golang.org/x/crypto/hkdf
 golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
-golang.org/x/crypto/openpgp
-golang.org/x/crypto/openpgp/armor
-golang.org/x/crypto/openpgp/clearsign
-golang.org/x/crypto/openpgp/elgamal
-golang.org/x/crypto/openpgp/errors
-golang.org/x/crypto/openpgp/packet
-golang.org/x/crypto/openpgp/s2k
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
 golang.org/x/crypto/ssh
@@ -1258,29 +1221,18 @@ k8s.io/gengo/generator
 k8s.io/gengo/namer
 k8s.io/gengo/parser
 k8s.io/gengo/types
-# k8s.io/helm v2.16.1+incompatible
+# k8s.io/helm v2.17.0+incompatible
 ## explicit
-k8s.io/helm/internal/third_party/dep/fs
 k8s.io/helm/pkg/chartutil
-k8s.io/helm/pkg/downloader
 k8s.io/helm/pkg/engine
-k8s.io/helm/pkg/getter
-k8s.io/helm/pkg/helm/environment
-k8s.io/helm/pkg/helm/helmpath
 k8s.io/helm/pkg/ignore
 k8s.io/helm/pkg/manifest
-k8s.io/helm/pkg/plugin
 k8s.io/helm/pkg/proto/hapi/chart
 k8s.io/helm/pkg/proto/hapi/release
 k8s.io/helm/pkg/proto/hapi/version
-k8s.io/helm/pkg/provenance
 k8s.io/helm/pkg/releaseutil
-k8s.io/helm/pkg/repo
-k8s.io/helm/pkg/resolver
 k8s.io/helm/pkg/sympath
 k8s.io/helm/pkg/timeconv
-k8s.io/helm/pkg/tlsutil
-k8s.io/helm/pkg/urlutil
 k8s.io/helm/pkg/version
 # k8s.io/klog v1.0.0
 ## explicit; go 1.12

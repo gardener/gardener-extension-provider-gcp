@@ -24,58 +24,38 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	gardener "github.com/gardener/gardener/pkg/client/kubernetes"
-	"github.com/gardener/gardener/pkg/utils/chart"
-	imagevectorutils "github.com/gardener/gardener/pkg/utils/imagevector"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/gardener/gardener-extension-provider-gcp/imagevector"
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 type delegateFactory struct {
-	client     client.Client
-	restConfig *rest.Config
-	scheme     *runtime.Scheme
+	gardenReader client.Reader
+	seedClient   client.Client
+	restConfig   *rest.Config
+	scheme       *runtime.Scheme
 }
 
 // NewActuator creates a new Actuator that updates the status of the handled WorkerPoolConfigs.
-func NewActuator(mgr manager.Manager, gardenletManagesMCM bool) (worker.Actuator, error) {
-	var (
-		mcmName              string
-		mcmChartSeed         *chart.Chart
-		mcmChartShoot        *chart.Chart
-		imageVector          imagevectorutils.ImageVector
-		chartRendererFactory extensionscontroller.ChartRendererFactory
-		workerDelegate       = &delegateFactory{
-			client:     mgr.GetClient(),
-			restConfig: mgr.GetConfig(),
-			scheme:     mgr.GetScheme(),
-		}
-	)
-
-	if !gardenletManagesMCM {
-		mcmName = gcp.MachineControllerManagerName
-		mcmChartSeed = mcmChart
-		mcmChartShoot = mcmShootChart
-		imageVector = imagevector.ImageVector()
-		chartRendererFactory = extensionscontroller.ChartRendererFactoryFunc(util.NewChartRendererForShoot)
+func NewActuator(mgr manager.Manager, gardenCluster cluster.Cluster) worker.Actuator {
+	workerDelegate := &delegateFactory{
+		gardenReader: gardenCluster.GetAPIReader(),
+		seedClient:   mgr.GetClient(),
+		restConfig:   mgr.GetConfig(),
+		scheme:       mgr.GetScheme(),
 	}
 
 	return genericactuator.NewActuator(
 		mgr,
+		gardenCluster,
 		workerDelegate,
-		mcmName,
-		mcmChartSeed,
-		mcmChartShoot,
-		imageVector,
-		chartRendererFactory,
 		func(err error) []gardencorev1beta1.ErrorCode {
 			return util.DetermineErrorCodes(err, helper.KnownCodes)
 		},
@@ -99,7 +79,7 @@ func (d *delegateFactory) WorkerDelegate(_ context.Context, worker *extensionsv1
 	}
 
 	return NewWorkerDelegate(
-		d.client,
+		d.seedClient,
 		d.scheme,
 
 		seedChartApplier,

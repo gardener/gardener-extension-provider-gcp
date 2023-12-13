@@ -240,7 +240,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 
 			machineClassSpec["name"] = className
 			machineClassSpec["resourceLabels"] = map[string]string{
-				v1beta1constants.GardenerPurpose: genericworkeractuator.GardenPurposeMachineClass,
+				v1beta1constants.GardenerPurpose: v1beta1constants.GardenPurposeMachineClass,
 			}
 
 			if workerConfig.GPU != nil {
