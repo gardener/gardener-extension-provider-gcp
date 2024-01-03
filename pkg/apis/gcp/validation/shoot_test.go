@@ -76,7 +76,7 @@ var _ = Describe("Shoot validation", func() {
 		})
 
 		It("should pass successfully", func() {
-			workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.24.0")}
+			workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.28.0")}
 
 			errorList := ValidateWorkers(workers, field.NewPath(""))
 

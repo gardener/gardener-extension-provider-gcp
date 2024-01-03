@@ -377,34 +377,22 @@ var _ = Describe("Ensurer", func() {
 			}
 		})
 
-		DescribeTable("should modify existing elements of kubelet.service unit options",
-			func(gctx gcontext.GardenContext, kubeletVersion *semver.Version, cloudProvider string, withControllerAttachDetachFlag bool) {
-				newUnitOptions := []*unit.UnitOption{
-					{
-						Section: "Service",
-						Name:    "ExecStart",
-						Value: `/opt/bin/hyperkube kubelet \
-    --config=/var/lib/kubelet/config/kubelet`,
-					},
-					hostnamectlUnitOption,
-				}
+		It("should modify existing elements of kubelet.service unit options", func() {
+			newUnitOptions := []*unit.UnitOption{
+				{
+					Section: "Service",
+					Name:    "ExecStart",
+					Value: `/opt/bin/hyperkube kubelet \
+    --config=/var/lib/kubelet/config/kubelet \
+    --cloud-provider=external`,
+				},
+				hostnamectlUnitOption,
+			}
 
-				if cloudProvider != "" {
-					newUnitOptions[0].Value += ` \
-    --cloud-provider=` + cloudProvider
-				}
-
-				if withControllerAttachDetachFlag {
-					newUnitOptions[0].Value += ` \
-    --enable-controller-attach-detach=true`
-				}
-
-				opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, gctx, kubeletVersion, oldUnitOptions, nil)
-				Expect(err).To(Not(HaveOccurred()))
-				Expect(opts).To(Equal(newUnitOptions))
-			},
-			Entry("kubelet version >= 1.24", eContextK8s126, semver.MustParse("1.26.0"), "external", false),
-		)
+			opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, nil, nil, oldUnitOptions, nil)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(opts).To(Equal(newUnitOptions))
+		})
 	})
 
 	Describe("#EnsureKubeletConfiguration", func() {
