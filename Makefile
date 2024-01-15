@@ -28,7 +28,7 @@ IGNORE_OPERATION_ANNOTATION := true
 WEBHOOK_CONFIG_PORT	:= 8443
 WEBHOOK_CONFIG_MODE	:= url
 WEBHOOK_CONFIG_URL	:= host.docker.internal:$(WEBHOOK_CONFIG_PORT)
-EXTENSION_NAMESPACE	:=
+EXTENSION_NAMESPACE	:= garden
 
 WEBHOOK_PARAM := --webhook-config-url=$(WEBHOOK_CONFIG_URL)
 ifeq ($(WEBHOOK_CONFIG_MODE), service)
@@ -55,7 +55,7 @@ include vendor/github.com/gardener/gardener/hack/tools.mk
 
 .PHONY: start
 start:
-	@LEADER_ELECTION_NAMESPACE=garden GO111MODULE=on go run \
+	@LEADER_ELECTION_NAMESPACE=$(EXTENSION_NAMESPACE) WEBHOOK_CONFIG_NAMESPACE=$(EXTENSION_NAMESPACE) GO111MODULE=on go run \
 		-mod=vendor \
 		-ldflags $(LD_FLAGS) \
 		./cmd/$(EXTENSION_PREFIX)-$(NAME) \
@@ -66,11 +66,18 @@ start:
 		--webhook-config-server-port=$(WEBHOOK_CONFIG_PORT) \
 		--webhook-config-mode=$(WEBHOOK_CONFIG_MODE) \
 		--gardener-version="v1.39.0" \
-		$(WEBHOOK_PARAM)
+		$(WEBHOOK_PARAM) \
+		--heartbeat-namespace=$(EXTENSION_NAMESPACE) \
+		--heartbeat-renew-interval-seconds=30 \
+		--gardenlet-manages-mcm=true \
+		--webhook-config-service-port=443 \
+		--metrics-bind-address=:8080 \
+		--health-bind-address=:8081
+
 
 .PHONY: start-admission
 start-admission:
-	@LEADER_ELECTION_NAMESPACE=garden GO111MODULE=on go run \
+	@LEADER_ELECTION_NAMESPACE=$(EXTENSION_NAMESPACE) GO111MODULE=on go run \
 		-mod=vendor \
 		-ldflags $(LD_FLAGS) \
 		./cmd/$(EXTENSION_PREFIX)-$(ADMISSION_NAME) \
