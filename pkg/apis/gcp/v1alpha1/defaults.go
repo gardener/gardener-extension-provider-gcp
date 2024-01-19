@@ -30,3 +30,13 @@ func SetDefaults_MachineImageVersion(obj *MachineImageVersion) {
 		obj.Architecture = pointer.String(v1beta1constants.ArchitectureAMD64)
 	}
 }
+
+// SetDefaults_Storage sets the defaults for the managed storage classes
+func SetDefaults_Storage(obj *Storage) {
+	if obj.ManagedDefaultStorageClass == nil {
+		obj.ManagedDefaultStorageClass = pointer.Bool(true)
+	}
+	if obj.ManagedDefaultVolumeSnapshotClass == nil {
+		obj.ManagedDefaultVolumeSnapshotClass = pointer.Bool(true)
+	}
+}

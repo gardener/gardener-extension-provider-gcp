@@ -45,6 +45,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -500,6 +501,34 @@ func getControlPlaneShootChartValues(
 			},
 			"pspDisabled": gardencorev1beta1helper.IsPSPDisabled(cluster.Shoot),
 		},
+	}, nil
+}
+
+// getStorageClassChartValues collects and returns the shoot storage-class chart values.
+func (vp *valuesProvider) GetStorageClassesChartValues(
+	_ context.Context,
+	cp *extensionsv1alpha1.ControlPlane,
+	_ *extensionscontroller.Cluster,
+) (map[string]interface{}, error) {
+	managedDefaultStorageClass := true
+	managedDefaultVolumeSnapshotClass := true
+
+	// Decode providerConfig
+	cpConfig := &apisgcp.ControlPlaneConfig{}
+	if cp.Spec.ProviderConfig != nil {
+		if _, _, err := vp.decoder.Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
+			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", kutil.ObjectName(cp), err)
+		}
+	}
+
+	if cpConfig.Storage != nil {
+		managedDefaultStorageClass = pointer.BoolDeref(cpConfig.Storage.ManagedDefaultStorageClass, true)
+		managedDefaultVolumeSnapshotClass = pointer.BoolDeref(cpConfig.Storage.ManagedDefaultVolumeSnapshotClass, true)
+	}
+
+	return map[string]interface{}{
+		"managedDefaultStorageClass":        managedDefaultStorageClass,
+		"managedDefaultVolumeSnapshotClass": managedDefaultVolumeSnapshotClass,
 	}, nil
 }
 

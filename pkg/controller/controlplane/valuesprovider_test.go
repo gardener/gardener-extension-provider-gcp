@@ -80,6 +80,10 @@ var _ = Describe("ValuesProvider", func() {
 									"RotateKubeletServerCertificate": true,
 								},
 							},
+							Storage: &apisgcp.Storage{
+								ManagedDefaultStorageClass:        pointer.Bool(true),
+								ManagedDefaultVolumeSnapshotClass: pointer.Bool(true),
+							},
 						}),
 					},
 				},
@@ -404,6 +408,32 @@ var _ = Describe("ValuesProvider", func() {
 					}),
 				}))
 			})
+		})
+	})
+	Describe("#GetStorageClassesChartValues()", func() {
+		It("should return correct storage class chart values when using managed classes", func() {
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"managedDefaultStorageClass":        true,
+				"managedDefaultVolumeSnapshotClass": true,
+			}))
+		})
+
+		It("should return correct storage class chart values when not using managed classes", func() {
+			cp.Spec.ProviderConfig.Raw = encode(&apisgcp.ControlPlaneConfig{
+				Storage: &apisgcp.Storage{
+					ManagedDefaultStorageClass:        pointer.Bool(false),
+					ManagedDefaultVolumeSnapshotClass: pointer.Bool(false),
+				},
+			})
+
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"managedDefaultStorageClass":        false,
+				"managedDefaultVolumeSnapshotClass": false,
+			}))
 		})
 	})
 })

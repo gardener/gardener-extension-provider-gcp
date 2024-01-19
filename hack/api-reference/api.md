@@ -120,6 +120,19 @@ CloudControllerManagerConfig
 <p>CloudControllerManager contains configuration settings for the cloud-controller-manager.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>storage</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Storage">
+Storage
+</a>
+</em>
+</td>
+<td>
+<p>Storage contains configuration for the storage in the cluster.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig
@@ -996,6 +1009,55 @@ string
 <td>
 <p>Scopes is the list of scopes to be made available for this service.
 account.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.Storage">Storage
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig</a>)
+</p>
+<p>
+<p>Storage contains settings for the default StorageClass and VolumeSnapshotClass</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>managedDefaultStorageClass</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ManagedDefaultStorageClass controls if the &lsquo;default&rsquo; StorageClass would be marked as default. Set to false to
+suppress marking the &lsquo;default&rsquo; StorageClass as default, allowing another StorageClass not managed by Gardener
+to be set as default by the user.
+Defaults to true.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>managedDefaultVolumeSnapshotClass</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ManagedDefaultVolumeSnapshotClass controls if the &lsquo;default&rsquo; VolumeSnapshotClass would be marked as default.
+Set to false to suppress marking the &lsquo;default&rsquo; VolumeSnapshotClass as default, allowing another VolumeSnapshotClass
+not managed by Gardener to be set as default by the user.
+Defaults to true.</p>
 </td>
 </tr>
 </tbody>

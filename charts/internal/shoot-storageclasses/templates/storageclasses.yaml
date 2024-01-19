@@ -4,7 +4,9 @@ kind: StorageClass
 metadata:
   name: default
   annotations:
+    {{- if .Values.managedDefaultStorageClass }}
     storageclass.kubernetes.io/is-default-class: "true"
+    {{- end }}
     resources.gardener.cloud/delete-on-invalid-update: "true"
 allowVolumeExpansion: true
 provisioner: pd.csi.storage.gke.io
@@ -43,7 +45,9 @@ apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
   annotations:
+    {{- if .Values.managedDefaultVolumeSnapshotClass }}
     snapshot.storage.kubernetes.io/is-default-class: "true"
+    {{- end }}
   name: default
 driver: pd.csi.storage.gke.io
 deletionPolicy: Delete

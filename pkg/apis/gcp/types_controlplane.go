@@ -30,10 +30,27 @@ type ControlPlaneConfig struct {
 
 	// CloudControllerManager contains configuration settings for the cloud-controller-manager.
 	CloudControllerManager *CloudControllerManagerConfig
+
+	// Storage contains configuration for the storage in the cluster.
+	Storage *Storage
 }
 
 // CloudControllerManagerConfig contains configuration settings for the cloud-controller-manager.
 type CloudControllerManagerConfig struct {
 	// FeatureGates contains information about enabled feature gates.
 	FeatureGates map[string]bool
+}
+
+// Storage contains settings for the default StorageClass and VolumeSnapshotClass
+type Storage struct {
+	// ManagedDefaultStorageClass controls if the 'default' StorageClass would be marked as default. Set to false to
+	// suppress marking the 'default' StorageClass as default, allowing another StorageClass not managed by Gardener
+	// to be set as default by the user.
+	// Defaults to true.
+	ManagedDefaultStorageClass *bool
+	// ManagedDefaultVolumeSnapshotClass controls if the 'default' VolumeSnapshotClass would be marked as default.
+	// Set to false to suppress marking the 'default' VolumeSnapshotClass as default, allowing another VolumeSnapshotClass
+	// not managed by Gardener to be set as default by the user.
+	// Defaults to true.
+	ManagedDefaultVolumeSnapshotClass *bool
 }

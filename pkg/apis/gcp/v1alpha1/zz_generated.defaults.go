@@ -30,6 +30,7 @@ import (
 // All generated defaulters are covering - they call all nested defaulters.
 func RegisterDefaults(scheme *runtime.Scheme) error {
 	scheme.AddTypeDefaultingFunc(&CloudProfileConfig{}, func(obj interface{}) { SetObjectDefaults_CloudProfileConfig(obj.(*CloudProfileConfig)) })
+	scheme.AddTypeDefaultingFunc(&ControlPlaneConfig{}, func(obj interface{}) { SetObjectDefaults_ControlPlaneConfig(obj.(*ControlPlaneConfig)) })
 	return nil
 }
 
@@ -40,5 +41,11 @@ func SetObjectDefaults_CloudProfileConfig(in *CloudProfileConfig) {
 			b := &a.Versions[j]
 			SetDefaults_MachineImageVersion(b)
 		}
+	}
+}
+
+func SetObjectDefaults_ControlPlaneConfig(in *ControlPlaneConfig) {
+	if in.Storage != nil {
+		SetDefaults_Storage(in.Storage)
 	}
 }
