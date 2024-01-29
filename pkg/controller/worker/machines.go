@@ -177,6 +177,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 			})
 		}
 
+		gceInstanceLabels := getGceInstanceLabels(w.worker.Name, pool)
 		isLiveMigrationAllowed := true
 
 		for zoneIndex, zone := range pool.Zones {
