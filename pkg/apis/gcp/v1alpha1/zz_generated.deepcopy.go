@@ -556,6 +556,11 @@ func (in *WorkerConfig) DeepCopyInto(out *WorkerConfig) {
 		*out = new(Volume)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.MinCpuPlatform != nil {
+		in, out := &in.MinCpuPlatform, &out.MinCpuPlatform
+		*out = new(string)
+		**out = **in
+	}
 	if in.ServiceAccount != nil {
 		in, out := &in.ServiceAccount, &out.ServiceAccount
 		*out = new(ServiceAccount)

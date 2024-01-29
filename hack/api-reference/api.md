@@ -227,6 +227,18 @@ Volume
 </tr>
 <tr>
 <td>
+<code>minCpuPlatform</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>MinCpuPlatform is the name of the minimum CPU platform that is to be
+requested for the VM.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>serviceAccount</code></br>
 <em>
 <a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.ServiceAccount">

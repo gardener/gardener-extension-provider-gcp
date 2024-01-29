@@ -812,6 +812,7 @@ func Convert_gcp_Volume_To_v1alpha1_Volume(in *gcp.Volume, out *Volume, s conver
 func autoConvert_v1alpha1_WorkerConfig_To_gcp_WorkerConfig(in *WorkerConfig, out *gcp.WorkerConfig, s conversion.Scope) error {
 	out.GPU = (*gcp.GPU)(unsafe.Pointer(in.GPU))
 	out.Volume = (*gcp.Volume)(unsafe.Pointer(in.Volume))
+	out.MinCpuPlatform = (*string)(unsafe.Pointer(in.MinCpuPlatform))
 	out.ServiceAccount = (*gcp.ServiceAccount)(unsafe.Pointer(in.ServiceAccount))
 	return nil
 }
@@ -824,6 +825,7 @@ func Convert_v1alpha1_WorkerConfig_To_gcp_WorkerConfig(in *WorkerConfig, out *gc
 func autoConvert_gcp_WorkerConfig_To_v1alpha1_WorkerConfig(in *gcp.WorkerConfig, out *WorkerConfig, s conversion.Scope) error {
 	out.GPU = (*GPU)(unsafe.Pointer(in.GPU))
 	out.Volume = (*Volume)(unsafe.Pointer(in.Volume))
+	out.MinCpuPlatform = (*string)(unsafe.Pointer(in.MinCpuPlatform))
 	out.ServiceAccount = (*ServiceAccount)(unsafe.Pointer(in.ServiceAccount))
 	return nil
 }

@@ -253,6 +253,10 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 				isLiveMigrationAllowed = false
 			}
 
+			if workerConfig.MinCpuPlatform != nil {
+				machineClassSpec["minCpuPlatform"] = *workerConfig.MinCpuPlatform
+			}
+
 			if pool.NodeTemplate != nil {
 				machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
 					Capacity:     initializeCapacity(pool.NodeTemplate.Capacity, gpuCount),
