@@ -125,7 +125,7 @@ var _ = Describe("Machines", func() {
 				archAMD string
 				archARM string
 
-				labels map[string]string
+				poolLabels map[string]string
 
 				nodeCapacity         corev1.ResourceList
 				nodeTemplateZone1    machinev1alpha1.NodeTemplate
@@ -184,7 +184,7 @@ var _ = Describe("Machines", func() {
 				archAMD = "amd64"
 				archARM = "arm64"
 
-				labels = map[string]string{"component": "TiDB"}
+				poolLabels = map[string]string{"component": "TiDB"}
 
 				nodeCapacity = corev1.ResourceList{
 					"cpu":    resource.MustParse("8"),
@@ -316,7 +316,7 @@ var _ = Describe("Machines", func() {
 									zone1,
 									zone2,
 								},
-								Labels: labels,
+								Labels: poolLabels,
 							},
 							{
 								Name:           namePool2,
@@ -359,7 +359,7 @@ var _ = Describe("Machines", func() {
 									zone1,
 									zone2,
 								},
-								Labels: labels,
+								Labels: poolLabels,
 							},
 						},
 					},
@@ -379,11 +379,12 @@ var _ = Describe("Machines", func() {
 				)
 
 				setup := func(disableExternalIP bool) {
-					gceInstanceLabels := map[string]interface{}{
-						"name": name,
+					instanceLabels := map[string]interface{}{
+						"name":             name,
+						"k8s-cluster-name": namespace,
 					}
-					for k, v := range labels {
-						gceInstanceLabels[SanitizeGcpLabel(k)] = SanitizeGcpLabelValue(v)
+					for k, v := range poolLabels {
+						instanceLabels[SanitizeGcpLabel(k)] = SanitizeGcpLabelValue(v)
 					}
 					defaultMachineClass = map[string]interface{}{
 						"region":             region,
@@ -397,9 +398,7 @@ var _ = Describe("Machines", func() {
 								"sizeGb":     volumeSize,
 								"type":       volumeType,
 								"image":      machineImage,
-								"labels": map[string]interface{}{
-									"name": name,
-								},
+								"labels":     instanceLabels,
 							},
 							{
 								"autoDelete": true,
@@ -407,12 +406,10 @@ var _ = Describe("Machines", func() {
 								"sizeGb":     volumeSize,
 								"type":       localVolumeType,
 								"interface":  localVolumeInterface,
-								"labels": map[string]interface{}{
-									"name": name,
-								},
+								"labels":     instanceLabels,
 							},
 						},
-						"labels": gceInstanceLabels,
+						"labels": instanceLabels,
 						"metadata": []map[string]string{
 							{
 								"key":   "block-project-ssh-keys",
@@ -490,8 +487,8 @@ var _ = Describe("Machines", func() {
 						machineClassPool2Zone2,
 					}}
 
-					labelsZone1 := utils.MergeStringMaps(labels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone1})
-					labelsZone2 := utils.MergeStringMaps(labels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone2})
+					labelsZone1 := utils.MergeStringMaps(poolLabels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone1})
+					labelsZone2 := utils.MergeStringMaps(poolLabels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone2})
 					machineDeployments = worker.MachineDeployments{
 						{
 							Name:                 machineClassNamePool1Zone1,
@@ -560,7 +557,6 @@ var _ = Describe("Machines", func() {
 							},
 						}),
 					}
-
 					workerDelegateCloudRouter, _ := NewWorkerDelegate(c, scheme, chartApplier, "", workerCloudRouter, cluster)
 					// Test workerDelegate.DeployMachineClasses()
 					chartApplier.EXPECT().ApplyFromEmbeddedFS(
@@ -571,7 +567,6 @@ var _ = Describe("Machines", func() {
 						"machineclass",
 						kubernetes.Values(machineClasses),
 					)
-
 					err := workerDelegateCloudRouter.DeployMachineClasses(context.TODO())
 					Expect(err).NotTo(HaveOccurred())
 
@@ -590,7 +585,6 @@ var _ = Describe("Machines", func() {
 							},
 						},
 					}
-
 					workerWithExpectedImages := w.DeepCopy()
 					workerWithExpectedImages.Status.ProviderStatus = &runtime.RawExtension{
 						Object: expectedImages,
