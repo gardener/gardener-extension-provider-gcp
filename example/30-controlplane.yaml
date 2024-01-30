@@ -60,6 +60,9 @@ spec:
     cloudControllerManager:
       featureGates:
         RotateKubeletServerCertificate: true
+    storage:
+      managedDefaultStorageClass: true
+      managedDefaultVolumeSnapshotClass: true
   infrastructureProviderStatus:
     apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
     kind: InfrastructureStatus

@@ -32,4 +32,14 @@ var _ = Describe("Defaults", func() {
 			Expect(*obj.Architecture).To(Equal(v1beta1constants.ArchitectureAMD64))
 		})
 	})
+	Describe("#SetDefaults_Storage", func() {
+		It("should default to managed storage classes", func() {
+			obj := &Storage{}
+
+			SetDefaults_Storage(obj)
+
+			Expect(*obj.ManagedDefaultStorageClass).To(Equal(true))
+			Expect(*obj.ManagedDefaultVolumeSnapshotClass).To(Equal(true))
+		})
+	})
 })

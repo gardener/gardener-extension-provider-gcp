@@ -11,7 +11,7 @@ Every shoot cluster references a `SecretBinding` which itself references a `Secr
 The `SecretBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`.
 
 The required credentials for the GCP project are a [Service Account Key](https://cloud.google.com/iam/docs/service-accounts#service_account_keys) to authenticate as a [GCP Service Account](https://cloud.google.com/compute/docs/access/service-accounts).
-A service account is a special account that can be used by services and applications to interact with Google Cloud Platform APIs. 
+A service account is a special account that can be used by services and applications to interact with Google Cloud Platform APIs.
 Applications can use service account credentials to authorize themselves to a set of APIs and perform actions within the permissions granted to the service account.
 
 Make sure to [enable the Google Identity and Access Management (IAM) API](https://cloud.google.com/service-usage/docs/enable-disable).
@@ -78,7 +78,7 @@ If you want to get a fresh VPC for the shoot then just omit the `networks.vpc` f
 * If a VPC name is not given then we will create the cloud router + NAT gateway to ensure that worker nodes don't get external IPs.
 
 * If a VPC name is given then a cloud router name must also be given, failure to do so would result in validation errors
-and possibly clusters without egress connectivity. 
+and possibly clusters without egress connectivity.
 
 * If a VPC name is given and calico shoot clusters are created without a network overlay within one VPC make sure that the pod CIDR specified in `shoot.spec.networking.pods` is not overlapping with any other pod CIDR used in that VPC.
 Overlapping pod CIDRs will lead to disfunctional shoot clusters.
@@ -120,6 +120,9 @@ zone: europe-west1-b
 cloudControllerManager:
   featureGates:
     RotateKubeletServerCertificate: true
+storage:
+  managedDefaultStorageClass: true
+  managedDefaultVolumeSnapshotClass: true
 ```
 
 The `zone` field tells the cloud-controller-manager in which zone it should mainly operate.
@@ -130,6 +133,9 @@ The `cloudControllerManager.featureGates` contains a map of explicitly enabled o
 For production usage it's not recommend to use this field at all as you can enable alpha features or disable beta/stable features, potentially impacting the cluster stability.
 If you don't want to configure anything for the `cloudControllerManager` simply omit the key in the YAML specification.
 
+The members of the `storage` allows to configure the provided storage classes further. If `storage.managedDefaultStorageClass` is enabled (the default), the `default` StorageClass deployed will be marked as default (via `storageclass.kubernetes.io/is-default-class` annotation). Similarly, if `storage.managedDefaultVolumeSnapshotClass` is enabled (the default), the `default` VolumeSnapshotClass deployed will be marked as default.
+In case you want to set a different StorageClass or VolumeSnapshotClass as default you need to set the corresponding option to `false` as at most one class should be marked as default in each case and the ResourceManager will prevent any changes from the Gardener managed classes to take effect.
+
 ## WorkerConfig
 
 The worker configuration contains:
@@ -138,11 +144,11 @@ The worker configuration contains:
 
   If you attach the disk with `SCRATCH` type, either an `NVMe` interface or a `SCSI` interface must be specified.
   It is only meaningful to provide this volume interface if only `SCRATCH` data volumes are used.
-* Volume Encryption config that specifies values for `kmsKeyName` and `kmsKeyServiceAccountName`. 
-  * The `kmsKeyName` is the 
-  key name of the cloud kms disk encryption key and must be specified if CMEK disk encryption is needed. 
+* Volume Encryption config that specifies values for `kmsKeyName` and `kmsKeyServiceAccountName`.
+  * The `kmsKeyName` is the
+  key name of the cloud kms disk encryption key and must be specified if CMEK disk encryption is needed.
   *  The `kmsKeyServiceAccount` is the service account granted the `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the `kmsKeyName`
-  If empty, then the role should be given to the Compute Engine Service Agent Account. This CESA account usually has the name: 
+  If empty, then the role should be given to the Compute Engine Service Agent Account. This CESA account usually has the name:
    `service-PROJECT_NUMBER@compute-system.iam.gserviceaccount.com`. See: https://cloud.google.com/iam/docs/service-agents#compute-engine-service-agent
   * Prior to use, the operator should add IAM policy binding using the gcloud CLI:
     ```
@@ -155,7 +161,7 @@ The worker configuration contains:
 
 * GPU with its type and count per node. This will attach that GPU to all the machines in the worker grp
 
-  **Note**: 
+  **Note**:
   * A rolling upgrade of the worker group would be triggered in case the `acceleratorType` or `count` is updated.
   * Some machineTypes like [a2 family](https://cloud.google.com/blog/products/compute/announcing-google-cloud-a2-vm-family-based-on-nvidia-a100-gpu) come with already attached gpu of `a100` type and pre-defined count. If your workerPool consists of such machineTypes, please specify exact GPU configuration for the machine type as specified in Google cloud documentation.  `acceleratorType` to use for families with attached gpu are stated below:
     1) *a2 family* -> `nvidia-tesla-a100`
