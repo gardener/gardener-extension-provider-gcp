@@ -416,8 +416,10 @@ var _ = Describe("Machines", func() {
 								"value": "TRUE",
 							},
 						},
-						"machineType":    machineType,
-						"minCpuPlatform": minCpuPlatform,
+						"machineType":            machineType,
+						"minCpuPlatform":         minCpuPlatform,
+						"operatingSystem":        machineImageName,
+						"operatingSystemVersion": machineImageVersion,
 						"networkInterfaces": []map[string]interface{}{
 							{
 								"subnetwork":        subnetName,

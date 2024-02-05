@@ -45,6 +45,8 @@ providerSpec:
 {{ toYaml $machineClass.labels | indent 4 }}
 {{- end }}
   machineType: {{ $machineClass.machineType }}
+  operatingSystem:  {{ $machineClass.operatingSystem }}
+  operatingSystemVersion:  {{ $machineClass.operatingSystemVersion }}
 {{- if $machineClass.metadata }}
   metadata:
 {{ toYaml $machineClass.metadata | indent 2 }}
