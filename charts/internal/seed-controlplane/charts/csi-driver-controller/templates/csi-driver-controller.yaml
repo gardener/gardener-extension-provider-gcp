@@ -48,6 +48,7 @@ spec:
         - --extra-labels=k8s-cluster-name={{ .Release.Namespace }}
         - --logtostderr
         - --v=3
+        - --enable-storage-pools
         env:
         - name: CSI_ENDPOINT
           value: unix://{{ .Values.socketPath }}/csi.sock
