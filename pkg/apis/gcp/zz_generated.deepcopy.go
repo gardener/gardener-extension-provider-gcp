@@ -61,6 +61,11 @@ func (in *CloudNAT) DeepCopyInto(out *CloudNAT) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.MaxPortsPerVM != nil {
+		in, out := &in.MaxPortsPerVM, &out.MaxPortsPerVM
+		*out = new(int32)
+		**out = **in
+	}
 	if in.NatIPNames != nil {
 		in, out := &in.NatIPNames, &out.NatIPNames
 		*out = make([]NatIPName, len(*in))

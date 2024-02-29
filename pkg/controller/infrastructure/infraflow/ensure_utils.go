@@ -144,7 +144,7 @@ func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIpUrls [
 			Enable: true,
 			Filter: "ERRORS_ONLY",
 		},
-		EnableDynamicPortAllocation:      false,
+		EnableDynamicPortAllocation:      natConfig.EnableDynamicPortAllocation,
 		EnableEndpointIndependentMapping: false,
 		SourceSubnetworkIpRangesToNat:    "LIST_OF_SUBNETWORKS",
 		Subnetworks: []*compute.RouterNatSubnetworkToNat{
@@ -158,6 +158,10 @@ func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIpUrls [
 	if natConfig != nil {
 		if natConfig.MinPortsPerVM != nil {
 			nat.MinPortsPerVm = int64(*natConfig.MinPortsPerVM)
+		}
+
+		if natConfig.MaxPortsPerVM != nil {
+			nat.MaxPortsPerVm = int64(*natConfig.MinPortsPerVM)
 		}
 
 		if natConfig.EndpointIndependentMapping != nil {

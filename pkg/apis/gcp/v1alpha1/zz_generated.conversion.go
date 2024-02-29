@@ -312,6 +312,8 @@ func Convert_gcp_CloudControllerManagerConfig_To_v1alpha1_CloudControllerManager
 func autoConvert_v1alpha1_CloudNAT_To_gcp_CloudNAT(in *CloudNAT, out *gcp.CloudNAT, s conversion.Scope) error {
 	out.EndpointIndependentMapping = (*gcp.EndpointIndependentMapping)(unsafe.Pointer(in.EndpointIndependentMapping))
 	out.MinPortsPerVM = (*int32)(unsafe.Pointer(in.MinPortsPerVM))
+	out.MaxPortsPerVM = (*int32)(unsafe.Pointer(in.MaxPortsPerVM))
+	out.EnableDynamicPortAllocation = in.EnableDynamicPortAllocation
 	out.NatIPNames = *(*[]gcp.NatIPName)(unsafe.Pointer(&in.NatIPNames))
 	return nil
 }
@@ -324,6 +326,8 @@ func Convert_v1alpha1_CloudNAT_To_gcp_CloudNAT(in *CloudNAT, out *gcp.CloudNAT, 
 func autoConvert_gcp_CloudNAT_To_v1alpha1_CloudNAT(in *gcp.CloudNAT, out *CloudNAT, s conversion.Scope) error {
 	out.EndpointIndependentMapping = (*EndpointIndependentMapping)(unsafe.Pointer(in.EndpointIndependentMapping))
 	out.MinPortsPerVM = (*int32)(unsafe.Pointer(in.MinPortsPerVM))
+	out.MaxPortsPerVM = (*int32)(unsafe.Pointer(in.MaxPortsPerVM))
+	out.EnableDynamicPortAllocation = in.EnableDynamicPortAllocation
 	out.NatIPNames = *(*[]NatIPName)(unsafe.Pointer(&in.NatIPNames))
 	return nil
 }

@@ -346,6 +346,31 @@ The default value is 2048 ports.</p>
 </tr>
 <tr>
 <td>
+<code>maxPortsPerVM</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxPortsPerVM is the maximum number of ports allocated to a VM in the NAT config.
+The default value is 65536 ports.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableDynamicPortAllocation</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDynamicPortAllocation controls port allocation behavior for the CloudNAT.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>natIPNames</code></br>
 <em>
 <a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NatIPName">

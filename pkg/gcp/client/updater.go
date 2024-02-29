@@ -170,6 +170,9 @@ func (u *updater) NAT(ctx context.Context, client ComputeClient, region string, 
 	if desired.MinPortsPerVm == 0 {
 		desired.ForceSendFields = append(desired.ForceSendFields, "MinPortsPerVM")
 	}
+	if desired.MaxPortsPerVm == 0 {
+		desired.ForceSendFields = append(desired.ForceSendFields, "MaxPortsPerVM")
+	}
 	if len(desired.NatIps) == 0 {
 		desired.NullFields = append(desired.NullFields, "NatIps")
 	}

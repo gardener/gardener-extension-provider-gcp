@@ -117,6 +117,13 @@ type CloudNAT struct {
 	// The default value is 2048 ports.
 	// +optional
 	MinPortsPerVM *int32 `json:"minPortsPerVM,omitempty"`
+	// MaxPortsPerVM is the maximum number of ports allocated to a VM in the NAT config.
+	// The default value is 65536 ports.
+	// +optional
+	MaxPortsPerVM *int32 `json:"maxPortsPerVM,omitempty"`
+	// EnableDynamicPortAllocation controls port allocation behavior for the CloudNAT.
+	// +optional
+	EnableDynamicPortAllocation bool `json:"enableDynamicPortAllocation,omitempty"`
 	// NatIPNames is a list of all user provided external premium ips which can be used by the nat gateway
 	// +optional
 	NatIPNames []NatIPName `json:"natIPNames,omitempty"`

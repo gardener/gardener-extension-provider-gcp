@@ -85,8 +85,15 @@ resource "google_compute_router_nat" "nat" {
     name                    = google_compute_subnetwork.subnetwork-nodes.self_link
     source_ip_ranges_to_nat = ["ALL_IP_RANGES"]
   }
-  min_ports_per_vm = "{{ .networks.cloudNAT.minPortsPerVM }}"
+
+  {{  if .networks.cloudNAT.enableDynamicPortAllocation -}}
+  enable_dynamic_port_allocation = "{{ .networks.cloudNAT.enableDynamicPortAllocation }}"
+  {{- end }}
   enable_endpoint_independent_mapping = {{ .networks.cloudNAT.enableEndpointIndependentMapping }}
+  min_ports_per_vm = "{{ .networks.cloudNAT.minPortsPerVM }}"
+  {{  if .networks.cloudNAT.maxPortsPerVM -}}
+  max_ports_per_vm = "{{ .networks.cloudNAT.maxPortsPerVM }}"
+  {{- end }}
 
   log_config {
     enable = true
