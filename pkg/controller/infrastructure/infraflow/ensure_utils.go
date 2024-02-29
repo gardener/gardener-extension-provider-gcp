@@ -137,22 +137,34 @@ func targetRouterState(name, description, vpcName string) *compute.Router {
 
 func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIpUrls []string) *compute.RouterNat {
 	nat := &compute.RouterNat{
-		Name:                name,
-		NatIpAllocateOption: "AUTO_ONLY",
-		MinPortsPerVm:       2048,
+		DrainNatIps:                      nil,
+		EnableDynamicPortAllocation:      natConfig.EnableDynamicPortAllocation,
+		EnableEndpointIndependentMapping: false,
+		EndpointTypes:                    nil,
+		IcmpIdleTimeoutSec:               0,
 		LogConfig: &compute.RouterNatLogConfig{
 			Enable: true,
 			Filter: "ERRORS_ONLY",
 		},
-		EnableDynamicPortAllocation:      natConfig.EnableDynamicPortAllocation,
-		EnableEndpointIndependentMapping: false,
-		SourceSubnetworkIpRangesToNat:    "LIST_OF_SUBNETWORKS",
+		MaxPortsPerVm:                 0,
+		MinPortsPerVm:                 2048,
+		Name:                          name,
+		NatIpAllocateOption:           "AUTO_ONLY",
+		NatIps:                        nil,
+		Rules:                         nil,
+		SourceSubnetworkIpRangesToNat: "LIST_OF_SUBNETWORKS",
 		Subnetworks: []*compute.RouterNatSubnetworkToNat{
 			{
 				Name:                subnetURL,
 				SourceIpRangesToNat: []string{"ALL_IP_RANGES"},
 			},
 		},
+		TcpEstablishedIdleTimeoutSec: 0,
+		TcpTimeWaitTimeoutSec:        0,
+		TcpTransitoryIdleTimeoutSec:  0,
+		UdpIdleTimeoutSec:            0,
+		ForceSendFields:              nil,
+		NullFields:                   nil,
 	}
 
 	if natConfig != nil {

@@ -75,6 +75,7 @@ func ComputeTerraformerTemplateValues(
 		cN                = map[string]interface{}{
 			"minPortsPerVM":                    int32(2048),
 			"enableEndpointIndependentMapping": false,
+			"enableDynamicPortAllocation":      false,
 		}
 	)
 
@@ -92,6 +93,9 @@ func ComputeTerraformerTemplateValues(
 		if config.Networks.CloudNAT.MinPortsPerVM != nil {
 			cN["minPortsPerVM"] = *config.Networks.CloudNAT.MinPortsPerVM
 		}
+		if config.Networks.CloudNAT.MaxPortsPerVM != nil {
+			cN["maxPortsPerVM"] = *config.Networks.CloudNAT.MaxPortsPerVM
+		}
 		if config.Networks.CloudNAT.NatIPNames != nil {
 			natIPNames := []string{}
 			for _, v := range config.Networks.CloudNAT.NatIPNames {
@@ -99,6 +103,8 @@ func ComputeTerraformerTemplateValues(
 			}
 			cN["natIPNames"] = natIPNames
 		}
+
+		cN["enableDynamicPortAllocation"] = config.Networks.CloudNAT.EnableDynamicPortAllocation
 		if config.Networks.CloudNAT.EndpointIndependentMapping != nil {
 			cN["enableEndpointIndependentMapping"] = config.Networks.CloudNAT.EndpointIndependentMapping.Enabled
 		}
