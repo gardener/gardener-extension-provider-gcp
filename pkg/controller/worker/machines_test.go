@@ -416,10 +416,8 @@ var _ = Describe("Machines", func() {
 								"value": "TRUE",
 							},
 						},
-						"machineType":            machineType,
-						"minCpuPlatform":         minCpuPlatform,
-						"operatingSystem":        machineImageName,
-						"operatingSystemVersion": machineImageVersion,
+						"machineType":    machineType,
+						"minCpuPlatform": minCpuPlatform,
 						"networkInterfaces": []map[string]interface{}{
 							{
 								"subnetwork":        subnetName,
@@ -446,6 +444,10 @@ var _ = Describe("Machines", func() {
 							namespace,
 							fmt.Sprintf("kubernetes-io-cluster-%s", namespace),
 							"kubernetes-io-role-node",
+						},
+						"operatingSystem": map[string]interface{}{
+							"operatingSystemName":    machineImageName,
+							"operatingSystemVersion": machineImageVersion,
 						},
 					}
 
