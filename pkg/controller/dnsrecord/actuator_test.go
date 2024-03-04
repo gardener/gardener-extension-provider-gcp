@@ -114,7 +114,6 @@ var _ = Describe("Actuator", func() {
 			gcpClientFactory.EXPECT().DNS(ctx, c, dns.Spec.SecretRef).Return(gcpDNSClient, nil)
 			gcpDNSClient.EXPECT().GetManagedZones(ctx).Return(zones, nil)
 			gcpDNSClient.EXPECT().CreateOrUpdateRecordSet(ctx, zone, domainName, string(extensionsv1alpha1.DNSRecordTypeA), []string{address}, int64(120)).Return(nil)
-			gcpDNSClient.EXPECT().DeleteRecordSet(ctx, zone, "comment-"+domainName, "TXT").Return(nil)
 			sw.EXPECT().Patch(ctx, gomock.AssignableToTypeOf(&extensionsv1alpha1.DNSRecord{}), gomock.Any()).DoAndReturn(
 				func(_ context.Context, obj *extensionsv1alpha1.DNSRecord, _ client.Patch, opts ...client.PatchOption) error {
 					Expect(obj.Status).To(Equal(extensionsv1alpha1.DNSRecordStatus{
