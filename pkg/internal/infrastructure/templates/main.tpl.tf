@@ -92,6 +92,11 @@ resource "google_compute_router_nat" "nat" {
   {{  if .networks.cloudNAT.maxPortsPerVM -}}
   max_ports_per_vm = "{{ .networks.cloudNAT.maxPortsPerVM }}"
   {{- end }}
+  icmp_idle_timeout_sec = "{{ .networks.cloudNAT.icmpIdleTimeoutSec }}"
+  tcp_established_idle_timeout_sec = "{{ .networks.cloudNAT.tcpEstablishedIdleTimeoutSec }}"
+  tcp_time_wait_timeout_sec = "{{ .networks.cloudNAT.tcpTimeWaitTimeoutSec }}"
+  tcp_transitory_idle_timeout_sec = "{{ .networks.cloudNAT.tcpTransitoryIdleTimeoutSec }}"
+  udp_idle_timeout_sec = "{{ .networks.cloudNAT.udpIdleTimeoutSec }}"
 
   log_config {
     enable = true

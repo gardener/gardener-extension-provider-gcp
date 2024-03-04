@@ -108,6 +108,26 @@ func ComputeTerraformerTemplateValues(
 		if config.Networks.CloudNAT.EndpointIndependentMapping != nil {
 			cN["enableEndpointIndependentMapping"] = config.Networks.CloudNAT.EndpointIndependentMapping.Enabled
 		}
+
+		if config.Networks.CloudNAT.IcmpIdleTimeoutSec != nil {
+			cN["icmpIdleTimeoutSec"] = *config.Networks.CloudNAT.IcmpIdleTimeoutSec
+		}
+
+		if config.Networks.CloudNAT.TcpEstablishedIdleTimeoutSec != nil {
+			cN["tcpEstablishedIdleTimeoutSec"] = *config.Networks.CloudNAT.TcpEstablishedIdleTimeoutSec
+		}
+
+		if config.Networks.CloudNAT.TcpTimeWaitTimeoutSec != nil {
+			cN["tcpTimeWaitTimeoutSec"] = *config.Networks.CloudNAT.TcpTimeWaitTimeoutSec
+		}
+
+		if config.Networks.CloudNAT.TcpTransitoryIdleTimeoutSec != nil {
+			cN["tcpTransitoryIdleTimeoutSec"] = *config.Networks.CloudNAT.TcpTransitoryIdleTimeoutSec
+		}
+
+		if config.Networks.CloudNAT.UdpIdleTimeoutSec != nil {
+			cN["udpIdleTimeoutSec"] = *config.Networks.CloudNAT.UdpIdleTimeoutSec
+		}
 	}
 
 	vpc := map[string]interface{}{

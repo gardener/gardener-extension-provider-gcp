@@ -125,11 +125,54 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 		}
 	}
 
-	if infra.Networks.CloudNAT != nil && infra.Networks.CloudNAT.NatIPNames != nil && len(infra.Networks.CloudNAT.NatIPNames) == 0 {
-		allErrs = append(allErrs, field.Invalid(networksPath.Child("cloudNAT", "natIPNames"), infra.Networks.CloudNAT.NatIPNames, "nat IP names cannot be empty"))
+	if infra.Networks.CloudNAT != nil {
+		allErrs = append(allErrs, ValidateCloudNatConfig(infra.Networks.CloudNAT, networksPath)...)
 	}
 
 	return allErrs
+}
+
+// ValidateCloudNatConfig validates the config of the CloudNat. We intentionally keep the validation light, only
+// checking for gotchas (e.g. the port counts having to be powers of two) and obvious errors.
+func ValidateCloudNatConfig(config *apisgcp.CloudNAT, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	cloudNatPath := fldPath.Child("cloudNAT")
+
+	if config != nil && config.NatIPNames != nil && len(config.NatIPNames) == 0 {
+		allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("natIPNames"), config.NatIPNames, "nat IP names cannot be empty."))
+	}
+
+	if config.EndpointIndependentMapping != nil && config.EnableDynamicPortAllocation && config.EndpointIndependentMapping.Enabled {
+		// There is no more fitting field.Error (e.g. field.MutuallyExclusive) so we put the blame on one flag and use the error msg
+		allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("enableDynamicPortAllocation"), config.EnableDynamicPortAllocation, "dynamic port allocation may not be enabled at the same time as endpoint independent mapping."))
+	}
+
+	if config.EnableDynamicPortAllocation {
+		if config.MaxPortsPerVM != nil && !isPowerOfTwo(*config.MaxPortsPerVM) {
+			allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("maxPortsPerVM"), config.MaxPortsPerVM, "maxPortsPerVM must be a power of two."))
+		}
+		if config.MinPortsPerVM != nil && !isPowerOfTwo(*config.MinPortsPerVM) {
+			allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("minPortsPerVM"), config.MinPortsPerVM, "minPortsPerVM must be a power of two if dynamic port allocation is enabled."))
+		}
+
+	} else {
+		if config.MaxPortsPerVM != nil {
+			allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("maxPortsPerVM"), config.MinPortsPerVM, "maxPortsPerVM are only configurable if dynamic port allocation is enabled."))
+		}
+	}
+
+	if config.MaxPortsPerVM != nil && config.MinPortsPerVM != nil && *config.MinPortsPerVM > *config.MaxPortsPerVM {
+		allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("minPortsPerVM"), config.MinPortsPerVM, "minPortsPerVM may not be greater than maxPortsPerVM."))
+	}
+
+	return allErrs
+}
+
+func isPowerOfTwo(integer int32) bool {
+	// Compare the binary representation of the given positive integer with its predecessor, e.g. '11011' (27) and '11010' (26).
+	// They will share (at least) the leading '1' resulting in the union of them representing a number greater than zero, unless the given one is a power of two.
+	// Note: Also works for zero.
+	return integer&(integer-1) == 0
 }
 
 // ValidateInfrastructureConfigUpdate validates a InfrastructureConfig object.

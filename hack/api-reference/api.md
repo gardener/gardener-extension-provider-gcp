@@ -383,6 +383,66 @@ bool
 <p>NatIPNames is a list of all user provided external premium ips which can be used by the nat gateway</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>icmpIdleTimeoutSec</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IcmpIdleTimeoutSec is the timeout (in seconds) for ICMP connections. Defaults to 30.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tcpEstablishedIdleTimeoutSec</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TcpEstablishedIdleTimeoutSec is the timeout (in seconds) for established TCP connections. Defaults to 1200.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tcpTimeWaitTimeoutSec</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TcpTimeWaitTimeoutSec is the timeout (in seconds) for TCP connections in &lsquo;TIME_WAIT&rsquo; state. Defaults to 120.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tcpTransitoryIdleTimeoutSec</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TcpTransitoryIdleTimeoutSec is the timeout (in seconds) for transitory TCP connections. Defaults to 30.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>udpIdleTimeoutSec</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>UdpIdleTimeoutSec is the timeout (in seconds) for UDP connections. Defaults to 30.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CloudRouter">CloudRouter
