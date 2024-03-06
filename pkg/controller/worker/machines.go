@@ -233,6 +233,13 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 				v1beta1constants.GardenerPurpose: v1beta1constants.GardenPurposeMachineClass,
 			}
 
+			if pool.MachineImage.Name != "" && pool.MachineImage.Version != "" {
+				machineClassSpec["operatingSystem"] = map[string]interface{}{
+					"operatingSystemName":    pool.MachineImage.Name,
+					"operatingSystemVersion": pool.MachineImage.Version,
+				}
+			}
+
 			if workerConfig.GPU != nil {
 				machineClassSpec["gpu"] = map[string]interface{}{
 					"acceleratorType": workerConfig.GPU.AcceleratorType,

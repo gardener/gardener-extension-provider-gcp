@@ -18,9 +18,9 @@ kind: MachineClass
 metadata:
   name: {{ $machineClass.name }}
   namespace: {{ $.Release.Namespace }}
-{{- if $machineClass.labels }}
+{{- if $machineClass.operatingSystem }}
   labels:
-{{ toYaml $machineClass.labels | indent 4 }}
+{{ toYaml $machineClass.operatingSystem | indent 4 }}
 {{- end }}
 {{- if $machineClass.nodeTemplate }}
 nodeTemplate:

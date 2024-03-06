@@ -435,6 +435,10 @@ var _ = Describe("Machines", func() {
 							fmt.Sprintf("kubernetes-io-cluster-%s", namespace),
 							"kubernetes-io-role-node",
 						},
+						"operatingSystem": map[string]interface{}{
+							"operatingSystemName":    machineImageName,
+							"operatingSystemVersion": machineImageVersion,
+						},
 					}
 
 					var (
