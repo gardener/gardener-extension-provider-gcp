@@ -142,27 +142,25 @@ func ValidateCloudNatConfig(config *apisgcp.CloudNAT, fldPath *field.Path) field
 		allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("natIPNames"), config.NatIPNames, "nat IP names cannot be empty."))
 	}
 
-	if config.EndpointIndependentMapping != nil && config.EnableDynamicPortAllocation && config.EndpointIndependentMapping.Enabled {
-		// There is no more fitting field.Error (e.g. field.MutuallyExclusive) so we put the blame on one flag and use the error msg
-		allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("enableDynamicPortAllocation"), config.EnableDynamicPortAllocation, "dynamic port allocation may not be enabled at the same time as endpoint independent mapping."))
-	}
-
 	if config.EnableDynamicPortAllocation {
+		if config.EndpointIndependentMapping != nil && config.EndpointIndependentMapping.Enabled {
+			// There is no more fitting field.Error (e.g. field.MutuallyExclusive) so we put the blame on 'enableDynamicPortAllocation' and use the error msg
+			allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("enableDynamicPortAllocation"), config.EnableDynamicPortAllocation, "dynamic port allocation may not be enabled at the same time as endpoint independent mapping."))
+		}
 		if config.MaxPortsPerVM != nil && !isPowerOfTwo(*config.MaxPortsPerVM) {
 			allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("maxPortsPerVM"), config.MaxPortsPerVM, "maxPortsPerVM must be a power of two."))
 		}
 		if config.MinPortsPerVM != nil && !isPowerOfTwo(*config.MinPortsPerVM) {
 			allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("minPortsPerVM"), config.MinPortsPerVM, "minPortsPerVM must be a power of two if dynamic port allocation is enabled."))
 		}
+		if config.MaxPortsPerVM != nil && config.MinPortsPerVM != nil && *config.MinPortsPerVM > *config.MaxPortsPerVM {
+			allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("minPortsPerVM"), config.MinPortsPerVM, "minPortsPerVM may not be greater than maxPortsPerVM."))
+		}
 
 	} else {
 		if config.MaxPortsPerVM != nil {
 			allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("maxPortsPerVM"), config.MinPortsPerVM, "maxPortsPerVM are only configurable if dynamic port allocation is enabled."))
 		}
-	}
-
-	if config.MaxPortsPerVM != nil && config.MinPortsPerVM != nil && *config.MinPortsPerVM > *config.MaxPortsPerVM {
-		allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("minPortsPerVM"), config.MinPortsPerVM, "minPortsPerVM may not be greater than maxPortsPerVM."))
 	}
 
 	return allErrs
