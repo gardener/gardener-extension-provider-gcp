@@ -74,8 +74,14 @@ func ComputeTerraformerTemplateValues(
 		cloudRouterName   string
 		cN                = map[string]interface{}{
 			"minPortsPerVM":                    int32(2048),
+			"maxPortsPerVM":                    int32(65536),
 			"enableEndpointIndependentMapping": false,
 			"enableDynamicPortAllocation":      false,
+			"icmpIdleTimeoutSec":               int32(30),
+			"tcpEstablishedIdleTimeoutSec":     int32(1200),
+			"tcpTimeWaitTimeoutSec":            int32(120),
+			"tcpTransitoryIdleTimeoutSec":      int32(30),
+			"udpIdleTimeoutSec":                int32(30),
 		}
 	)
 

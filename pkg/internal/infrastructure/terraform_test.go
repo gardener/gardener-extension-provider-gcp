@@ -41,8 +41,28 @@ var _ = Describe("Terraform", func() {
 		serviceAccountData []byte
 		serviceAccount     *gcp.ServiceAccount
 
-		podCIDR       = "100.96.0.0/11"
-		minPortsPerVM = int32(2048)
+		podCIDR                          = "100.96.0.0/11"
+		minPortsPerVM                    = int32(2048)
+		maxPortsPerVM                    = int32(65536)
+		enableEndpointIndependentMapping = false
+		enableDynamicPortAllocation      = false
+		icmpIdleTimeoutSec               = int32(30)
+		tcpEstablishedIdleTimeoutSec     = int32(1200)
+		tcpTimeWaitTimeoutSec            = int32(120)
+		tcpTransitoryIdleTimeoutSec      = int32(30)
+		udpIdleTimeoutSec                = int32(30)
+
+		cloudNatDefaults = map[string]interface{}{
+			"minPortsPerVM":                    minPortsPerVM,
+			"maxPortsPerVM":                    maxPortsPerVM,
+			"enableEndpointIndependentMapping": enableEndpointIndependentMapping,
+			"enableDynamicPortAllocation":      enableDynamicPortAllocation,
+			"icmpIdleTimeoutSec":               icmpIdleTimeoutSec,
+			"tcpEstablishedIdleTimeoutSec":     tcpEstablishedIdleTimeoutSec,
+			"tcpTimeWaitTimeoutSec":            tcpTimeWaitTimeoutSec,
+			"tcpTransitoryIdleTimeoutSec":      tcpTransitoryIdleTimeoutSec,
+			"udpIdleTimeoutSec":                udpIdleTimeoutSec,
+		}
 
 		ctrl *gomock.Controller
 		tf   *mockterraformer.MockTerraformer
@@ -223,10 +243,7 @@ var _ = Describe("Terraform", func() {
 				"networks": map[string]interface{}{
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
-					"cloudNAT": map[string]interface{}{
-						"minPortsPerVM":                    minPortsPerVM,
-						"enableEndpointIndependentMapping": false,
-					},
+					"cloudNAT": cloudNatDefaults,
 				},
 				"podCIDR": podCIDR,
 				"outputKeys": map[string]interface{}{
@@ -263,10 +280,7 @@ var _ = Describe("Terraform", func() {
 				"networks": map[string]interface{}{
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
-					"cloudNAT": map[string]interface{}{
-						"minPortsPerVM":                    minPortsPerVM,
-						"enableEndpointIndependentMapping": false,
-					},
+					"cloudNAT": cloudNatDefaults,
 				},
 				"podCIDR": podCIDR,
 				"outputKeys": map[string]interface{}{
@@ -335,6 +349,14 @@ var _ = Describe("Terraform", func() {
 						"minPortsPerVM":                    minPortsPerVM,
 						"natIPNames":                       natIPNamesOutput,
 						"enableEndpointIndependentMapping": true,
+						// The rest are the defaults
+						"maxPortsPerVM":                maxPortsPerVM,
+						"enableDynamicPortAllocation":  enableDynamicPortAllocation,
+						"icmpIdleTimeoutSec":           icmpIdleTimeoutSec,
+						"tcpEstablishedIdleTimeoutSec": tcpEstablishedIdleTimeoutSec,
+						"tcpTimeWaitTimeoutSec":        tcpTimeWaitTimeoutSec,
+						"tcpTransitoryIdleTimeoutSec":  tcpTransitoryIdleTimeoutSec,
+						"udpIdleTimeoutSec":            udpIdleTimeoutSec,
 					},
 				},
 				"podCIDR": podCIDR,
@@ -395,10 +417,7 @@ var _ = Describe("Terraform", func() {
 				"networks": map[string]interface{}{
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
-					"cloudNAT": map[string]interface{}{
-						"minPortsPerVM":                    minPortsPerVM,
-						"enableEndpointIndependentMapping": false,
-					},
+					"cloudNAT": cloudNatDefaults,
 					"flowLogs": map[string]interface{}{
 						"aggregationInterval": *config.Networks.FlowLogs.AggregationInterval,
 						"flowSampling":        *config.Networks.FlowLogs.FlowSampling,
@@ -438,10 +457,7 @@ var _ = Describe("Terraform", func() {
 				"networks": map[string]interface{}{
 					"workers":  config.Networks.Workers,
 					"internal": config.Networks.Internal,
-					"cloudNAT": map[string]interface{}{
-						"minPortsPerVM":                    minPortsPerVM,
-						"enableEndpointIndependentMapping": false,
-					},
+					"cloudNAT": cloudNatDefaults,
 				},
 				"podCIDR": podCIDR,
 				"outputKeys": map[string]interface{}{
