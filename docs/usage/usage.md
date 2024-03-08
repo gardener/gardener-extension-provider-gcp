@@ -59,11 +59,18 @@ networks:
 # internal: 10.251.0.0/16
 # cloudNAT:
 #   minPortsPerVM: 2048
+#   maxPortsPerVM: 65536
 #   endpointIndependentMapping:
 #     enabled: false
+#   enableDynamicPortAllocation: false
 #   natIPNames:
 #   - name: manualnat1
 #   - name: manualnat2
+#   udpIdleTimeoutSec: 30
+#   icmpIdleTimeoutSec: 30
+#   tcpEstablishedIdleTimeoutSec: 1200
+#   tcpTransitoryIdleTimeoutSec: 30
+#   tcpTimeWaitTimeoutSec: 120
 # flowLogs:
 #   aggregationInterval: INTERVAL_5_SEC
 #   flowSampling: 0.2
@@ -92,6 +99,10 @@ The `networks.cloudNAT.minPortsPerVM` is optional and is used to define the [min
 The `networks.cloudNAT.natIPNames` is optional and is used to specify the names of the manual ip addresses which should be used by the nat gateway
 
 The `networks.cloudNAT.endpointIndependentMapping` is optional and is used to define the [endpoint mapping behavior](https://cloud.google.com/nat/docs/ports-and-addresses#ports-reuse-endpoints). You can enable it or disable it at any point by toggling `networks.cloudNAT.endpointIndependentMapping.enabled`. By default, it is disabled.
+
+`networks.cloudNAT.enableDynamicPortAllocation` is optional (default: `false`) and allows one to enable dynamic port allocation (https://cloud.google.com/nat/docs/ports-and-addresses#dynamic-port). Note that enabling this puts additional restrictions on the permitted values for `networks.cloudNAT.minPortsPerVM` and `networks.cloudNAT.minPortsPerVM`, namely that they now both are required to be powers of two. Also, `maxPortsPerVM` may not be given if dynamic port allocation is _disabled_.
+
+`networks.cloudNAT.udpIdleTimeoutSec`, `networks.cloudNAT.icmpIdleTimeoutSec`, `networks.cloudNAT.tcpEstablishedIdleTimeoutSec`, `networks.cloudNAT.tcpTransitoryIdleTimeoutSec`, and `networks.cloudNAT.tcpTimeWaitTimeoutSec` give more fine-granular control over various timeout-values. For more details see https://cloud.google.com/nat/docs/public-nat#specs-timeouts.
 
 The specified CIDR ranges must be contained in the VPC CIDR specified above, or the VPC CIDR of your already existing VPC.
 You can freely choose these CIDRs and it is your responsibility to properly design the network layout to suit your needs.
