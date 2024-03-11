@@ -11,8 +11,7 @@ import (
 
 const (
 	// DisableGardenerServiceAccountCreation controls whether the gcp provider will create a default service account for VMs managed by MCM.
-	// owner @kon-angelo
-	// alpha: v1.24.0
+	// beta: v1.29.0
 	DisableGardenerServiceAccountCreation featuregate.Feature = "DisableGardenerServiceAccountCreation"
 )
 
@@ -22,6 +21,6 @@ var ExtensionFeatureGate = featuregate.NewFeatureGate()
 // RegisterExtensionFeatureGate registers features to the extension feature gate.
 func RegisterExtensionFeatureGate() {
 	runtime.Must(ExtensionFeatureGate.Add(map[featuregate.Feature]featuregate.FeatureSpec{
-		DisableGardenerServiceAccountCreation: {Default: false, PreRelease: featuregate.Alpha},
+		DisableGardenerServiceAccountCreation: {Default: true, PreRelease: featuregate.Beta},
 	}))
 }

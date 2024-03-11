@@ -81,8 +81,8 @@ config:
       capacity: 25Gi
       provisioner: kubernetes.io/gce-pd
       volumeBindingMode: WaitForFirstConsumer
-  featureGates: {}
-#   DisableGardenerServiceAccountCreation: false
+  featureGates:
+    DisableGardenerServiceAccountCreation: true
 gardener:
   version: ""
   gardenlet:
