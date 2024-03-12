@@ -170,6 +170,24 @@ func (u *updater) NAT(ctx context.Context, client ComputeClient, region string, 
 	if desired.MinPortsPerVm == 0 {
 		desired.ForceSendFields = append(desired.ForceSendFields, "MinPortsPerVM")
 	}
+	if desired.MaxPortsPerVm == 0 {
+		desired.ForceSendFields = append(desired.ForceSendFields, "MaxPortsPerVM")
+	}
+	if desired.IcmpIdleTimeoutSec == 0 {
+		desired.ForceSendFields = append(desired.ForceSendFields, "IcmpIdleTimeoutSec")
+	}
+	if desired.TcpEstablishedIdleTimeoutSec == 0 {
+		desired.ForceSendFields = append(desired.ForceSendFields, "TcpEstablishedIdleTimeoutSec")
+	}
+	if desired.TcpTimeWaitTimeoutSec == 0 {
+		desired.ForceSendFields = append(desired.ForceSendFields, "TcpTimeWaitTimeoutSec")
+	}
+	if desired.TcpTransitoryIdleTimeoutSec == 0 {
+		desired.ForceSendFields = append(desired.ForceSendFields, "TcpTransitoryIdleTimeoutSec")
+	}
+	if desired.UdpIdleTimeoutSec == 0 {
+		desired.ForceSendFields = append(desired.ForceSendFields, "UdpIdleTimeoutSec")
+	}
 	if len(desired.NatIps) == 0 {
 		desired.NullFields = append(desired.NullFields, "NatIps")
 	}

@@ -100,8 +100,32 @@ type CloudNAT struct {
 	// MinPortsPerVM is the minimum number of ports allocated to a VM in the NAT config.
 	// The default value is 2048 ports.
 	MinPortsPerVM *int32
+	// MaxPortsPerVM is the maximum number of ports allocated to a VM in the NAT config.
+	// The default value is 65536 ports.
+	// +optional
+	MaxPortsPerVM *int32
+	// EnableDynamicPortAllocation controls port allocation behavior for the CloudNAT.
+	// +optional
+	EnableDynamicPortAllocation bool
+	// NatIPNames is a list of all user provided external premium ips which can be used by the nat gateway
+	// +optional
 	// NatIPNames is a list of all names of user provided external premium ips which can be used by the nat gateway
 	NatIPNames []NatIPName
+	// IcmpIdleTimeoutSec is the timeout (in seconds) for ICMP connections. Defaults to 30.
+	// +optional
+	IcmpIdleTimeoutSec *int32
+	// TcpEstablishedIdleTimeoutSec is the timeout (in seconds) for established TCP connections. Defaults to 1200.
+	// +optional
+	TcpEstablishedIdleTimeoutSec *int32
+	// TcpTimeWaitTimeoutSec is the timeout (in seconds) for TCP connections in 'TIME_WAIT' state. Defaults to 120.
+	// +optional
+	TcpTimeWaitTimeoutSec *int32
+	// TcpTransitoryIdleTimeoutSec is the timeout (in seconds) for transitory TCP connections. Defaults to 30.
+	// +optional
+	TcpTransitoryIdleTimeoutSec *int32
+	// UDPIdleTimeoutSec is the timeout (in seconds) for UDP connections. Defaults to 30.
+	// +optional
+	UdpIdleTimeoutSec *int32
 }
 
 // EndpointIndependentMapping contains endpoint independent mapping options.

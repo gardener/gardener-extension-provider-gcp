@@ -137,31 +137,68 @@ func targetRouterState(name, description, vpcName string) *compute.Router {
 
 func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIpUrls []string) *compute.RouterNat {
 	nat := &compute.RouterNat{
-		Name:                name,
-		NatIpAllocateOption: "AUTO_ONLY",
-		MinPortsPerVm:       2048,
+		DrainNatIps:                      nil,
+		EnableDynamicPortAllocation:      false,
+		EnableEndpointIndependentMapping: false,
+		EndpointTypes:                    nil,
 		LogConfig: &compute.RouterNatLogConfig{
 			Enable: true,
 			Filter: "ERRORS_ONLY",
 		},
-		EnableDynamicPortAllocation:      false,
-		EnableEndpointIndependentMapping: false,
-		SourceSubnetworkIpRangesToNat:    "LIST_OF_SUBNETWORKS",
+		MaxPortsPerVm:                 65536,
+		MinPortsPerVm:                 2048,
+		Name:                          name,
+		NatIpAllocateOption:           "AUTO_ONLY",
+		NatIps:                        nil,
+		Rules:                         nil,
+		SourceSubnetworkIpRangesToNat: "LIST_OF_SUBNETWORKS",
 		Subnetworks: []*compute.RouterNatSubnetworkToNat{
 			{
 				Name:                subnetURL,
 				SourceIpRangesToNat: []string{"ALL_IP_RANGES"},
 			},
 		},
+		IcmpIdleTimeoutSec:           30,
+		TcpEstablishedIdleTimeoutSec: 1200,
+		TcpTimeWaitTimeoutSec:        120,
+		TcpTransitoryIdleTimeoutSec:  30,
+		UdpIdleTimeoutSec:            30,
+		ForceSendFields:              nil,
+		NullFields:                   nil,
 	}
 
 	if natConfig != nil {
+		natConfig.EnableDynamicPortAllocation = nat.EnableDynamicPortAllocation
 		if natConfig.MinPortsPerVM != nil {
 			nat.MinPortsPerVm = int64(*natConfig.MinPortsPerVM)
 		}
 
+		if natConfig.MaxPortsPerVM != nil {
+			nat.MaxPortsPerVm = int64(*natConfig.MinPortsPerVM)
+		}
+
 		if natConfig.EndpointIndependentMapping != nil {
 			nat.EnableEndpointIndependentMapping = natConfig.EndpointIndependentMapping.Enabled
+		}
+
+		if natConfig.IcmpIdleTimeoutSec != nil {
+			nat.IcmpIdleTimeoutSec = int64(*natConfig.IcmpIdleTimeoutSec)
+		}
+
+		if natConfig.TcpEstablishedIdleTimeoutSec != nil {
+			nat.TcpEstablishedIdleTimeoutSec = int64(*natConfig.TcpEstablishedIdleTimeoutSec)
+		}
+
+		if natConfig.TcpTimeWaitTimeoutSec != nil {
+			nat.TcpTimeWaitTimeoutSec = int64(*natConfig.TcpTimeWaitTimeoutSec)
+		}
+
+		if natConfig.TcpTransitoryIdleTimeoutSec != nil {
+			nat.TcpTransitoryIdleTimeoutSec = int64(*natConfig.TcpTransitoryIdleTimeoutSec)
+		}
+
+		if natConfig.UdpIdleTimeoutSec != nil {
+			nat.UdpIdleTimeoutSec = int64(*natConfig.UdpIdleTimeoutSec)
 		}
 	}
 

@@ -64,7 +64,14 @@ func ComputeTerraformerTemplateValues(
 		cloudRouterName   string
 		cN                = map[string]interface{}{
 			"minPortsPerVM":                    int32(2048),
+			"maxPortsPerVM":                    int32(65536),
 			"enableEndpointIndependentMapping": false,
+			"enableDynamicPortAllocation":      false,
+			"icmpIdleTimeoutSec":               int32(30),
+			"tcpEstablishedIdleTimeoutSec":     int32(1200),
+			"tcpTimeWaitTimeoutSec":            int32(120),
+			"tcpTransitoryIdleTimeoutSec":      int32(30),
+			"udpIdleTimeoutSec":                int32(30),
 		}
 	)
 
@@ -82,6 +89,9 @@ func ComputeTerraformerTemplateValues(
 		if config.Networks.CloudNAT.MinPortsPerVM != nil {
 			cN["minPortsPerVM"] = *config.Networks.CloudNAT.MinPortsPerVM
 		}
+		if config.Networks.CloudNAT.MaxPortsPerVM != nil {
+			cN["maxPortsPerVM"] = *config.Networks.CloudNAT.MaxPortsPerVM
+		}
 		if config.Networks.CloudNAT.NatIPNames != nil {
 			natIPNames := []string{}
 			for _, v := range config.Networks.CloudNAT.NatIPNames {
@@ -89,8 +99,30 @@ func ComputeTerraformerTemplateValues(
 			}
 			cN["natIPNames"] = natIPNames
 		}
+
+		cN["enableDynamicPortAllocation"] = config.Networks.CloudNAT.EnableDynamicPortAllocation
 		if config.Networks.CloudNAT.EndpointIndependentMapping != nil {
 			cN["enableEndpointIndependentMapping"] = config.Networks.CloudNAT.EndpointIndependentMapping.Enabled
+		}
+
+		if config.Networks.CloudNAT.IcmpIdleTimeoutSec != nil {
+			cN["icmpIdleTimeoutSec"] = *config.Networks.CloudNAT.IcmpIdleTimeoutSec
+		}
+
+		if config.Networks.CloudNAT.TcpEstablishedIdleTimeoutSec != nil {
+			cN["tcpEstablishedIdleTimeoutSec"] = *config.Networks.CloudNAT.TcpEstablishedIdleTimeoutSec
+		}
+
+		if config.Networks.CloudNAT.TcpTimeWaitTimeoutSec != nil {
+			cN["tcpTimeWaitTimeoutSec"] = *config.Networks.CloudNAT.TcpTimeWaitTimeoutSec
+		}
+
+		if config.Networks.CloudNAT.TcpTransitoryIdleTimeoutSec != nil {
+			cN["tcpTransitoryIdleTimeoutSec"] = *config.Networks.CloudNAT.TcpTransitoryIdleTimeoutSec
+		}
+
+		if config.Networks.CloudNAT.UdpIdleTimeoutSec != nil {
+			cN["udpIdleTimeoutSec"] = *config.Networks.CloudNAT.UdpIdleTimeoutSec
 		}
 	}
 

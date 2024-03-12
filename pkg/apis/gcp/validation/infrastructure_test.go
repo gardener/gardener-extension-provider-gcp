@@ -329,7 +329,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.cloudNAT.natIPNames"),
-					"Detail": Equal("nat IP names cannot be empty"),
+					"Detail": Equal("nat IP names cannot be empty."),
 				}))
 			})
 		})

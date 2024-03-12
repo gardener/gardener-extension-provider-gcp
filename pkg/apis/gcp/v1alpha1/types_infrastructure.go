@@ -107,9 +107,31 @@ type CloudNAT struct {
 	// The default value is 2048 ports.
 	// +optional
 	MinPortsPerVM *int32 `json:"minPortsPerVM,omitempty"`
+	// MaxPortsPerVM is the maximum number of ports allocated to a VM in the NAT config.
+	// The default value is 65536 ports.
+	// +optional
+	MaxPortsPerVM *int32 `json:"maxPortsPerVM,omitempty"`
+	// EnableDynamicPortAllocation controls port allocation behavior for the CloudNAT.
+	// +optional
+	EnableDynamicPortAllocation bool `json:"enableDynamicPortAllocation,omitempty"`
 	// NatIPNames is a list of all user provided external premium ips which can be used by the nat gateway
 	// +optional
 	NatIPNames []NatIPName `json:"natIPNames,omitempty"`
+	// IcmpIdleTimeoutSec is the timeout (in seconds) for ICMP connections. Defaults to 30.
+	// +optional
+	IcmpIdleTimeoutSec *int32 `json:"icmpIdleTimeoutSec,omitempty"`
+	// TcpEstablishedIdleTimeoutSec is the timeout (in seconds) for established TCP connections. Defaults to 1200.
+	// +optional
+	TcpEstablishedIdleTimeoutSec *int32 `json:"tcpEstablishedIdleTimeoutSec,omitempty"`
+	// TcpTimeWaitTimeoutSec is the timeout (in seconds) for TCP connections in 'TIME_WAIT' state. Defaults to 120.
+	// +optional
+	TcpTimeWaitTimeoutSec *int32 `json:"tcpTimeWaitTimeoutSec,omitempty"`
+	// TcpTransitoryIdleTimeoutSec is the timeout (in seconds) for transitory TCP connections. Defaults to 30.
+	// +optional
+	TcpTransitoryIdleTimeoutSec *int32 `json:"tcpTransitoryIdleTimeoutSec,omitempty"`
+	// UdpIdleTimeoutSec is the timeout (in seconds) for UDP connections. Defaults to 30.
+	// +optional
+	UdpIdleTimeoutSec *int32 `json:"udpIdleTimeoutSec,omitempty"`
 }
 
 // EndpointIndependentMapping contains endpoint independent mapping options.

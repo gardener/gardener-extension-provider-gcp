@@ -85,8 +85,18 @@ resource "google_compute_router_nat" "nat" {
     name                    = google_compute_subnetwork.subnetwork-nodes.self_link
     source_ip_ranges_to_nat = ["ALL_IP_RANGES"]
   }
-  min_ports_per_vm = "{{ .networks.cloudNAT.minPortsPerVM }}"
+
+  enable_dynamic_port_allocation = {{ .networks.cloudNAT.enableDynamicPortAllocation }}
   enable_endpoint_independent_mapping = {{ .networks.cloudNAT.enableEndpointIndependentMapping }}
+  min_ports_per_vm = "{{ .networks.cloudNAT.minPortsPerVM }}"
+  {{  if .networks.cloudNAT.maxPortsPerVM -}}
+  max_ports_per_vm = "{{ .networks.cloudNAT.maxPortsPerVM }}"
+  {{- end }}
+  icmp_idle_timeout_sec = "{{ .networks.cloudNAT.icmpIdleTimeoutSec }}"
+  tcp_established_idle_timeout_sec = "{{ .networks.cloudNAT.tcpEstablishedIdleTimeoutSec }}"
+  tcp_time_wait_timeout_sec = "{{ .networks.cloudNAT.tcpTimeWaitTimeoutSec }}"
+  tcp_transitory_idle_timeout_sec = "{{ .networks.cloudNAT.tcpTransitoryIdleTimeoutSec }}"
+  udp_idle_timeout_sec = "{{ .networks.cloudNAT.udpIdleTimeoutSec }}"
 
   log_config {
     enable = true
