@@ -1,6 +1,6 @@
 module github.com/gardener/gardener-extension-provider-gcp
 
-go 1.21
+go 1.22.1
 
 require (
 	cloud.google.com/go/storage v1.30.1
