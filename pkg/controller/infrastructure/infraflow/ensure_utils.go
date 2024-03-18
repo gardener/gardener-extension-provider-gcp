@@ -168,13 +168,13 @@ func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIpUrls [
 	}
 
 	if natConfig != nil {
-		natConfig.EnableDynamicPortAllocation = nat.EnableDynamicPortAllocation
+		nat.EnableDynamicPortAllocation = natConfig.EnableDynamicPortAllocation
 		if natConfig.MinPortsPerVM != nil {
 			nat.MinPortsPerVm = int64(*natConfig.MinPortsPerVM)
 		}
 
 		if natConfig.MaxPortsPerVM != nil {
-			nat.MaxPortsPerVm = int64(*natConfig.MinPortsPerVM)
+			nat.MaxPortsPerVm = int64(*natConfig.MaxPortsPerVM)
 		}
 
 		if natConfig.EndpointIndependentMapping != nil {
