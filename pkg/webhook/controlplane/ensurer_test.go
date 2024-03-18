@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 const namespace = "test"
@@ -416,7 +416,7 @@ var _ = Describe("Ensurer", func() {
 					FeatureGates: map[string]bool{
 						"Foo": true,
 					},
-					EnableControllerAttachDetach: pointer.Bool(true),
+					EnableControllerAttachDetach: ptr.To(true),
 				}
 
 				if version.ConstraintK8sLess127.Check(kubeletVersion) {
@@ -449,7 +449,7 @@ var _ = Describe("Ensurer", func() {
 
 		It("should modify existing elements of kubernetes general configuration", func() {
 			var (
-				modifiedData = pointer.String("# Default Socket Send Buffer\n" +
+				modifiedData = ptr.To("# Default Socket Send Buffer\n" +
 					"net.core.wmem_max = 16777216\n" +
 					"# GCE specific settings\n" +
 					"net.ipv4.ip_forward = 5\n" +
@@ -469,7 +469,7 @@ var _ = Describe("Ensurer", func() {
 		})
 		It("should add needed elements of kubernetes general configuration", func() {
 			var (
-				data   = pointer.String("# Default Socket Send Buffer\nnet.core.wmem_max = 16777216")
+				data   = ptr.To("# Default Socket Send Buffer\nnet.core.wmem_max = 16777216")
 				result = "# Default Socket Send Buffer\n" +
 					"net.core.wmem_max = 16777216\n" +
 					"# GCE specific settings\n" +
@@ -494,7 +494,7 @@ var _ = Describe("Ensurer", func() {
 			DeferCleanup(testutils.WithVar(&ImageVector, imagevectorutils.ImageVector{{
 				Name:       "machine-controller-manager-provider-gcp",
 				Repository: "foo",
-				Tag:        pointer.String("bar"),
+				Tag:        ptr.To("bar"),
 			}}))
 		})
 

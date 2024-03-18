@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
@@ -26,7 +26,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		workers = []core.Worker{
 			{
 				Volume: &core.Volume{
-					Type:       pointer.String("Volume"),
+					Type:       ptr.To("Volume"),
 					VolumeSize: "30G",
 				},
 
@@ -36,14 +36,14 @@ var _ = Describe("#ValidateWorkers", func() {
 				},
 				DataVolumes: []core.DataVolume{
 					{
-						Type:       pointer.String("Volume"),
+						Type:       ptr.To("Volume"),
 						VolumeSize: "30G",
 					},
 				},
 			},
 			{
 				Volume: &core.Volume{
-					Type:       pointer.String("Volume"),
+					Type:       ptr.To("Volume"),
 					VolumeSize: "20G",
 				},
 
@@ -53,14 +53,14 @@ var _ = Describe("#ValidateWorkers", func() {
 				},
 				DataVolumes: []core.DataVolume{
 					{
-						Type:       pointer.String("SCRATCH"),
+						Type:       ptr.To("SCRATCH"),
 						VolumeSize: "30G",
 					},
 				},
 			},
 			{
 				Volume: &core.Volume{
-					Type:       pointer.String("Volume"),
+					Type:       ptr.To("Volume"),
 					VolumeSize: "20G",
 				},
 				Minimum: 2,
@@ -124,7 +124,7 @@ var _ = Describe("#ValidateWorkers", func() {
 	It("should pass because worker config is configured correctly", func() {
 		errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
 			Volume: &gcp.Volume{
-				LocalSSDInterface: pointer.String("NVME"),
+				LocalSSDInterface: ptr.To("NVME"),
 			},
 		})
 		Expect(errorList).To(BeEmpty())
@@ -133,7 +133,7 @@ var _ = Describe("#ValidateWorkers", func() {
 	It("should forbid because interface of worker config is misconfiguration", func() {
 		errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
 			Volume: &gcp.Volume{
-				LocalSSDInterface: pointer.String("Interface"),
+				LocalSSDInterface: ptr.To("Interface"),
 			},
 		})
 		Expect(errorList).To(ConsistOf(
@@ -175,7 +175,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		errorList := ValidateWorkerConfig(&gcp.WorkerConfig{
 			Volume: &gcp.Volume{
 				Encryption: &gcp.DiskEncryption{
-					KmsKeyName: pointer.String("  "),
+					KmsKeyName: ptr.To("  "),
 				},
 			},
 		}, nil)

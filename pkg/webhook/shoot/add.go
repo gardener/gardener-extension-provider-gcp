@@ -8,7 +8,7 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/extensions/pkg/webhook/shoot"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -28,7 +28,7 @@ func AddToManagerWithOptions(mgr manager.Manager, _ AddOptions) (*extensionswebh
 	logger.Info("Adding webhook to manager")
 	return shoot.New(mgr, shoot.Args{
 		Types: []extensionswebhook.Type{
-			{Obj: &corev1.Node{}, Subresource: pointer.String("status")},
+			{Obj: &corev1.Node{}, Subresource: ptr.To("status")},
 		},
 		Mutator: NewMutator(),
 	})

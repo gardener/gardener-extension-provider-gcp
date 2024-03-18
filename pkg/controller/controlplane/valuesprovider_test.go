@@ -13,11 +13,11 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/gardener/gardener/pkg/utils"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	fakesecretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager/fake"
+	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -25,7 +25,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -71,8 +71,8 @@ var _ = Describe("ValuesProvider", func() {
 								},
 							},
 							Storage: &apisgcp.Storage{
-								ManagedDefaultStorageClass:        pointer.Bool(true),
-								ManagedDefaultVolumeSnapshotClass: pointer.Bool(true),
+								ManagedDefaultStorageClass:        ptr.To(true),
+								ManagedDefaultVolumeSnapshotClass: ptr.To(true),
 							},
 						}),
 					},
@@ -264,7 +264,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		It("should return correct control plane chart values for clusters without overlay", func() {
 			shootWithoutOverlay := cluster.Shoot.DeepCopy()
-			shootWithoutOverlay.Spec.Networking.Type = pointer.String("calico")
+			shootWithoutOverlay.Spec.Networking.Type = ptr.To("calico")
 			shootWithoutOverlay.Spec.Networking.ProviderConfig = &runtime.RawExtension{
 				Raw: []byte(`{"overlay":{"enabled":false}}`),
 			}
@@ -362,8 +362,8 @@ var _ = Describe("ValuesProvider", func() {
 		It("should return correct storage class chart values when not using managed classes", func() {
 			cp.Spec.ProviderConfig.Raw = encode(&apisgcp.ControlPlaneConfig{
 				Storage: &apisgcp.Storage{
-					ManagedDefaultStorageClass:        pointer.Bool(false),
-					ManagedDefaultVolumeSnapshotClass: pointer.Bool(false),
+					ManagedDefaultStorageClass:        ptr.To(false),
+					ManagedDefaultVolumeSnapshotClass: ptr.To(false),
 				},
 			})
 
@@ -383,7 +383,7 @@ func encode(obj runtime.Object) []byte {
 }
 
 func clientGet(result runtime.Object) interface{} {
-	return func(ctx context.Context, key client.ObjectKey, obj runtime.Object, _ ...client.GetOption) error {
+	return func(_ context.Context, _ client.ObjectKey, obj runtime.Object, _ ...client.GetOption) error {
 		switch obj.(type) {
 		case *corev1.Secret:
 			*obj.(*corev1.Secret) = *result.(*corev1.Secret)
