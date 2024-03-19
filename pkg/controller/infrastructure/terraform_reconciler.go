@@ -36,65 +36,92 @@ import (
 type TerraformReconciler struct {
 	client                     k8sClient.Client
 	restConfig                 *rest.Config
-	stateInitializer           terraformer.StateConfigMapInitializer
+	log                        logr.Logger
 	disableProjectedTokenMount bool
 }
 
 // NewTerraformReconciler returns a new instance of TerraformReconciler.
-func NewTerraformReconciler(client k8sClient.Client, restConfig *rest.Config, tfInitializer terraformer.StateConfigMapInitializer, disableProjectedTokenMount bool) *TerraformReconciler {
+func NewTerraformReconciler(client k8sClient.Client, restConfig *rest.Config, log logr.Logger, disableProjectedTokenMount bool) *TerraformReconciler {
 	return &TerraformReconciler{
 		client:                     client,
 		restConfig:                 restConfig,
-		stateInitializer:           tfInitializer,
+		log:                        log,
 		disableProjectedTokenMount: disableProjectedTokenMount,
 	}
 }
 
-// Reconcile reconciles infrastructure using Terraformer.
-func (t *TerraformReconciler) Reconcile(ctx context.Context, log logr.Logger, cluster *controller.Cluster, infra *extensionsv1alpha1.Infrastructure) (*v1alpha1.InfrastructureStatus, *runtime.RawExtension, error) {
-	log.Info("reconcile infrastructure using terraform reconciler")
-	tf, err := internal.NewTerraformer(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount)
+// Restore restores the infrastructure after a control plane migration. Effectively it performs a recovery of data from the infrastructure.status.state and
+// proceeds to reconcile.
+func (t *TerraformReconciler) Restore(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
+	var initializer terraformer.StateConfigMapInitializer
+
+	terraformState, err := terraformer.UnmarshalRawState(infra.Status.State)
 	if err != nil {
-		return nil, nil, err
+		return err
+	}
+
+	initializer = terraformer.CreateOrUpdateState{State: &terraformState.Data}
+	return t.reconcile(ctx, infra, cluster, initializer)
+}
+
+// Reconcile reconciles infrastructure using Terraformer.
+func (t *TerraformReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
+	err := t.reconcile(ctx, infra, cluster, terraformer.StateConfigMapInitializerFunc(terraformer.CreateState))
+	return util.DetermineError(err, helper.KnownCodes)
+}
+
+func (t *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, initializer terraformer.StateConfigMapInitializer) error {
+	log := t.log
+
+	log.Info("reconcile infrastructure using terraform reconciler")
+	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount)
+	if err != nil {
+		return err
 	}
 
 	serviceAccount, err := infrastructure.GetServiceAccountFromInfrastructure(ctx, t.client, infra)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	createSA, err := shouldCreateServiceAccount(infra)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, serviceAccount, config, cluster.Shoot.Spec.Networking.Pods, createSA)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	tf, err = internal.SetTerraformerEnvVars(tf, infra.Spec.SecretRef)
-	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	if err := tf.
-		InitializeWith(ctx, terraformer.DefaultInitializer(t.client, terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, t.stateInitializer)).
+		InitializeWith(ctx, terraformer.DefaultInitializer(t.client, terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, initializer)).
 		Apply(ctx); err != nil {
-		return nil, nil, fmt.Errorf("failed to apply the terraform config: %w", err)
+		return fmt.Errorf("failed to apply the terraform config: %w", err)
 	}
 
-	return t.reconcileStatus(ctx, tf, config, createSA)
+	status, state, err := t.computeTerraformStatus(ctx, tf, config, createSA)
+	if err != nil {
+		return err
+	}
+
+	return patchProviderStatusAndState(ctx, t.client, infra, status, state)
 }
 
 // Delete deletes the infrastructure using Terraformer.
-func (t *TerraformReconciler) Delete(ctx context.Context, log logr.Logger, _ *extensions.Cluster, infra *extensionsv1alpha1.Infrastructure) error {
-	tf, err := internal.NewTerraformer(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount)
+func (t *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, c *extensions.Cluster) error {
+	return util.DetermineError(t.delete(ctx, infra, c), helper.KnownCodes)
+}
+
+func (t *TerraformReconciler) delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, _ *extensions.Cluster) error {
+	log := t.log
+
+	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount)
 	if err != nil {
 		return err
 	}
@@ -118,11 +145,6 @@ func (t *TerraformReconciler) Delete(ctx context.Context, log logr.Logger, _ *ex
 	}
 
 	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, t.client, infra.Spec.SecretRef)
-	if err != nil {
-		return err
-	}
-
-	tf, err = internal.SetTerraformerEnvVars(tf, infra.Spec.SecretRef)
 	if err != nil {
 		return err
 	}
@@ -160,11 +182,12 @@ func (t *TerraformReconciler) Delete(ctx context.Context, log logr.Logger, _ *ex
 			Fn:           tf.Destroy,
 			Dependencies: flow.NewTaskIDs(destroyKubernetesFirewallRules, destroyKubernetesRoutes),
 		})
-
 		f = g.Compile()
 	)
 
-	err = f.Run(ctx, flow.Opts{})
+	err = f.Run(ctx, flow.Opts{
+		Log: log,
+	})
 
 	return err
 }
@@ -243,7 +266,7 @@ func cleanupKubernetesRoutes(
 	return infrastructure.CleanupKubernetesRoutes(ctx, gcpClient, account.ProjectID, state.VPCName, shootSeedNamespace)
 }
 
-func (t *TerraformReconciler) reconcileStatus(
+func (t *TerraformReconciler) computeTerraformStatus(
 	ctx context.Context,
 	tf terraformer.Terraformer,
 	config *api.InfrastructureConfig,

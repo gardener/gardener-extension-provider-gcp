@@ -48,8 +48,8 @@ func (w *waiter) run() {
 		case <-w.done:
 			return
 		case <-ticker.C:
-			delta := int(time.Since(w.start).Seconds())
-			w.log.Info(fmt.Sprintf("%s [%ds]", w.message.Load(), delta), w.keysAndValues...)
+			delta := time.Since(w.start)
+			w.log.Info(fmt.Sprintf("%s [%s]", w.message.Load(), delta.Round(time.Second).String()), w.keysAndValues...)
 		}
 	}
 }
@@ -57,8 +57,6 @@ func (w *waiter) run() {
 func (w *waiter) Done(err error) {
 	w.done <- struct{}{}
 	if err != nil {
-		w.log.Info("failed: " + err.Error())
-	} else {
-		w.log.Info("succeeded")
+		w.log.V(1).Info("failed: " + err.Error())
 	}
 }

@@ -2,12 +2,16 @@ package infraflow
 
 import (
 	"context"
+	"strings"
+	"time"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -19,62 +23,99 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
 )
 
-// FlowReconciler is capable of reconciling and deleting the infrastructure for a shoot.
-type FlowReconciler struct {
-	*shared.BasicFlowContext
+const (
+	// CreatedResourcesExistKey is a marker for the Terraform migration case. If the TF state is not empty
+	// we inject this marker into the state to block the deletion without having first a successful reconciliation.
+	CreatedResourcesExistKey = "resources_exist"
+	// ChildKeyIDs is the prefix key for all ids.
+	ChildKeyIDs = "ids"
+	// KeyServiceAccountEmail is the key to store the service account object.
+	KeyServiceAccountEmail = "service-account-email"
+	// ObjectKeyVPC is the key to store the VPC object.
+	ObjectKeyVPC = "vpc"
+	// ObjectKeyNodeSubnet is the key to store the nodes subnet object.
+	ObjectKeyNodeSubnet = "subnet-nodes"
+	// ObjectKeyInternalSubnet is the key to store the internal subnet object.
+	ObjectKeyInternalSubnet = "subnet-internal"
+	// ObjectKeyRouter router is the key for the CloudRouter.
+	ObjectKeyRouter = "router"
+	// ObjectKeyNAT is the key for the .CloudNAT object.
+	ObjectKeyNAT = "nat"
+	// ObjectKeyIPAddress is the key for the IP Address slice.
+	ObjectKeyIPAddress = "addresses/ip"
+
+	defaultWaiterPeriod time.Duration = 5 * time.Second
+)
+
+var (
+	// DefaultUpdaterFunc is the default constructor used for an Updated used in the package.
+	DefaultUpdaterFunc = gcpclient.NewUpdater
+)
+
+// PersistStateFunc is a callback function that is used to persist the state during the reconciliation.
+type PersistStateFunc func(ctx context.Context, state *runtime.RawExtension) error
+
+// FlowContext is capable of reconciling and deleting the infrastructure for a shoot.
+type FlowContext struct {
+	bfg *shared.BasicFlowContext
 
 	infra          *extensionsv1alpha1.Infrastructure
 	config         *gcp.InfrastructureConfig
+	state          *gcp.InfrastructureState
 	updater        gcpclient.Updater
 	serviceAccount *gcpinternal.ServiceAccount
 	clusterName    string
 	whiteboard     shared.Whiteboard
 	podCIDR        *string
+	persistFn      PersistStateFunc
+	log            logr.Logger
 
 	computeClient gcpclient.ComputeClient
 	iamClient     gcpclient.IAMClient
 }
 
-// NewFlowReconciler returns a new FlowReconciler.
-func NewFlowReconciler(
-	ctx context.Context,
-	log logr.Logger,
-	infra *extensionsv1alpha1.Infrastructure,
-	cluster *controller.Cluster,
-	c client.Client,
-) (*FlowReconciler, error) {
-	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
-	if err != nil {
-		return nil, err
-	}
+// Opts contains the options to initialize a FlowContext.
+type Opts struct {
+	// Log is the logger using during the reconciliation.
+	Log logr.Logger
+	// Infra
+	Infra          *extensionsv1alpha1.Infrastructure
+	State          *gcp.InfrastructureState
+	Cluster        *controller.Cluster
+	ServiceAccount *gcpinternal.ServiceAccount
+	Factory        gcpclient.Factory
+	Client         client.Client
+	PersistFunc    PersistStateFunc
+}
 
-	serviceAccount, err := gcpinternal.GetServiceAccountFromSecretReference(ctx, c, infra.Spec.SecretRef)
-	if err != nil {
-		return nil, err
-	}
-
-	gc := gcpclient.New()
-	com, err := gc.Compute(ctx, c, infra.Spec.SecretRef)
-	if err != nil {
-		return nil, err
-	}
-
-	iam, err := gc.IAM(ctx, c, infra.Spec.SecretRef)
-	if err != nil {
-		return nil, err
-	}
-
+// NewFlowContext returns a new FlowContext.
+func NewFlowContext(ctx context.Context, opts Opts) (*FlowContext, error) {
 	wb := shared.NewWhiteboard()
-	bfc := shared.NewBasicFlowContext(log, wb, nil)
-	fr := &FlowReconciler{
-		BasicFlowContext: bfc,
-		whiteboard:       wb,
-		infra:            infra,
-		serviceAccount:   serviceAccount,
-		config:           config,
-		updater:          gcpclient.NewUpdater(gc, serviceAccount, log),
-		clusterName:      cluster.ObjectMeta.Name,
-		podCIDR:          cluster.Shoot.Spec.Networking.Pods,
+	config, err := helper.InfrastructureConfigFromInfrastructure(opts.Infra)
+	if err != nil {
+		return nil, err
+	}
+
+	com, err := opts.Factory.Compute(ctx, opts.Client, opts.Infra.Spec.SecretRef)
+	if err != nil {
+		return nil, err
+	}
+	iam, err := opts.Factory.IAM(ctx, opts.Client, opts.Infra.Spec.SecretRef)
+	if err != nil {
+		return nil, err
+	}
+
+	fr := &FlowContext{
+		whiteboard:     wb,
+		infra:          opts.Infra,
+		serviceAccount: opts.ServiceAccount,
+		config:         config,
+		state:          opts.State,
+		updater:        DefaultUpdaterFunc(opts.Log, com),
+		clusterName:    opts.Cluster.ObjectMeta.Name,
+		podCIDR:        opts.Cluster.Shoot.Spec.Networking.Pods,
+		persistFn:      opts.PersistFunc,
+		log:            opts.Log,
 
 		computeClient: com,
 		iamClient:     iam,
@@ -84,31 +125,36 @@ func NewFlowReconciler(
 }
 
 // Reconcile reconciles the infrastructure
-func (c *FlowReconciler) Reconcile(ctx context.Context) (*v1alpha1.InfrastructureStatus, *runtime.RawExtension, error) {
+func (c *FlowContext) Reconcile(ctx context.Context) (*v1alpha1.InfrastructureStatus, *runtime.RawExtension, error) {
 	g := c.buildReconcileGraph()
 	f := g.Compile()
-	c.Log.Info("starting Flow Reconciliation")
-	err := f.Run(ctx, flow.Opts{Log: c.Log})
+	c.log.Info("starting Flow Reconciliation")
+	err := f.Run(ctx, flow.Opts{
+		Log: c.log,
+	})
 	if err != nil {
-		c.Log.Error(err, "flow reconciliation failed")
-		status, state, inErr := c.getStatus()
-		if inErr != nil {
-			c.Log.Error(err, "flow reconciliation failed")
-		}
-		return status, state, err
+		err = flow.Causes(err)
+		c.log.Error(err, "flow reconciliation failed")
+		return nil, c.getCurrentState(), err
 	}
 
-	return c.getStatus()
+	status := c.getStatus()
+	state := c.getCurrentState()
+	return status, state, nil
 }
 
 // Delete is used to destroy the infrastructure.
-func (c *FlowReconciler) Delete(ctx context.Context) error {
+func (c *FlowContext) Delete(ctx context.Context) error {
+	if c.state.Data == nil || !strings.EqualFold(c.state.Data[CreatedResourcesExistKey], "true") {
+		return nil
+	}
+
 	g := c.buildDeleteGraph()
 	f := g.Compile()
-	return f.Run(ctx, flow.Opts{Log: c.Log})
+	return f.Run(ctx, flow.Opts{Log: c.log})
 }
 
-func (c *FlowReconciler) getStatus() (*v1alpha1.InfrastructureStatus, *runtime.RawExtension, error) {
+func (c *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 	status := &v1alpha1.InfrastructureStatus{
 		TypeMeta: infrastructure.StatusTypeMeta,
 		Networks: v1alpha1.NetworkStatus{
@@ -142,17 +188,43 @@ func (c *FlowReconciler) getStatus() (*v1alpha1.InfrastructureStatus, *runtime.R
 		}
 	}
 
-	if s := GetObject[*gcpclient.ServiceAccount](c.whiteboard, ObjectKeyServiceAccount); s != nil {
-		status.ServiceAccountEmail = s.Email
+	status.ServiceAccountEmail = ptr.Deref(c.whiteboard.GetChild(ChildKeyIDs).Get(KeyServiceAccountEmail), "")
+	return status
+}
+
+func (c *FlowContext) getCurrentState() *runtime.RawExtension {
+	// InfrastructureStateTypeMeta is the TypeMeta of the InfrastructureStatus
+	InfrastructureStateTypeMeta := metav1.TypeMeta{
+		APIVersion: v1alpha1.SchemeGroupVersion.String(),
+		Kind:       "InfrastructureState",
+	}
+	state := &v1alpha1.InfrastructureState{
+		TypeMeta: InfrastructureStateTypeMeta,
+		Data: map[string]string{
+			CreatedResourcesExistKey: ptr.Deref(c.whiteboard.Get(CreatedResourcesExistKey), ""),
+		},
 	}
 
-	bytes, err := NewFlowState().ToJSON()
-	if err != nil {
-		return nil, nil, err
+	return &runtime.RawExtension{
+		Object: state,
+	}
+}
+
+func (c *FlowContext) persistState(ctx context.Context) error {
+	if c.persistFn == nil {
+		return nil
 	}
 
-	state := &runtime.RawExtension{
-		Raw: bytes,
+	return c.persistFn(ctx, c.getCurrentState())
+}
+
+func (c *FlowContext) loadWhiteBoard() {
+	if c.whiteboard == nil {
+		return
 	}
-	return status, state, nil
+	if c.state == nil {
+		return
+	}
+
+	c.whiteboard.Set(CreatedResourcesExistKey, "true")
 }

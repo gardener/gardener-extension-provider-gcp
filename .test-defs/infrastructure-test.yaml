@@ -5,6 +5,8 @@ spec:
   owner: gardener-oq@listserv.sap.com
   description: Integration test for infrastructure creation and deletion
   activeDeadlineSeconds: 1800
+  behavior:
+    - serial
 
   command: [bash, -c]
   args:
@@ -14,5 +16,6 @@ spec:
     --kubeconfig=$TM_KUBECONFIG_PATH/testmachinery.config
     --service-account="${SERVICEACCOUNT_JSON}"
     --region=$REGION
+    --reconciler=${RECONCILER}
 
   image: golang:1.22.1

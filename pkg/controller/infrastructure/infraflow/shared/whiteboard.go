@@ -40,6 +40,7 @@ type Whiteboard interface {
 	// Get returns a valid value or nil (never "" or special deleted value)
 	Get(key string) *string
 	Set(key, id string)
+	Delete(key string)
 	SetPtr(key string, id *string)
 	IsAlreadyDeleted(key string) bool
 	SetAsDeleted(key string)
@@ -52,6 +53,7 @@ type Whiteboard interface {
 	SetObject(key string, obj any)
 	DeleteObject(key string)
 	HasObject(key string) bool
+	ObjectKeys() []string
 
 	// ImportFromFlatMap reconstructs the hierarchical structure from a flat map containing path-like keys
 	ImportFromFlatMap(data FlatMap)
@@ -197,6 +199,15 @@ func (w *whiteboard) SetPtr(key string, id *string) {
 	w.Set(key, ptr.Deref(id, ""))
 }
 
+func (w *whiteboard) Delete(key string) {
+	w.Lock()
+	defer w.Unlock()
+	if _, ok := w.data[key]; ok {
+		delete(w.data, key)
+		w.modified()
+	}
+}
+
 func (w *whiteboard) IsAlreadyDeleted(key string) bool {
 	w.Lock()
 	defer w.Unlock()
@@ -271,4 +282,11 @@ func (w *whiteboard) DeleteObject(key string) {
 	w.Lock()
 	defer w.Unlock()
 	delete(w.objects, key)
+}
+
+func (w *whiteboard) ObjectKeys() []string {
+	w.Lock()
+	defer w.Unlock()
+
+	return sortedKeys(w.objects)
 }
