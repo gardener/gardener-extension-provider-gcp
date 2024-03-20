@@ -45,7 +45,7 @@ func IgnoreNotFoundError(err error) error {
 	return IgnoreErrorCodes(err, http.StatusNotFound)
 }
 
-// IsNotFoundError returns true if the error has a HTTP 404 status code.
+// IsNotFoundError returns true if the error has an HTTP 404 status code.
 func IsNotFoundError(err error) bool {
 	return IsErrorCode(err, http.StatusNotFound)
 }

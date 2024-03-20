@@ -23,7 +23,7 @@ type InfrastructureConfig struct {
 type NetworkConfig struct {
 	// VPC indicates whether to use an existing VPC or create a new one.
 	VPC *VPC
-	// CloudNAT contains configuration about the the CloudNAT resource
+	// CloudNAT contains configuration about the CloudNAT resource
 	CloudNAT *CloudNAT
 	// Internal is a private subnet (used for internal load balancers).
 	Internal *string
@@ -87,13 +87,13 @@ type VPC struct {
 	CloudRouter *CloudRouter
 }
 
-// CloudRouter contains information about the the CloudRouter configuration
+// CloudRouter contains information about the CloudRouter configuration
 type CloudRouter struct {
 	// Name is the CloudRouter name.
 	Name string
 }
 
-// CloudNAT contains configuration about the the CloudNAT resource
+// CloudNAT contains configuration about the CloudNAT resource
 type CloudNAT struct {
 	// EndpointIndependentMapping controls if endpoint independent mapping is enabled.
 	EndpointIndependentMapping *EndpointIndependentMapping

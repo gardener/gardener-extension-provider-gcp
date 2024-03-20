@@ -161,7 +161,7 @@ var _ = BeforeSuite(func() {
 		Expect(err).NotTo(HaveOccurred())
 	}()
 
-	// test client should be uncached and independent from the tested manager
+	// test client should be uncached and independent of the tested manager
 	c, err = client.New(cfg, client.Options{
 		Scheme: mgr.GetScheme(),
 		Mapper: mgr.GetRESTMapper(),

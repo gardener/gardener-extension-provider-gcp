@@ -452,7 +452,7 @@ int32
 <a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.VPC">VPC</a>)
 </p>
 <p>
-<p>CloudRouter contains information about the the CloudRouter configuration</p>
+<p>CloudRouter contains information about the CloudRouter configuration</p>
 </p>
 <table>
 <thead>
@@ -955,7 +955,7 @@ CloudNAT
 </td>
 <td>
 <em>(Optional)</em>
-<p>CloudNAT contains configuration about the the CloudNAT resource</p>
+<p>CloudNAT contains configuration about the CloudNAT resource</p>
 </td>
 </tr>
 <tr>

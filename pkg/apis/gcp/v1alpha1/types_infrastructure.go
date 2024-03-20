@@ -24,7 +24,7 @@ type NetworkConfig struct {
 	// VPC indicates whether to use an existing VPC or create a new one.
 	// +optional
 	VPC *VPC `json:"vpc,omitempty"`
-	// CloudNAT contains configuration about the the CloudNAT resource
+	// CloudNAT contains configuration about the CloudNAT resource
 	// +optional
 	CloudNAT *CloudNAT `json:"cloudNAT,omitempty"`
 	// Internal is a private subnet (used for internal load balancers).
@@ -93,7 +93,7 @@ type VPC struct {
 	CloudRouter *CloudRouter `json:"cloudRouter,omitempty"`
 }
 
-// CloudRouter contains information about the the CloudRouter configuration
+// CloudRouter contains information about the CloudRouter configuration
 type CloudRouter struct {
 	// Name is the CloudRouter name.
 	Name string `json:"name,omitempty"`
