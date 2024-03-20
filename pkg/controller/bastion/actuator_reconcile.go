@@ -16,10 +16,10 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
-	compute "google.golang.org/api/compute/v1"
+	"google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -280,11 +280,11 @@ func metadataItemsDefine(userData []byte) []*compute.MetadataItems {
 	return []*compute.MetadataItems{
 		{
 			Key:   "startup-script",
-			Value: pointer.String(string(userData)),
+			Value: ptr.To(string(userData)),
 		},
 		{
 			Key:   "block-project-ssh-keys",
-			Value: pointer.String("TRUE"),
+			Value: ptr.To("TRUE"),
 		},
 	}
 }

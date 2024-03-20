@@ -20,8 +20,8 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	mockkubernetes "github.com/gardener/gardener/pkg/client/kubernetes/mock"
-	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	"github.com/gardener/gardener/pkg/utils"
+	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -31,7 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -222,7 +222,7 @@ var _ = Describe("Machines", func() {
 								{
 									Version:      machineImageVersion,
 									Image:        machineImage,
-									Architecture: pointer.String(archAMD),
+									Architecture: ptr.To(archAMD),
 								},
 							},
 						},
@@ -275,7 +275,7 @@ var _ = Describe("Machines", func() {
 								MaxSurge:       maxSurgePool1,
 								MaxUnavailable: maxUnavailablePool1,
 								MachineType:    machineType,
-								Architecture:   pointer.String(archAMD),
+								Architecture:   ptr.To(archAMD),
 								MachineImage: extensionsv1alpha1.MachineImage{
 									Name:    machineImageName,
 									Version: machineImageVersion,
@@ -575,7 +575,7 @@ var _ = Describe("Machines", func() {
 								Name:         machineImageName,
 								Version:      machineImageVersion,
 								Image:        machineImage,
-								Architecture: pointer.String(archAMD),
+								Architecture: ptr.To(archAMD),
 							},
 						},
 					}
@@ -629,7 +629,7 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the machine image for given architecture cannot be found", func() {
-				w.Spec.Pools[0].Architecture = pointer.String(archARM)
+				w.Spec.Pools[0].Architecture = ptr.To(archARM)
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 

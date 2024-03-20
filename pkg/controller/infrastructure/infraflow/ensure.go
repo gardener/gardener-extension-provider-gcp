@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	compute "google.golang.org/api/compute/v1"
-	"k8s.io/utils/pointer"
+	"google.golang.org/api/compute/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
@@ -314,7 +314,7 @@ func (c *FlowReconciler) ensureFirewallRules(ctx context.Context) error {
 	}
 	vpc := GetObject[*compute.Network](c.whiteboard, ObjectKeyVPC)
 
-	cidrs := []*string{c.podCIDR, c.config.Networks.Internal, pointer.String(c.config.Networks.Workers), pointer.String(c.config.Networks.Worker)}
+	cidrs := []*string{c.podCIDR, c.config.Networks.Internal, ptr.To(c.config.Networks.Workers), ptr.To(c.config.Networks.Worker)}
 	rules := []*compute.Firewall{
 		firewallRuleAllowExternal(firewallRuleAllowExternalName(c.clusterName), vpc.SelfLink),
 		firewallRuleAllowInternal(firewallRuleAllowInternalName(c.clusterName), vpc.SelfLink, cidrs),

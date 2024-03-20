@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
@@ -37,7 +37,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 							{
 								Version:      machineImageVersion,
 								Image:        "path/to/gcp/image",
-								Architecture: pointer.String("amd64"),
+								Architecture: ptr.To("amd64"),
 							},
 						},
 					},
@@ -95,7 +95,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 			It("should forbid unsupported machine image version configuration", func() {
 				cloudProfileConfig.MachineImages[0].Versions[0].Image = ""
-				cloudProfileConfig.MachineImages[0].Versions[0].Architecture = pointer.String("foo")
+				cloudProfileConfig.MachineImages[0].Versions[0].Architecture = ptr.To("foo")
 				machineImages[0].Versions = append(machineImages[0].Versions, core.MachineImageVersion{ExpirableVersion: core.ExpirableVersion{Version: "2.0.0"}})
 				errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, nilPath)
 

@@ -7,7 +7,7 @@ package helper_test
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
@@ -39,13 +39,13 @@ var _ = Describe("Helper", func() {
 			expectResults(machineImage, expectedMachineImage, err, expectErr)
 		},
 
-		Entry("list is nil", nil, "foo", "1.2.3", pointer.String("foo"), nil, true),
-		Entry("empty list", []api.MachineImage{}, "foo", "1.2.3", pointer.String("foo"), nil, true),
-		Entry("entry not found (no name)", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123"}}, "foo", "1.2.3", pointer.String("foo"), nil, true),
-		Entry("entry not found (no version)", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123"}}, "foo", "1.2.4", pointer.String("foo"), nil, true),
-		Entry("entry not found (no architecture)", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123", Architecture: pointer.String("foo")}}, "foo", "1.2.4", pointer.String("foo"), nil, true),
-		Entry("entry exists if architecture is nil", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123"}}, "bar", "1.2.3", pointer.String("amd64"), &api.MachineImage{Name: "bar", Version: "1.2.3", Image: "image123", Architecture: pointer.String("amd64")}, false),
-		Entry("entry exists", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123", Architecture: pointer.String("foo")}}, "bar", "1.2.3", pointer.String("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", Image: "image123", Architecture: pointer.String("foo")}, false),
+		Entry("list is nil", nil, "foo", "1.2.3", ptr.To("foo"), nil, true),
+		Entry("empty list", []api.MachineImage{}, "foo", "1.2.3", ptr.To("foo"), nil, true),
+		Entry("entry not found (no name)", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123"}}, "foo", "1.2.3", ptr.To("foo"), nil, true),
+		Entry("entry not found (no version)", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123"}}, "foo", "1.2.4", ptr.To("foo"), nil, true),
+		Entry("entry not found (no architecture)", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123", Architecture: ptr.To("foo")}}, "foo", "1.2.4", ptr.To("foo"), nil, true),
+		Entry("entry exists if architecture is nil", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123"}}, "bar", "1.2.3", ptr.To("amd64"), &api.MachineImage{Name: "bar", Version: "1.2.3", Image: "image123", Architecture: ptr.To("amd64")}, false),
+		Entry("entry exists", []api.MachineImage{{Name: "bar", Version: "1.2.3", Image: "image123", Architecture: ptr.To("foo")}}, "bar", "1.2.3", ptr.To("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", Image: "image123", Architecture: ptr.To("foo")}, false),
 	)
 
 	DescribeTable("#FindImage",
@@ -62,13 +62,13 @@ var _ = Describe("Helper", func() {
 			}
 		},
 
-		Entry("list is nil", nil, "ubuntu", "1", pointer.String("foo"), ""),
+		Entry("list is nil", nil, "ubuntu", "1", ptr.To("foo"), ""),
 
-		Entry("profile empty list", []api.MachineImages{}, "ubuntu", "1", pointer.String("foo"), ""),
-		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1", pointer.String("foo")), "ubuntu", "1", pointer.String("foo"), ""),
-		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2", pointer.String("foo")), "ubuntu", "1", pointer.String("foo"), ""),
-		Entry("profile entry not found (no architecture)", makeProfileMachineImages("ubuntu", "2", pointer.String("bar")), "ubuntu", "1", pointer.String("foo"), ""),
-		Entry("profile entry", makeProfileMachineImages("ubuntu", "1", pointer.String("foo")), "ubuntu", "1", pointer.String("foo"), profileImage),
+		Entry("profile empty list", []api.MachineImages{}, "ubuntu", "1", ptr.To("foo"), ""),
+		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1", ptr.To("foo")), "ubuntu", "1", ptr.To("foo"), ""),
+		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2", ptr.To("foo")), "ubuntu", "1", ptr.To("foo"), ""),
+		Entry("profile entry not found (no architecture)", makeProfileMachineImages("ubuntu", "2", ptr.To("bar")), "ubuntu", "1", ptr.To("foo"), ""),
+		Entry("profile entry", makeProfileMachineImages("ubuntu", "1", ptr.To("foo")), "ubuntu", "1", ptr.To("foo"), profileImage),
 	)
 })
 

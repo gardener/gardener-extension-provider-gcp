@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
@@ -39,15 +39,15 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					},
 				},
 				CloudNAT: &apisgcp.CloudNAT{
-					MinPortsPerVM: pointer.Int32(20),
+					MinPortsPerVM: ptr.To[int32](20),
 					NatIPNames: []apisgcp.NatIPName{{
 						Name: "test",
 					}},
 				},
 				FlowLogs: &apisgcp.FlowLogs{
-					AggregationInterval: pointer.String("INTERVAL_5_SEC"),
-					Metadata:            pointer.String("INCLUDE_ALL_METADATA"),
-					FlowSampling:        pointer.Float64(0.4),
+					AggregationInterval: ptr.To("INTERVAL_5_SEC"),
+					Metadata:            ptr.To("INCLUDE_ALL_METADATA"),
+					FlowSampling:        ptr.To[float64](0.4),
 				},
 				Internal: &internal,
 				Workers:  "10.250.0.0/16",
@@ -293,9 +293,9 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should allow correct flowlogs config", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
 				newInfrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{
-					AggregationInterval: pointer.String("INTERVAL_1_MIN"),
-					Metadata:            pointer.String("INCLUDE_ALL_METADATA"),
-					FlowSampling:        pointer.Float64(0.5),
+					AggregationInterval: ptr.To("INTERVAL_1_MIN"),
+					Metadata:            ptr.To("INCLUDE_ALL_METADATA"),
+					FlowSampling:        ptr.To[float64](0.5),
 				}
 
 				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
@@ -343,13 +343,13 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		It("should allow changing cloudNAT AND Flow-logs details", func() {
 			newInfrastructureConfig := infrastructureConfig.DeepCopy()
 			newInfrastructureConfig.Networks.CloudNAT = &apisgcp.CloudNAT{
-				MinPortsPerVM: pointer.Int32(30),
+				MinPortsPerVM: ptr.To[int32](30),
 				NatIPNames: []apisgcp.NatIPName{{
 					Name: "not-test",
 				}},
 			}
 			newInfrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{
-				AggregationInterval: pointer.String("INTERVAL_30_SEC"),
+				AggregationInterval: ptr.To("INTERVAL_30_SEC"),
 			}
 
 			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
@@ -366,7 +366,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}
 			newInfrastructureConfig.Networks.Workers = "10.96.0.0/16"
 			newInfrastructureConfig.Networks.Worker = "10.96.0.0/16"
-			newInfrastructureConfig.Networks.Internal = pointer.String("10.96.0.0/16")
+			newInfrastructureConfig.Networks.Internal = ptr.To("10.96.0.0/16")
 
 			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
 			Expect(errorList).To(ConsistOfFields(Fields{

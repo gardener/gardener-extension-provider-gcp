@@ -7,7 +7,7 @@ package v1alpha1
 import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func addDefaultingFuncs(scheme *runtime.Scheme) error {
@@ -17,16 +17,16 @@ func addDefaultingFuncs(scheme *runtime.Scheme) error {
 // SetDefaults_MachineImageVersion set the architecture of machine image.
 func SetDefaults_MachineImageVersion(obj *MachineImageVersion) {
 	if obj.Architecture == nil {
-		obj.Architecture = pointer.String(v1beta1constants.ArchitectureAMD64)
+		obj.Architecture = ptr.To(v1beta1constants.ArchitectureAMD64)
 	}
 }
 
 // SetDefaults_Storage sets the defaults for the managed storage classes
 func SetDefaults_Storage(obj *Storage) {
 	if obj.ManagedDefaultStorageClass == nil {
-		obj.ManagedDefaultStorageClass = pointer.Bool(true)
+		obj.ManagedDefaultStorageClass = ptr.To(true)
 	}
 	if obj.ManagedDefaultVolumeSnapshotClass == nil {
-		obj.ManagedDefaultVolumeSnapshotClass = pointer.Bool(true)
+		obj.ManagedDefaultVolumeSnapshotClass = ptr.To(true)
 	}
 }

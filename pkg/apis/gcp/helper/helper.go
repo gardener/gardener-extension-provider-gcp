@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
@@ -31,9 +31,9 @@ func FindSubnetByPurpose(subnets []api.Subnet, purpose api.SubnetPurpose) (*api.
 func FindMachineImage(machineImages []api.MachineImage, name, version string, architecture *string) (*api.MachineImage, error) {
 	for _, machineImage := range machineImages {
 		if machineImage.Architecture == nil {
-			machineImage.Architecture = pointer.String(v1beta1constants.ArchitectureAMD64)
+			machineImage.Architecture = ptr.To(v1beta1constants.ArchitectureAMD64)
 		}
-		if machineImage.Name == name && machineImage.Version == version && pointer.StringEqual(architecture, machineImage.Architecture) {
+		if machineImage.Name == name && machineImage.Version == version && ptr.Equal(architecture, machineImage.Architecture) {
 			return &machineImage, nil
 		}
 	}
@@ -50,7 +50,7 @@ func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, image
 				continue
 			}
 			for _, version := range machineImage.Versions {
-				if imageVersion == version.Version && pointer.StringEqual(architecture, version.Architecture) {
+				if imageVersion == version.Version && ptr.Equal(architecture, version.Architecture) {
 					return version.Image, nil
 				}
 			}

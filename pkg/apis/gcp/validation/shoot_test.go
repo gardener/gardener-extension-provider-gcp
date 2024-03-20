@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
@@ -30,7 +30,7 @@ var _ = Describe("Shoot validation", func() {
 
 		It("should return no error because nodes CIDR was provided", func() {
 			networking := &core.Networking{
-				Nodes: pointer.String("1.2.3.4/5"),
+				Nodes: ptr.To("1.2.3.4/5"),
 			}
 
 			errorList := ValidateNetworking(networking, networkingPath)
@@ -59,7 +59,7 @@ var _ = Describe("Shoot validation", func() {
 				{
 					Name: "foo",
 					Volume: &core.Volume{
-						Type:       pointer.String("some-type"),
+						Type:       ptr.To("some-type"),
 						VolumeSize: "40Gi",
 					},
 					Zones: []string{"zone1"},
@@ -67,7 +67,7 @@ var _ = Describe("Shoot validation", func() {
 				{
 					Name: "bar",
 					Volume: &core.Volume{
-						Type:       pointer.String("some-type"),
+						Type:       ptr.To("some-type"),
 						VolumeSize: "40Gi",
 					},
 					Zones: []string{"zone1"},
@@ -76,7 +76,7 @@ var _ = Describe("Shoot validation", func() {
 		})
 
 		It("should pass successfully", func() {
-			workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.28.0")}
+			workers[0].Kubernetes = &core.WorkerKubernetes{Version: ptr.To("1.28.0")}
 
 			errorList := ValidateWorkers(workers, field.NewPath(""))
 

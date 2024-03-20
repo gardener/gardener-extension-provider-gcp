@@ -21,7 +21,7 @@ import (
 	computev1 "google.golang.org/api/compute/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
@@ -101,7 +101,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 
 		poolLabels := getGcePoolLabels(w.worker, pool)
 
-		arch := pointer.StringDeref(pool.Architecture, v1beta1constants.ArchitectureAMD64)
+		arch := ptr.Deref(pool.Architecture, v1beta1constants.ArchitectureAMD64)
 		machineImage, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version, &arch)
 		if err != nil {
 			return err

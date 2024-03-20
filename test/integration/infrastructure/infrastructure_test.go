@@ -31,7 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -112,7 +112,7 @@ var _ = BeforeSuite(func() {
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
-		UseExistingCluster: pointer.Bool(true),
+		UseExistingCluster: ptr.To(true),
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
@@ -223,7 +223,7 @@ var _ = Describe("Infrastructure tests", func() {
 				natIPNames = append(natIPNames, gcpv1alpha1.NatIPName{Name: ipAddressName})
 			}
 			cloudNAT := &gcpv1alpha1.CloudNAT{
-				MinPortsPerVM: pointer.Int32(2048),
+				MinPortsPerVM: ptr.To[int32](2048),
 				NatIPNames:    natIPNames,
 			}
 			providerConfig := newProviderConfig(vpc, cloudNAT)
@@ -299,7 +299,7 @@ func runTest(
 		},
 		Spec: gardencorev1beta1.ShootSpec{
 			Networking: &gardencorev1beta1.Networking{
-				Pods: pointer.String(podCIDR),
+				Pods: ptr.To(podCIDR),
 			},
 		},
 	}
@@ -413,11 +413,11 @@ func newProviderConfig(vpc *gcpv1alpha1.VPC, cloudNAT *gcpv1alpha1.CloudNAT) *gc
 			VPC:      vpc,
 			CloudNAT: cloudNAT,
 			Workers:  workersSubnetCIDR,
-			Internal: pointer.String(internalSubnetCIDR),
+			Internal: ptr.To(internalSubnetCIDR),
 			FlowLogs: &gcpv1alpha1.FlowLogs{
-				AggregationInterval: pointer.String("INTERVAL_5_SEC"),
-				FlowSampling:        pointer.Float32(0.2),
-				Metadata:            pointer.String("INCLUDE_ALL_METADATA"),
+				AggregationInterval: ptr.To("INTERVAL_5_SEC"),
+				FlowSampling:        ptr.To[float32](0.2),
+				Metadata:            ptr.To("INCLUDE_ALL_METADATA"),
 			},
 		},
 	}
