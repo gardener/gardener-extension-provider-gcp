@@ -72,14 +72,17 @@ const (
 	// CSISnapshotValidationName is the constant for the name of the csi-snapshot-validation-webhook component.
 	CSISnapshotValidationName = "csi-snapshot-validation"
 
+	// GlobalAnnotationKeyUseFlow marks how the infrastructure should be reconciled. When this is used reconciliation with flow
+	// will take place. Otherwrise, Terraformer will be used.
+	GlobalAnnotationKeyUseFlow = "provider.extensions.gardener.cloud/use-flow"
 	// AnnotationKeyUseFlow marks how the infrastructure should be reconciled. When this is used reconciliation with flow
 	// will take place. Otherwrise, Terraformer will be used.
-	AnnotationKeyUseFlow = "gcp.provider.extensions.gardener.cloud/use-flow"
-	// SeedLabelKeyUseFlow is the label for seeds to enable flow reconciliation for all of its shoots if value is `true`
+	AnnotationKeyUseFlow = "gcp." + GlobalAnnotationKeyUseFlow
+	// SeedAnnotationKeyUseFlow is the label for seeds to enable flow reconciliation for all of its shoots if value is `true`
 	// or for new shoots only with value `new`
-	SeedLabelKeyUseFlow = AnnotationKeyUseFlow
-	// SeedLabelUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
-	SeedLabelUseFlowValueNew = "new"
+	SeedAnnotationKeyUseFlow = AnnotationKeyUseFlow
+	// SeedAnnotationUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
+	SeedAnnotationUseFlowValueNew = "new"
 )
 
 var (

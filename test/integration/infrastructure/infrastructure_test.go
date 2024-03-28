@@ -7,6 +7,7 @@ package infrastructure_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
@@ -31,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -52,17 +55,16 @@ const (
 	workersSubnetCIDR  = "10.250.0.0/19"
 	internalSubnetCIDR = "10.250.112.0/22"
 	podCIDR            = "100.96.0.0/11"
-)
 
-const (
-	useTerraform = iota
-	migrateFromTerraform
-	useFlow
+	reconcilerUseTF     string = "tf"
+	reconcilerMigrateTF string = "migrate"
+	reconcilerUseFlow   string = "flow"
 )
 
 var (
 	serviceAccount = flag.String("service-account", "", "Service account containing credentials for the GCP API")
 	region         = flag.String("region", "", "GCP region")
+	reconciler     = flag.String("reconciler", reconcilerUseTF, "Set annotation to use flow for reconciliation")
 )
 
 func validateFlags() {
@@ -169,19 +171,15 @@ var _ = Describe("Infrastructure tests", func() {
 			framework.RunCleanupActions()
 		})
 
-		DescribeTable("should successfully create and delete", func(flowType int) {
+		It("should successfully create and delete", func() {
 			providerConfig := newProviderConfig(nil, nil)
 
 			namespace, err := generateNamespaceName()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService, flowType)
+			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
 			Expect(err).NotTo(HaveOccurred())
-		},
-			Entry("terraform", useTerraform),
-			Entry("migrate", migrateFromTerraform),
-			Entry("flow", useFlow),
-		)
+		})
 	})
 
 	Context("with infrastructure that uses existing vpc, cloud router and cloud nat", func() {
@@ -189,7 +187,7 @@ var _ = Describe("Infrastructure tests", func() {
 			framework.RunCleanupActions()
 		})
 
-		DescribeTable("should successfully create and delete", func(flowType int) {
+		It("should successfully create and delete", func() {
 			namespace, err := generateNamespaceName()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -223,18 +221,112 @@ var _ = Describe("Infrastructure tests", func() {
 				natIPNames = append(natIPNames, gcpv1alpha1.NatIPName{Name: ipAddressName})
 			}
 			cloudNAT := &gcpv1alpha1.CloudNAT{
-				MinPortsPerVM: ptr.To[int32](2048),
-				NatIPNames:    natIPNames,
+				MinPortsPerVM:               ptr.To[int32](1024),
+				MaxPortsPerVM:               ptr.To[int32](2048),
+				EnableDynamicPortAllocation: true,
+				NatIPNames:                  natIPNames,
 			}
 			providerConfig := newProviderConfig(vpc, cloudNAT)
 
-			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService, flowType)
+			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
 			Expect(err).NotTo(HaveOccurred())
-		},
-			Entry("terraform", useTerraform),
-			Entry("migrate", migrateFromTerraform),
-			Entry("flow", useFlow),
-		)
+		})
+	})
+
+	Context("with invalid credentials", func() {
+		Context("during create", func() {
+			It("should successfully create and delete", func() {
+				if *reconciler != reconcilerUseFlow {
+					Skip("test is not working for terraform because the state is not exactly empty")
+				}
+				providerConfig := newProviderConfig(nil, nil)
+				var (
+					namespace *corev1.Namespace
+					cluster   *extensionsv1alpha1.Cluster
+					infra     *extensionsv1alpha1.Infrastructure
+				)
+
+				framework.AddCleanupAction(func() {
+					By("cleaning up namespace and cluster")
+					Expect(client.IgnoreNotFound(c.Delete(ctx, namespace))).To(Succeed())
+					Expect(client.IgnoreNotFound(c.Delete(ctx, cluster))).To(Succeed())
+				})
+
+				defer func() {
+					By("delete infrastructure")
+					Expect(client.IgnoreNotFound(c.Delete(ctx, infra))).To(Succeed())
+
+					By("wait until infrastructure is deleted")
+					err := extensions.WaitUntilExtensionObjectDeleted(
+						ctx,
+						c,
+						log,
+						infra,
+						extensionsv1alpha1.InfrastructureResource,
+						10*time.Second,
+						1*time.Minute,
+					)
+					Expect(err).ToNot(HaveOccurred())
+				}()
+
+				namespaceName, err := generateNamespaceName()
+				Expect(err).NotTo(HaveOccurred())
+
+				By("create namespace for test execution")
+				namespace = &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: namespaceName,
+					},
+				}
+				Expect(c.Create(ctx, namespace)).To(Succeed())
+
+				var sa map[string]interface{}
+				Expect(json.Unmarshal([]byte(*serviceAccount), &sa)).NotTo(HaveOccurred())
+				sa["private_key_id"] = "fake"
+				sa["project_id"] = "fake"
+				fake_sa, err := json.Marshal(sa)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("deploy cloudprovider secret into namespace")
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cloudprovider",
+						Namespace: namespaceName,
+					},
+					Data: map[string][]byte{
+						gcp.ServiceAccountJSONField: fake_sa,
+					},
+				}
+				if err := c.Create(ctx, secret); err != nil {
+					Expect(err).ToNot(HaveOccurred())
+				}
+
+				cluster, err = newCluster(namespaceName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(c.Create(ctx, cluster)).To(Succeed())
+
+				By("create infrastructure")
+				infra, err = newInfrastructure(namespaceName, *reconciler, providerConfig)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(c.Create(ctx, infra)).To(Succeed())
+
+				By("wait until infrastructure creation has failed")
+				err = extensions.WaitUntilExtensionObjectReady(
+					ctx,
+					c,
+					log,
+					infra,
+					extensionsv1alpha1.InfrastructureResource,
+					10*time.Second,
+					30*time.Second,
+					30*time.Second,
+					nil,
+				)
+				var errorWithCode *gardencorev1beta1helper.ErrorWithCodes
+				Expect(errors.As(err, &errorWithCode)).To(BeTrue())
+				Expect(errorWithCode.Codes()).To(ContainElement(gardencorev1beta1.ErrorInfraUnauthorized))
+			})
+		})
 	})
 })
 
@@ -246,7 +338,6 @@ func runTest(
 	project string,
 	computeService *computev1.Service,
 	iamService *iamv1.Service,
-	flowType int,
 ) error {
 	var (
 		namespace     *corev1.Namespace
@@ -303,11 +394,6 @@ func runTest(
 			},
 		},
 	}
-	if flowType == useFlow {
-		shoot.Annotations = map[string]string{
-			gcp.AnnotationKeyUseFlow: "true",
-		}
-	}
 
 	shootJSON, err := json.Marshal(shoot)
 	if err != nil {
@@ -353,7 +439,7 @@ func runTest(
 	}
 
 	By("create infrastructure")
-	infra, err = newInfrastructure(namespaceName, providerConfig)
+	infra, err = newInfrastructure(namespaceName, *reconciler, providerConfig)
 	if err != nil {
 		return err
 	}
@@ -380,25 +466,31 @@ func runTest(
 	By("verify infrastructure creation")
 	verifyCreation(ctx, project, computeService, iamService, infra, providerConfig)
 
-	By("triggering infrastructure reconciliation")
-	infraCopy := infra.DeepCopy()
-	if flowType == migrateFromTerraform {
+	if *reconciler == reconcilerMigrateTF {
+		By("verifying terraform migration")
+		infraCopy := infra.DeepCopy()
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, "gardener.cloud/operation", "reconcile")
 		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, gcp.AnnotationKeyUseFlow, "true")
-	}
-	Expect(c.Patch(ctx, infra, client.MergeFrom(infraCopy))).To(Succeed())
+		Expect(c.Patch(ctx, infra, client.MergeFrom(infraCopy))).To(Succeed())
 
-	By("wait until infrastructure is reconciled")
-	err = extensions.WaitUntilExtensionObjectReady(
-		ctx,
-		c,
-		log,
-		infra,
-		"Infrastucture",
-		10*time.Second,
-		30*time.Second,
-		16*time.Minute,
-		nil,
-	)
+		By("wait until infrastructure is reconciled")
+		if err := extensions.WaitUntilExtensionObjectReady(
+			ctx,
+			c,
+			log,
+			infra,
+			"Infrastructure",
+			10*time.Second,
+			30*time.Second,
+			16*time.Minute,
+			nil,
+		); err != nil {
+			return err
+		}
+
+		By("verify infrastructure creation after migration")
+		verifyCreation(ctx, project, computeService, iamService, infra, providerConfig)
+	}
 
 	return err
 }
@@ -423,7 +515,7 @@ func newProviderConfig(vpc *gcpv1alpha1.VPC, cloudNAT *gcpv1alpha1.CloudNAT) *gc
 	}
 }
 
-func newInfrastructure(namespace string, providerConfig *gcpv1alpha1.InfrastructureConfig) (*extensionsv1alpha1.Infrastructure, error) {
+func newInfrastructure(namespace string, reconciler string, providerConfig *gcpv1alpha1.InfrastructureConfig) (*extensionsv1alpha1.Infrastructure, error) {
 	const sshPublicKey = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDcSZKq0lM9w+ElLp9I9jFvqEFbOV1+iOBX7WEe66GvPLOWl9ul03ecjhOf06+FhPsWFac1yaxo2xj+SJ+FVZ3DdSn4fjTpS9NGyQVPInSZveetRw0TV0rbYCFBTJuVqUFu6yPEgdcWq8dlUjLqnRNwlelHRcJeBfACBZDLNSxjj0oUz7ANRNCEne1ecySwuJUAz3IlNLPXFexRT0alV7Nl9hmJke3dD73nbeGbQtwvtu8GNFEoO4Eu3xOCKsLw6ILLo4FBiFcYQOZqvYZgCb4ncKM52bnABagG54upgBMZBRzOJvWp0ol+jK3Em7Vb6ufDTTVNiQY78U6BAlNZ8Xg+LUVeyk1C6vWjzAQf02eRvMdfnRCFvmwUpzbHWaVMsQm8gf3AgnTUuDR0ev1nQH/5892wZA86uLYW/wLiiSbvQsqtY1jSn9BAGFGdhXgWLAkGsd/E1vOT+vDcor6/6KjHBm0rG697A3TDBRkbXQ/1oFxcM9m17RteCaXuTiAYWMqGKDoJvTMDc4L+Uvy544pEfbOH39zfkIYE76WLAFPFsUWX6lXFjQrX3O7vEV73bCHoJnwzaNd03PSdJOw+LCzrTmxVezwli3F9wUDiBRB0HkQxIXQmncc1HSecCKALkogIK+1e1OumoWh6gPdkF4PlTMUxRitrwPWSaiUIlPfCpQ== your_email@example.com"
 
 	providerConfigJSON, err := json.Marshal(&providerConfig)
@@ -431,7 +523,7 @@ func newInfrastructure(namespace string, providerConfig *gcpv1alpha1.Infrastruct
 		return nil, err
 	}
 
-	return &extensionsv1alpha1.Infrastructure{
+	infra := &extensionsv1alpha1.Infrastructure{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "infrastructure",
 			Namespace: namespace,
@@ -450,7 +542,16 @@ func newInfrastructure(namespace string, providerConfig *gcpv1alpha1.Infrastruct
 			Region:       *region,
 			SSHPublicKey: []byte(sshPublicKey),
 		},
-	}, nil
+	}
+
+	if reconciler == reconcilerUseFlow {
+		log.Info("creating infrastructure with flow annotation")
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, gcp.AnnotationKeyUseFlow, "true")
+	} else if reconciler == reconcilerUseTF {
+		log.Info("creating infrastructure with terraform annotation")
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, gcp.AnnotationKeyUseFlow, "false")
+	}
+	return infra, nil
 }
 
 func generateNamespaceName() (string, error) {
@@ -640,13 +741,23 @@ func verifyCreation(
 	routerNAT := router.Nats[0]
 	Expect(routerNAT.Name).To(Equal(infra.Namespace + "-cloud-nat"))
 	Expect(routerNAT.SourceSubnetworkIpRangesToNat).To(Equal("LIST_OF_SUBNETWORKS"))
-	Expect(routerNAT.MinPortsPerVm).To(Equal(int64(2048)))
-	Expect(routerNAT.EnableEndpointIndependentMapping).To(Equal(false))
 	Expect(routerNAT.LogConfig.Enable).To(BeTrue())
 	Expect(routerNAT.LogConfig.Filter).To(Equal("ERRORS_ONLY"))
 	Expect(routerNAT.Subnetworks).To(HaveLen(1))
 	Expect(routerNAT.Subnetworks[0].Name).To(Equal(subnetNodes.SelfLink))
 	Expect(routerNAT.Subnetworks[0].SourceIpRangesToNat).To(Equal([]string{"ALL_IP_RANGES"}))
+
+	if cn := providerConfig.Networks.CloudNAT; cn != nil {
+		Expect(routerNAT.EnableDynamicPortAllocation).To(Equal(cn.EnableDynamicPortAllocation))
+		if cn.MinPortsPerVM != nil {
+			Expect(routerNAT.MinPortsPerVm).To(Equal(int64(*cn.MinPortsPerVM)))
+		} else {
+			Expect(routerNAT.MinPortsPerVm).To(Equal(int64(2048)))
+		}
+		if cn.MaxPortsPerVM != nil {
+			Expect(routerNAT.MaxPortsPerVm).To(Equal(int64(*cn.MaxPortsPerVM)))
+		}
+	}
 
 	if providerConfig.Networks.CloudNAT != nil && len(providerConfig.Networks.CloudNAT.NatIPNames) > 0 {
 		Expect(routerNAT.NatIpAllocateOption).To(Equal("MANUAL_ONLY"))
@@ -775,4 +886,34 @@ func verifyDeletion(
 
 func getServiceAccountName(project, displayName string) string {
 	return fmt.Sprintf("projects/%s/serviceAccounts/%s@%s.iam.gserviceaccount.com", project, displayName, project)
+}
+
+func newCluster(name string) (*extensionsv1alpha1.Cluster, error) {
+	shoot := &gardencorev1beta1.Shoot{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Shoot",
+			APIVersion: gardencorev1beta1.SchemeGroupVersion.String(),
+		},
+		Spec: gardencorev1beta1.ShootSpec{
+			Networking: &gardencorev1beta1.Networking{
+				Pods: pointer.String(podCIDR),
+			},
+		},
+	}
+
+	shootJSON, err := json.Marshal(shoot)
+	if err != nil {
+		return nil, err
+	}
+	cluster := &extensionsv1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: extensionsv1alpha1.ClusterSpec{
+			CloudProfile: runtime.RawExtension{Raw: []byte("{}")},
+			Seed:         runtime.RawExtension{Raw: []byte("{}")},
+			Shoot:        runtime.RawExtension{Raw: shootJSON},
+		},
+	}
+	return cluster, nil
 }

@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -60,40 +61,48 @@ var _ = Describe("Mutate", func() {
 			ctx     context.Context
 		)
 
-		Context("create", func() {
-			BeforeEach(func() {
-				mutator = New(mgr, logger)
-				ctx = context.TODO()
+		BeforeEach(func() {
+			mutator = New(mgr, logger)
+			ctx = context.TODO()
 
-				c.EXPECT().Get(ctx, client.ObjectKey{Name: shootNamespace}, gomock.AssignableToTypeOf(&extensionsv1alpha1.Cluster{})).
-					DoAndReturn(
-						func(_ context.Context, _ types.NamespacedName, obj *extensionsv1alpha1.Cluster, _ ...client.GetOption) error {
-							seedJSON, err := json.Marshal(cluster.Seed)
-							Expect(err).NotTo(HaveOccurred())
-							*obj = extensionsv1alpha1.Cluster{
-								ObjectMeta: cluster.ObjectMeta,
-								Spec: extensionsv1alpha1.ClusterSpec{
-									Seed: runtime.RawExtension{Raw: seedJSON},
-								},
-							}
-							return nil
-						})
+			c.EXPECT().Get(ctx, client.ObjectKey{Name: shootNamespace}, gomock.AssignableToTypeOf(&extensionsv1alpha1.Cluster{})).
+				DoAndReturn(
+					func(_ context.Context, _ types.NamespacedName, obj *extensionsv1alpha1.Cluster, _ ...client.GetOption) error {
+						seedJSON, err := json.Marshal(cluster.Seed)
+						Expect(err).NotTo(HaveOccurred())
+						shootJSON, err := json.Marshal(cluster.Shoot)
+						Expect(err).NotTo(HaveOccurred())
+						*obj = extensionsv1alpha1.Cluster{
+							ObjectMeta: cluster.ObjectMeta,
+							Spec: extensionsv1alpha1.ClusterSpec{
+								Seed:  runtime.RawExtension{Raw: seedJSON},
+								Shoot: runtime.RawExtension{Raw: shootJSON},
+							},
+						}
+						return nil
+					}).AnyTimes()
 
-				cluster = &controller.Cluster{
+			cluster = &controller.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: shootNamespace,
+				},
+				Seed: &gardencorev1beta1.Seed{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: shootNamespace,
+						Name:        shootNamespace,
+						Annotations: map[string]string{},
 					},
-					Seed: &gardencorev1beta1.Seed{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:   shootNamespace,
-							Labels: map[string]string{},
-						},
+				},
+				Shoot: &gardencorev1beta1.Shoot{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{},
 					},
-				}
-			})
+				},
+			}
+		})
 
-			It("should add use-flow annotation if seed label is set to new", func() {
-				cluster.Seed.Labels[gcp.SeedLabelKeyUseFlow] = gcp.SeedLabelUseFlowValueNew
+		Context("infrastructure creation", func() {
+			It("should add global use-flow annotation if shoot contains it", func() {
+				cluster.Shoot.Annotations[gcp.GlobalAnnotationKeyUseFlow] = "foo"
 				newInfra := &extensionsv1alpha1.Infrastructure{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "dummy",
@@ -102,14 +111,40 @@ var _ = Describe("Mutate", func() {
 				}
 
 				err := mutator.Mutate(ctx, newInfra, nil)
-
 				Expect(err).To(BeNil())
+				Expect(newInfra.Annotations[gcp.AnnotationKeyUseFlow]).To(Equal("foo"))
+			})
+
+			It("should add use-flow annotation if shoot contains it", func() {
+				cluster.Shoot.Annotations[gcp.AnnotationKeyUseFlow] = "foo"
+				newInfra := &extensionsv1alpha1.Infrastructure{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dummy",
+						Namespace: shootNamespace,
+					},
+				}
+
+				err := mutator.Mutate(ctx, newInfra, nil)
+				Expect(err).To(BeNil())
+				Expect(newInfra.Annotations[gcp.AnnotationKeyUseFlow]).To(Equal("foo"))
+			})
+
+			It("should add use-flow annotation if seed label is set to new", func() {
+				cluster.Seed.Annotations[gcp.SeedAnnotationKeyUseFlow] = gcp.SeedAnnotationUseFlowValueNew
+				newInfra := &extensionsv1alpha1.Infrastructure{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dummy",
+						Namespace: shootNamespace,
+					},
+				}
+
+				err := mutator.Mutate(ctx, newInfra, nil)
 				Expect(err).To(BeNil())
 				Expect(newInfra.Annotations[gcp.AnnotationKeyUseFlow]).To(Equal("true"))
 			})
 
-			It("should do nothing if seed label is set to true", func() {
-				cluster.Seed.Labels[gcp.SeedLabelKeyUseFlow] = "true"
+			It("should add use-flow annotation if seed necessitates it", func() {
+				cluster.Seed.Annotations[gcp.SeedAnnotationKeyUseFlow] = "true"
 				newInfra := &extensionsv1alpha1.Infrastructure{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "dummy",
@@ -118,21 +153,13 @@ var _ = Describe("Mutate", func() {
 				}
 				err := mutator.Mutate(ctx, newInfra, nil)
 				Expect(err).To(BeNil())
-				Expect(newInfra.Annotations[gcp.AnnotationKeyUseFlow]).To(Equal(""))
+				Expect(newInfra.Annotations[gcp.AnnotationKeyUseFlow]).To(Equal("true"))
 			})
 		})
 
 		Context("update", func() {
-			BeforeEach(func() {
-				mutator = New(mgr, logger)
-				cluster = &controller.Cluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: shootNamespace,
-					},
-				}
-			})
-
-			It("should do nothing on update", func() {
+			It("should do nothing if seed annotation use-flow is only for new shoots", func() {
+				cluster.Seed.Annotations[gcp.SeedAnnotationKeyUseFlow] = gcp.SeedAnnotationUseFlowValueNew
 				newInfra := &extensionsv1alpha1.Infrastructure{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "dummy",
@@ -140,6 +167,66 @@ var _ = Describe("Mutate", func() {
 					},
 				}
 				err := mutator.Mutate(ctx, newInfra, newInfra)
+				Expect(err).To(BeNil())
+				Expect(newInfra.Annotations[gcp.AnnotationKeyUseFlow]).To(Equal(""))
+			})
+
+			It("should mutate if seed annotation is set to all shoots", func() {
+				cluster.Seed.Annotations[gcp.SeedAnnotationKeyUseFlow] = "true"
+				newInfra := &extensionsv1alpha1.Infrastructure{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dummy",
+						Namespace: shootNamespace,
+					},
+				}
+				err := mutator.Mutate(ctx, newInfra, newInfra)
+				Expect(err).To(BeNil())
+				Expect(newInfra.Annotations[gcp.AnnotationKeyUseFlow]).To(Equal("true"))
+			})
+
+			It("should mutate if shoot annotation is set", func() {
+				cluster.Shoot.Annotations[gcp.GlobalAnnotationKeyUseFlow] = "foo"
+				newInfra := &extensionsv1alpha1.Infrastructure{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dummy",
+						Namespace: shootNamespace,
+					},
+				}
+				err := mutator.Mutate(ctx, newInfra, newInfra)
+				Expect(err).To(BeNil())
+				Expect(newInfra.Annotations[gcp.AnnotationKeyUseFlow]).To(Equal("foo"))
+			})
+		})
+
+		Context("infrastructure deletion", func() {
+			It("should do nothing if infra is deleted", func() {
+				cluster.Shoot.Annotations[gcp.GlobalAnnotationKeyUseFlow] = "foo"
+
+				newInfra := &extensionsv1alpha1.Infrastructure{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "dummy",
+						Namespace:         shootNamespace,
+						DeletionTimestamp: ptr.To(metav1.Now()),
+					},
+				}
+
+				err := mutator.Mutate(ctx, newInfra, nil)
+				Expect(err).To(BeNil())
+				Expect(newInfra.Annotations[gcp.AnnotationKeyUseFlow]).To(Equal(""))
+			})
+
+			It("should do nothing if shoot is deleted", func() {
+				cluster.Shoot.Annotations[gcp.GlobalAnnotationKeyUseFlow] = "foo"
+				cluster.Shoot.DeletionTimestamp = ptr.To(metav1.Now())
+
+				newInfra := &extensionsv1alpha1.Infrastructure{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dummy",
+						Namespace: shootNamespace,
+					},
+				}
+
+				err := mutator.Mutate(ctx, newInfra, nil)
 				Expect(err).To(BeNil())
 				Expect(newInfra.Annotations[gcp.AnnotationKeyUseFlow]).To(Equal(""))
 			})

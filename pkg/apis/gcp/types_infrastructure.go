@@ -155,3 +155,13 @@ type FlowLogs struct {
 	// Metadata configures whether metadata fields should be added to the reported VPC flow logs.
 	Metadata *string
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// InfrastructureState contains state information of the infrastructure resource.
+type InfrastructureState struct {
+	metav1.TypeMeta
+	// Data is map to store things.
+	// +optional
+	Data map[string]string
+}
