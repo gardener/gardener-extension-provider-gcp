@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
@@ -41,6 +42,7 @@ func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, options A
 		ControllerOptions: options.Controller,
 		Predicates:        infrastructure.DefaultPredicates(ctx, mgr, options.IgnoreOperationAnnotation),
 		Type:              gcp.Type,
+		KnownCodes:        helper.KnownCodes,
 	})
 }
 
