@@ -16,6 +16,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const (
+	defaultInformerPeriod = 10 * time.Second
+)
+
 // Timestamper is an interface around time package.
 type Timestamper interface {
 	Now() time.Time
@@ -62,8 +66,6 @@ type BasicFlowContext struct {
 
 	span      bool
 	persistFn flow.TaskFn
-	preHooks  []flow.TaskFn
-	postHooks []flow.TaskFn
 
 	lastPersistedGeneration int64
 	lastPersistedAt         time.Time
@@ -77,18 +79,6 @@ func NewBasicFlowContext() *BasicFlowContext {
 		timer:           DefaultTimer,
 	}
 	return flowContext
-}
-
-// WithPre are Task functions that are run before each node in the graph.
-func (c *BasicFlowContext) WithPre(fns ...flow.TaskFn) *BasicFlowContext {
-	c.preHooks = append(c.preHooks, fns...)
-	return c
-}
-
-// WithPost are Task functions that are run after each successful node in the graph.
-func (c *BasicFlowContext) WithPost(fns ...flow.TaskFn) *BasicFlowContext {
-	c.preHooks = append(c.postHooks, fns...)
-	return c
 }
 
 // WithLogger is the logger that gets injected into the context for each node.
@@ -110,24 +100,11 @@ func (c *BasicFlowContext) WithPersist(task flow.TaskFn) *BasicFlowContext {
 	return c
 }
 
-// PersistState persists the internal state to the provider status if it has changed and force is true
-// or it has not been persisted during the `PersistInterval`.
+// PersistState persists the internal state to the provider status.
 func (c *BasicFlowContext) PersistState(ctx context.Context) error {
 	c.persistorLock.Lock()
 	defer c.persistorLock.Unlock()
 
-	// currentGeneration := c.exporter.CurrentGeneration()
-	// if c.lastPersistedGeneration == currentGeneration {
-	// 	return nil
-	// }
-	// if c.flowStatePersistor != nil {
-	// 	newState := c.exporter.ExportAsFlatMap()
-	// 	if err := c.flowStatePersistor(ctx, newState); err != nil {
-	// 		return err
-	// 	}
-	// }
-	// c.lastPersistedGeneration = currentGeneration
-	// c.lastPersistedAt = time.Now()
 	return c.persistFn(ctx)
 }
 
@@ -168,6 +145,7 @@ func (c *BasicFlowContext) AddTask(g *flow.Graph, name string, fn flow.TaskFn, o
 	return g.Add(task)
 }
 
+// wrapTaskFn sets up the task function fn. It wraps it with the hooks
 func (c *BasicFlowContext) wrapTaskFn(flowName, taskName string, fn flow.TaskFn) flow.TaskFn {
 	return func(ctx context.Context) error {
 		log := c.log.WithValues("flow", flowName, "task", taskName)
@@ -181,12 +159,11 @@ func (c *BasicFlowContext) wrapTaskFn(flowName, taskName string, fn flow.TaskFn)
 			}()
 		}
 
-		if err := flow.Sequential(c.preHooks...)(ctx); err != nil {
-			return err
-		}
+		w := InformOnWaiting(log, defaultInformerPeriod, fmt.Sprintf("still trying to [%s]...", taskName)).IntoContext(ctx)
+		defer w.Done()
+
 		var beforeTs time.Time
 		if c.span {
-			log.Info("task starting")
 			beforeTs = c.timer.Now()
 		}
 		err := fn(ctx)
@@ -195,18 +172,18 @@ func (c *BasicFlowContext) wrapTaskFn(flowName, taskName string, fn flow.TaskFn)
 		}
 		if err != nil {
 			// don't wrap error with '%w', as otherwise the error context get lost
-			err = fmt.Errorf("failed to %s: %s", taskName, err)
+			err = fmt.Errorf("failed to %q: %s", taskName, err)
 			return err
 		}
-		return flow.Sequential(c.postHooks...)(ctx)
+
+		return nil
 	}
 }
 
-// LogFromContext returns the log from the context when called within a task function added with the `AddTask` method.
+// LogFromContext returns the log from the context when called within a task function added with the `AddTask` method. If no logger is present, a new noop-logger will be returned.
 func LogFromContext(ctx context.Context) logr.Logger {
 	if log, err := logr.FromContext(ctx); err == nil {
 		return log
 	}
-	// create a noop logger
 	return logr.New(nil)
 }

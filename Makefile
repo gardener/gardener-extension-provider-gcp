@@ -64,7 +64,8 @@ start:
 		--heartbeat-renew-interval-seconds=30 \
 		--webhook-config-service-port=443 \
 		--metrics-bind-address=:8080 \
-		--health-bind-address=:8081
+		--health-bind-address=:8081 \
+		--log-level=debug
 
 
 .PHONY: start-admission

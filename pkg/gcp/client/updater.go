@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"golang.org/x/exp/slices"
+	"google.golang.org/api/compute/v1"
 )
 
 var _ Updater = &updater{}
@@ -14,19 +15,19 @@ var _ Updater = &updater{}
 // Updater can perform operations to update infrastructure resources.
 type Updater interface {
 	// VPC updates the respective infrastructure object according to desired state.
-	VPC(ctx context.Context, desired, current *Network) (*Network, error)
+	VPC(ctx context.Context, desired, current *compute.Network) (*compute.Network, error)
 	// Subnet updates the respective infrastructure object according to desired state.
-	Subnet(ctx context.Context, region string, desired, current *Subnetwork) (*Subnetwork, error)
+	Subnet(ctx context.Context, region string, desired, current *compute.Subnetwork) (*compute.Subnetwork, error)
 	// Router updates the respective infrastructure object according to desired state.
-	Router(ctx context.Context, region string, desired, current *Router) (*Router, error)
+	Router(ctx context.Context, region string, desired, current *compute.Router) (*compute.Router, error)
 	// NAT updates the respective infrastructure object according to desired state.
-	NAT(ctx context.Context, region string, router *Router, desired *RouterNat) (*Router, *RouterNat, error)
+	NAT(ctx context.Context, region string, router *compute.Router, desired *compute.RouterNat) (*compute.Router, *compute.RouterNat, error)
 	// DeleteNAT deletes the NAT gateway from the respective router.
 	// Since NAT Gateways are a property of Cloud Routers, DeleteNAT is a special update function for the CloudRouter that
 	// will remove the NAT with specified name.
-	DeleteNAT(ctx context.Context, region, router, nat string) (*Router, error)
+	DeleteNAT(ctx context.Context, region, router, nat string) (*compute.Router, error)
 	// Firewall updates the respective infrastructure object according to desired state.
-	Firewall(ctx context.Context, firewall *Firewall) (*Firewall, error)
+	Firewall(ctx context.Context, firewall *compute.Firewall) (*compute.Firewall, error)
 }
 
 type updater struct {
@@ -42,7 +43,7 @@ func NewUpdater(log logr.Logger, compute ComputeClient) Updater {
 	}
 }
 
-func (u *updater) VPC(ctx context.Context, desired, current *Network) (*Network, error) {
+func (u *updater) VPC(ctx context.Context, desired, current *compute.Network) (*compute.Network, error) {
 	// guard against invalid updates
 	if desired.AutoCreateSubnetworks != current.AutoCreateSubnetworks {
 		return nil, NewInvalidUpdateError("AutoCreateSubnetworks")
@@ -63,7 +64,7 @@ func (u *updater) VPC(ctx context.Context, desired, current *Network) (*Network,
 	return u.compute.PatchNetwork(ctx, current.Name, desired)
 }
 
-func (u *updater) Subnet(ctx context.Context, region string, desired, current *Subnetwork) (*Subnetwork, error) {
+func (u *updater) Subnet(ctx context.Context, region string, desired, current *compute.Subnetwork) (*compute.Subnetwork, error) {
 	var (
 		err error
 	)
@@ -87,7 +88,7 @@ func (u *updater) Subnet(ctx context.Context, region string, desired, current *S
 	// EnableFlowLogs can't be combined with updates to the LogConfig settings. Therefore always issue a separate update when it changes before making the rest of the changes
 	// if desired.EnableFlowLogs && desired.EnableFlowLogs != current.EnableFlowLogs {
 	if desired.EnableFlowLogs != current.EnableFlowLogs {
-		subnet := &Subnetwork{
+		subnet := &compute.Subnetwork{
 			Fingerprint:     current.Fingerprint,
 			EnableFlowLogs:  desired.EnableFlowLogs,
 			ForceSendFields: []string{"EnableFlowLogs"},
@@ -119,7 +120,7 @@ func (u *updater) Subnet(ctx context.Context, region string, desired, current *S
 	return u.compute.PatchSubnet(ctx, region, current.Name, desired)
 }
 
-func (u *updater) Router(ctx context.Context, region string, desired, current *Router) (*Router, error) {
+func (u *updater) Router(ctx context.Context, region string, desired, current *compute.Router) (*compute.Router, error) {
 	// While Nats can and should be updated via the router API, we want to handle Nats as a separate resource and allow
 	// updates to Nats only via the specialized methods. Therefor, we will deny updates to Nats via this function call.
 	desired.Nats = nil
@@ -152,7 +153,7 @@ func (u *updater) Router(ctx context.Context, region string, desired, current *R
 // they are associated with. Therefore, we always fetch a "fresh" copy of the router before attempting to update NATs.
 // NAT is an "upsert" call. If there are not any CloudNAT in the router with the specified name, we will insert the desired spec (Create).
 // If there is already a NAT with the specified name, we will "replaces" the spec with the desired one.
-func (u *updater) NAT(ctx context.Context, region string, router *Router, desired *RouterNat) (*Router, *RouterNat, error) {
+func (u *updater) NAT(ctx context.Context, region string, router *compute.Router, desired *compute.RouterNat) (*compute.Router, *compute.RouterNat, error) {
 	if router == nil {
 		err := fmt.Errorf("router cannot be nil")
 		u.log.Error(err, "failed to update NAT")
@@ -187,7 +188,7 @@ func (u *updater) NAT(ctx context.Context, region string, router *Router, desire
 		desired.NullFields = append(desired.NullFields, "NatIps")
 	}
 
-	index := slices.IndexFunc(router.Nats, func(nat *RouterNat) bool {
+	index := slices.IndexFunc(router.Nats, func(nat *compute.RouterNat) bool {
 		return nat.Name == desired.Name
 	})
 
@@ -223,7 +224,7 @@ func (u *updater) NAT(ctx context.Context, region string, router *Router, desire
 	return nil, nil, fmt.Errorf("failed to locate CloudNAT in router")
 }
 
-func (u *updater) DeleteNAT(ctx context.Context, region, routerId, natId string) (*Router, error) {
+func (u *updater) DeleteNAT(ctx context.Context, region, routerId, natId string) (*compute.Router, error) {
 	router, err := u.compute.GetRouter(ctx, region, routerId)
 	if err != nil {
 		return nil, err
@@ -232,7 +233,7 @@ func (u *updater) DeleteNAT(ctx context.Context, region, routerId, natId string)
 		return nil, nil
 	}
 
-	index := slices.IndexFunc(router.Nats, func(nat *RouterNat) bool {
+	index := slices.IndexFunc(router.Nats, func(nat *compute.RouterNat) bool {
 		if nat != nil && nat.Name == natId {
 			return true
 		}
@@ -254,7 +255,7 @@ func (u *updater) DeleteNAT(ctx context.Context, region, routerId, natId string)
 	return router, nil
 }
 
-func (u *updater) Firewall(ctx context.Context, firewall *Firewall) (*Firewall, error) {
+func (u *updater) Firewall(ctx context.Context, firewall *compute.Firewall) (*compute.Firewall, error) {
 	fw, err := u.compute.PatchFirewallRule(ctx, firewall.Name, firewall)
 	if err != nil {
 		return nil, err

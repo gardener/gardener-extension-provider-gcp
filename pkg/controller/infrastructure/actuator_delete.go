@@ -17,7 +17,7 @@ import (
 
 // Delete implements infrastructure.Actuator.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	return util.DetermineError(a.delete(ctx, log, SelectorFunc(OnDelete), infra, cluster), helper.KnownCodes)
+	return util.DetermineError(a.delete(ctx, log, OnDelete, infra, cluster), helper.KnownCodes)
 }
 
 // ForceDelete forcefully deletes the Infrastructure.
@@ -25,8 +25,8 @@ func (a *actuator) ForceDelete(_ context.Context, _ logr.Logger, _ *extensionsv1
 	return nil
 }
 
-func (a *actuator) delete(ctx context.Context, log logr.Logger, selector StrategySelector, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	useFlow, err := selector.Select(infra, cluster)
+func (a *actuator) delete(ctx context.Context, log logr.Logger, selectorFn SelectorFunc, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
+	useFlow, err := selectorFn(infra, cluster)
 	if err != nil {
 		return err
 	}

@@ -71,16 +71,16 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		return fmt.Errorf("failed to create flow context: %v", err)
 	}
 
-	status, state, err := fctx.Reconcile(ctx)
+	status, currentState, err := fctx.Reconcile(ctx)
 	if err != nil {
-		// if there is an error we only patch the state
-		if innerErr := patchProviderStatusAndState(ctx, f.client, infra, nil, state); innerErr != nil {
-			f.log.Error(innerErr, "failed to persist state after failed reconciliation", "original error", err)
+		// if there is an error we only patch the currentState
+		if innerErr := patchProviderStatusAndState(ctx, f.client, infra, nil, currentState); innerErr != nil {
+			f.log.Error(innerErr, "failed to persist currentState after failed reconciliation", "original error", err)
 		}
 		return err
 	}
 
-	return patchProviderStatusAndState(ctx, f.client, infra, status, state)
+	return patchProviderStatusAndState(ctx, f.client, infra, status, currentState)
 }
 
 // Delete deletes the infrastructure resource using the flow reconciler.
@@ -125,21 +125,21 @@ func (f *FlowReconciler) Restore(ctx context.Context, infra *extensionsv1alpha1.
 	return f.Reconcile(ctx, infra, cluster)
 }
 
-func (f *FlowReconciler) infrastructureStateFromRaw(ctx context.Context, infra *extensionsv1alpha1.Infrastructure) (*gcp.InfrastructureState, error) {
+func (f *FlowReconciler) infrastructureStateFromRaw(ctx context.Context, infra *extensionsv1alpha1.Infrastructure) (*gcp.InfrastructureState, bool, error) {
 	state := &gcp.InfrastructureState{}
 	raw := infra.Status.State
 	// when the function is called, we may have: a. no state, b. terraform state (migration) or c. flow state. In case of a TF state
 	// because no explicit migration to the new flow format is necessary, we simply return an empty state.
 	if ok, err := hasFlowState(raw); err != nil {
-		return nil, err
+		return nil, false, err
 	} else if !ok {
-		return state, nil
+		return state, false, nil
 	}
 
 	if raw != nil {
 		jsonBytes, err := raw.MarshalJSON()
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		// todo(ka): for now we won't use the actuator decoder because the flow state kind was registered as "FlowState" and not "InfrastructureState". So we

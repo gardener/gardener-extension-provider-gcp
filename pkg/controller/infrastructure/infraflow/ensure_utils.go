@@ -3,11 +3,10 @@ package infraflow
 import (
 	"fmt"
 
-	compute "google.golang.org/api/compute/v1"
+	"google.golang.org/api/compute/v1"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 const (
@@ -30,45 +29,45 @@ func GetObject[T any](wb shared.Whiteboard, key string) T {
 	return o.(T)
 }
 
-func (c *FlowContext) ensureObjectKeys(keys ...string) error {
+func (fctx *FlowContext) ensureObjectKeys(keys ...string) error {
 	for _, k := range keys {
-		if c.whiteboard.GetObject(k) == nil {
+		if fctx.whiteboard.GetObject(k) == nil {
 			return fmt.Errorf("could not locate required key: %s", k)
 		}
 	}
 	return nil
 }
 
-func (c *FlowContext) serviceAccountNameFromConfig() string {
-	return c.clusterName
+func (fctx *FlowContext) serviceAccountNameFromConfig() string {
+	return fctx.clusterName
 }
 
-func (c *FlowContext) vpcNameFromConfig() string {
-	vpcName := c.clusterName
-	if c.config.Networks.VPC != nil {
-		vpcName = c.config.Networks.VPC.Name
+func (fctx *FlowContext) vpcNameFromConfig() string {
+	vpcName := fctx.clusterName
+	if fctx.config.Networks.VPC != nil {
+		vpcName = fctx.config.Networks.VPC.Name
 	}
 	return vpcName
 }
 
-func (c *FlowContext) subnetNameFromConfig() string {
-	return fmt.Sprintf("%s-nodes", c.clusterName)
+func (fctx *FlowContext) subnetNameFromConfig() string {
+	return fmt.Sprintf("%s-nodes", fctx.clusterName)
 }
 
-func (c *FlowContext) internalSubnetNameFromConfig() string {
-	return fmt.Sprintf("%s-internal", c.clusterName)
+func (fctx *FlowContext) internalSubnetNameFromConfig() string {
+	return fmt.Sprintf("%s-internal", fctx.clusterName)
 }
 
-func (c *FlowContext) cloudRouterNameFromConfig() string {
-	routerName := fmt.Sprintf("%s-cloud-router", c.clusterName)
-	if c.config.Networks.VPC != nil && c.config.Networks.VPC.CloudRouter != nil {
-		routerName = c.config.Networks.VPC.CloudRouter.Name
+func (fctx *FlowContext) cloudRouterNameFromConfig() string {
+	routerName := fmt.Sprintf("%s-cloud-router", fctx.clusterName)
+	if fctx.config.Networks.VPC != nil && fctx.config.Networks.VPC.CloudRouter != nil {
+		routerName = fctx.config.Networks.VPC.CloudRouter.Name
 	}
 	return routerName
 }
 
-func (c *FlowContext) cloudNatNameFromConfig() string {
-	return fmt.Sprintf("%s-cloud-nat", c.clusterName)
+func (fctx *FlowContext) cloudNatNameFromConfig() string {
+	return fmt.Sprintf("%s-cloud-nat", fctx.clusterName)
 }
 
 func firewallRuleAllowInternalName(base string) string {
@@ -83,8 +82,8 @@ func firewallRuleAllowHealthChecksName(base string) string {
 	return fmt.Sprintf("%s-allow-health-checks", base)
 }
 
-func targetNetwork(name string) *gcpclient.Network {
-	return &gcpclient.Network{
+func targetNetwork(name string) *compute.Network {
+	return &compute.Network{
 		Name:                  name,
 		AutoCreateSubnetworks: false,
 		RoutingConfig: &compute.NetworkRoutingConfig{
@@ -94,8 +93,8 @@ func targetNetwork(name string) *gcpclient.Network {
 	}
 }
 
-func targetSubnetState(name, description, cidr, networkName string, flowLogs *gcp.FlowLogs) *gcpclient.Subnetwork {
-	subnet := &gcpclient.Subnetwork{
+func targetSubnetState(name, description, cidr, networkName string, flowLogs *gcp.FlowLogs) *compute.Subnetwork {
+	subnet := &compute.Subnetwork{
 		Description:           description,
 		PrivateIpGoogleAccess: false,
 		Name:                  name,
@@ -128,16 +127,16 @@ func targetSubnetState(name, description, cidr, networkName string, flowLogs *gc
 	return subnet
 }
 
-func targetRouterState(name, description, vpcName string) *gcpclient.Router {
-	return &gcpclient.Router{
+func targetRouterState(name, description, vpcName string) *compute.Router {
+	return &compute.Router{
 		Name:        name,
 		Description: description,
 		Network:     vpcName,
 	}
 }
 
-func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIpUrls []string) *gcpclient.RouterNat {
-	nat := &gcpclient.RouterNat{
+func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIpUrls []string) *compute.RouterNat {
+	nat := &compute.RouterNat{
 		DrainNatIps:                      nil,
 		EnableDynamicPortAllocation:      false,
 		EnableEndpointIndependentMapping: false,
@@ -210,8 +209,8 @@ func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIpUrls [
 	return nat
 }
 
-func firewallRuleAllowInternal(name, network string, cidrs []*string) *gcpclient.Firewall {
-	firewall := &gcpclient.Firewall{
+func firewallRuleAllowInternal(name, network string, cidrs []*string) *compute.Firewall {
+	firewall := &compute.Firewall{
 		Name:      name,
 		Network:   network,
 		Direction: "INGRESS",
@@ -243,8 +242,8 @@ func firewallRuleAllowInternal(name, network string, cidrs []*string) *gcpclient
 	return firewall
 }
 
-func firewallRuleAllowExternal(name, network string) *gcpclient.Firewall {
-	return &gcpclient.Firewall{
+func firewallRuleAllowExternal(name, network string) *compute.Firewall {
+	return &compute.Firewall{
 		Allowed: []*compute.FirewallAllowed{
 			{
 				IPProtocol: "tcp",
@@ -260,8 +259,8 @@ func firewallRuleAllowExternal(name, network string) *gcpclient.Firewall {
 	}
 }
 
-func firewallRuleAllowHealthChecks(name, network string) *gcpclient.Firewall {
-	return &gcpclient.Firewall{
+func firewallRuleAllowHealthChecks(name, network string) *compute.Firewall {
+	return &compute.Firewall{
 		Name:      name,
 		Network:   network,
 		Direction: "INGRESS",

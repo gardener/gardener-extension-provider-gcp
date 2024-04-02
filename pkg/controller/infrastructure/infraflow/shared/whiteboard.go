@@ -271,6 +271,7 @@ func IsValidValue(value string) bool {
 	return value != "" && value != deleted
 }
 
+// ObjectKeys returns a slice containing the keys of the Whiteboard in ascending order.
 func (w *whiteboard) HasObject(key string) bool {
 	w.Lock()
 	defer w.Unlock()

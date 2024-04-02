@@ -17,11 +17,11 @@ import (
 
 // Reconcile implements infrastructure.Actuator.
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	return util.DetermineError(a.reconcile(ctx, log, SelectorFunc(OnReconcile), infra, cluster), helper.KnownCodes)
+	return util.DetermineError(a.reconcile(ctx, log, OnReconcile, infra, cluster), helper.KnownCodes)
 }
 
-func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, selector StrategySelector, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	useFlow, err := selector.Select(infra, cluster)
+func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, selectorFn SelectorFunc, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
+	useFlow, err := selectorFn(infra, cluster)
 	if err != nil {
 		return err
 	}

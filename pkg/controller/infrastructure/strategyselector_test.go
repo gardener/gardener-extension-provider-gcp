@@ -50,8 +50,7 @@ var _ = Describe("ReconcilationStrategy", func() {
 		infra := &extensionsv1alpha1.Infrastructure{}
 		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, gcp.AnnotationKeyUseFlow, "true")
 
-		sut := infrastructure.SelectorFunc(infrastructure.OnReconcile)
-		useFlow, err := sut.Select(infra, cluster)
+		useFlow, err := infrastructure.OnReconcile(infra, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(useFlow).To(BeTrue())
 	})
@@ -60,8 +59,7 @@ var _ = Describe("ReconcilationStrategy", func() {
 		infra := &extensionsv1alpha1.Infrastructure{}
 		infra.Status.State = &runtime.RawExtension{Object: state}
 
-		sut := infrastructure.SelectorFunc(infrastructure.OnReconcile)
-		useFlow, err := sut.Select(infra, cluster)
+		useFlow, err := infrastructure.OnReconcile(infra, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(useFlow).To(BeTrue())
 	})
@@ -70,8 +68,7 @@ var _ = Describe("ReconcilationStrategy", func() {
 		infra := &extensionsv1alpha1.Infrastructure{}
 		infra.Status.State = &runtime.RawExtension{Raw: getRawTerraformState(`{"provider": "terraform"}`)}
 
-		sut := infrastructure.SelectorFunc(infrastructure.OnReconcile)
-		useFlow, err := sut.Select(infra, cluster)
+		useFlow, err := infrastructure.OnReconcile(infra, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(useFlow).To(BeFalse())
 	})
@@ -79,8 +76,8 @@ var _ = Describe("ReconcilationStrategy", func() {
 	It("should delete with Terraform if resources were reconciled with Terraform", func() {
 		infra := &extensionsv1alpha1.Infrastructure{}
 		infra.Status.State = &runtime.RawExtension{Raw: getRawTerraformState(`{"provider": "terraform"}`)}
-		sut := infrastructure.SelectorFunc(infrastructure.OnDelete)
-		useFlow, err := sut.Select(infra, cluster)
+
+		useFlow, err := infrastructure.OnDelete(infra, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(useFlow).To(BeFalse())
 	})
@@ -89,8 +86,7 @@ var _ = Describe("ReconcilationStrategy", func() {
 		state := newInfrastructureState()
 		infra.Status.State = &runtime.RawExtension{Object: state}
 
-		sut := infrastructure.SelectorFunc(infrastructure.OnDelete)
-		useFlow, err := sut.Select(infra, cluster)
+		useFlow, err := infrastructure.OnDelete(infra, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(useFlow).To(BeTrue())
 	})

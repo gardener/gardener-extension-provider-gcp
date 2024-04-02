@@ -9,6 +9,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/go-logr/logr"
+	"google.golang.org/api/compute/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -24,6 +25,9 @@ import (
 )
 
 const (
+
+	// CreatedServiceAccountKey marks whether we have created a service account for the shoot. If not we will skip reconciling the service accounts
+	CreatedServiceAccountKey = "service_account_exist"
 	// CreatedResourcesExistKey is a marker for the Terraform migration case. If the TF state is not empty
 	// we inject this marker into the state to block the deletion without having first a successful reconciliation.
 	CreatedResourcesExistKey = "resources_exist"
@@ -72,6 +76,7 @@ type FlowContext struct {
 
 	computeClient gcpclient.ComputeClient
 	iamClient     gcpclient.IAMClient
+	*shared.BasicFlowContext
 }
 
 // Opts contains the options to initialize a FlowContext.
@@ -91,6 +96,7 @@ type Opts struct {
 // NewFlowContext returns a new FlowContext.
 func NewFlowContext(ctx context.Context, opts Opts) (*FlowContext, error) {
 	wb := shared.NewWhiteboard()
+	wb.ImportFromFlatMap(opts.State.Data)
 	config, err := helper.InfrastructureConfigFromInfrastructure(opts.Infra)
 	if err != nil {
 		return nil, err
@@ -125,36 +131,36 @@ func NewFlowContext(ctx context.Context, opts Opts) (*FlowContext, error) {
 }
 
 // Reconcile reconciles the infrastructure
-func (c *FlowContext) Reconcile(ctx context.Context) (*v1alpha1.InfrastructureStatus, *runtime.RawExtension, error) {
-	g := c.buildReconcileGraph()
+func (fctx *FlowContext) Reconcile(ctx context.Context) (*v1alpha1.InfrastructureStatus, *runtime.RawExtension, error) {
+	g := fctx.buildReconcileGraph()
 	f := g.Compile()
-	c.log.Info("starting Flow Reconciliation")
+	fctx.log.Info("starting Flow Reconciliation")
 	err := f.Run(ctx, flow.Opts{
-		Log: c.log,
+		Log: fctx.log,
 	})
 	if err != nil {
 		err = flow.Causes(err)
-		c.log.Error(err, "flow reconciliation failed")
-		return nil, c.getCurrentState(), err
+		fctx.log.Error(err, "flow reconciliation failed")
+		return nil, fctx.getCurrentState(), err
 	}
 
-	status := c.getStatus()
-	state := c.getCurrentState()
+	status := fctx.getStatus()
+	state := fctx.getCurrentState()
 	return status, state, nil
 }
 
 // Delete is used to destroy the infrastructure.
-func (c *FlowContext) Delete(ctx context.Context) error {
-	if c.state.Data == nil || !strings.EqualFold(c.state.Data[CreatedResourcesExistKey], "true") {
+func (fctx *FlowContext) Delete(ctx context.Context) error {
+	if fctx.state.Data == nil || !strings.EqualFold(fctx.state.Data[CreatedResourcesExistKey], "true") {
 		return nil
 	}
 
-	g := c.buildDeleteGraph()
+	g := fctx.buildDeleteGraph()
 	f := g.Compile()
-	return f.Run(ctx, flow.Opts{Log: c.log})
+	return f.Run(ctx, flow.Opts{Log: fctx.log})
 }
 
-func (c *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
+func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 	status := &v1alpha1.InfrastructureStatus{
 		TypeMeta: infrastructure.StatusTypeMeta,
 		Networks: v1alpha1.NetworkStatus{
@@ -164,45 +170,45 @@ func (c *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 		},
 	}
 
-	if n := GetObject[*gcpclient.Network](c.whiteboard, ObjectKeyVPC); n != nil {
+	if n := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC); n != nil {
 		status.Networks.VPC.Name = n.Name
 	}
 
-	if s := GetObject[*gcpclient.Subnetwork](c.whiteboard, ObjectKeyNodeSubnet); s != nil {
+	if s := GetObject[*compute.Subnetwork](fctx.whiteboard, ObjectKeyNodeSubnet); s != nil {
 		status.Networks.Subnets = append(status.Networks.Subnets, v1alpha1.Subnet{
 			Name:    s.Name,
 			Purpose: v1alpha1.PurposeNodes,
 		})
 	}
 
-	if s := GetObject[*gcpclient.Subnetwork](c.whiteboard, ObjectKeyInternalSubnet); s != nil {
+	if s := GetObject[*compute.Subnetwork](fctx.whiteboard, ObjectKeyInternalSubnet); s != nil {
 		status.Networks.Subnets = append(status.Networks.Subnets, v1alpha1.Subnet{
 			Name:    s.Name,
 			Purpose: v1alpha1.PurposeInternal,
 		})
 	}
 
-	if router := GetObject[*gcpclient.Router](c.whiteboard, ObjectKeyRouter); router != nil {
+	if router := GetObject[*compute.Router](fctx.whiteboard, ObjectKeyRouter); router != nil {
 		status.Networks.VPC.CloudRouter = &v1alpha1.CloudRouter{
 			Name: router.Name,
 		}
 	}
 
-	status.ServiceAccountEmail = ptr.Deref(c.whiteboard.GetChild(ChildKeyIDs).Get(KeyServiceAccountEmail), "")
+	status.ServiceAccountEmail = ptr.Deref(fctx.whiteboard.GetChild(ChildKeyIDs).Get(KeyServiceAccountEmail), "")
 	return status
 }
 
-func (c *FlowContext) getCurrentState() *runtime.RawExtension {
-	// InfrastructureStateTypeMeta is the TypeMeta of the InfrastructureStatus
-	InfrastructureStateTypeMeta := metav1.TypeMeta{
-		APIVersion: v1alpha1.SchemeGroupVersion.String(),
-		Kind:       "InfrastructureState",
-	}
+func (fctx *FlowContext) getCurrentState() *runtime.RawExtension {
 	state := &v1alpha1.InfrastructureState{
-		TypeMeta: InfrastructureStateTypeMeta,
-		Data: map[string]string{
-			CreatedResourcesExistKey: ptr.Deref(c.whiteboard.Get(CreatedResourcesExistKey), ""),
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1alpha1.SchemeGroupVersion.String(),
+			Kind:       "InfrastructureState",
 		},
+		Data: fctx.whiteboard.ExportAsFlatMap(),
+		// Data: map[string]string{
+		//
+		// 	CreatedResourcesExistKey: ptr.Deref(fctx.whiteboard.Get(CreatedResourcesExistKey), ""),
+		// },
 	}
 
 	return &runtime.RawExtension{
@@ -210,21 +216,21 @@ func (c *FlowContext) getCurrentState() *runtime.RawExtension {
 	}
 }
 
-func (c *FlowContext) persistState(ctx context.Context) error {
-	if c.persistFn == nil {
+func (fctx *FlowContext) persistState(ctx context.Context) error {
+	if fctx.persistFn == nil {
 		return nil
 	}
 
-	return c.persistFn(ctx, c.getCurrentState())
+	return fctx.persistFn(ctx, fctx.getCurrentState())
 }
 
-func (c *FlowContext) loadWhiteBoard() {
-	if c.whiteboard == nil {
+func (fctx *FlowContext) loadWhiteBoard() {
+	if fctx.whiteboard == nil {
 		return
 	}
-	if c.state == nil {
+	if fctx.state == nil {
 		return
 	}
 
-	c.whiteboard.Set(CreatedResourcesExistKey, "true")
+	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
 }
