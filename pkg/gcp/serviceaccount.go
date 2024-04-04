@@ -43,7 +43,11 @@ func GetServiceAccountFromSecret(secret *corev1.Secret) (*ServiceAccount, error)
 		return nil, fmt.Errorf("secret %s/%s doesn't have a service account json (expected field: %q)", secret.Namespace, secret.Name, ServiceAccountJSONField)
 	}
 
-	return GetServiceAccountFromJSON(data)
+	sa, err := GetServiceAccountFromJSON(data)
+	if err != nil {
+		return nil, fmt.Errorf("could not get service account from %q field: %w", ServiceAccountJSONField, err)
+	}
+	return sa, nil
 }
 
 // GetServiceAccountFromJSON returns a ServiceAccount from the given
@@ -55,10 +59,10 @@ func GetServiceAccountFromJSON(data []byte) (*ServiceAccount, error) {
 	}
 
 	if err := json.Unmarshal(data, &serviceAccount); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal json object: %w", err)
 	}
 	if serviceAccount.ProjectID == "" {
-		return nil, fmt.Errorf("no service account specified")
+		return nil, fmt.Errorf("no project id specified")
 	}
 
 	return &ServiceAccount{
@@ -67,16 +71,6 @@ func GetServiceAccountFromJSON(data []byte) (*ServiceAccount, error) {
 		Email:     serviceAccount.Email,
 		Type:      serviceAccount.Type,
 	}, nil
-}
-
-// readServiceAccountSecret reads the ServiceAccount from the given secret.
-func readServiceAccountSecret(secret *corev1.Secret) ([]byte, error) {
-	data, ok := secret.Data[ServiceAccountJSONField]
-	if !ok {
-		return nil, fmt.Errorf("secret %s/%s doesn't have a service account json (expected field: %q)", secret.Namespace, secret.Name, ServiceAccountJSONField)
-	}
-
-	return data, nil
 }
 
 // ExtractServiceAccountProjectID extracts the project id from the given service account JSON.

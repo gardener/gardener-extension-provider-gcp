@@ -24,7 +24,7 @@ func ValidateCloudProviderSecret(secret *corev1.Secret) error {
 
 	sa, err := gcp.GetServiceAccountFromJSON(serviceAccountJSON)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not get service account from %q field: %w", gcp.ServiceAccountJSONField, err)
 	}
 
 	if sa.Type != gcp.ServiceAccountCredentialType {

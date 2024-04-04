@@ -77,7 +77,7 @@ var _ = Describe("SecretBinding validator", func() {
 			Expect(err).To(MatchError(fakeErr))
 		})
 
-		It("should return err when the corresponding Secret is not valid", func() {
+		It("should return err when the corresponding Secret does not contain a 'serviceaccount.json' field", func() {
 			apiReader.EXPECT().Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
 					secret := &corev1.Secret{Data: map[string][]byte{
@@ -88,7 +88,21 @@ var _ = Describe("SecretBinding validator", func() {
 				})
 
 			err := secretBindingValidator.Validate(context.TODO(), secretBinding, nil)
-			Expect(err).To(MatchError("missing \"serviceaccount.json\" field in secret"))
+			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: missing \"serviceaccount.json\" field in secret"))
+		})
+
+		It("should return err when the corresponding Secret does not contain a valid 'serviceaccount.json' field", func() {
+			apiReader.EXPECT().Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
+				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
+					secret := &corev1.Secret{Data: map[string][]byte{
+						gcp.ServiceAccountJSONField: []byte(``),
+					}}
+					*obj = *secret
+					return nil
+				})
+
+			err := secretBindingValidator.Validate(context.TODO(), secretBinding, nil)
+			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: could not get service account from \"serviceaccount.json\" field: failed to unmarshal json object: unexpected end of JSON input"))
 		})
 
 		It("should return nil when the corresponding Secret is valid", func() {

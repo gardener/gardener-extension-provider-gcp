@@ -59,5 +59,8 @@ func (sb *secretBinding) Validate(ctx context.Context, newObj, oldObj client.Obj
 		return err
 	}
 
-	return gcpvalidation.ValidateCloudProviderSecret(secret)
+	if err := gcpvalidation.ValidateCloudProviderSecret(secret); err != nil {
+		return fmt.Errorf("referenced secret %s/%s is not valid: %w", secretKey.Namespace, secretKey.Name, err)
+	}
+	return nil
 }
