@@ -219,6 +219,9 @@ func (w *whiteboard) SetAsDeleted(key string) {
 }
 
 func (w *whiteboard) ImportFromFlatMap(data FlatMap) {
+	if data == nil {
+		return
+	}
 	for key, value := range data {
 		parts := strings.Split(key, Separator)
 		level := w
@@ -271,7 +274,7 @@ func IsValidValue(value string) bool {
 	return value != "" && value != deleted
 }
 
-// ObjectKeys returns a slice containing the keys of the Whiteboard in ascending order.
+// HasObject returns true if the object with the given key exists.
 func (w *whiteboard) HasObject(key string) bool {
 	w.Lock()
 	defer w.Unlock()
@@ -279,12 +282,14 @@ func (w *whiteboard) HasObject(key string) bool {
 	return ok
 }
 
+// DeleteObject deletes the object with the given key.
 func (w *whiteboard) DeleteObject(key string) {
 	w.Lock()
 	defer w.Unlock()
 	delete(w.objects, key)
 }
 
+// ObjectKeys returns a slice containing the keys of the Whiteboard in ascending order.
 func (w *whiteboard) ObjectKeys() []string {
 	w.Lock()
 	defer w.Unlock()

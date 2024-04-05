@@ -205,10 +205,6 @@ func (fctx *FlowContext) getCurrentState() *runtime.RawExtension {
 			Kind:       "InfrastructureState",
 		},
 		Data: fctx.whiteboard.ExportAsFlatMap(),
-		// Data: map[string]string{
-		//
-		// 	CreatedResourcesExistKey: ptr.Deref(fctx.whiteboard.Get(CreatedResourcesExistKey), ""),
-		// },
 	}
 
 	return &runtime.RawExtension{

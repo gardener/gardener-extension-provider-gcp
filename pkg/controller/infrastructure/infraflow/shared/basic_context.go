@@ -159,7 +159,8 @@ func (c *BasicFlowContext) wrapTaskFn(flowName, taskName string, fn flow.TaskFn)
 			}()
 		}
 
-		w := InformOnWaiting(log, defaultInformerPeriod, fmt.Sprintf("still trying to [%s]...", taskName)).IntoContext(ctx)
+		w := InformOnWaiting(log, defaultInformerPeriod, fmt.Sprintf("still trying to [%s]...", taskName))
+		ctx = w.IntoContext(ctx)
 		defer w.Done()
 
 		var beforeTs time.Time

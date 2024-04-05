@@ -289,8 +289,11 @@ func (c *computeClient) DeleteRouter(ctx context.Context, region, id string) err
 	return c.wait(ctx, op)
 }
 
+// RouteListOpts are options for the ListRoutes function.
 type RouteListOpts struct {
-	Filter       string
+	// Filter is server side filtering applied by the GCP API.
+	Filter string
+	// ClientFilter is client-side filtering applied after the list call.
 	ClientFilter func(f *compute.Route) bool
 }
 
@@ -381,8 +384,11 @@ func (c *computeClient) PatchFirewallRule(ctx context.Context, name string, rule
 	return c.GetFirewallRule(ctx, name)
 }
 
+// FirewallListOpts are options for the ListFirewallRules function.
 type FirewallListOpts struct {
-	Filter       string
+	// Filter is server side filtering applied by the GCP API.
+	Filter string
+	// ClientFilter is client-side filtering applied after the list call.
 	ClientFilter func(f *compute.Firewall) bool
 }
 

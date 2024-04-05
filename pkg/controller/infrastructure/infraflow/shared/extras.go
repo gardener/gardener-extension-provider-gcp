@@ -73,6 +73,7 @@ func (w *waiter) Done() {
 
 type contextKey struct{}
 
+// FromContext retrieves a waiter from the current context or returns nil if it is not found.
 func FromContext(ctx context.Context) *waiter {
 	v := ctx.Value(contextKey{})
 	if v == nil {
@@ -84,8 +85,4 @@ func FromContext(ctx context.Context) *waiter {
 		return nil
 	}
 	return w
-}
-
-func IntoContext(ctx context.Context, w *waiter) context.Context {
-	return context.WithValue(ctx, contextKey{}, w)
 }

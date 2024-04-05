@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -45,9 +44,30 @@ func NewFlowReconciler(client client.Client, restConfig *rest.Config, log logr.L
 
 // Reconcile reconciles the infrastructure and returns the status (state of the world), the state (input for the next loops) and any errors that occurred.
 func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	infraState, err := f.infrastructureStateFromRaw(ctx, infra)
+	var (
+		infraState *gcp.InfrastructureState
+		err        error
+	)
+
+	// when the function is called, we may have: a. no state, b. terraform state (migration) or c. flow state. In case of a TF state
+	// because no explicit migration to the new flow format is necessary, we simply return an empty state.
+	fsOk, err := hasFlowState(infra.Status.State)
 	if err != nil {
 		return err
+	}
+
+	if fsOk {
+		// if it had a flow state, then we just decode it.
+		infraState, err = f.infrastructureStateFromRaw(infra)
+		if err != nil {
+			return err
+		}
+	} else {
+		// otherwise migrate it from the terraform state if needed.
+		infraState, err = f.migrateFromTerraform(ctx, infra)
+		if err != nil {
+			return err
+		}
 	}
 
 	serviceAccount, err := gcpinternal.GetServiceAccountFromSecretReference(ctx, f.client, infra.Spec.SecretRef)
@@ -85,7 +105,7 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 
 // Delete deletes the infrastructure resource using the flow reconciler.
 func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	infraState, err := f.infrastructureStateFromRaw(ctx, infra)
+	infraState, err := f.infrastructureStateFromRaw(infra)
 	if err != nil {
 		return err
 	}
@@ -125,21 +145,14 @@ func (f *FlowReconciler) Restore(ctx context.Context, infra *extensionsv1alpha1.
 	return f.Reconcile(ctx, infra, cluster)
 }
 
-func (f *FlowReconciler) infrastructureStateFromRaw(ctx context.Context, infra *extensionsv1alpha1.Infrastructure) (*gcp.InfrastructureState, bool, error) {
+func (f *FlowReconciler) infrastructureStateFromRaw(infra *extensionsv1alpha1.Infrastructure) (*gcp.InfrastructureState, error) {
 	state := &gcp.InfrastructureState{}
 	raw := infra.Status.State
-	// when the function is called, we may have: a. no state, b. terraform state (migration) or c. flow state. In case of a TF state
-	// because no explicit migration to the new flow format is necessary, we simply return an empty state.
-	if ok, err := hasFlowState(raw); err != nil {
-		return nil, false, err
-	} else if !ok {
-		return state, false, nil
-	}
 
 	if raw != nil {
 		jsonBytes, err := raw.MarshalJSON()
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
 		// todo(ka): for now we won't use the actuator decoder because the flow state kind was registered as "FlowState" and not "InfrastructureState". So we
@@ -149,20 +162,38 @@ func (f *FlowReconciler) infrastructureStateFromRaw(ctx context.Context, infra *
 		}
 	}
 
+	return state, nil
+}
+
+func (f *FlowReconciler) migrateFromTerraform(ctx context.Context, infra *extensionsv1alpha1.Infrastructure) (*gcp.InfrastructureState, error) {
+	var (
+		state = &gcp.InfrastructureState{
+			Data: map[string]string{},
+		}
+	)
 	// we want to prevent allowing the deletion of infrastructure if there may be still resources in the cloudprovider. We will initialize the data
 	// with a specific "marker" so that the deletion
-	if data := state.Data; !(data != nil && strings.EqualFold(data[infraflow.CreatedResourcesExistKey], "true")) {
-		tf, err := internal.NewTerraformer(f.log, f.restConfig, infrainternal.TerraformerPurpose, infra, f.disableProjectedTokenMount)
-		if err != nil {
-			return nil, err
-		}
-
-		if !tf.IsStateEmpty(ctx) {
-			// this is a special case when migrating from Terraform. If TF had created any resources (meaning there is an actual tf.state written)
-			// we mark that there are infra resources created.
-			state.Data[infraflow.CreatedResourcesExistKey] = "true"
-		}
+	tf, err := internal.NewTerraformer(f.log, f.restConfig, infrainternal.TerraformerPurpose, infra, f.disableProjectedTokenMount)
+	if err != nil {
+		return nil, err
 	}
 
+	// nothing to do if state is empty
+	if tf.IsStateEmpty(ctx) {
+		return state, nil
+	}
+
+	// this is a special case when migrating from Terraform. If TF had created any resources (meaning there is an actual tf.state written)
+	// we mark that there are infra resources created.
+	state.Data[infraflow.CreatedResourcesExistKey] = "true"
+
+	// In addition, we will make sure that if we have created a service account we will keep track of it by adding a special marker.
+	ok, err := shouldCreateServiceAccount(infra)
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		state.Data[infraflow.CreatedServiceAccountKey] = "true"
+	}
 	return state, nil
 }

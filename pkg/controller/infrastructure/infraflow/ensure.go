@@ -466,7 +466,6 @@ func (fctx *FlowContext) ensureKubernetesRoutesDeleted(ctx context.Context) erro
 	vpcName := fctx.vpcNameFromConfig()
 
 	routes, err := fctx.computeClient.ListRoutes(ctx, client.RouteListOpts{
-		// Filter: fmt.Sprintf("network~'%s'", vpcName),
 		Filter: fmt.Sprintf(`network eq ".*(%s).*"`, vpcName),
 		ClientFilter: func(route *compute.Route) bool {
 			if strings.HasPrefix(route.Name, infrastructure.ShootPrefix) && strings.HasSuffix(route.Network, vpcName) {

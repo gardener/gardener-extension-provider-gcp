@@ -36,6 +36,7 @@ import (
 	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -142,6 +143,9 @@ var _ = BeforeSuite(func() {
 		// During testing in testmachinery cluster, there is no gardener-resource-manager to inject the volume mount.
 		// Hence, we need to run without projected token mount.
 		DisableProjectedTokenMount: true,
+		Controller: controller.Options{
+			MaxConcurrentReconciles: 5,
+		},
 	})).To(Succeed())
 
 	var mgrContext context.Context
@@ -469,8 +473,8 @@ func runTest(
 	if *reconciler == reconcilerMigrateTF {
 		By("verifying terraform migration")
 		infraCopy := infra.DeepCopy()
-		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, "gardener.cloud/operation", "reconcile")
 		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, gcp.AnnotationKeyUseFlow, "true")
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, v1beta1constants.GardenerOperation, v1beta1constants.GardenerOperationReconcile)
 		Expect(c.Patch(ctx, infra, client.MergeFrom(infraCopy))).To(Succeed())
 
 		By("wait until infrastructure is reconciled")
