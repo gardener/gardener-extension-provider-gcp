@@ -78,7 +78,7 @@ type RegionsService interface {
 // ImagesService is the interface for the GCP Image service.
 type ImagesService interface {
 	// List initiates a ImagesListCall
-	List(projectID string) ImagesListCall
+	List(projectID string) *compute.ImagesListCall
 }
 
 // FirewallsListCall is a list call to the firewalls service.
@@ -190,14 +190,4 @@ type RegionsGetCall interface {
 	Do(opts ...googleapi.CallOption) (*compute.Region, error)
 	// Context sets the context for the get call.
 	Context(context.Context) RegionsGetCall
-}
-
-// ImagesListCall is a list call to the Image service.
-type ImagesListCall interface {
-	// Do executes the image list call.
-	Do(opts ...googleapi.CallOption) (*compute.ImageList, error)
-	// Fields allows partial responses to be retrieved.
-	Fields(s ...googleapi.Field) *compute.ImagesListCall
-	// OrderBy sets the optional parameter "orderBy": Sorts list results by a certain order.
-	OrderBy(orderBy string) *compute.ImagesListCall
 }
