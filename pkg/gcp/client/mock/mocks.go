@@ -428,33 +428,33 @@ func (mr *MockComputeClientMockRecorder) InsertSubnet(arg0, arg1, arg2 any) *gom
 }
 
 // ListFirewallRules mocks base method.
-func (m *MockComputeClient) ListFirewallRules(arg0 context.Context) ([]*compute.Firewall, error) {
+func (m *MockComputeClient) ListFirewallRules(arg0 context.Context, arg1 client.FirewallListOpts) ([]*compute.Firewall, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListFirewallRules", arg0)
+	ret := m.ctrl.Call(m, "ListFirewallRules", arg0, arg1)
 	ret0, _ := ret[0].([]*compute.Firewall)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListFirewallRules indicates an expected call of ListFirewallRules.
-func (mr *MockComputeClientMockRecorder) ListFirewallRules(arg0 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) ListFirewallRules(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFirewallRules", reflect.TypeOf((*MockComputeClient)(nil).ListFirewallRules), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFirewallRules", reflect.TypeOf((*MockComputeClient)(nil).ListFirewallRules), arg0, arg1)
 }
 
 // ListRoutes mocks base method.
-func (m *MockComputeClient) ListRoutes(arg0 context.Context) ([]*compute.Route, error) {
+func (m *MockComputeClient) ListRoutes(arg0 context.Context, arg1 client.RouteListOpts) ([]*compute.Route, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRoutes", arg0)
+	ret := m.ctrl.Call(m, "ListRoutes", arg0, arg1)
 	ret0, _ := ret[0].([]*compute.Route)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListRoutes indicates an expected call of ListRoutes.
-func (mr *MockComputeClientMockRecorder) ListRoutes(arg0 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) ListRoutes(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoutes", reflect.TypeOf((*MockComputeClient)(nil).ListRoutes), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoutes", reflect.TypeOf((*MockComputeClient)(nil).ListRoutes), arg0, arg1)
 }
 
 // PatchFirewallRule mocks base method.

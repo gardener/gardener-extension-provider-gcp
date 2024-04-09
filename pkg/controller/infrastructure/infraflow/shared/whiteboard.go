@@ -40,6 +40,7 @@ type Whiteboard interface {
 	// Get returns a valid value or nil (never "" or special deleted value)
 	Get(key string) *string
 	Set(key, id string)
+	Delete(key string)
 	SetPtr(key string, id *string)
 	IsAlreadyDeleted(key string) bool
 	SetAsDeleted(key string)
@@ -52,6 +53,7 @@ type Whiteboard interface {
 	SetObject(key string, obj any)
 	DeleteObject(key string)
 	HasObject(key string) bool
+	ObjectKeys() []string
 
 	// ImportFromFlatMap reconstructs the hierarchical structure from a flat map containing path-like keys
 	ImportFromFlatMap(data FlatMap)
@@ -197,6 +199,15 @@ func (w *whiteboard) SetPtr(key string, id *string) {
 	w.Set(key, ptr.Deref(id, ""))
 }
 
+func (w *whiteboard) Delete(key string) {
+	w.Lock()
+	defer w.Unlock()
+	if _, ok := w.data[key]; ok {
+		delete(w.data, key)
+		w.modified()
+	}
+}
+
 func (w *whiteboard) IsAlreadyDeleted(key string) bool {
 	w.Lock()
 	defer w.Unlock()
@@ -208,6 +219,9 @@ func (w *whiteboard) SetAsDeleted(key string) {
 }
 
 func (w *whiteboard) ImportFromFlatMap(data FlatMap) {
+	if data == nil {
+		return
+	}
 	for key, value := range data {
 		parts := strings.Split(key, Separator)
 		level := w
@@ -260,6 +274,7 @@ func IsValidValue(value string) bool {
 	return value != "" && value != deleted
 }
 
+// HasObject returns true if the object with the given key exists.
 func (w *whiteboard) HasObject(key string) bool {
 	w.Lock()
 	defer w.Unlock()
@@ -267,8 +282,17 @@ func (w *whiteboard) HasObject(key string) bool {
 	return ok
 }
 
+// DeleteObject deletes the object with the given key.
 func (w *whiteboard) DeleteObject(key string) {
 	w.Lock()
 	defer w.Unlock()
 	delete(w.objects, key)
+}
+
+// ObjectKeys returns a slice containing the keys of the Whiteboard in ascending order.
+func (w *whiteboard) ObjectKeys() []string {
+	w.Lock()
+	defer w.Unlock()
+
+	return sortedKeys(w.objects)
 }

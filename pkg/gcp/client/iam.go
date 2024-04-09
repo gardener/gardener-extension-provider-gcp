@@ -10,7 +10,7 @@ import (
 	"regexp"
 
 	"golang.org/x/oauth2/google"
-	iam "google.golang.org/api/iam/v1"
+	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -23,8 +23,8 @@ var (
 
 // IAMClient is the client interface for the IAM API.
 type IAMClient interface {
-	GetServiceAccount(ctx context.Context, name string) (*ServiceAccount, error)
-	CreateServiceAccount(ctx context.Context, accountID string) (*ServiceAccount, error)
+	GetServiceAccount(ctx context.Context, name string) (*iam.ServiceAccount, error)
+	CreateServiceAccount(ctx context.Context, accountID string) (*iam.ServiceAccount, error)
 	DeleteServiceAccount(context.Context, string) error
 }
 
@@ -51,7 +51,7 @@ func NewIAMClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (IAMC
 	}, nil
 }
 
-func (i *iamClient) GetServiceAccount(ctx context.Context, name string) (*ServiceAccount, error) {
+func (i *iamClient) GetServiceAccount(ctx context.Context, name string) (*iam.ServiceAccount, error) {
 	accountID := name
 	if !serviceAccountIDRegex.MatchString(accountID) {
 		accountID = i.serviceAccountID(name)
@@ -68,7 +68,7 @@ func (i *iamClient) serviceAccountID(baseName string) string {
 	return fmt.Sprintf("projects/%s/serviceAccounts/%s@%s.iam.gserviceaccount.com", i.projectID, baseName, i.projectID)
 }
 
-func (i *iamClient) CreateServiceAccount(ctx context.Context, accountId string) (*ServiceAccount, error) {
+func (i *iamClient) CreateServiceAccount(ctx context.Context, accountId string) (*iam.ServiceAccount, error) {
 	name := "projects/" + i.projectID
 	return i.service.Projects.ServiceAccounts.Create(name, &iam.CreateServiceAccountRequest{
 		AccountId: accountId,

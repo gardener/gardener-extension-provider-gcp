@@ -13,12 +13,11 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow"
 )
 
 // Delete implements infrastructure.Actuator.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	return util.DetermineError(a.delete(ctx, log, infra, cluster), helper.KnownCodes)
+	return util.DetermineError(a.delete(ctx, log, OnDelete, infra, cluster), helper.KnownCodes)
 }
 
 // ForceDelete forcefully deletes the Infrastructure.
@@ -26,28 +25,21 @@ func (a *actuator) ForceDelete(_ context.Context, _ logr.Logger, _ *extensionsv1
 	return nil
 }
 
-func (a *actuator) delete(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	withFlow, err := shouldDeleteWithFlow(infra)
+func (a *actuator) delete(ctx context.Context, log logr.Logger, selectorFn SelectorFunc, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
+	useFlow, err := selectorFn(infra, cluster)
 	if err != nil {
 		return err
 	}
 
-	if !withFlow {
-		return NewTerraformReconciler(a.client, a.restConfig, nil, a.disableProjectedTokenMount).Delete(ctx, log, cluster, infra)
+	factory := ReconcilerFactoryImpl{
+		log: log,
+		a:   a,
 	}
 
-	flow, err := infraflow.NewFlowReconciler(ctx, log, infra, cluster, a.client)
+	reconciler, err := factory.Build(useFlow)
 	if err != nil {
 		return err
 	}
-	return flow.Delete(ctx)
-}
 
-func shouldDeleteWithFlow(infra *extensionsv1alpha1.Infrastructure) (bool, error) {
-	state, err := getFlowStateFromInfrastructureStatus(infra)
-	if err != nil {
-		return false, err
-	}
-
-	return state != nil, nil
+	return reconciler.Delete(ctx, infra, cluster)
 }

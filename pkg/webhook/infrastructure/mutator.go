@@ -7,6 +7,7 @@ package infrastructure
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	extensionscontextwebhook "github.com/gardener/gardener/extensions/pkg/webhook/context"
@@ -36,7 +37,7 @@ func New(mgr manager.Manager, logger logr.Logger) extensionswebhook.Mutator {
 // Mutate mutates the given object on creation and adds the annotation `gcp.provider.extensions.gardener.cloud/use-flow=true`
 // if the seed has the label `gcp.provider.extensions.gardener.cloud/use-flow` == `new`.
 func (m *mutator) Mutate(ctx context.Context, new, old client.Object) error {
-	if old != nil || new.GetDeletionTimestamp() != nil {
+	if new.GetDeletionTimestamp() != nil {
 		return nil
 	}
 
@@ -55,10 +56,28 @@ func (m *mutator) Mutate(ctx context.Context, new, old client.Object) error {
 		return err
 	}
 
-	if cluster.Seed.Labels[gcp.SeedLabelKeyUseFlow] == gcp.SeedLabelUseFlowValueNew {
-		if newInfra.Annotations == nil {
-			newInfra.Annotations = map[string]string{}
-		}
+	// skip if shoot is being deleted
+	if cluster.Shoot.DeletionTimestamp != nil {
+		return nil
+	}
+
+	if newInfra.Annotations == nil {
+		newInfra.Annotations = map[string]string{}
+	}
+	if cluster.Seed.Annotations == nil {
+		cluster.Seed.Annotations = map[string]string{}
+	}
+	if cluster.Shoot.Annotations == nil {
+		cluster.Shoot.Annotations = map[string]string{}
+	}
+
+	if v, ok := cluster.Shoot.Annotations[gcp.GlobalAnnotationKeyUseFlow]; ok {
+		newInfra.Annotations[gcp.AnnotationKeyUseFlow] = v
+	} else if v, ok := cluster.Shoot.Annotations[gcp.AnnotationKeyUseFlow]; ok {
+		newInfra.Annotations[gcp.AnnotationKeyUseFlow] = v
+	} else if old == nil && cluster.Seed.Annotations[gcp.SeedAnnotationKeyUseFlow] == gcp.SeedAnnotationUseFlowValueNew {
+		newInfra.Annotations[gcp.AnnotationKeyUseFlow] = "true"
+	} else if v := cluster.Seed.Annotations[gcp.SeedAnnotationKeyUseFlow]; strings.EqualFold(v, "true") {
 		newInfra.Annotations[gcp.AnnotationKeyUseFlow] = "true"
 	}
 

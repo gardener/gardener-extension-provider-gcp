@@ -27,3 +27,7 @@ issues:
   # typecheck:
   - "undeclared name: `.*`"
   - "\".*\" imported but not used"
+  exclude-rules:
+    - linters:
+        - staticcheck
+      text: "SA1019:" # Excludes messages where deprecated variables are used

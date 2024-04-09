@@ -6,6 +6,7 @@ import (
 	"github.com/gardener/gardener/pkg/utils/flow"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
 )
 
 const (
@@ -13,36 +14,40 @@ const (
 	defaultDeleteTimeout time.Duration = 5 * time.Minute
 )
 
-func (c *FlowReconciler) buildReconcileGraph() *flow.Graph {
+func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
+	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithSpan().WithLogger(fctx.log).WithPersist(fctx.persistState)
 	g := flow.NewGraph("infrastructure reconciliation")
 
-	c.AddTask(g, "ensure service account", c.ensureServiceAccount,
+	fctx.AddTask(g, "ensure service account", fctx.ensureServiceAccount,
+		shared.Timeout(defaultCreateTimeout),
+		shared.DoIf(
+			!features.ExtensionFeatureGate.Enabled(features.DisableGardenerServiceAccountCreation) || fctx.whiteboard.Get(CreatedServiceAccountKey) != nil,
+		),
+	)
+	ensureVPC := fctx.AddTask(g, "ensure VPC", fctx.ensureVPC,
 		shared.Timeout(defaultCreateTimeout),
 	)
-	ensureVPC := c.AddTask(g, "ensure VPC", c.ensureVPC,
-		shared.Timeout(defaultCreateTimeout),
-	)
-	ensureSubnet := c.AddTask(g, "ensure worker subnet", c.ensureSubnet,
-		shared.Timeout(defaultCreateTimeout),
-		shared.Dependencies(ensureVPC),
-	)
-	ensureInternalSubnet := c.AddTask(g, "ensure internal subnet", c.ensureInternalSubnet,
-		shared.Timeout(defaultCreateTimeout),
-		shared.Dependencies(ensureVPC),
-	)
-	ensureRouter := c.AddTask(g, "ensure router", c.ensureCloudRouter,
+	ensureSubnet := fctx.AddTask(g, "ensure worker subnet", fctx.ensureSubnet,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
 	)
-	ensureIpAddresses := c.AddTask(g, "ensure IP addresses", c.ensureAddresses,
+	ensureInternalSubnet := fctx.AddTask(g, "ensure internal subnet", fctx.ensureInternalSubnet,
 		shared.Timeout(defaultCreateTimeout),
-		shared.DoIf(c.config.Networks.CloudNAT != nil && len(c.config.Networks.CloudNAT.NatIPNames) > 0),
+		shared.Dependencies(ensureVPC),
 	)
-	c.AddTask(g, "ensure nats", c.ensureCloudNAT,
+	ensureRouter := fctx.AddTask(g, "ensure router", fctx.ensureCloudRouter,
+		shared.Timeout(defaultCreateTimeout),
+		shared.Dependencies(ensureVPC),
+	)
+	ensureIpAddresses := fctx.AddTask(g, "ensure IP addresses", fctx.ensureAddresses,
+		shared.Timeout(defaultCreateTimeout),
+		shared.DoIf(fctx.config.Networks.CloudNAT != nil && len(fctx.config.Networks.CloudNAT.NatIPNames) > 0),
+	)
+	fctx.AddTask(g, "ensure nats", fctx.ensureCloudNAT,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureRouter, ensureSubnet, ensureIpAddresses))
 
-	c.AddTask(g, "ensure firewall", c.ensureFirewallRules,
+	fctx.AddTask(g, "ensure firewall", fctx.ensureFirewallRules,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC, ensureSubnet, ensureInternalSubnet),
 	)
@@ -50,36 +55,37 @@ func (c *FlowReconciler) buildReconcileGraph() *flow.Graph {
 	return g
 }
 
-func (c *FlowReconciler) buildDeleteGraph() *flow.Graph {
+func (fctx *FlowContext) buildDeleteGraph() *flow.Graph {
+	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithLogger(fctx.log).WithSpan()
 	g := flow.NewGraph("infrastructure deletion")
 
-	c.AddTask(g, "destroy service account", c.ensureServiceAccountDeleted,
-		shared.Timeout(defaultDeleteTimeout),
+	fctx.AddTask(g, "destroy service account", fctx.ensureServiceAccountDeleted,
+		shared.Timeout(defaultDeleteTimeout), shared.DoIf(fctx.whiteboard.Get(CreatedServiceAccountKey) != nil),
 	)
-	c.AddTask(g, "destroy kubernetes routes", c.ensureKubernetesRoutesDeleted, shared.Timeout(defaultDeleteTimeout))
-	ensureFirewallDeleted := c.AddTask(g, "destroy infrastructure firewall", c.ensureFirewallRulesDeleted, shared.Timeout(defaultDeleteTimeout))
-	ensureNatDeleted := c.AddTask(g, "destroy nats", c.ensureCloudNATDeleted,
+	fctx.AddTask(g, "destroy kubernetes routes", fctx.ensureKubernetesRoutesDeleted, shared.Timeout(defaultDeleteTimeout))
+	ensureFirewallDeleted := fctx.AddTask(g, "destroy infrastructure firewall", fctx.ensureFirewallRulesDeleted, shared.Timeout(20*time.Minute))
+	ensureNatDeleted := fctx.AddTask(g, "destroy nats", fctx.ensureCloudNATDeleted,
 		shared.Timeout(defaultDeleteTimeout),
 		// we do not need to clean up CloudNAT for managed CloudRouters because it will be deleted with the router deletion.
-		shared.DoIf(isUserRouter(c.config)),
+		shared.DoIf(isUserRouter(fctx.config)),
 	)
-	ensureInternalSubnetDeleted := c.AddTask(g, "destroy internal subnet", c.ensureInternalSubnetDeleted,
+	ensureInternalSubnetDeleted := fctx.AddTask(g, "destroy internal subnet", fctx.ensureInternalSubnetDeleted,
 		shared.Timeout(defaultDeleteTimeout),
 	)
-	ensureCloudRouterDeleted := c.AddTask(g, "ensure router deleted", c.ensureCloudRouterDeleted,
+	ensureCloudRouterDeleted := fctx.AddTask(g, "ensure router deleted", fctx.ensureCloudRouterDeleted,
 		shared.Timeout(defaultDeleteTimeout),
 		shared.Dependencies(ensureNatDeleted),
 		// for user-managed CloudRouters, skip deletion.
-		shared.DoIf(!isUserRouter(c.config)),
+		shared.DoIf(!isUserRouter(fctx.config)),
 	)
-	ensureSubnetDeleted := c.AddTask(g, "destroy worker subnet", c.ensureSubnetDeleted,
+	ensureSubnetDeleted := fctx.AddTask(g, "destroy worker subnet", fctx.ensureSubnetDeleted,
 		shared.Timeout(defaultDeleteTimeout),
 		shared.Dependencies(ensureCloudRouterDeleted),
 	)
-	c.AddTask(g, "destroy vpc", c.ensureVPCDeleted,
+	fctx.AddTask(g, "destroy vpc", fctx.ensureVPCDeleted,
 		shared.Timeout(defaultDeleteTimeout),
 		shared.Dependencies(ensureSubnetDeleted, ensureInternalSubnetDeleted, ensureCloudRouterDeleted, ensureFirewallDeleted),
-		shared.DoIf(!isUserVPC(c.config)),
+		shared.DoIf(!isUserVPC(fctx.config)),
 	)
 
 	return g

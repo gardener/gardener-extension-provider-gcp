@@ -8,82 +8,77 @@ import (
 	"google.golang.org/api/compute/v1"
 	"k8s.io/utils/ptr"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
 )
 
-func (c *FlowReconciler) ensureServiceAccount(ctx context.Context) error {
-	log := c.LogFromContext(ctx)
+func (fctx *FlowContext) ensureServiceAccount(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
 
-	serviceAccountName := c.serviceAccountNameFromConfig()
-	sa, err := c.iamClient.GetServiceAccount(ctx, serviceAccountName)
+	serviceAccountName := fctx.serviceAccountNameFromConfig()
+	sa, err := fctx.iamClient.GetServiceAccount(ctx, serviceAccountName)
 	if err != nil {
 		return err
 	}
 
 	if sa == nil {
-		if features.ExtensionFeatureGate.Enabled(features.DisableGardenerServiceAccountCreation) {
-			c.Log.Info(fmt.Sprintf("feature gate %s is enabled. Skipping service account creation", features.DisableGardenerServiceAccountCreation))
-			return nil
-		}
-
-		log.Info("creating service account", "name", serviceAccountName)
-		sa, err = c.iamClient.CreateServiceAccount(ctx, serviceAccountName)
+		sa, err = fctx.iamClient.CreateServiceAccount(ctx, serviceAccountName)
 		if err != nil {
+			log.Error(err, "failed to create service account", "name", serviceAccountName)
 			return err
 		}
-		c.whiteboard.SetObject(ObjectKeyServiceAccount, sa)
+		fctx.whiteboard.GetChild(ChildKeyIDs).Set(KeyServiceAccountEmail, sa.Email)
+		fctx.whiteboard.Set(CreatedServiceAccountKey, "true")
+		fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
 	}
 
 	return nil
 }
 
-func (c *FlowReconciler) ensureVPC(ctx context.Context) error {
+func (fctx *FlowContext) ensureVPC(ctx context.Context) error {
 	var (
-		log = c.LogFromContext(ctx)
 		err error
 	)
 
-	if c.config.Networks.VPC != nil {
-		return c.ensureUserManagedVPC(ctx)
+	if fctx.config.Networks.VPC != nil {
+		return fctx.ensureUserManagedVPC(ctx)
 	}
 
-	vpcName := c.vpcNameFromConfig()
+	vpcName := fctx.vpcNameFromConfig()
 
-	current, err := c.computeClient.GetNetwork(ctx, vpcName)
+	current, err := fctx.computeClient.GetNetwork(ctx, vpcName)
 	if err != nil {
 		return err
 	}
 
 	targetVPC := targetNetwork(vpcName)
 	if current == nil {
-		log.Info("creating...")
-		current, err = c.computeClient.InsertNetwork(ctx, targetVPC)
+		current, err = fctx.computeClient.InsertNetwork(ctx, targetVPC)
 		if err != nil {
 			return err
 		}
 	} else {
-		log.Info("vpc already exists")
-		current, err = c.updater.VPC(ctx, c.computeClient, targetVPC, current)
+		current, err = fctx.updater.VPC(ctx, targetVPC, current)
 		if err != nil {
 			return err
 		}
 	}
 
-	c.whiteboard.SetObject(ObjectKeyVPC, current)
+	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
+	fctx.whiteboard.SetObject(ObjectKeyVPC, current)
 	return nil
 }
 
-func (c *FlowReconciler) ensureUserManagedVPC(ctx context.Context) error {
+func (fctx *FlowContext) ensureUserManagedVPC(ctx context.Context) error {
 	var (
-		log     = c.LogFromContext(ctx)
-		vpcSpec = c.config.Networks.VPC
+		log     = shared.LogFromContext(ctx)
+		vpcSpec = fctx.config.Networks.VPC
 		vpcName = vpcSpec.Name
 		err     error
 	)
 
-	vpc, err := c.computeClient.GetNetwork(ctx, vpcName)
+	vpc, err := fctx.computeClient.GetNetwork(ctx, vpcName)
 	if err != nil {
 		return err
 	}
@@ -92,25 +87,24 @@ func (c *FlowReconciler) ensureUserManagedVPC(ctx context.Context) error {
 		return fmt.Errorf("failed to locate user-managed VPC [Name=%s]", vpcName)
 	}
 
-	c.whiteboard.SetObject(ObjectKeyVPC, vpc)
+	fctx.whiteboard.SetObject(ObjectKeyVPC, vpc)
 	return nil
 }
 
-func (c *FlowReconciler) ensureSubnet(ctx context.Context) error {
+func (fctx *FlowContext) ensureSubnet(ctx context.Context) error {
 	var (
-		log    = c.LogFromContext(ctx)
-		region = c.infra.Spec.Region
+		region = fctx.infra.Spec.Region
 	)
 
-	if err := c.ensureObjectKeys(ObjectKeyVPC); err != nil {
+	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
 		return err
 	}
-	vpc := GetObject[*compute.Network](c.whiteboard, ObjectKeyVPC)
+	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
 
-	subnetName := c.subnetNameFromConfig()
-	cidr := c.config.Networks.Workers
+	subnetName := fctx.subnetNameFromConfig()
+	cidr := fctx.config.Networks.Workers
 	if len(cidr) == 0 {
-		cidr = c.config.Networks.Worker
+		cidr = fctx.config.Networks.Worker
 	}
 
 	targetSubnet := targetSubnetState(
@@ -118,50 +112,48 @@ func (c *FlowReconciler) ensureSubnet(ctx context.Context) error {
 		"gardener-managed worker subnet",
 		cidr,
 		vpc.SelfLink,
-		c.config.Networks.FlowLogs,
+		fctx.config.Networks.FlowLogs,
 	)
 
-	subnet, err := c.computeClient.GetSubnet(ctx, region, subnetName)
+	subnet, err := fctx.computeClient.GetSubnet(ctx, region, subnetName)
 	if err != nil {
 		return err
 	}
 
 	if subnet == nil {
-		log.Info("creating...")
-		subnet, err = c.computeClient.InsertSubnet(ctx, region, targetSubnet)
+		subnet, err = fctx.computeClient.InsertSubnet(ctx, region, targetSubnet)
 		if err != nil {
 			return err
 		}
 	} else {
-		log.Info("subnet already exists")
-		subnet, err = c.updater.Subnet(ctx, c.computeClient, c.infra.Spec.Region, targetSubnet, subnet)
+		subnet, err = fctx.updater.Subnet(ctx, fctx.infra.Spec.Region, targetSubnet, subnet)
 		if err != nil {
 			return err
 		}
 	}
 
-	c.whiteboard.SetObject(ObjectKeyNodeSubnet, subnet)
+	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
+	fctx.whiteboard.SetObject(ObjectKeyNodeSubnet, subnet)
 	return nil
 }
 
-func (c *FlowReconciler) ensureInternalSubnet(ctx context.Context) error {
+func (fctx *FlowContext) ensureInternalSubnet(ctx context.Context) error {
 	var (
-		log    = c.LogFromContext(ctx)
-		region = c.infra.Spec.Region
+		region = fctx.infra.Spec.Region
 	)
 
-	if c.config.Networks.Internal == nil {
-		return c.ensureInternalSubnetDeleted(ctx)
+	if fctx.config.Networks.Internal == nil {
+		return fctx.ensureInternalSubnetDeleted(ctx)
 	}
 
-	if err := c.ensureObjectKeys(ObjectKeyVPC); err != nil {
+	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
 		return err
 	}
-	vpc := GetObject[*compute.Network](c.whiteboard, ObjectKeyVPC)
+	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
 
-	subnetName := c.internalSubnetNameFromConfig()
+	subnetName := fctx.internalSubnetNameFromConfig()
 
-	subnet, err := c.computeClient.GetSubnet(ctx, region, subnetName)
+	subnet, err := fctx.computeClient.GetSubnet(ctx, region, subnetName)
 	if err != nil {
 		return err
 	}
@@ -169,72 +161,72 @@ func (c *FlowReconciler) ensureInternalSubnet(ctx context.Context) error {
 	desired := targetSubnetState(
 		subnetName,
 		"gardener-managed internal subnet",
-		*c.config.Networks.Internal,
+		*fctx.config.Networks.Internal,
 		vpc.SelfLink,
 		nil,
 	)
 	if subnet == nil {
-		log.Info("creating...")
-		subnet, err = c.computeClient.InsertSubnet(ctx, region, desired)
+		subnet, err = fctx.computeClient.InsertSubnet(ctx, region, desired)
 		if err != nil {
 			return err
 		}
 	} else {
-		log.Info("internal subnet already exists")
-		subnet, err = c.updater.Subnet(ctx, c.computeClient, c.infra.Spec.Region, desired, subnet)
+		subnet, err = fctx.updater.Subnet(ctx, fctx.infra.Spec.Region, desired, subnet)
 		if err != nil {
 			return err
 		}
 	}
 
-	c.whiteboard.SetObject(ObjectKeyInternalSubnet, subnet)
+	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
+	fctx.whiteboard.SetObject(ObjectKeyInternalSubnet, subnet)
 	return nil
 }
 
-func (c *FlowReconciler) ensureCloudRouter(ctx context.Context) error {
-	if c.config.Networks.VPC != nil && c.config.Networks.VPC.CloudRouter != nil {
-		return c.ensureUserManagedCloudRouter(ctx)
+func (fctx *FlowContext) ensureCloudRouter(ctx context.Context) error {
+	if fctx.config.Networks.VPC != nil && fctx.config.Networks.VPC.CloudRouter != nil {
+		return fctx.ensureUserManagedCloudRouter(ctx)
 	}
 
-	log := c.LogFromContext(ctx)
+	log := shared.LogFromContext(ctx)
 
-	if err := c.ensureObjectKeys(ObjectKeyVPC); err != nil {
+	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
 		return err
 	}
-	vpc := GetObject[*compute.Network](c.whiteboard, ObjectKeyVPC)
+	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
 
-	routerName := c.cloudRouterNameFromConfig()
+	routerName := fctx.cloudRouterNameFromConfig()
 
 	desired := targetRouterState(routerName, "gardener-managed router", vpc.SelfLink)
-	router, err := c.computeClient.GetRouter(ctx, c.infra.Spec.Region, routerName)
+	router, err := fctx.computeClient.GetRouter(ctx, fctx.infra.Spec.Region, routerName)
 	if err != nil {
 		return err
 	}
+
 	if router == nil {
 		log.Info("creating...")
-		if router, err = c.computeClient.InsertRouter(ctx, c.infra.Spec.Region, desired); err != nil {
+		if router, err = fctx.computeClient.InsertRouter(ctx, fctx.infra.Spec.Region, desired); err != nil {
 			return err
 		}
 	} else {
-		log.Info("router already exists")
-		if router, err = c.updater.Router(ctx, c.computeClient, c.infra.Spec.Region, desired, router); err != nil {
+		if router, err = fctx.updater.Router(ctx, fctx.infra.Spec.Region, desired, router); err != nil {
 			return err
 		}
 	}
 
-	c.whiteboard.SetObject(ObjectKeyRouter, router)
+	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
+	fctx.whiteboard.SetObject(ObjectKeyRouter, router)
 	return nil
 }
 
-func (c *FlowReconciler) ensureUserManagedCloudRouter(ctx context.Context) error {
+func (fctx *FlowContext) ensureUserManagedCloudRouter(ctx context.Context) error {
 	var (
-		log        = c.LogFromContext(ctx)
-		routerName = c.config.Networks.VPC.CloudRouter.Name
+		log        = shared.LogFromContext(ctx)
+		routerName = fctx.config.Networks.VPC.CloudRouter.Name
 	)
 
 	log.Info("ensuring user-managed router")
 
-	router, err := c.computeClient.GetRouter(ctx, c.infra.Spec.Region, routerName)
+	router, err := fctx.computeClient.GetRouter(ctx, fctx.infra.Spec.Region, routerName)
 	if err != nil {
 		return err
 	}
@@ -242,19 +234,19 @@ func (c *FlowReconciler) ensureUserManagedCloudRouter(ctx context.Context) error
 		return fmt.Errorf("failed to locate user-managed CloudRouter [Name=%s]: %v", routerName, err)
 	}
 
-	c.whiteboard.SetObject(ObjectKeyRouter, router)
+	fctx.whiteboard.SetObject(ObjectKeyRouter, router)
 	return nil
 }
 
-func (c *FlowReconciler) ensureAddresses(ctx context.Context) error {
-	log := c.LogFromContext(ctx)
-	if c.config.Networks.CloudNAT == nil || len(c.config.Networks.CloudNAT.NatIPNames) == 0 {
+func (fctx *FlowContext) ensureAddresses(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
+	if fctx.config.Networks.CloudNAT == nil || len(fctx.config.Networks.CloudNAT.NatIPNames) == 0 {
 		return nil
 	}
 
 	var addresses []string
-	for _, name := range c.config.Networks.CloudNAT.NatIPNames {
-		ip, err := c.computeClient.GetAddress(ctx, c.infra.Spec.Region, name.Name)
+	for _, name := range fctx.config.Networks.CloudNAT.NatIPNames {
+		ip, err := fctx.computeClient.GetAddress(ctx, fctx.infra.Spec.Region, name.Name)
 		if err != nil {
 			log.Error(err, "failed to locate user-managed IP address")
 			return err
@@ -263,79 +255,80 @@ func (c *FlowReconciler) ensureAddresses(ctx context.Context) error {
 	}
 
 	if len(addresses) > 0 {
-		c.whiteboard.SetObject(ObjectKeyIPAddress, addresses)
+		fctx.whiteboard.SetObject(ObjectKeyIPAddress, addresses)
 	}
 	return nil
 }
 
-func (c *FlowReconciler) ensureCloudNAT(ctx context.Context) error {
+func (fctx *FlowContext) ensureCloudNAT(ctx context.Context) error {
 	var (
-		log = c.LogFromContext(ctx)
+		log = shared.LogFromContext(ctx)
 		err error
 	)
 
 	log.Info("ensuring nat")
 
-	if err := c.ensureObjectKeys(ObjectKeyRouter, ObjectKeyNodeSubnet); err != nil {
+	if err := fctx.ensureObjectKeys(ObjectKeyRouter, ObjectKeyNodeSubnet); err != nil {
 		return err
 	}
 
-	subnet := GetObject[*client.Subnetwork](c.whiteboard, ObjectKeyNodeSubnet)
-	router := GetObject[*client.Router](c.whiteboard, ObjectKeyRouter)
+	subnet := GetObject[*compute.Subnetwork](fctx.whiteboard, ObjectKeyNodeSubnet)
+	router := GetObject[*compute.Router](fctx.whiteboard, ObjectKeyRouter)
 
-	natName := c.cloudNatNameFromConfig()
+	natName := fctx.cloudNatNameFromConfig()
 	var (
 		nat       *compute.RouterNat
 		addresses []string
 	)
 
-	if a := c.whiteboard.GetObject(ObjectKeyIPAddress); a != nil {
+	if a := fctx.whiteboard.GetObject(ObjectKeyIPAddress); a != nil {
 		addresses = a.([]string)
 	}
 
-	targetNat := targetNATState(natName, subnet.SelfLink, c.config.Networks.CloudNAT, addresses)
-	router, nat, err = c.updater.NAT(ctx, c.computeClient, c.infra.Spec.Region, router, targetNat)
+	targetNat := targetNATState(natName, subnet.SelfLink, fctx.config.Networks.CloudNAT, addresses)
+	router, nat, err = fctx.updater.NAT(ctx, fctx.infra.Spec.Region, router, targetNat)
 	if err != nil {
 		return err
 	}
 
-	c.whiteboard.SetObject(ObjectKeyRouter, router)
-	c.whiteboard.SetObject(ObjectKeyNAT, nat)
+	fctx.whiteboard.SetObject(ObjectKeyRouter, router)
+	fctx.whiteboard.SetObject(ObjectKeyNAT, nat)
+	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
 	return nil
 }
 
-func (c *FlowReconciler) ensureFirewallRules(ctx context.Context) error {
+func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 	var (
-		log = c.LogFromContext(ctx)
+		log = shared.LogFromContext(ctx)
 	)
 
-	if err := c.ensureObjectKeys(ObjectKeyVPC); err != nil {
+	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
 		return err
 	}
-	vpc := GetObject[*compute.Network](c.whiteboard, ObjectKeyVPC)
+	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
 
-	cidrs := []*string{c.podCIDR, c.config.Networks.Internal, ptr.To(c.config.Networks.Workers), ptr.To(c.config.Networks.Worker)}
+	cidrs := []*string{fctx.podCIDR, fctx.config.Networks.Internal, ptr.To(fctx.config.Networks.Workers), ptr.To(fctx.config.Networks.Worker)}
 	rules := []*compute.Firewall{
-		firewallRuleAllowExternal(firewallRuleAllowExternalName(c.clusterName), vpc.SelfLink),
-		firewallRuleAllowInternal(firewallRuleAllowInternalName(c.clusterName), vpc.SelfLink, cidrs),
-		firewallRuleAllowHealthChecks(firewallRuleAllowHealthChecksName(c.clusterName), vpc.SelfLink),
+		firewallRuleAllowExternal(firewallRuleAllowExternalName(fctx.clusterName), vpc.SelfLink),
+		firewallRuleAllowInternal(firewallRuleAllowInternalName(fctx.clusterName), vpc.SelfLink, cidrs),
+		firewallRuleAllowHealthChecks(firewallRuleAllowHealthChecksName(fctx.clusterName), vpc.SelfLink),
 	}
 
 	for _, rule := range rules {
-		gcpRule, err := c.computeClient.GetFirewallRule(ctx, rule.Name)
+		gcpRule, err := fctx.computeClient.GetFirewallRule(ctx, rule.Name)
 		if err != nil {
 			log.Info(fmt.Sprintf("failed to create firewall %s rule: %v", rule.Name, err))
 			return fmt.Errorf("failed to ensure firewall rule [name=%s]: %v", gcpRule.Name, err)
 		}
 
 		if gcpRule == nil {
-			if _, err = c.computeClient.InsertFirewallRule(ctx, rule); err != nil {
+			if _, err = fctx.computeClient.InsertFirewallRule(ctx, rule); err != nil {
 				log.Info(fmt.Sprintf("failed to create firewall %s rule: %v", rule.Name, err))
 				return err
 			}
 			continue
 		}
-		_, err = c.updater.Firewall(ctx, c.computeClient, rule)
+		_, err = fctx.updater.Firewall(ctx, rule)
 		if err != nil {
 			log.Info(fmt.Sprintf("failed to update firewall %s rule: %v", rule.Name, err))
 			return err
@@ -344,128 +337,122 @@ func (c *FlowReconciler) ensureFirewallRules(ctx context.Context) error {
 	return nil
 }
 
-func (c *FlowReconciler) ensureVPCDeleted(ctx context.Context) error {
-	log := c.LogFromContext(ctx)
-
-	networkName := c.vpcNameFromConfig()
-
-	log.Info("deleting vpc")
-	if err := c.computeClient.DeleteNetwork(ctx, networkName); err != nil {
-		return err
-	}
-	c.whiteboard.DeleteObject(ObjectKeyVPC)
-	return nil
-}
-
-func (c *FlowReconciler) ensureSubnetDeleted(ctx context.Context) error {
-	log := c.LogFromContext(ctx)
-
-	subnetName := c.subnetNameFromConfig()
-
-	log.Info("deleting subnet")
-	if err := c.computeClient.DeleteSubnet(ctx, c.infra.Spec.Region, subnetName); err != nil {
+func (fctx *FlowContext) ensureVPCDeleted(ctx context.Context) error {
+	networkName := fctx.vpcNameFromConfig()
+	err := fctx.computeClient.DeleteNetwork(ctx, networkName)
+	if err != nil {
 		return err
 	}
 
-	c.whiteboard.DeleteObject(ObjectKeyNodeSubnet)
+	fctx.whiteboard.DeleteObject(ObjectKeyVPC)
 	return nil
 }
 
-func (c *FlowReconciler) ensureInternalSubnetDeleted(ctx context.Context) error {
-	log := c.LogFromContext(ctx)
+func (fctx *FlowContext) ensureSubnetDeleted(ctx context.Context) error {
+	subnetName := fctx.subnetNameFromConfig()
 
-	subnetName := c.internalSubnetNameFromConfig()
+	err := fctx.computeClient.DeleteSubnet(ctx, fctx.infra.Spec.Region, subnetName)
+	if err != nil {
+		return err
+	}
+
+	fctx.whiteboard.DeleteObject(ObjectKeyNodeSubnet)
+	return nil
+}
+
+func (fctx *FlowContext) ensureInternalSubnetDeleted(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
+
+	subnetName := fctx.internalSubnetNameFromConfig()
 	log.Info("deleting internal subnet")
-	if err := c.computeClient.DeleteSubnet(ctx, c.infra.Spec.Region, subnetName); err != nil {
+	err := fctx.computeClient.DeleteSubnet(ctx, fctx.infra.Spec.Region, subnetName)
+	if err != nil {
 		return err
 	}
 
-	c.whiteboard.DeleteObject(ObjectKeyInternalSubnet)
+	fctx.whiteboard.DeleteObject(ObjectKeyInternalSubnet)
 	return nil
 }
 
-func (c *FlowReconciler) ensureServiceAccountDeleted(ctx context.Context) error {
-	log := c.LogFromContext(ctx)
+func (fctx *FlowContext) ensureServiceAccountDeleted(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
 
-	serviceAccountName := c.serviceAccountNameFromConfig()
+	serviceAccountName := fctx.serviceAccountNameFromConfig()
+
 	log.Info("deleting service account")
-	if err := c.iamClient.DeleteServiceAccount(ctx, serviceAccountName); err != nil {
+	if err := fctx.iamClient.DeleteServiceAccount(ctx, serviceAccountName); err != nil {
 		return err
 	}
 
-	c.whiteboard.DeleteObject(ObjectKeyServiceAccount)
+	fctx.whiteboard.GetChild(ChildKeyIDs).Delete(KeyServiceAccountEmail)
 	return nil
 }
 
-func (c *FlowReconciler) ensureCloudRouterDeleted(ctx context.Context) error {
-	log := c.LogFromContext(ctx)
+func (fctx *FlowContext) ensureCloudRouterDeleted(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
 
-	if c.config.Networks.VPC != nil && c.config.Networks.VPC.CloudRouter != nil {
+	if fctx.config.Networks.VPC != nil && fctx.config.Networks.VPC.CloudRouter != nil {
 		return nil
 	}
 
-	routerName := c.cloudRouterNameFromConfig()
+	routerName := fctx.cloudRouterNameFromConfig()
 
 	log.Info("deleting router")
-	if err := c.computeClient.DeleteRouter(ctx, c.infra.Spec.Region, routerName); err != nil {
+	err := fctx.computeClient.DeleteRouter(ctx, fctx.infra.Spec.Region, routerName)
+	if err != nil {
 		return err
 	}
-	c.whiteboard.DeleteObject(ObjectKeyRouter)
+	fctx.whiteboard.DeleteObject(ObjectKeyRouter)
 	return nil
 }
 
-func (c *FlowReconciler) ensureCloudNATDeleted(ctx context.Context) error {
-	log := c.LogFromContext(ctx)
-
+func (fctx *FlowContext) ensureCloudNATDeleted(ctx context.Context) error {
 	// flow optimization: deletion can be omitted because we will delete gardener router
-	// if c.config.Networks.VPC == nil || c.config.Networks.VPC.CloudRouter == nil {
+	// if fctx.config.Networks.VPC == nil || fctx.config.Networks.VPC.CloudRouter == nil {
 	// 	log.Info("skipping nat deletion because router is gardener-managed and will be deleted.")
 	// 	return nil
 	// }
 
-	routerName := c.cloudRouterNameFromConfig()
-	natName := c.cloudNatNameFromConfig()
+	routerName := fctx.cloudRouterNameFromConfig()
+	natName := fctx.cloudNatNameFromConfig()
 
-	log.Info("deleting nat")
-	router, err := c.updater.DeleteNAT(ctx, c.computeClient, c.infra.Spec.Region, routerName, natName)
+	router, err := fctx.updater.DeleteNAT(ctx, fctx.infra.Spec.Region, routerName, natName)
 	if err != nil {
 		return err
 	}
-	log.Info("nat deleted successfully")
-	c.whiteboard.SetObject(ObjectKeyRouter, router)
+
+	fctx.whiteboard.SetObject(ObjectKeyRouter, router)
 	return nil
 }
 
-func (c *FlowReconciler) ensureFirewallRulesDeleted(ctx context.Context) error {
-	log := c.LogFromContext(ctx)
+func (fctx *FlowContext) ensureFirewallRulesDeleted(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
 
-	vpcName := c.vpcNameFromConfig()
+	vpcName := fctx.vpcNameFromConfig()
 
-	var names []string
+	fws, err := fctx.computeClient.ListFirewallRules(ctx, client.FirewallListOpts{
+		Filter: fmt.Sprintf(`network eq ".*(%s).*"`, vpcName),
+		ClientFilter: func(f *compute.Firewall) bool {
+			if strings.HasPrefix(f.Name, infrastructure.KubernetesFirewallNamePrefix) {
+				for _, targetTag := range f.TargetTags {
+					if targetTag == fctx.clusterName {
+						return true
+					}
+				}
+			} else if strings.HasPrefix(f.Name, fctx.clusterName) {
+				return true
+			}
 
-	fws, err := c.computeClient.ListFirewallRules(ctx)
+			return false
+		},
+	})
 	if err != nil {
 		return err
 	}
 
-	for _, firewall := range fws {
-		if strings.HasSuffix(firewall.Network, vpcName) {
-			if strings.HasPrefix(firewall.Name, infrastructure.KubernetesFirewallNamePrefix) {
-				for _, targetTag := range firewall.TargetTags {
-					if targetTag == c.clusterName {
-						names = append(names, firewall.Name)
-						break
-					}
-				}
-			} else if strings.HasPrefix(firewall.Name, c.clusterName) {
-				names = append(names, firewall.Name)
-			}
-		}
-	}
-
-	for _, name := range names {
-		log.Info(fmt.Sprintf("destroying firewall rule [name=%s]", name))
-		err := c.computeClient.DeleteFirewallRule(ctx, name)
+	for _, fw := range fws {
+		log.Info(fmt.Sprintf("destroying firewall rule [name=%s]", fw.Name))
+		err := fctx.computeClient.DeleteFirewallRule(ctx, fw.Name)
 		if err != nil {
 			return err
 		}
@@ -474,28 +461,29 @@ func (c *FlowReconciler) ensureFirewallRulesDeleted(ctx context.Context) error {
 	return nil
 }
 
-func (c *FlowReconciler) ensureKubernetesRoutesDeleted(ctx context.Context) error {
-	log := c.LogFromContext(ctx)
-	vpcName := c.vpcNameFromConfig()
+func (fctx *FlowContext) ensureKubernetesRoutesDeleted(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
+	vpcName := fctx.vpcNameFromConfig()
 
-	var names []string
-	routes, err := c.computeClient.ListRoutes(ctx)
+	routes, err := fctx.computeClient.ListRoutes(ctx, client.RouteListOpts{
+		Filter: fmt.Sprintf(`network eq ".*(%s).*"`, vpcName),
+		ClientFilter: func(route *compute.Route) bool {
+			if strings.HasPrefix(route.Name, infrastructure.ShootPrefix) && strings.HasSuffix(route.Network, vpcName) {
+				urlParts := strings.Split(route.NextHopInstance, "/")
+				if strings.HasPrefix(urlParts[len(urlParts)-1], fctx.clusterName) {
+					return true
+				}
+			}
+			return false
+		},
+	})
 	if err != nil {
 		return err
 	}
 
 	for _, route := range routes {
-		if strings.HasPrefix(route.Name, infrastructure.ShootPrefix) && strings.HasSuffix(route.Network, vpcName) {
-			urlParts := strings.Split(route.NextHopInstance, "/")
-			if strings.HasPrefix(urlParts[len(urlParts)-1], c.clusterName) {
-				names = append(names, route.Name)
-			}
-		}
-	}
-
-	for _, name := range names {
-		log.Info(fmt.Sprintf("destroying route[name=%s]", name))
-		err := c.computeClient.DeleteRoute(ctx, name)
+		log.Info(fmt.Sprintf("destroying route[name=%s]", route.Name))
+		err := fctx.computeClient.DeleteRoute(ctx, route.Name)
 		if err != nil {
 			return err
 		}

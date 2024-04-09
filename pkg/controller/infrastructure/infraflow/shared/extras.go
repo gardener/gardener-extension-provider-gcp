@@ -6,7 +6,9 @@
 package shared
 
 import (
+	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -19,7 +21,10 @@ type waiter struct {
 	period        time.Duration
 	message       atomic.String
 	keysAndValues []any
+	once          sync.Once
 	done          chan struct{}
+
+	ticker *time.Ticker
 }
 
 // InformOnWaiting does
@@ -41,24 +46,43 @@ func (w *waiter) UpdateMessage(message string) {
 }
 
 func (w *waiter) run() {
-	ticker := time.NewTicker(w.period)
-	defer ticker.Stop()
+	w.ticker = time.NewTicker(w.period)
+	defer w.ticker.Stop()
+OUTER:
 	for {
 		select {
 		case <-w.done:
-			return
-		case <-ticker.C:
-			delta := int(time.Since(w.start).Seconds())
-			w.log.Info(fmt.Sprintf("%s [%ds]", w.message.Load(), delta), w.keysAndValues...)
+			break OUTER
+		case <-w.ticker.C:
+			delta := time.Since(w.start)
+			w.log.Info(fmt.Sprintf("[%.fs] %s", delta.Seconds(), w.message.Load()), w.keysAndValues...)
 		}
 	}
 }
 
-func (w *waiter) Done(err error) {
-	w.done <- struct{}{}
-	if err != nil {
-		w.log.Info("failed: " + err.Error())
-	} else {
-		w.log.Info("succeeded")
+func (w *waiter) IntoContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, contextKey{}, w)
+}
+
+func (w *waiter) Done() {
+	w.once.Do(
+		func() {
+			close(w.done)
+		})
+}
+
+type contextKey struct{}
+
+// FromContext retrieves a waiter from the current context or returns nil if it is not found.
+func FromContext(ctx context.Context) *waiter {
+	v := ctx.Value(contextKey{})
+	if v == nil {
+		return nil
 	}
+
+	w, ok := v.(*waiter)
+	if !ok {
+		return nil
+	}
+	return w
 }

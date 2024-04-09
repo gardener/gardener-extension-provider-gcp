@@ -28,9 +28,32 @@ spec:
     definition:
       name: infrastructure-test
       config:
+        - name: REGION
+          type: env
+          value: europe-west1
+        - name: RECONCILER
+          type: env
+          value: tf
+  - name: infra-flow-test
+    definition:
+      name: infrastructure-test
+      config:
+        - name: REGION
+          type: env
+          value: europe-west1
+        - name: RECONCILER
+          type: env
+          value: flow
+  - name: infra-migrate-test
+    definition:
+      name: infrastructure-test
+      config:
       - name: REGION
         type: env
         value: europe-west1
+      - name: RECONCILER
+        type: env
+        value: migrate
   - name: bastion-test
     definition:
       name: bastion-test
