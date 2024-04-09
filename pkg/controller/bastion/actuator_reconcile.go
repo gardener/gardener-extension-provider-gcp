@@ -26,10 +26,6 @@ import (
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 )
 
-const (
-	osImage = "debian-cloud"
-)
-
 // bastionEndpoints collects the endpoints the bastion host provides; the
 // private endpoint is important for opening a port on the worker node
 // ingress firewall rule to allow SSH from that node, the public endpoint is where
@@ -243,12 +239,12 @@ func ensureDisk(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interf
 
 	log.Info("create new bastion compute instance disk")
 
-	osFamily, err := getOSImage(gcpclient)
+	osImage, err := getDefaultOsImage(gcpclient)
 	if err != nil {
 		return err
 	}
 
-	disk = diskDefine(opt.Zone, opt.DiskName, osFamily)
+	disk = diskDefine(opt.Zone, opt.DiskName, osImage)
 	_, err = gcpclient.Disks().Insert(opt.ProjectID, opt.Zone, disk).Context(ctx).Do()
 	if err != nil {
 		return fmt.Errorf("failed to create compute instance disk: %w", err)
@@ -315,33 +311,39 @@ func disksDefine(opt *Options) []*compute.AttachedDisk {
 	}
 }
 
-func diskDefine(zone string, diskName, osFamily string) *compute.Disk {
+func diskDefine(zone string, diskName, osImage string) *compute.Disk {
 	return &compute.Disk{
 		Description: "Gardenctl Bastion disk",
 		Name:        diskName,
 		SizeGb:      10,
-		SourceImage: fmt.Sprintf("projects/%s/global/images/family/%s", osImage, osFamily),
+		SourceImage: osImage,
 		Zone:        zone,
 	}
 }
 
-func getOSImage(gcpClient gcpclient.Interface) (string, error) {
-	resp, err := gcpClient.Images().List(osImage).OrderBy("creationTimestamp desc").Fields("items(name,creationTimestamp,family)").Do()
+func getDefaultOsImage(gcpClient gcpclient.Interface) (string, error) {
+	projectID := "ubuntu-os-cloud"
+
+	resp, err := gcpClient.Images().
+		List(projectID).
+		// filtering + ordering is not yet supported: https://issuetracker.google.com/issues/250878584
+		// Filter("architecture:X86_64" AND "family:*minimal*").
+		OrderBy("creationTimestamp desc"). // does not actually guarantee newest - just last one updated
+		Fields("items(family,architecture)").
+		Do()
+
 	if err != nil {
 		return "", err
 	}
-
 	if resp == nil || len(resp.Items) == 0 {
-		return "", fmt.Errorf("no available os image find")
+		return "", fmt.Errorf("no available os image found")
 	}
 
-	// looking for fist os x86 arch version sorted by creationTimestamp
 	for _, k := range resp.Items {
-		if strings.Contains(k.Family, "-arm64") {
-			continue
+		if strings.Contains(k.Family, "minimal") && k.Architecture == "X86_64" {
+			return fmt.Sprintf("projects/%s/global/images/family/%s", projectID, k.Family), nil
 		}
-		return k.Family, nil
 	}
 
-	return "", nil
+	return "", fmt.Errorf("no matching image found")
 }
