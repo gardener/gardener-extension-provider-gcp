@@ -1,6 +1,7 @@
 module github.com/gardener/gardener-extension-provider-gcp
 
 go 1.22
+toolchain go1.22.2
 
 require (
 	cloud.google.com/go/storage v1.40.0
@@ -9,7 +10,7 @@ require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/gardener/etcd-druid v0.22.0
-	github.com/gardener/gardener v1.91.2
+	github.com/gardener/gardener v1.92.1
 	github.com/gardener/machine-controller-manager v0.52.0
 	github.com/go-logr/logr v1.4.1
 	github.com/onsi/ginkgo/v2 v2.17.1
@@ -18,7 +19,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.4.0
-	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
+	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
 	golang.org/x/oauth2 v0.19.0
 	golang.org/x/tools v0.20.0
 	google.golang.org/api v0.172.0
@@ -56,7 +57,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fluent/fluent-operator/v2 v2.7.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/gardener/cert-management v0.12.1 // indirect
+	github.com/gardener/cert-management v0.13.0 // indirect
 	github.com/gardener/hvpa-controller/api v0.15.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
@@ -151,7 +152,6 @@ require (
 	helm.sh/helm/v3 v3.14.3 // indirect
 	istio.io/api v1.19.8 // indirect
 	istio.io/client-go v1.19.8 // indirect
-	k8s.io/apiserver v0.29.3 // indirect
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
