@@ -28,6 +28,7 @@ import (
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	extensionsv1alpha1helper "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1/helper"
 )
 
 var labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
@@ -215,17 +216,18 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 			)
 
 			machineDeployments = append(machineDeployments, worker.MachineDeployment{
-				Name:                 deploymentName,
-				ClassName:            className,
-				SecretName:           className,
-				Minimum:              worker.DistributeOverZones(zoneIdx, pool.Minimum, zoneLen),
-				Maximum:              worker.DistributeOverZones(zoneIdx, pool.Maximum, zoneLen),
-				MaxSurge:             worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxSurge, zoneLen, pool.Maximum),
-				MaxUnavailable:       worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxUnavailable, zoneLen, pool.Minimum),
-				Labels:               addTopologyLabel(pool.Labels, zone),
-				Annotations:          pool.Annotations,
-				Taints:               pool.Taints,
-				MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
+				Name:                         deploymentName,
+				ClassName:                    className,
+				SecretName:                   className,
+				Minimum:                      worker.DistributeOverZones(zoneIdx, pool.Minimum, zoneLen),
+				Maximum:                      worker.DistributeOverZones(zoneIdx, pool.Maximum, zoneLen),
+				MaxSurge:                     worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxSurge, zoneLen, pool.Maximum),
+				MaxUnavailable:               worker.DistributePositiveIntOrPercent(zoneIdx, pool.MaxUnavailable, zoneLen, pool.Minimum),
+				Labels:                       addTopologyLabel(pool.Labels, zone),
+				Annotations:                  pool.Annotations,
+				Taints:                       pool.Taints,
+				MachineConfiguration:         genericworkeractuator.ReadMachineConfiguration(pool),
+				ClusterAutoscalerAnnotations: extensionsv1alpha1helper.GetMachineDeploymentClusterAutoscalerAnnotations(pool.ClusterAutoscaler),
 			})
 
 			machineClassSpec["name"] = className
