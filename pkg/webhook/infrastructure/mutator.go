@@ -71,14 +71,23 @@ func (m *mutator) Mutate(ctx context.Context, new, old client.Object) error {
 		cluster.Shoot.Annotations = map[string]string{}
 	}
 
+	mutated := false
 	if v, ok := cluster.Shoot.Annotations[gcp.GlobalAnnotationKeyUseFlow]; ok {
 		newInfra.Annotations[gcp.AnnotationKeyUseFlow] = v
+		mutated = true
 	} else if v, ok := cluster.Shoot.Annotations[gcp.AnnotationKeyUseFlow]; ok {
 		newInfra.Annotations[gcp.AnnotationKeyUseFlow] = v
+		mutated = true
 	} else if old == nil && cluster.Seed.Annotations[gcp.SeedAnnotationKeyUseFlow] == gcp.SeedAnnotationUseFlowValueNew {
 		newInfra.Annotations[gcp.AnnotationKeyUseFlow] = "true"
+		mutated = true
 	} else if v := cluster.Seed.Annotations[gcp.SeedAnnotationKeyUseFlow]; strings.EqualFold(v, "true") {
 		newInfra.Annotations[gcp.AnnotationKeyUseFlow] = "true"
+		mutated = true
+	}
+
+	if mutated {
+		extensionswebhook.LogMutation(logger, newInfra.Kind, newInfra.Namespace, newInfra.Name)
 	}
 
 	return nil
