@@ -97,6 +97,8 @@ spec:
   #       kmsKeyServiceAccount: "user@projectId.iam.gserviceaccount.com"
   #   dataVolume: # provider specific dataVolume configuration
   #     sourceImage: "projects/sap-se-gcp-gardenlinux/global/images/..."
+  #     provisionedIops: 3000 # applies only for certain volume types
+  #     provisionedThroughput: 140 # applies only for certain volume types
   #   gpu:
   #     acceleratorType: nvidia-tesla-t4
   #     count: 1

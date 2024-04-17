@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
@@ -42,6 +43,15 @@ const (
 	ResourceGPU v1.ResourceName = "gpu"
 	// VolumeTypeScratch is the gcp SCRATCH volume type
 	VolumeTypeScratch = "SCRATCH"
+)
+
+var (
+	// AllowedTypesIops are the volume types for which iops can be configured
+	// https://cloud.google.com/sdk/gcloud/reference/compute/disks/create#--provisioned-iops
+	AllowedTypesIops = []string{"pd-extreme", "hyperdisk-extreme"}
+	// AllowedTypesThroughput are the the volume types for which throughput can be configured
+	// https://cloud.google.com/sdk/gcloud/reference/compute/disks/create#--provisioned-throughput
+	AllowedTypesThroughput = []string{"hyperdisk-throughput"}
 )
 
 // MachineClassKind yields the name of the machine class kind used by GCP provider.
@@ -318,15 +328,26 @@ func createDiskSpec(size string, boot bool, image, volumeType *string, workerCon
 	}
 
 	if workerConfig.Volume != nil {
-		// Only add encryption details for non-scratch disks, checked by worker validation
-		addDiskEncryptionDetails(disk, workerConfig.Volume.Encryption)
-		// only allowed if volume type is SCRATCH - checked by worker validation
-		if workerConfig.Volume.LocalSSDInterface != nil && *volumeType == VolumeTypeScratch {
-			disk["interface"] = *workerConfig.Volume.LocalSSDInterface
-		}
+		addWorkerConfigDetails(disk, workerConfig.Volume, *volumeType)
 	}
 
 	return disk, nil
+}
+
+func addWorkerConfigDetails(disk map[string]interface{}, volume *apisgcp.Volume, volumeType string) {
+	// Only add encryption details for non-scratch disks, checked by worker validation
+	addDiskEncryptionDetails(disk, volume.Encryption)
+	// only allowed if volume type is SCRATCH - checked by worker validation
+	if volume.LocalSSDInterface != nil && volumeType == VolumeTypeScratch {
+		disk["interface"] = *volume.LocalSSDInterface
+	}
+	// adding specific performance metrics
+	if volume.ProvisionedIops != nil && slices.Contains(AllowedTypesIops, volumeType) {
+		disk["provisionedIops"] = *volume.ProvisionedIops
+	}
+	if volume.ProvisionedThroughput != nil && slices.Contains(AllowedTypesThroughput, volumeType) {
+		disk["provisionedThroughput"] = *volume.ProvisionedThroughput
+	}
 }
 
 func addDiskEncryptionDetails(disk map[string]interface{}, encryption *apisgcp.DiskEncryption) {

@@ -204,6 +204,11 @@ apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
 kind: WorkerConfig
 volume:
   interface: NVME
+  encryption:
+    kmsKeyName: "projects/projectId/locations/<zoneName>/keyRings/<keyRingName>/cryptoKeys/alpha"
+    kmsKeyServiceAccount: "user@projectId.iam.gserviceaccount.com"
+  provisionedIops: 3000
+  provisionedThroughput: 140
 serviceAccount:
   email: foo@bar.com
   scopes:

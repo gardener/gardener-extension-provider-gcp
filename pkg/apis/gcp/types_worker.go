@@ -48,6 +48,19 @@ type Volume struct {
 
 	// Encryption refers to the disk encryption details for this volume
 	Encryption *DiskEncryption
+
+	// ProvisionedIops of disk to create.
+	// Only for use with disk of types like pd-extreme and hyperdisk-extreme.
+	// The IOPS must be specified within defined limits.
+	// If not set gcp calculates a default value taking the disk size into consideration.
+	ProvisionedIops *int64 `json:"provisionedIops"`
+
+	// ProvisionedThroughput of disk to create.
+	// Only for hyperdisk-balanced or hyperdisk-throughput volumes,
+	// measured in MiB per second, that the disk can handle.
+	// The throughput must be specified within defined limits.
+	// If not set gcp calculates a default value taking the disk size into consideration.
+	ProvisionedThroughput *int64 `json:"provisionedThroughput"`
 }
 
 // DataVolume contains configuration for data volumes attached to VMs.
