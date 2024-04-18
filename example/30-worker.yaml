@@ -95,6 +95,9 @@ spec:
   #     encryption: # Encryption Details
   #       kmsKeyName: "projects/projectId/locations/<zoneName>/keyRings/<keyRingName>/cryptoKeys/alpha"
   #       kmsKeyServiceAccount: "user@projectId.iam.gserviceaccount.com"
+  #   gpu:
+  #     acceleratorType: nvidia-tesla-t4
+  #     count: 1
   #   serviceAccount:
   #     email: foo@bar.com
   #     scopes:
