@@ -18,41 +18,27 @@ import (
 // VolumeTypeScratch is the gcp SCRATCH volume type
 const VolumeTypeScratch = "SCRATCH"
 
-var validVolumeLocalSSDInterfacesTypes = sets.New("NVME", "SCSI")
+var (
+	validVolumeLocalSSDInterfacesTypes = sets.New("NVME", "SCSI")
+
+	providerFldPath = field.NewPath("providerConfig")
+	volumeFldPath   = providerFldPath.Child("volume")
+)
 
 // ValidateWorkerConfig validates a WorkerConfig object.
 func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.DataVolume) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	for _, volume := range dataVolumes {
-		if volume.Type == nil {
-			allErrs = append(allErrs, field.Required(field.NewPath("volume", "type"), "must not be empty"))
-		}
-		if volume.Type != nil && *volume.Type == VolumeTypeScratch {
-			if workerConfig == nil || workerConfig.Volume == nil || workerConfig.Volume.LocalSSDInterface == nil {
-				allErrs = append(allErrs, field.Required(field.NewPath("volume", "localSSDInterface"), fmt.Sprintf("must be set when using %s volumes", VolumeTypeScratch)))
-			} else {
-				if !validVolumeLocalSSDInterfacesTypes.Has(*workerConfig.Volume.LocalSSDInterface) {
-					allErrs = append(allErrs, field.NotSupported(field.NewPath("volume", "localSSDInterface"), *workerConfig.Volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.UnsortedList()))
-				}
-			}
-			// DiskEncryption not allowed for type SCRATCH
-			if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.Encryption != nil {
-				allErrs = append(allErrs, field.Invalid(field.NewPath("volume", "Encryption"), *workerConfig.Volume.Encryption, fmt.Sprintf("must not be set in combination with %s volumes", VolumeTypeScratch)))
-			}
-		}
-		// LocalSSDInterface only allowed for type SCRATCH
-		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil &&
-			volume.Type != nil && *volume.Type != VolumeTypeScratch {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("volume", "LocalSSDInterface"), *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", VolumeTypeScratch)))
-		}
+	for i, dataVolume := range dataVolumes {
+		dataVolumeFldPath := field.NewPath("dataVolumes").Index(i)
+		allErrs = append(allErrs, validateDataVolume(workerConfig, dataVolume, dataVolumeFldPath)...)
 	}
 
 	if workerConfig != nil {
-		allErrs = append(allErrs, validateGPU(workerConfig.GPU, field.NewPath("gpu"))...)
-		allErrs = append(allErrs, validateServiceAccount(workerConfig.ServiceAccount, field.NewPath("serviceAccount"))...)
+		allErrs = append(allErrs, validateGPU(workerConfig.GPU, providerFldPath.Child("gpu"))...)
+		allErrs = append(allErrs, validateServiceAccount(workerConfig.ServiceAccount, providerFldPath.Child("serviceAccount"))...)
 		if workerConfig.Volume != nil {
-			allErrs = append(allErrs, validateDiskEncryption(workerConfig.Volume.Encryption, field.NewPath("volume", "encryption"))...)
+			allErrs = append(allErrs, validateDiskEncryption(workerConfig.Volume.Encryption, volumeFldPath.Child("encryption"))...)
 		}
 	}
 
@@ -120,6 +106,35 @@ func validateDiskEncryption(encryption *gcp.DiskEncryption, fldPath *field.Path)
 		// Currently DiskEncryption only contains CMEK fields. Hence if not nil, then kmsKeyName is a must
 		// Validation logic will need to be modified when CSEK fields are possibly added to gcp.DiskEncryption in the future.
 		allErrs = append(allErrs, field.Required(fldPath.Child("kmsKeyName"), "must be specified when configuring disk encryption"))
+	}
+
+	return allErrs
+}
+
+func validateDataVolume(workerConfig *gcp.WorkerConfig, volume core.DataVolume, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if volume.Type == nil {
+		allErrs = append(allErrs, field.Required(fldPath.Child("type"), "must not be empty"))
+		return allErrs
+	}
+	if *volume.Type == VolumeTypeScratch {
+		if workerConfig == nil || workerConfig.Volume == nil || workerConfig.Volume.LocalSSDInterface == nil {
+			allErrs = append(allErrs, field.Required(volumeFldPath.Child("interface"), fmt.Sprintf("must be set when using %s volumes", VolumeTypeScratch)))
+		} else {
+			if !validVolumeLocalSSDInterfacesTypes.Has(*workerConfig.Volume.LocalSSDInterface) {
+				allErrs = append(allErrs, field.NotSupported(volumeFldPath.Child("interface"), *workerConfig.Volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.UnsortedList()))
+			}
+		}
+		// DiskEncryption not allowed for type SCRATCH
+		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.Encryption != nil {
+			allErrs = append(allErrs, field.Invalid(volumeFldPath.Child("encryption"), *workerConfig.Volume.Encryption, fmt.Sprintf("must not be set in combination with %s volumes", VolumeTypeScratch)))
+		}
+	} else {
+		// LocalSSDInterface only allowed for type SCRATCH
+		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
+			allErrs = append(allErrs, field.Invalid(volumeFldPath.Child("interface"), *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", VolumeTypeScratch)))
+		}
 	}
 
 	return allErrs

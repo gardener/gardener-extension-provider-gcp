@@ -108,7 +108,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("volume.type"),
+				"Field": Equal("dataVolumes[0].type"),
 			})),
 		))
 	})
@@ -137,7 +137,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("serviceAccount.email"),
+				"Field": Equal("providerConfig.serviceAccount.email"),
 			})),
 		))
 	})
@@ -154,7 +154,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("volume.encryption.kmsKeyName"),
+				"Field": Equal("providerConfig.volume.encryption.kmsKeyName"),
 			})),
 		))
 	})
@@ -170,7 +170,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("serviceAccount.scopes"),
+				"Field": Equal("providerConfig.serviceAccount.scopes"),
 			})),
 		))
 	})
@@ -186,7 +186,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("serviceAccount.scopes[1]"),
+				"Field": Equal("providerConfig.serviceAccount.scopes[1]"),
 			})),
 		))
 	})
@@ -202,7 +202,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeDuplicate),
-				"Field": Equal("serviceAccount.scopes[2]"),
+				"Field": Equal("providerConfig.serviceAccount.scopes[2]"),
 			})),
 		))
 	})
@@ -235,7 +235,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("gpu.acceleratorType"),
+				"Field": Equal("providerConfig.gpu.acceleratorType"),
 			})),
 		))
 	})
@@ -257,7 +257,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeForbidden),
-				"Field": Equal("gpu.count"),
+				"Field": Equal("providerConfig.gpu.count"),
 			})),
 		))
 	})
@@ -312,7 +312,7 @@ var _ = Describe("#ValidateWorkers", func() {
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeNotSupported),
-					"Field": Equal("volume.localSSDInterface"),
+					"Field": Equal("providerConfig.volume.interface"),
 				})),
 			))
 		})
@@ -330,7 +330,7 @@ var _ = Describe("#ValidateWorkers", func() {
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeInvalid),
-					"Field": Equal("volume.Encryption"),
+					"Field": Equal("providerConfig.volume.encryption"),
 				})),
 			))
 		})
@@ -341,7 +341,7 @@ var _ = Describe("#ValidateWorkers", func() {
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("volume.localSSDInterface"),
+					"Field": Equal("providerConfig.volume.interface"),
 				})),
 			))
 		})
