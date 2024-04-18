@@ -419,3 +419,20 @@ var _ = Describe("#ValidateWorkers", func() {
 		})
 	})
 })
+
+func copyWorkers(workers []core.Worker) []core.Worker {
+	cp := append(workers[:0:0], workers...)
+	for i := range cp {
+		cp[i].Zones = append(workers[i].Zones[:0:0], workers[i].Zones...)
+	}
+	return cp
+}
+
+func validateWorkerConfig(workers []core.Worker, workerConfig *gcp.WorkerConfig) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for _, worker := range workers {
+		allErrs = append(allErrs, ValidateWorkerConfig(workerConfig, worker.DataVolumes)...)
+	}
+
+	return allErrs
+}
