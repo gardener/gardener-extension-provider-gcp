@@ -51,12 +51,6 @@ var _ = Describe("#ValidateWorkers", func() {
 					"zone1",
 					"zone2",
 				},
-				DataVolumes: []core.DataVolume{
-					{
-						Type:       ptr.To("SCRATCH"),
-						VolumeSize: "30G",
-					},
-				},
 			},
 			{
 				Volume: &core.Volume{
@@ -108,6 +102,17 @@ var _ = Describe("#ValidateWorkers", func() {
 		))
 	})
 
+	It("should forbid because data volume type is empty", func() {
+		workers[0].DataVolumes[0].Type = nil
+		errorList := validateWorkerConfig(workers, nil)
+		Expect(errorList).To(ConsistOf(
+			PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("volume.type"),
+			})),
+		))
+	})
+
 	It("should forbid because worker does not specify a zone", func() {
 		workers[0].Zones = nil
 
@@ -117,40 +122,6 @@ var _ = Describe("#ValidateWorkers", func() {
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
 				"Field": Equal("workers[0].zones"),
-			})),
-		))
-	})
-
-	It("should pass because worker config is configured correctly", func() {
-		errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
-			Volume: &gcp.Volume{
-				LocalSSDInterface: ptr.To("NVME"),
-			},
-		})
-		Expect(errorList).To(BeEmpty())
-	})
-
-	It("should forbid because interface of worker config is misconfiguration", func() {
-		errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
-			Volume: &gcp.Volume{
-				LocalSSDInterface: ptr.To("Interface"),
-			},
-		})
-		Expect(errorList).To(ConsistOf(
-			PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":  Equal(field.ErrorTypeNotSupported),
-				"Field": Equal("volume.localSSDInterface"),
-			})),
-		))
-	})
-
-	It("should forbid because interface of worker config is not configured", func() {
-
-		errorList := validateWorkerConfig(workers, nil)
-		Expect(errorList).To(ConsistOf(
-			PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("volume.localSSDInterface"),
 			})),
 		))
 	})
@@ -306,6 +277,74 @@ var _ = Describe("#ValidateWorkers", func() {
 		)
 
 		Expect(errorList).To(BeEmpty())
+	})
+
+	Describe("#Volume type SCRATCH", func() {
+		It("should pass because worker config is configured correctly", func() {
+			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
+				Volume: &gcp.Volume{
+					LocalSSDInterface: ptr.To("NVME"),
+				},
+			})
+			Expect(errorList).To(BeEmpty())
+		})
+		It("should forbid because volume type SCRATCH must not be main volume", func() {
+			workers[0].Volume.Type = ptr.To(VolumeTypeScratch)
+
+			errorList := ValidateWorkers(workers, field.NewPath("workers"))
+
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("workers[0].volume.type"),
+				})),
+			))
+		})
+
+		It("should forbid because interface of worker config is misconfiguration", func() {
+			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
+				Volume: &gcp.Volume{
+					LocalSSDInterface: ptr.To("Interface"),
+				},
+			})
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeNotSupported),
+					"Field": Equal("volume.localSSDInterface"),
+				})),
+			))
+		})
+
+		It("should forbid because encryption is not allowed for volume type SCRATCH", func() {
+			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
+				Volume: &gcp.Volume{
+					LocalSSDInterface: ptr.To("NVME"),
+					Encryption: &gcp.DiskEncryption{
+						KmsKeyName: ptr.To("KmsKey"),
+					},
+				},
+			})
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("volume.Encryption"),
+				})),
+			))
+		})
+
+		It("should forbid because interface of worker config is not configured", func() {
+			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			errorList := validateWorkerConfig(workers, nil)
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("volume.localSSDInterface"),
+				})),
+			))
+		})
 	})
 
 	Describe("#ValidateWorkersUpdate", func() {

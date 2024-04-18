@@ -142,14 +142,13 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 				return err
 			}
 
-			if volume.Type != nil && *volume.Type == "SCRATCH" && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
-				disk["interface"] = *workerConfig.Volume.LocalSSDInterface
-			}
-
-			if workerConfig.Volume != nil && volume.Type != nil && *volume.Type != "SCRATCH" {
-				// Only add encryption details for non-scratch disks.
-				// See https://cloud.google.com/compute/docs/disks/customer-supplied-encryption#technical_restrictions
+			if workerConfig.Volume != nil {
+				// Only add encryption details for non-scratch disks, checked by worker validation
 				addDiskEncryptionDetails(disk, workerConfig.Volume.Encryption)
+				// only allowed if volume type is SCRATCH - checked by worker validation
+				if workerConfig.Volume.LocalSSDInterface != nil {
+					disk["interface"] = *workerConfig.Volume.LocalSSDInterface
+				}
 			}
 
 			disks = append(disks, disk)

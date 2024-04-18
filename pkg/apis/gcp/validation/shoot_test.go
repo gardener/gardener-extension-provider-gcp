@@ -52,10 +52,8 @@ var _ = Describe("Shoot validation", func() {
 		})
 	})
 	Describe("#ValidateWorkers", func() {
-		var workers []core.Worker
-
-		BeforeEach(func() {
-			workers = []core.Worker{
+		It("should pass successfully", func() {
+			workers := []core.Worker{
 				{
 					Name: "foo",
 					Volume: &core.Volume{
@@ -73,9 +71,6 @@ var _ = Describe("Shoot validation", func() {
 					Zones: []string{"zone1"},
 				},
 			}
-		})
-
-		It("should pass successfully", func() {
 			workers[0].Kubernetes = &core.WorkerKubernetes{Version: ptr.To("1.28.0")}
 
 			errorList := ValidateWorkers(workers, field.NewPath(""))

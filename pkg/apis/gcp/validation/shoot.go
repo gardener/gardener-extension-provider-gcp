@@ -5,6 +5,8 @@
 package validation
 
 import (
+	"fmt"
+
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/helper"
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
@@ -50,6 +52,10 @@ func validateVolume(vol *core.Volume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if vol.Type == nil {
 		allErrs = append(allErrs, field.Required(fldPath.Child("type"), "must not be empty"))
+	}
+	if vol.Type != nil && *vol.Type == VolumeTypeScratch {
+		allErrs = append(allErrs, field.Invalid(
+			fldPath.Child("type"), VolumeTypeScratch, fmt.Sprintf("type %s is not allowed as boot disk", VolumeTypeScratch)))
 	}
 	if vol.VolumeSize == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("size"), "must not be empty"))

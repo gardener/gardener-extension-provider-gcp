@@ -5,6 +5,7 @@
 package validation
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gardener/gardener/pkg/apis/core"
@@ -14,6 +15,9 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
+// VolumeTypeScratch is the gcp SCRATCH volume type
+const VolumeTypeScratch = "SCRATCH"
+
 var validVolumeLocalSSDInterfacesTypes = sets.New("NVME", "SCSI")
 
 // ValidateWorkerConfig validates a WorkerConfig object.
@@ -21,14 +25,26 @@ func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.Dat
 	allErrs := field.ErrorList{}
 
 	for _, volume := range dataVolumes {
-		if volume.Type != nil && *volume.Type == "SCRATCH" {
+		if volume.Type == nil {
+			allErrs = append(allErrs, field.Required(field.NewPath("volume", "type"), "must not be empty"))
+		}
+		if volume.Type != nil && *volume.Type == VolumeTypeScratch {
 			if workerConfig == nil || workerConfig.Volume == nil || workerConfig.Volume.LocalSSDInterface == nil {
-				allErrs = append(allErrs, field.Required(field.NewPath("volume", "localSSDInterface"), "must be set when using SCRATCH volumes"))
+				allErrs = append(allErrs, field.Required(field.NewPath("volume", "localSSDInterface"), fmt.Sprintf("must be set when using %s volumes", VolumeTypeScratch)))
 			} else {
 				if !validVolumeLocalSSDInterfacesTypes.Has(*workerConfig.Volume.LocalSSDInterface) {
 					allErrs = append(allErrs, field.NotSupported(field.NewPath("volume", "localSSDInterface"), *workerConfig.Volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.UnsortedList()))
 				}
 			}
+			// DiskEncryption not allowed for type SCRATCH
+			if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.Encryption != nil {
+				allErrs = append(allErrs, field.Invalid(field.NewPath("volume", "Encryption"), *workerConfig.Volume.Encryption, fmt.Sprintf("must not be set in combination with %s volumes", VolumeTypeScratch)))
+			}
+		}
+		// LocalSSDInterface only allowed for type SCRATCH
+		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil &&
+			volume.Type != nil && *volume.Type != VolumeTypeScratch {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("volume", "LocalSSDInterface"), *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", VolumeTypeScratch)))
 		}
 	}
 
