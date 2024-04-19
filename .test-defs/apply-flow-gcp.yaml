@@ -11,7 +11,7 @@ spec:
   command: [bash, -c]
   args:
     - >-
-      go test -timeout=0 ./test/tm/shoot_maintain
+      go test -timeout=0 ./test/tm/apply_flow
       --v -ginkgo.v -ginkgo.show-node-events -ginkgo.no-color
       --shoot-name=$SHOOT_NAME
       --project-namespace=$PROJECT_NAMESPACE
