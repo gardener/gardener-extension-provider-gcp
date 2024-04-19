@@ -35,8 +35,10 @@ var labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
 
 const (
 	maxGcpLabelCharactersSize = 63
-	// ResourceGPU is the GPU resource . It should be a non-negative integer.
+	// ResourceGPU is the GPU resource. It should be a non-negative integer.
 	ResourceGPU v1.ResourceName = "gpu"
+	// VolumeTypeScratch is the gcp SCRATCH volume type
+	VolumeTypeScratch = "SCRATCH"
 )
 
 // MachineClassKind yields the name of the machine class kind used by GCP provider.
@@ -125,32 +127,19 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 		disks := make([]map[string]interface{}, 0)
 		// root volume
 		if pool.Volume != nil {
-			disk, err := createDiskSpecForVolume(*pool.Volume, machineImage, poolLabels)
+			disk, err := createDiskSpec(pool.Volume.Size, true, &machineImage, pool.Volume.Type, workerConfig, poolLabels)
 			if err != nil {
 				return err
-			}
-			if workerConfig.Volume != nil {
-				addDiskEncryptionDetails(disk, workerConfig.Volume.Encryption)
 			}
 			disks = append(disks, disk)
 		}
 
 		// additional volumes
 		for _, volume := range pool.DataVolumes {
-			disk, err := createDiskSpecForDataVolume(volume, false, poolLabels)
+			disk, err := createDiskSpec(volume.Size, false, nil, volume.Type, workerConfig, poolLabels)
 			if err != nil {
 				return err
 			}
-
-			if workerConfig.Volume != nil {
-				// Only add encryption details for non-scratch disks, checked by worker validation
-				addDiskEncryptionDetails(disk, workerConfig.Volume.Encryption)
-				// only allowed if volume type is SCRATCH - checked by worker validation
-				if workerConfig.Volume.LocalSSDInterface != nil {
-					disk["interface"] = *workerConfig.Volume.LocalSSDInterface
-				}
-			}
-
 			disks = append(disks, disk)
 		}
 
@@ -281,17 +270,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 	return nil
 }
 
-func createDiskSpecForVolume(volume v1alpha1.Volume, machineImage string, labels map[string]interface{}) (map[string]interface{}, error) {
-	return createDiskSpec(volume.Size, true, &machineImage, volume.Type, labels)
-}
-
-func createDiskSpecForDataVolume(volume v1alpha1.DataVolume, boot bool, labels map[string]interface{}) (map[string]interface{}, error) {
-	// Don't set machine image for data volumes. Any pre-existing data on the disk can interfere with the boot disk.
-	// See https://github.com/gardener/gardener-extension-provider-gcp/issues/323
-	return createDiskSpec(volume.Size, boot, nil, volume.Type, labels)
-}
-
-func createDiskSpec(size string, boot bool, machineImage, volumeType *string, labels map[string]interface{}) (map[string]interface{}, error) {
+func createDiskSpec(size string, boot bool, machineImage, volumeType *string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
 	volumeSize, err := worker.DiskSize(size)
 	if err != nil {
 		return nil, err
@@ -313,6 +292,15 @@ func createDiskSpec(size string, boot bool, machineImage, volumeType *string, la
 
 	if volumeType != nil {
 		disk["type"] = *volumeType
+	}
+
+	if workerConfig.Volume != nil {
+		// Only add encryption details for non-scratch disks, checked by worker validation
+		addDiskEncryptionDetails(disk, workerConfig.Volume.Encryption)
+		// only allowed if volume type is SCRATCH - checked by worker validation
+		if workerConfig.Volume.LocalSSDInterface != nil && *volumeType == VolumeTypeScratch {
+			disk["interface"] = *workerConfig.Volume.LocalSSDInterface
+		}
 	}
 
 	return disk, nil

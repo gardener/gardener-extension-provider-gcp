@@ -13,10 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
 )
-
-// VolumeTypeScratch is the gcp SCRATCH volume type
-const VolumeTypeScratch = "SCRATCH"
 
 var (
 	validVolumeLocalSSDInterfacesTypes = sets.New("NVME", "SCSI")
@@ -118,9 +116,9 @@ func validateDataVolume(workerConfig *gcp.WorkerConfig, volume core.DataVolume, 
 		allErrs = append(allErrs, field.Required(fldPath.Child("type"), "must not be empty"))
 		return allErrs
 	}
-	if *volume.Type == VolumeTypeScratch {
+	if *volume.Type == worker.VolumeTypeScratch {
 		if workerConfig == nil || workerConfig.Volume == nil || workerConfig.Volume.LocalSSDInterface == nil {
-			allErrs = append(allErrs, field.Required(volumeFldPath.Child("interface"), fmt.Sprintf("must be set when using %s volumes", VolumeTypeScratch)))
+			allErrs = append(allErrs, field.Required(volumeFldPath.Child("interface"), fmt.Sprintf("must be set when using %s volumes", worker.VolumeTypeScratch)))
 		} else {
 			if !validVolumeLocalSSDInterfacesTypes.Has(*workerConfig.Volume.LocalSSDInterface) {
 				allErrs = append(allErrs, field.NotSupported(volumeFldPath.Child("interface"), *workerConfig.Volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.UnsortedList()))
@@ -128,12 +126,12 @@ func validateDataVolume(workerConfig *gcp.WorkerConfig, volume core.DataVolume, 
 		}
 		// DiskEncryption not allowed for type SCRATCH
 		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.Encryption != nil {
-			allErrs = append(allErrs, field.Invalid(volumeFldPath.Child("encryption"), *workerConfig.Volume.Encryption, fmt.Sprintf("must not be set in combination with %s volumes", VolumeTypeScratch)))
+			allErrs = append(allErrs, field.Invalid(volumeFldPath.Child("encryption"), *workerConfig.Volume.Encryption, fmt.Sprintf("must not be set in combination with %s volumes", worker.VolumeTypeScratch)))
 		}
 	} else {
 		// LocalSSDInterface only allowed for type SCRATCH
 		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
-			allErrs = append(allErrs, field.Invalid(volumeFldPath.Child("interface"), *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", VolumeTypeScratch)))
+			allErrs = append(allErrs, field.Invalid(volumeFldPath.Child("interface"), *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", worker.VolumeTypeScratch)))
 		}
 	}
 
