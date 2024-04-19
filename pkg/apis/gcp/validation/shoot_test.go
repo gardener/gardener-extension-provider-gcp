@@ -12,17 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
-
-func copyWorkers(workers []core.Worker) []core.Worker {
-	cp := append(workers[:0:0], workers...)
-	for i := range cp {
-		cp[i].Zones = append(workers[i].Zones[:0:0], workers[i].Zones...)
-	}
-	return cp
-}
 
 var _ = Describe("Shoot validation", func() {
 	Describe("#ValidateNetworking", func() {
@@ -52,10 +43,8 @@ var _ = Describe("Shoot validation", func() {
 		})
 	})
 	Describe("#ValidateWorkers", func() {
-		var workers []core.Worker
-
-		BeforeEach(func() {
-			workers = []core.Worker{
+		It("should pass successfully", func() {
+			workers := []core.Worker{
 				{
 					Name: "foo",
 					Volume: &core.Volume{
@@ -73,9 +62,6 @@ var _ = Describe("Shoot validation", func() {
 					Zones: []string{"zone1"},
 				},
 			}
-		})
-
-		It("should pass successfully", func() {
 			workers[0].Kubernetes = &core.WorkerKubernetes{Version: ptr.To("1.28.0")}
 
 			errorList := ValidateWorkers(workers, field.NewPath(""))
@@ -84,12 +70,3 @@ var _ = Describe("Shoot validation", func() {
 		})
 	})
 })
-
-func validateWorkerConfig(workers []core.Worker, workerConfig *api.WorkerConfig) field.ErrorList {
-	allErrs := field.ErrorList{}
-	for _, worker := range workers {
-		allErrs = append(allErrs, ValidateWorkerConfig(workerConfig, worker.DataVolumes)...)
-	}
-
-	return allErrs
-}

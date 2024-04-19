@@ -125,7 +125,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 		disks := make([]map[string]interface{}, 0)
 		// root volume
 		if pool.Volume != nil {
-			disk, err := createDiskSpecForVolume(*pool.Volume, machineImage, true, poolLabels)
+			disk, err := createDiskSpecForVolume(*pool.Volume, machineImage, poolLabels)
 			if err != nil {
 				return err
 			}
@@ -142,14 +142,13 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 				return err
 			}
 
-			if volume.Type != nil && *volume.Type == "SCRATCH" && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
-				disk["interface"] = *workerConfig.Volume.LocalSSDInterface
-			}
-
-			if workerConfig.Volume != nil && volume.Type != nil && *volume.Type != "SCRATCH" {
-				// Only add encryption details for non-scratch disks.
-				// See https://cloud.google.com/compute/docs/disks/customer-supplied-encryption#technical_restrictions
+			if workerConfig.Volume != nil {
+				// Only add encryption details for non-scratch disks, checked by worker validation
 				addDiskEncryptionDetails(disk, workerConfig.Volume.Encryption)
+				// only allowed if volume type is SCRATCH - checked by worker validation
+				if workerConfig.Volume.LocalSSDInterface != nil {
+					disk["interface"] = *workerConfig.Volume.LocalSSDInterface
+				}
 			}
 
 			disks = append(disks, disk)
@@ -282,8 +281,8 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 	return nil
 }
 
-func createDiskSpecForVolume(volume v1alpha1.Volume, machineImage string, boot bool, labels map[string]interface{}) (map[string]interface{}, error) {
-	return createDiskSpec(volume.Size, boot, &machineImage, volume.Type, labels)
+func createDiskSpecForVolume(volume v1alpha1.Volume, machineImage string, labels map[string]interface{}) (map[string]interface{}, error) {
+	return createDiskSpec(volume.Size, true, &machineImage, volume.Type, labels)
 }
 
 func createDiskSpecForDataVolume(volume v1alpha1.DataVolume, boot bool, labels map[string]interface{}) (map[string]interface{}, error) {

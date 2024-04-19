@@ -51,12 +51,6 @@ var _ = Describe("#ValidateWorkers", func() {
 					"zone1",
 					"zone2",
 				},
-				DataVolumes: []core.DataVolume{
-					{
-						Type:       ptr.To("SCRATCH"),
-						VolumeSize: "30G",
-					},
-				},
 			},
 			{
 				Volume: &core.Volume{
@@ -108,6 +102,17 @@ var _ = Describe("#ValidateWorkers", func() {
 		))
 	})
 
+	It("should forbid because data volume type is empty", func() {
+		workers[0].DataVolumes[0].Type = nil
+		errorList := validateWorkerConfig(workers, nil)
+		Expect(errorList).To(ConsistOf(
+			PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("dataVolumes[0].type"),
+			})),
+		))
+	})
+
 	It("should forbid because worker does not specify a zone", func() {
 		workers[0].Zones = nil
 
@@ -117,40 +122,6 @@ var _ = Describe("#ValidateWorkers", func() {
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
 				"Field": Equal("workers[0].zones"),
-			})),
-		))
-	})
-
-	It("should pass because worker config is configured correctly", func() {
-		errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
-			Volume: &gcp.Volume{
-				LocalSSDInterface: ptr.To("NVME"),
-			},
-		})
-		Expect(errorList).To(BeEmpty())
-	})
-
-	It("should forbid because interface of worker config is misconfiguration", func() {
-		errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
-			Volume: &gcp.Volume{
-				LocalSSDInterface: ptr.To("Interface"),
-			},
-		})
-		Expect(errorList).To(ConsistOf(
-			PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":  Equal(field.ErrorTypeNotSupported),
-				"Field": Equal("volume.localSSDInterface"),
-			})),
-		))
-	})
-
-	It("should forbid because interface of worker config is not configured", func() {
-
-		errorList := validateWorkerConfig(workers, nil)
-		Expect(errorList).To(ConsistOf(
-			PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("volume.localSSDInterface"),
 			})),
 		))
 	})
@@ -166,7 +137,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("serviceAccount.email"),
+				"Field": Equal("providerConfig.serviceAccount.email"),
 			})),
 		))
 	})
@@ -183,7 +154,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("volume.encryption.kmsKeyName"),
+				"Field": Equal("providerConfig.volume.encryption.kmsKeyName"),
 			})),
 		))
 	})
@@ -199,7 +170,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("serviceAccount.scopes"),
+				"Field": Equal("providerConfig.serviceAccount.scopes"),
 			})),
 		))
 	})
@@ -215,7 +186,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("serviceAccount.scopes[1]"),
+				"Field": Equal("providerConfig.serviceAccount.scopes[1]"),
 			})),
 		))
 	})
@@ -231,7 +202,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeDuplicate),
-				"Field": Equal("serviceAccount.scopes[2]"),
+				"Field": Equal("providerConfig.serviceAccount.scopes[2]"),
 			})),
 		))
 	})
@@ -264,7 +235,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
-				"Field": Equal("gpu.acceleratorType"),
+				"Field": Equal("providerConfig.gpu.acceleratorType"),
 			})),
 		))
 	})
@@ -286,7 +257,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(ConsistOf(
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeForbidden),
-				"Field": Equal("gpu.count"),
+				"Field": Equal("providerConfig.gpu.count"),
 			})),
 		))
 	})
@@ -306,6 +277,74 @@ var _ = Describe("#ValidateWorkers", func() {
 		)
 
 		Expect(errorList).To(BeEmpty())
+	})
+
+	Describe("#Volume type SCRATCH", func() {
+		It("should pass because worker config is configured correctly", func() {
+			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
+				Volume: &gcp.Volume{
+					LocalSSDInterface: ptr.To("NVME"),
+				},
+			})
+			Expect(errorList).To(BeEmpty())
+		})
+		It("should forbid because volume type SCRATCH must not be main volume", func() {
+			workers[0].Volume.Type = ptr.To(VolumeTypeScratch)
+
+			errorList := ValidateWorkers(workers, field.NewPath("workers"))
+
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("workers[0].volume.type"),
+				})),
+			))
+		})
+
+		It("should forbid because interface of worker config is misconfiguration", func() {
+			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
+				Volume: &gcp.Volume{
+					LocalSSDInterface: ptr.To("Interface"),
+				},
+			})
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeNotSupported),
+					"Field": Equal("providerConfig.volume.interface"),
+				})),
+			))
+		})
+
+		It("should forbid because encryption is not allowed for volume type SCRATCH", func() {
+			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
+				Volume: &gcp.Volume{
+					LocalSSDInterface: ptr.To("NVME"),
+					Encryption: &gcp.DiskEncryption{
+						KmsKeyName: ptr.To("KmsKey"),
+					},
+				},
+			})
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("providerConfig.volume.encryption"),
+				})),
+			))
+		})
+
+		It("should forbid because interface of worker config is not configured", func() {
+			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			errorList := validateWorkerConfig(workers, nil)
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("providerConfig.volume.interface"),
+				})),
+			))
+		})
 	})
 
 	Describe("#ValidateWorkersUpdate", func() {
@@ -380,3 +419,20 @@ var _ = Describe("#ValidateWorkers", func() {
 		})
 	})
 })
+
+func copyWorkers(workers []core.Worker) []core.Worker {
+	cp := append(workers[:0:0], workers...)
+	for i := range cp {
+		cp[i].Zones = append(workers[i].Zones[:0:0], workers[i].Zones...)
+	}
+	return cp
+}
+
+func validateWorkerConfig(workers []core.Worker, workerConfig *gcp.WorkerConfig) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for _, worker := range workers {
+		allErrs = append(allErrs, ValidateWorkerConfig(workerConfig, worker.DataVolumes)...)
+	}
+
+	return allErrs
+}
