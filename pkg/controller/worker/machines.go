@@ -136,6 +136,8 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 
 		// additional volumes
 		for _, volume := range pool.DataVolumes {
+			// Don't set machine image for data volumes. Any pre-existing data on the disk can interfere with the boot disk.
+			// See https://github.com/gardener/gardener-extension-provider-gcp/issues/323
 			disk, err := createDiskSpec(volume.Size, false, nil, volume.Type, workerConfig, poolLabels)
 			if err != nil {
 				return err
