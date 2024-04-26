@@ -324,7 +324,7 @@ var _ = Describe("#ValidateWorkers", func() {
 			})
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeInvalid),
+					"Type":  Equal(field.ErrorTypeForbidden),
 					"Field": Equal("providerConfig.volume.provisionedIops"),
 				})),
 			))
@@ -349,7 +349,7 @@ var _ = Describe("#ValidateWorkers", func() {
 			})
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeInvalid),
+					"Type":  Equal(field.ErrorTypeForbidden),
 					"Field": Equal("providerConfig.volume.provisionedThroughput"),
 				})),
 			))
