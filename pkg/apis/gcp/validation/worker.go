@@ -128,6 +128,10 @@ func validateDataVolume(workerConfig *gcp.WorkerConfig, volume core.DataVolume, 
 
 	allErrs = append(allErrs, validateScratchDisk(*volume.Type, workerConfig)...)
 
+	if workerConfig != nil && workerConfig.Volume != nil {
+		allErrs = append(allErrs, validateHyperDisk(*volume.Type, workerConfig)...)
+	}
+
 	return allErrs
 }
 
@@ -154,6 +158,29 @@ func validateScratchDisk(volumeType string, workerConfig *gcp.WorkerConfig) fiel
 		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
 			allErrs = append(allErrs, field.Invalid(encryptionPath, *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", worker.VolumeTypeScratch)))
 		}
+	}
+	return allErrs
+}
+
+func validateHyperDisk(volumeType string, workerConfig *gcp.WorkerConfig) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	// https://cloud.google.com/sdk/gcloud/reference/compute/disks/create#--provisioned-iops
+	allowedTypesIops := []string{"pd-extreme", "hyperdisk-extreme"}
+	// https://cloud.google.com/sdk/gcloud/reference/compute/disks/create#--provisioned-throughput
+	allowedTypesThroughput := []string{"hyperdisk-throughput"}
+
+	if workerConfig.Volume.ProvisionedIops != nil && !slices.Contains(allowedTypesIops, volumeType) {
+		allErrs = append(allErrs, field.Invalid(
+			volumeFldPath.Child("provisionedIops"),
+			*workerConfig.Volume.ProvisionedIops,
+			fmt.Sprintf("is only allowed for types: %v", allowedTypesIops)))
+	}
+	if workerConfig.Volume.ProvisionedThroughput != nil && !slices.Contains(allowedTypesThroughput, volumeType) {
+		allErrs = append(allErrs, field.Invalid(
+			volumeFldPath.Child("provisionedThroughput"),
+			*workerConfig.Volume.ProvisionedThroughput,
+			fmt.Sprintf("is only allowed for types: %v", allowedTypesThroughput)))
 	}
 	return allErrs
 }
