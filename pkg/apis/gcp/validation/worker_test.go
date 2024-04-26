@@ -14,6 +14,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
 )
 
 var _ = Describe("#ValidateWorkers", func() {
@@ -281,7 +282,7 @@ var _ = Describe("#ValidateWorkers", func() {
 
 	Describe("#Volume type SCRATCH", func() {
 		It("should pass because worker config is configured correctly", func() {
-			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			workers[0].DataVolumes[0].Type = ptr.To(worker.VolumeTypeScratch)
 			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
 				Volume: &gcp.Volume{
 					LocalSSDInterface: ptr.To("NVME"),
@@ -290,7 +291,7 @@ var _ = Describe("#ValidateWorkers", func() {
 			Expect(errorList).To(BeEmpty())
 		})
 		It("should forbid because volume type SCRATCH must not be main volume", func() {
-			workers[0].Volume.Type = ptr.To(VolumeTypeScratch)
+			workers[0].Volume.Type = ptr.To(worker.VolumeTypeScratch)
 
 			errorList := ValidateWorkers(workers, field.NewPath("workers"))
 
@@ -303,7 +304,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		})
 
 		It("should forbid because interface of worker config is misconfiguration", func() {
-			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			workers[0].DataVolumes[0].Type = ptr.To(worker.VolumeTypeScratch)
 			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
 				Volume: &gcp.Volume{
 					LocalSSDInterface: ptr.To("Interface"),
@@ -318,7 +319,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		})
 
 		It("should forbid because encryption is not allowed for volume type SCRATCH", func() {
-			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			workers[0].DataVolumes[0].Type = ptr.To(worker.VolumeTypeScratch)
 			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
 				Volume: &gcp.Volume{
 					LocalSSDInterface: ptr.To("NVME"),
@@ -336,7 +337,7 @@ var _ = Describe("#ValidateWorkers", func() {
 		})
 
 		It("should forbid because interface of worker config is not configured", func() {
-			workers[0].DataVolumes[0].Type = ptr.To(VolumeTypeScratch)
+			workers[0].DataVolumes[0].Type = ptr.To(worker.VolumeTypeScratch)
 			errorList := validateWorkerConfig(workers, nil)
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{

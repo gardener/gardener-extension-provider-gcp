@@ -153,7 +153,7 @@ var _ = Describe("Machines", func() {
 
 				minCpuPlatform = "Foo"
 
-				localVolumeType = "SCRATCH"
+				localVolumeType = VolumeTypeScratch
 				localVolumeInterface = "SCSI"
 
 				namePool1 = "pool-1"
