@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -34,6 +35,10 @@ type WorkerConfig struct {
 	// This service account should be created in advance.
 	// +optional
 	ServiceAccount *ServiceAccount `json:"serviceAccount,omitempty"`
+
+	// NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.
+	// +optional
+	NodeTemplate *extensionsv1alpha1.NodeTemplate `json:"nodeTemplate,omitempty"`
 }
 
 // Volume contains configuration for the disks attached to VMs.

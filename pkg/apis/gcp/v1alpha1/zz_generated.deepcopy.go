@@ -10,6 +10,7 @@
 package v1alpha1
 
 import (
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -645,6 +646,11 @@ func (in *WorkerConfig) DeepCopyInto(out *WorkerConfig) {
 	if in.ServiceAccount != nil {
 		in, out := &in.ServiceAccount, &out.ServiceAccount
 		*out = new(ServiceAccount)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.NodeTemplate != nil {
+		in, out := &in.NodeTemplate, &out.NodeTemplate
+		*out = new(extensionsv1alpha1.NodeTemplate)
 		(*in).DeepCopyInto(*out)
 	}
 	return

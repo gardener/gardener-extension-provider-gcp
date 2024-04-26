@@ -239,22 +239,25 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 				}
 				// using this gpu count for scale-from-zero cases
 				gpuCount = workerConfig.GPU.Count
-				isLiveMigrationAllowed = false
 			}
 
 			if workerConfig.MinCpuPlatform != nil {
 				machineClassSpec["minCpuPlatform"] = *workerConfig.MinCpuPlatform
 			}
 
-			if pool.NodeTemplate != nil {
+			nodeTemplate := pool.NodeTemplate
+			if workerConfig.NodeTemplate != nil {
+				nodeTemplate = workerConfig.NodeTemplate
+			}
+			if nodeTemplate != nil {
 				machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
-					Capacity:     initializeCapacity(pool.NodeTemplate.Capacity, gpuCount),
+					// always overwrite the GPU count if it was provided in the WorkerConfig.
+					Capacity:     initializeCapacity(nodeTemplate.Capacity, gpuCount),
 					InstanceType: pool.MachineType,
 					Region:       w.worker.Spec.Region,
 					Zone:         zone,
 				}
-
-				numGpus := pool.NodeTemplate.Capacity[ResourceGPU]
+				numGpus := nodeTemplate.Capacity[ResourceGPU]
 				if !numGpus.IsZero() {
 					isLiveMigrationAllowed = false
 				}
