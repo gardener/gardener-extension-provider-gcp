@@ -171,15 +171,13 @@ func validateHyperDisk(volumeType string, workerConfig *gcp.WorkerConfig) field.
 	allowedTypesThroughput := []string{"hyperdisk-throughput"}
 
 	if workerConfig.Volume.ProvisionedIops != nil && !slices.Contains(allowedTypesIops, volumeType) {
-		allErrs = append(allErrs, field.Invalid(
+		allErrs = append(allErrs, field.Forbidden(
 			volumeFldPath.Child("provisionedIops"),
-			*workerConfig.Volume.ProvisionedIops,
 			fmt.Sprintf("is only allowed for types: %v", allowedTypesIops)))
 	}
 	if workerConfig.Volume.ProvisionedThroughput != nil && !slices.Contains(allowedTypesThroughput, volumeType) {
-		allErrs = append(allErrs, field.Invalid(
+		allErrs = append(allErrs, field.Forbidden(
 			volumeFldPath.Child("provisionedThroughput"),
-			*workerConfig.Volume.ProvisionedThroughput,
 			fmt.Sprintf("is only allowed for types: %v", allowedTypesThroughput)))
 	}
 	return allErrs
