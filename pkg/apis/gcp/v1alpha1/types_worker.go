@@ -52,6 +52,10 @@ type Volume struct {
 	Encryption *DiskEncryption `json:"encryption,omitempty"`
 
 	// SourceImage is the image to create this disk
+	// However, this parameter should only be used with particular caution.
+	// For example Gardenlinux works with filesystem LABELs only and creating
+	// another disk form the very same image causes the LABELs to be duplicated.
+	// See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323
 	// +optional
 	SourceImage *string `json:"sourceImage,omitempty"`
 }
