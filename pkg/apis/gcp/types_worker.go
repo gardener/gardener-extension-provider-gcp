@@ -44,6 +44,9 @@ type Volume struct {
 
 	// Encryption refers to the disk encryption details for this volume
 	Encryption *DiskEncryption
+
+	// SourceImage is the image to create this disk
+	SourceImage *string
 }
 
 // DiskEncryption encapsulates the encryption configuration for a disk.

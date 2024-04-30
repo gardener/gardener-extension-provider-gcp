@@ -50,6 +50,10 @@ type Volume struct {
 	// Encryption refers to the disk encryption details for this volume
 	// +optional
 	Encryption *DiskEncryption `json:"encryption,omitempty"`
+
+	// SourceImage is the image to create this disk
+	// +optional
+	SourceImage *string `json:"sourceImage,omitempty"`
 }
 
 // DiskEncryption encapsulates the encryption configuration for a disk.
