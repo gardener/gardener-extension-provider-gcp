@@ -67,7 +67,7 @@ providerConfig:
     encryption: # optional, skipped detail here
   dataVolumes: # <-- NEW SUB_SECTION
     - name: vsmp1
-      imageName: imgName
+      image: imgName
   serviceAccount:
     email: foo@bar.com
     scopes:
