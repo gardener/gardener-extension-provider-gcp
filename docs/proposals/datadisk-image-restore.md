@@ -77,7 +77,7 @@ providerConfig:
     count: 1
 ```
 
-In the above `imgName` represents the image name of a previously created image created by a tool or process.
+In the above `imgName` specified in `providerConfig.dataVolumes.image` represents the image name of a previously created image created by a tool or process.
 See [Google Cloud Create Image](https://cloud.google.com/sdk/gcloud/reference/compute/images/create).
 
 The [MCM GCP Provider](https://github.com/gardener/machine-controller-manager-provider-gcp) will ensure when a VM instance is instantiated, that the data
