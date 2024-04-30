@@ -1338,6 +1338,18 @@ DiskEncryption
 <p>Encryption refers to the disk encryption details for this volume</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>sourceImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SourceImage is the image to create this disk</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus

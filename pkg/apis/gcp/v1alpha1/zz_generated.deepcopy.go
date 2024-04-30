@@ -611,6 +611,11 @@ func (in *Volume) DeepCopyInto(out *Volume) {
 		*out = new(DiskEncryption)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.SourceImage != nil {
+		in, out := &in.SourceImage, &out.SourceImage
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
