@@ -55,13 +55,12 @@ func patchProviderStatusAndState(
 	patch := client.MergeFrom(infra.DeepCopy())
 	if status != nil {
 		infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
+		for _, natIP := range status.Networks.NatIPs {
+			infra.Status.EgressCIDRs = append(infra.Status.EgressCIDRs, fmt.Sprintf("%s/32", natIP.IP))
+		}
 	}
 	if state != nil {
 		infra.Status.State = state
-	}
-
-	for _, natIP := range status.Networks.NatIPs {
-		infra.Status.EgressCIDRs = append(infra.Status.EgressCIDRs, fmt.Sprintf("%s/32", natIP.IP))
 	}
 
 	if data, err := patch.Data(infra); err != nil {
