@@ -60,6 +60,10 @@ func patchProviderStatusAndState(
 		infra.Status.State = state
 	}
 
+	for _, natIP := range status.Networks.NatIPs {
+		infra.Status.EgressCIDRs = append(infra.Status.EgressCIDRs, fmt.Sprintf("%s/32", natIP.IP))
+	}
+
 	if data, err := patch.Data(infra); err != nil {
 		return fmt.Errorf("failed getting patch data for infra %s: %w", infra.Name, err)
 	} else if string(data) == `{}` {

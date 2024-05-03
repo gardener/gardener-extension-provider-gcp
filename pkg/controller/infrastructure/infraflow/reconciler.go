@@ -194,6 +194,14 @@ func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 		}
 	}
 
+	if ipAddresses := fctx.whiteboard.GetObject(ObjectKeyIPAddress); ipAddresses != nil {
+		for _, ip := range ipAddresses.([]string) {
+			status.Networks.NatIPs = append(status.Networks.NatIPs, v1alpha1.NatIP{
+				IP: ip,
+			})
+		}
+	}
+
 	status.ServiceAccountEmail = ptr.Deref(fctx.whiteboard.GetChild(ChildKeyIDs).Get(KeyServiceAccountEmail), "")
 	return status
 }
