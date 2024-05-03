@@ -776,6 +776,7 @@ func verifyCreation(
 		}
 		for _, natIP := range routerNAT.NatIps {
 			Expect(ipAddresses).Should(HaveKey(natIP))
+			Expect(infra.Status.EgressCIDRs).Should(ContainElement(fmt.Sprintf("%s/32", natIP)))
 		}
 	} else {
 		Expect(routerNAT.NatIpAllocateOption).To(Equal("AUTO_ONLY"))
