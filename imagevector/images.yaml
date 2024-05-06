@@ -43,7 +43,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
-  tag: "v1.27.8"
+  tag: "v1.27.13"
   targetVersion: "1.27.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -57,7 +57,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
-  tag: "v1.28.4"
+  tag: "v1.28.9"
   targetVersion: "1.28.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -71,8 +71,22 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
-  tag: "v1.29.0"
-  targetVersion: ">= 1.29"
+  tag: "v1.29.4"
+  targetVersion: "1.29.x"
+  labels:
+  - name: 'gardener.cloud/cve-categorisation'
+    value:
+      network_exposure: 'protected'
+      authentication_enforced: false
+      user_interaction: 'gardener-operator'
+      confidentiality_requirement: 'high'
+      integrity_requirement: 'high'
+      availability_requirement: 'low'
+- name: cloud-controller-manager
+  sourceRepository: github.com/gardener/cloud-provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
+  tag: "v1.30.0"
+  targetVersion: ">= 1.30"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
