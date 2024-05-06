@@ -25,7 +25,6 @@ import (
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -139,7 +138,6 @@ var (
 					// csi-driver-controller
 					{Type: &appsv1.Deployment{}, Name: gcp.CSIControllerName},
 					{Type: &corev1.ConfigMap{}, Name: gcp.CSIControllerConfigName},
-					{Type: &corev1.ConfigMap{}, Name: gcp.CSIControllerObservabilityConfigName},
 					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: gcp.CSIControllerName + "-vpa"},
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotControllerName},
@@ -308,9 +306,9 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
 
-	// TODO(oliver-goetz): Delete this in a future release.
-	if err := kutil.DeleteObject(ctx, vp.client, &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: "allow-kube-apiserver-to-csi-snapshot-validation", Namespace: cp.Namespace}}); err != nil {
-		return nil, fmt.Errorf("failed deleting legacy csi-snapshot-validation network policy: %w", err)
+	// TODO(rfranzke): Delete this in a future release.
+	if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "csi-driver-controller-observability-config", Namespace: cp.Namespace}}); err != nil {
+		return nil, fmt.Errorf("failed deleting legacy csi-driver-controller-observability-config ConfigMap: %w", err)
 	}
 
 	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, serviceAccount, checksums, scaledDown)
