@@ -45,8 +45,8 @@ const (
 	ObjectKeyRouter = "router"
 	// ObjectKeyNAT is the key for the .CloudNAT object.
 	ObjectKeyNAT = "nat"
-	// ObjectKeyIPAddress is the key for the IP Address slice.
-	ObjectKeyIPAddress = "addresses/ip"
+	// ObjectKeyIPAddresses is the key for the IP Address slice.
+	ObjectKeyIPAddresses = "addresses/ip"
 
 	defaultWaiterPeriod time.Duration = 5 * time.Second
 )
@@ -194,10 +194,10 @@ func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 		}
 	}
 
-	if ipAddresses := fctx.whiteboard.GetObject(ObjectKeyIPAddress); ipAddresses != nil {
-		for _, ip := range ipAddresses.([]string) {
+	if ipAddresses := fctx.whiteboard.GetObject(ObjectKeyIPAddresses); ipAddresses != nil {
+		for _, ip := range ipAddresses.([]*compute.Address) {
 			status.Networks.NatIPs = append(status.Networks.NatIPs, v1alpha1.NatIP{
-				IP: ip,
+				IP: ip.Address,
 			})
 		}
 	}

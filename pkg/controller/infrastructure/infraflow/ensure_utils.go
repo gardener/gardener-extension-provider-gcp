@@ -135,7 +135,7 @@ func targetRouterState(name, description, vpcName string) *compute.Router {
 	}
 }
 
-func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIpUrls []string) *compute.RouterNat {
+func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIps []*compute.Address) *compute.RouterNat {
 	nat := &compute.RouterNat{
 		DrainNatIps:                      nil,
 		EnableDynamicPortAllocation:      false,
@@ -202,9 +202,11 @@ func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIpUrls [
 		}
 	}
 
-	if len(natIpUrls) > 0 {
+	if len(natIps) > 0 {
 		nat.NatIpAllocateOption = "MANUAL_ONLY"
-		nat.NatIps = append(nat.NatIps, natIpUrls...)
+		for _, natIp := range natIps {
+			nat.NatIps = append(nat.NatIps, natIp.SelfLink)
+		}
 	}
 	return nat
 }
