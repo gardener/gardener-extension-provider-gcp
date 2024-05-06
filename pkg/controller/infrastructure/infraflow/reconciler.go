@@ -3,7 +3,6 @@ package infraflow
 import (
 	"context"
 	"strings"
-	"time"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -47,8 +46,6 @@ const (
 	ObjectKeyNAT = "nat"
 	// ObjectKeyIPAddresses is the key for the IP Address slice.
 	ObjectKeyIPAddresses = "addresses/ip"
-
-	defaultWaiterPeriod time.Duration = 5 * time.Second
 )
 
 var (
