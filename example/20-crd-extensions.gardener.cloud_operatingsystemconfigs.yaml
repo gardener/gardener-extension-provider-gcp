@@ -157,7 +157,7 @@ spec:
                 description: |-
                   Purpose describes how the result of this OperatingSystemConfig is used by Gardener. Either it
                   gets sent to the `Worker` extension controller to bootstrap a VM, or it is downloaded by the
-                  gardener-node-agent already running on a bootstrapped VM.
+                  cloud-config-downloader script already running on a bootstrapped VM.
                   This field is immutable.
                 type: string
               reloadConfigFilePath:
@@ -166,8 +166,7 @@ spec:
                   are asked to use it when determining the .status.command of this resource. For example, if for CoreOS
                   the reload-path might be "/var/lib/config"; then the controller shall set .status.command to
                   "/usr/bin/coreos-cloudinit --from-file=/var/lib/config".
-                  Deprecated: This field is deprecated and has no further usage.
-                  TODO(rfranzke): Remove this field after v1.95 got released.
+                  TODO(rfranzke): Deprecate this field once UseGardenerNodeAgent feature gate is promoted to GA.
                 type: string
               type:
                 description: Type contains the instance of the resource's kind.
@@ -255,8 +254,7 @@ spec:
                   Command is the command whose execution renews/reloads the cloud config on an existing VM, e.g.
                   "/usr/bin/reload-cloud-config -from-file=<path>". The <path> is optionally provided by Gardener
                   in the .spec.reloadConfigFilePath field.
-                  Deprecated: This field is deprecated and has no further usage.
-                  TODO(rfranzke): Remove this field after v1.95 got released.
+                  TODO(rfranzke): Deprecate this field once UseGardenerNodeAgent feature gate is promoted to GA.
                 type: string
               conditions:
                 description: Conditions represents the latest available observations
@@ -432,8 +430,7 @@ spec:
                 description: |-
                   Files is a list of file paths that are part of the generated Cloud Config and shall be
                   written to the host's file system.
-                  Deprecated: This field is deprecated and has no further usage.
-                  TODO(rfranzke): Remove this field after v1.95 got released.
+                  TODO(rfranzke): Deprecate this field once UseGardenerNodeAgent feature gate is promoted to GA.
                 items:
                   type: string
                 type: array
@@ -544,8 +541,7 @@ spec:
                 description: |-
                   Units is a list of systemd unit names that are part of the generated Cloud Config and shall be
                   restarted when a new version has been downloaded.
-                  Deprecated: This field is deprecated and has no further usage.
-                  TODO(rfranzke): Remove this field after v1.95 got released.
+                  TODO(rfranzke): Deprecate this field once UseGardenerNodeAgent feature gate is promoted to GA.
                 items:
                   type: string
                 type: array
