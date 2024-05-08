@@ -3,7 +3,6 @@ package infraflow
 import (
 	"context"
 	"strings"
-	"time"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -45,10 +44,8 @@ const (
 	ObjectKeyRouter = "router"
 	// ObjectKeyNAT is the key for the .CloudNAT object.
 	ObjectKeyNAT = "nat"
-	// ObjectKeyIPAddress is the key for the IP Address slice.
-	ObjectKeyIPAddress = "addresses/ip"
-
-	defaultWaiterPeriod time.Duration = 5 * time.Second
+	// ObjectKeyIPAddresses is the key for the IP Address slice.
+	ObjectKeyIPAddresses = "addresses/ip"
 )
 
 var (
@@ -191,6 +188,14 @@ func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 	if router := GetObject[*compute.Router](fctx.whiteboard, ObjectKeyRouter); router != nil {
 		status.Networks.VPC.CloudRouter = &v1alpha1.CloudRouter{
 			Name: router.Name,
+		}
+	}
+
+	if ipAddresses := fctx.whiteboard.GetObject(ObjectKeyIPAddresses); ipAddresses != nil {
+		for _, ip := range ipAddresses.([]*compute.Address) {
+			status.Networks.NatIPs = append(status.Networks.NatIPs, v1alpha1.NatIP{
+				IP: ip.Address,
+			})
 		}
 	}
 

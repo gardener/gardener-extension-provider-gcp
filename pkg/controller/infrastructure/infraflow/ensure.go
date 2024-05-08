@@ -244,18 +244,18 @@ func (fctx *FlowContext) ensureAddresses(ctx context.Context) error {
 		return nil
 	}
 
-	var addresses []string
+	var addresses []*compute.Address
 	for _, name := range fctx.config.Networks.CloudNAT.NatIPNames {
 		ip, err := fctx.computeClient.GetAddress(ctx, fctx.infra.Spec.Region, name.Name)
 		if err != nil {
 			log.Error(err, "failed to locate user-managed IP address")
 			return err
 		}
-		addresses = append(addresses, ip.SelfLink)
+		addresses = append(addresses, ip)
 	}
 
 	if len(addresses) > 0 {
-		fctx.whiteboard.SetObject(ObjectKeyIPAddress, addresses)
+		fctx.whiteboard.SetObject(ObjectKeyIPAddresses, addresses)
 	}
 	return nil
 }
@@ -278,11 +278,11 @@ func (fctx *FlowContext) ensureCloudNAT(ctx context.Context) error {
 	natName := fctx.cloudNatNameFromConfig()
 	var (
 		nat       *compute.RouterNat
-		addresses []string
+		addresses []*compute.Address
 	)
 
-	if a := fctx.whiteboard.GetObject(ObjectKeyIPAddress); a != nil {
-		addresses = a.([]string)
+	if a := fctx.whiteboard.GetObject(ObjectKeyIPAddresses); a != nil {
+		addresses = a.([]*compute.Address)
 	}
 
 	targetNat := targetNATState(natName, subnet.SelfLink, fctx.config.Networks.CloudNAT, addresses)

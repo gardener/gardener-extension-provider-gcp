@@ -773,6 +773,9 @@ func verifyCreation(
 			address, err := computeService.Addresses.Get(project, *region, natIPName.Name).Context(ctx).Do()
 			Expect(err).NotTo(HaveOccurred())
 			ipAddresses[address.SelfLink] = true
+			// egress cidr
+			ipCIDR := fmt.Sprintf("%s/32", address.Address)
+			Expect(infra.Status.EgressCIDRs).Should(ContainElement(ipCIDR))
 		}
 		for _, natIP := range routerNAT.NatIps {
 			Expect(ipAddresses).Should(HaveKey(natIP))
