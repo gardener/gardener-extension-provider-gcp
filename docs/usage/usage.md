@@ -168,7 +168,7 @@ The worker configuration contains:
     serviceAccount:name@projectIdgserviceaccount.com --role roles/cloudkms.cryptoKeyEncrypterDecrypter
     ```
 
-* Setting a volume image with `volume.sourceImage`.
+* Setting a volume image with `dataVolume.sourceImage`.
   However, this parameter should only be used with particular caution.
   For example Gardenlinux works with filesystem LABELs only and creating another disk form the very same image causes the LABELs to be duplicated.
   See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323
