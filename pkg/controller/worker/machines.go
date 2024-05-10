@@ -285,10 +285,7 @@ func createDiskSpecForVolume(volume *v1alpha1.Volume, image string, workerConfig
 func createDiskSpecForDataVolume(volume v1alpha1.DataVolume, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
 	// Careful when setting machine image for data volumes. Any pre-existing data on the disk can interfere with the boot disk.
 	// See https://github.com/gardener/gardener-extension-provider-gcp/issues/323
-	var dataVolumeImage *string
-	if workerConfig.Volume != nil {
-		dataVolumeImage = workerConfig.Volume.SourceImage
-	}
+	dataVolumeImage := getDataVolumeImage(volume.Name, workerConfig.DataVolumes)
 	return createDiskSpec(volume.Size, false, dataVolumeImage, volume.Type, workerConfig, labels)
 }
 
@@ -340,6 +337,15 @@ func addDiskEncryptionDetails(disk map[string]interface{}, encryption *apisgcp.D
 		encryptionMap["kmsKeyServiceAccount"] = *encryption.KmsKeyServiceAccount
 	}
 	disk["encryption"] = encryptionMap
+}
+
+func getDataVolumeImage(volumeName string, dataVolumes []apisgcp.DataVolume) *string {
+	for _, dv := range dataVolumes {
+		if dv.Name == volumeName {
+			return dv.SourceImage
+		}
+	}
+	return nil
 }
 
 func getGcePoolLabels(worker *v1alpha1.Worker, pool v1alpha1.WorkerPool) map[string]interface{} {

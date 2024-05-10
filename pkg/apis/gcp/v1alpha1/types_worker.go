@@ -24,6 +24,10 @@ type WorkerConfig struct {
 	// +optional
 	Volume *Volume `json:"volume,omitempty"`
 
+	// DataVolumes contains configuration for the additional disks attached to VMs.
+	// +optional
+	DataVolumes []DataVolume `json:"dataVolumes,omitempty"`
+
 	// MinCpuPlatform is the name of the minimum CPU platform that is to be
 	// requested for the VM.
 	MinCpuPlatform *string `json:"minCpuPlatform,omitempty"`
@@ -50,13 +54,18 @@ type Volume struct {
 	// Encryption refers to the disk encryption details for this volume
 	// +optional
 	Encryption *DiskEncryption `json:"encryption,omitempty"`
+}
+
+// DataVolume contains configuration for data volumes attached to VMs.
+type DataVolume struct {
+	// Name is the name of the data volume this configuration applies to.
+	Name string `json:"name"`
 
 	// SourceImage is the image to create this disk
 	// However, this parameter should only be used with particular caution.
-	// For example Gardenlinux works with filesystem LABELs only and creating
+	// For example GardenLinux works with filesystem LABELs only and creating
 	// another disk form the very same image causes the LABELs to be duplicated.
 	// See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323
-	// +optional
 	SourceImage *string `json:"sourceImage,omitempty"`
 }
 
