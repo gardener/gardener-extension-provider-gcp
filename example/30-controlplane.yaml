@@ -57,9 +57,9 @@ spec:
     apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
     kind: ControlPlaneConfig
     zone: europe-west1a
-    cloudControllerManager:
-      featureGates:
-        RotateKubeletServerCertificate: true
+  # cloudControllerManager:
+  #   featureGates:
+  #     SomeKubernetesFeature: true
     storage:
       managedDefaultStorageClass: true
       managedDefaultVolumeSnapshotClass: true
