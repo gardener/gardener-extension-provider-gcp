@@ -185,8 +185,13 @@ The worker configuration contains:
   * GPU-attached machines can't be live migrated during host maintenance events. Find out how to handle that in your application [here](https://cloud.google.com/compute/docs/gpus/gpu-host-maintenance)
   * GPU count specified here is considered for forming node template during scale-from-zero in Cluster Autoscaler
 
-  An example `WorkerConfig` for the GCP looks as follows:
+* The `.nodeTemplate` is used to specify resource information of the machine during runtime. This then helps in Scale-from-Zero.
+    Some points to note for this field:
+    - Currently only cpu, gpu and memory are configurable.
+    - a change in the value lead to a rolling update of the machine in the workerpool
+    - all the resources needs to be specified
 
+  An example `WorkerConfig` for the GCP looks as follows:
 ```yaml
 apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
 kind: WorkerConfig
@@ -199,6 +204,11 @@ serviceAccount:
 gpu:
   acceleratorType: nvidia-tesla-t4
   count: 1
+nodeTemplate: # (to be specified only if the node capacity would be different from cloudprofile info during runtime)
+  capacity:
+    cpu: 2
+    gpu: 1
+    memory: 50Gi
 ```
 ## Example `Shoot` manifest
 
