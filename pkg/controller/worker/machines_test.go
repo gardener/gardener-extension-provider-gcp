@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -42,6 +43,8 @@ import (
 
 var _ = Describe("Machines", func() {
 	var (
+		ctx = context.Background()
+
 		ctrl         *gomock.Controller
 		c            *mockclient.MockClient
 		chartApplier *mockkubernetes.MockChartApplier
@@ -84,10 +87,12 @@ var _ = Describe("Machines", func() {
 				machineImageVersion string
 				machineImage        string
 
-				serviceAccountEmail string
-				machineType         string
-				userData            = []byte("some-user-data")
-				subnetName          string
+				serviceAccountEmail   string
+				machineType           string
+				userData              []byte
+				userDataSecretName    string
+				userDataSecretDataKey string
+				subnetName            string
 
 				volumeType string
 				volumeSize int
@@ -146,6 +151,8 @@ var _ = Describe("Machines", func() {
 				serviceAccountEmail = "service@account.com"
 				machineType = "large"
 				userData = []byte("some-user-data")
+				userDataSecretName = "userdata-secret-name"
+				userDataSecretDataKey = "userdata-secret-key"
 				subnetName = "subnet-nodes"
 
 				volumeType = "normal"
@@ -283,7 +290,10 @@ var _ = Describe("Machines", func() {
 								NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 									Capacity: nodeCapacity,
 								},
-								UserData: userData,
+								UserDataSecretRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: userDataSecretName},
+									Key:                  userDataSecretDataKey,
+								},
 								Volume: &extensionsv1alpha1.Volume{
 									Type: &volumeType,
 									Size: fmt.Sprintf("%dGi", volumeSize),
@@ -334,6 +344,8 @@ var _ = Describe("Machines", func() {
 										MinCpuPlatform: &minCpuPlatform,
 									}),
 								},
+								// TODO: Use UserDataSecretRef like in first pool once this field got removed from the
+								//  API.
 								UserData: userData,
 								Volume: &extensionsv1alpha1.Volume{
 									Type: &volumeType,
@@ -360,6 +372,15 @@ var _ = Describe("Machines", func() {
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, clusterWithoutImages)
 			})
+
+			expectedUserDataSecretRefRead := func() {
+				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: userDataSecretName}, gomock.AssignableToTypeOf(&corev1.Secret{})).DoAndReturn(
+					func(_ context.Context, _ client.ObjectKey, secret *corev1.Secret, _ ...client.GetOption) error {
+						secret.Data = map[string][]byte{userDataSecretDataKey: userData}
+						return nil
+					},
+				)
+			}
 
 			Describe("machine images", func() {
 				var (
@@ -530,6 +551,7 @@ var _ = Describe("Machines", func() {
 						},
 					}
 				}
+
 				It("should return the expected machine deployments when disableExternal IP is true with profile image types", func() {
 					setup(true)
 					workerCloudRouter := w
@@ -552,16 +574,19 @@ var _ = Describe("Machines", func() {
 						}),
 					}
 					workerDelegateCloudRouter, _ := NewWorkerDelegate(c, scheme, chartApplier, "", workerCloudRouter, cluster)
+
+					expectedUserDataSecretRefRead()
+
 					// Test workerDelegate.DeployMachineClasses()
 					chartApplier.EXPECT().ApplyFromEmbeddedFS(
-						context.TODO(),
+						ctx,
 						charts.InternalChart,
 						filepath.Join("internal", "machineclass"),
 						namespace,
 						"machineclass",
 						kubernetes.Values(machineClasses),
 					)
-					err := workerDelegateCloudRouter.DeployMachineClasses(context.TODO())
+					err := workerDelegateCloudRouter.DeployMachineClasses(ctx)
 					Expect(err).NotTo(HaveOccurred())
 
 					// Test workerDelegate.UpdateMachineDeployments()
@@ -583,7 +608,6 @@ var _ = Describe("Machines", func() {
 					workerWithExpectedImages.Status.ProviderStatus = &runtime.RawExtension{
 						Object: expectedImages,
 					}
-					ctx := context.TODO()
 					c.EXPECT().Status().Return(statusWriter)
 					statusWriter.EXPECT().Patch(ctx, workerWithExpectedImages, gomock.Any()).Return(nil)
 
@@ -601,7 +625,7 @@ var _ = Describe("Machines", func() {
 				clusterWithoutImages.Shoot.Spec.Kubernetes.Version = "invalid"
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 
-				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
+				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				Expect(err).To(HaveOccurred())
 				Expect(result).To(BeNil())
 			})
@@ -611,7 +635,7 @@ var _ = Describe("Machines", func() {
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 
-				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
+				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				Expect(err).To(HaveOccurred())
 				Expect(result).To(BeNil())
 			})
@@ -623,7 +647,7 @@ var _ = Describe("Machines", func() {
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 
-				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
+				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				Expect(err).To(HaveOccurred())
 				Expect(result).To(BeNil())
 			})
@@ -633,7 +657,7 @@ var _ = Describe("Machines", func() {
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 
-				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
+				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				Expect(err).To(HaveOccurred())
 				Expect(result).To(BeNil())
 			})
@@ -641,7 +665,7 @@ var _ = Describe("Machines", func() {
 			It("should fail because the machine image cannot be found", func() {
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, clusterWithoutImages)
 
-				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
+				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				Expect(err).To(HaveOccurred())
 				Expect(result).To(BeNil())
 			})
@@ -651,7 +675,7 @@ var _ = Describe("Machines", func() {
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 
-				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
+				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				Expect(err).To(HaveOccurred())
 				Expect(result).To(BeNil())
 			})
@@ -672,7 +696,9 @@ var _ = Describe("Machines", func() {
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 
-				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
+				expectedUserDataSecretRefRead()
+
+				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				resultSettings := result[0].MachineConfiguration
 				resultNodeConditions := strings.Join(testNodeConditions, ",")
 
@@ -695,8 +721,9 @@ var _ = Describe("Machines", func() {
 				w.Spec.Pools[1].ClusterAutoscaler = nil
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 
-				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
+				expectedUserDataSecretRefRead()
 
+				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).NotTo(BeNil())
 
