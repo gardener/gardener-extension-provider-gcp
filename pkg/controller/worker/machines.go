@@ -77,7 +77,7 @@ func (w *workerDelegate) GenerateMachineDeployments(ctx context.Context) (worker
 	return w.machineDeployments, nil
 }
 
-func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
+func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	var (
 		machineDeployments = worker.MachineDeployments{}
 		machineClasses     []map[string]interface{}
@@ -160,6 +160,11 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 
 		isLiveMigrationAllowed := true
 
+		userData, err := worker.FetchUserData(ctx, w.client, w.worker.Namespace, pool)
+		if err != nil {
+			return err
+		}
+
 		for zoneIndex, zone := range pool.Zones {
 			zoneIdx := int32(zoneIndex)
 			machineClassSpec := map[string]interface{}{
@@ -185,7 +190,7 @@ func (w *workerDelegate) generateMachineConfig(_ context.Context) error {
 					},
 				},
 				"secret": map[string]interface{}{
-					"cloudConfig": string(pool.UserData),
+					"cloudConfig": string(userData),
 				},
 				"credentialsSecretRef": map[string]interface{}{
 					"name":      w.worker.Spec.SecretRef.Name,
