@@ -102,5 +102,10 @@ spec:
   #     email: foo@bar.com
   #     scopes:
   #     - https://www.googleapis.com/auth/cloud-platform
+  #   nodeTemplate:
+  #     capacity:
+  #       cpu: 2
+  #       gpu: 1
+  #       memory: 50Gi
     zones:
     - europe-west1-b

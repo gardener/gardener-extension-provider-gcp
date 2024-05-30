@@ -13,6 +13,7 @@ import (
 	unsafe "unsafe"
 
 	gcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -880,6 +881,7 @@ func autoConvert_v1alpha1_WorkerConfig_To_gcp_WorkerConfig(in *WorkerConfig, out
 	out.Volume = (*gcp.Volume)(unsafe.Pointer(in.Volume))
 	out.MinCpuPlatform = (*string)(unsafe.Pointer(in.MinCpuPlatform))
 	out.ServiceAccount = (*gcp.ServiceAccount)(unsafe.Pointer(in.ServiceAccount))
+	out.NodeTemplate = (*extensionsv1alpha1.NodeTemplate)(unsafe.Pointer(in.NodeTemplate))
 	return nil
 }
 
@@ -893,6 +895,7 @@ func autoConvert_gcp_WorkerConfig_To_v1alpha1_WorkerConfig(in *gcp.WorkerConfig,
 	out.Volume = (*Volume)(unsafe.Pointer(in.Volume))
 	out.MinCpuPlatform = (*string)(unsafe.Pointer(in.MinCpuPlatform))
 	out.ServiceAccount = (*ServiceAccount)(unsafe.Pointer(in.ServiceAccount))
+	out.NodeTemplate = (*extensionsv1alpha1.NodeTemplate)(unsafe.Pointer(in.NodeTemplate))
 	return nil
 }
 
