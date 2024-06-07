@@ -242,11 +242,13 @@ func (u *updater) DeleteNAT(ctx context.Context, region, routerId, natId string)
 		return router, nil
 	}
 
-	router.Nats = append(router.Nats[:index], router.Nats[index+1:]...)
-	// in case this was the last CloudNAT we need to force send the empty array.
-	router.ForceSendFields = append(router.ForceSendFields, "Nats")
+	routerPatch := compute.Router{
+		Nats: append(router.Nats[:index], router.Nats[index+1:]...),
+		// in case this was the last CloudNAT we need to force send the empty array.
+		ForceSendFields: append(router.ForceSendFields, "Nats"),
+	}
 
-	if _, err = u.compute.PatchRouter(ctx, region, routerId, router); err != nil {
+	if _, err = u.compute.PatchRouter(ctx, region, routerId, &routerPatch); err != nil {
 		return router, err
 	}
 
