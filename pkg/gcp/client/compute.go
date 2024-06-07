@@ -274,7 +274,7 @@ func (c *computeClient) PatchRouter(ctx context.Context, region, id string, rout
 		return nil, err
 	}
 
-	return c.GetRouter(ctx, region, router.Name)
+	return c.GetRouter(ctx, region, id)
 }
 
 // DeleteRouter deletes the router specified by id.

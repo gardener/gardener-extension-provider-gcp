@@ -261,13 +261,7 @@ func (fctx *FlowContext) ensureAddresses(ctx context.Context) error {
 }
 
 func (fctx *FlowContext) ensureCloudNAT(ctx context.Context) error {
-	var (
-		log = shared.LogFromContext(ctx)
-		err error
-	)
-
-	log.Info("ensuring nat")
-
+	var err error
 	if err := fctx.ensureObjectKeys(ObjectKeyRouter, ObjectKeyNodeSubnet); err != nil {
 		return err
 	}
@@ -286,7 +280,7 @@ func (fctx *FlowContext) ensureCloudNAT(ctx context.Context) error {
 	}
 
 	targetNat := targetNATState(natName, subnet.SelfLink, fctx.config.Networks.CloudNAT, addresses)
-	router, nat, err = fctx.updater.NAT(ctx, fctx.infra.Spec.Region, router, targetNat)
+	router, nat, err = fctx.updater.NAT(ctx, fctx.infra.Spec.Region, *router, *targetNat)
 	if err != nil {
 		return err
 	}
@@ -318,7 +312,7 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 		gcpRule, err := fctx.computeClient.GetFirewallRule(ctx, rule.Name)
 		if err != nil {
 			log.Info(fmt.Sprintf("failed to create firewall %s rule: %v", rule.Name, err))
-			return fmt.Errorf("failed to ensure firewall rule [name=%s]: %v", gcpRule.Name, err)
+			return fmt.Errorf("failed to ensure firewall rule [name=%s]: %v", rule.Name, err)
 		}
 
 		if gcpRule == nil {
