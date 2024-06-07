@@ -209,8 +209,12 @@ func (u *updater) NAT(ctx context.Context, region string, router *compute.Router
 		return router, desired, nil
 	}
 
-	u.log.Info("updating router with NAT", "Name", router.Name)
-	router, err := u.compute.PatchRouter(ctx, region, router.Name, router)
+	routerPatch := compute.Router{
+		Name: router.Name,
+		Nats: router.Nats,
+	}
+	u.log.Info("updating router with NAT", "Name", routerPatch.Name)
+	router, err := u.compute.PatchRouter(ctx, region, routerPatch.Name, &routerPatch)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to update CloudNAT: %s", err)
 	}
