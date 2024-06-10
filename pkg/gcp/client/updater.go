@@ -21,7 +21,7 @@ type Updater interface {
 	// Router updates the respective infrastructure object according to desired state.
 	Router(ctx context.Context, region string, desired, current *compute.Router) (*compute.Router, error)
 	// NAT updates the respective infrastructure object according to desired state.
-	NAT(ctx context.Context, region string, router *compute.Router, desired *compute.RouterNat) (*compute.Router, *compute.RouterNat, error)
+	NAT(ctx context.Context, region string, router compute.Router, desired compute.RouterNat) (*compute.Router, *compute.RouterNat, error)
 	// DeleteNAT deletes the NAT gateway from the respective router.
 	// Since NAT Gateways are a property of Cloud Routers, DeleteNAT is a special update function for the CloudRouter that
 	// will remove the NAT with specified name.
@@ -153,12 +153,7 @@ func (u *updater) Router(ctx context.Context, region string, desired, current *c
 // they are associated with. Therefore, we always fetch a "fresh" copy of the router before attempting to update NATs.
 // NAT is an "upsert" call. If there are not any CloudNAT in the router with the specified name, we will insert the desired spec (Create).
 // If there is already a NAT with the specified name, we will "replaces" the spec with the desired one.
-func (u *updater) NAT(ctx context.Context, region string, router *compute.Router, desired *compute.RouterNat) (*compute.Router, *compute.RouterNat, error) {
-	if router == nil {
-		err := fmt.Errorf("router cannot be nil")
-		u.log.Error(err, "failed to update NAT")
-		return nil, nil, err
-	}
+func (u *updater) NAT(ctx context.Context, region string, router compute.Router, desired compute.RouterNat) (*compute.Router, *compute.RouterNat, error) {
 	// force update certain fields
 	if !desired.EnableDynamicPortAllocation {
 		desired.ForceSendFields = append(desired.ForceSendFields, "EnableDynamicPortAllocation")
@@ -195,29 +190,32 @@ func (u *updater) NAT(ctx context.Context, region string, router *compute.Router
 	modified := false
 	// not found case
 	if index < 0 {
-		router.Nats = append(router.Nats, desired)
+		router.Nats = append(router.Nats, &desired)
 		modified = true
 	} else {
 		nats := router.Nats[index]
 		if !reflect.DeepEqual(nats, desired) {
 			modified = true
-			router.Nats[index] = desired
+			router.Nats[index] = &desired
 		}
 	}
 
 	if !modified {
-		return router, desired, nil
+		return &router, &desired, nil
 	}
 
-	u.log.Info("updating router with NAT", "Name", router.Name)
-	router, err := u.compute.PatchRouter(ctx, region, router.Name, router)
+	routerPatch := compute.Router{
+		Nats: router.Nats,
+	}
+	u.log.Info("updating router with NAT", "Name", routerPatch.Name)
+	result, err := u.compute.PatchRouter(ctx, region, router.Name, &routerPatch)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to update CloudNAT: %s", err)
 	}
 
-	for _, nat := range router.Nats {
+	for _, nat := range result.Nats {
 		if nat.Name == desired.Name {
-			return router, nat, nil
+			return result, nat, nil
 		}
 	}
 
@@ -244,11 +242,13 @@ func (u *updater) DeleteNAT(ctx context.Context, region, routerId, natId string)
 		return router, nil
 	}
 
-	router.Nats = append(router.Nats[:index], router.Nats[index+1:]...)
-	// in case this was the last CloudNAT we need to force send the empty array.
-	router.ForceSendFields = append(router.ForceSendFields, "Nats")
+	routerPatch := compute.Router{
+		Nats: append(router.Nats[:index], router.Nats[index+1:]...),
+		// in case this was the last CloudNAT we need to force send the empty array.
+		ForceSendFields: append(router.ForceSendFields, "Nats"),
+	}
 
-	if _, err = u.compute.PatchRouter(ctx, region, routerId, router); err != nil {
+	if _, err = u.compute.PatchRouter(ctx, region, routerId, &routerPatch); err != nil {
 		return router, err
 	}
 
