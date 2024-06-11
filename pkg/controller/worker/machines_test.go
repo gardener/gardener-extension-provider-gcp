@@ -38,6 +38,7 @@ import (
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
+	gcpWorker "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
@@ -120,6 +121,9 @@ var _ = Describe("Machines", func() {
 				archAMD string
 				archARM string
 
+				acceleratorTypeName string
+				acceleratorCount    int32
+
 				poolLabels map[string]string
 
 				nodeCapacity         corev1.ResourceList
@@ -181,6 +185,9 @@ var _ = Describe("Machines", func() {
 				archAMD = "amd64"
 				archARM = "arm64"
 
+				acceleratorTypeName = "FooAccelerator"
+				acceleratorCount = 1
+
 				poolLabels = map[string]string{"component": "TiDB"}
 
 				nodeCapacity = corev1.ResourceList{
@@ -189,14 +196,14 @@ var _ = Describe("Machines", func() {
 					"memory": resource.MustParse("128Gi"),
 				}
 				nodeTemplateZone1 = machinev1alpha1.NodeTemplate{
-					Capacity:     nodeCapacity,
+					Capacity:     gcpWorker.InitializeCapacity(nodeCapacity, acceleratorCount),
 					InstanceType: machineType,
 					Region:       region,
 					Zone:         zone1,
 				}
 
 				nodeTemplateZone2 = machinev1alpha1.NodeTemplate{
-					Capacity:     nodeCapacity,
+					Capacity:     gcpWorker.InitializeCapacity(nodeCapacity, acceleratorCount),
 					InstanceType: machineType,
 					Region:       region,
 					Zone:         zone2,
@@ -310,6 +317,10 @@ var _ = Describe("Machines", func() {
 											LocalSSDInterface: &localVolumeInterface,
 										},
 										MinCpuPlatform: &minCpuPlatform,
+										GPU: &api.GPU{
+											AcceleratorType: acceleratorTypeName,
+											Count:           acceleratorCount,
+										},
 									}),
 								},
 								Zones: []string{
@@ -437,7 +448,7 @@ var _ = Describe("Machines", func() {
 						},
 						"scheduling": map[string]interface{}{
 							"automaticRestart":  true,
-							"onHostMaintenance": "MIGRATE",
+							"onHostMaintenance": "TERMINATE",
 							"preemptible":       false,
 						},
 						"secret": map[string]interface{}{
@@ -460,15 +471,22 @@ var _ = Describe("Machines", func() {
 							"operatingSystemName":    machineImageName,
 							"operatingSystemVersion": machineImageVersion,
 						},
+						"gpu": map[string]interface{}{
+							"acceleratorType": acceleratorTypeName,
+							"count":           acceleratorCount,
+						},
 					}
 
-					var (
-						machineClassPool2 = useDefaultMachineClass(
-							defaultMachineClass,
-							"serviceAccounts",
-							[]map[string]interface{}{{"email": "foo", "scopes": []string{"bar"}}},
-						)
+					// Copy default case and prepare the copy with the differences to the defaults above
+					machineClassPool2 := useDefaultMachineClass(
+						defaultMachineClass,
+						"serviceAccounts",
+						[]map[string]interface{}{{"email": "foo", "scopes": []string{"bar"}}},
+					)
+					machineClassPool2["scheduling"] = map[string]interface{}{"automaticRestart": true, "onHostMaintenance": "MIGRATE", "preemptible": false}
+					delete(machineClassPool2, "gpu")
 
+					var (
 						machineClassPool1Zone1 = useDefaultMachineClass(defaultMachineClass, "zone", zone1)
 						machineClassPool1Zone2 = useDefaultMachineClass(defaultMachineClass, "zone", zone2)
 						machineClassPool2Zone1 = useDefaultMachineClass(machineClassPool2, "zone", zone1)
@@ -492,8 +510,18 @@ var _ = Describe("Machines", func() {
 
 					addNodeTemplateToMachineClass(machineClassPool1Zone1, nodeTemplateZone1)
 					addNodeTemplateToMachineClass(machineClassPool1Zone2, nodeTemplateZone2)
-					addNodeTemplateToMachineClass(machineClassPool2Zone1, nodeTemplateZone1)
-					addNodeTemplateToMachineClass(machineClassPool2Zone2, nodeTemplateZone2)
+					addNodeTemplateToMachineClass(machineClassPool2Zone1, machinev1alpha1.NodeTemplate{
+						Capacity:     nodeCapacity,
+						InstanceType: machineType,
+						Region:       region,
+						Zone:         zone1,
+					})
+					addNodeTemplateToMachineClass(machineClassPool2Zone2, machinev1alpha1.NodeTemplate{
+						Capacity:     nodeCapacity,
+						InstanceType: machineType,
+						Region:       region,
+						Zone:         zone2,
+					})
 
 					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
 						machineClassPool1Zone1,
