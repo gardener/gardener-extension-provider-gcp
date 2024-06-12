@@ -33,6 +33,9 @@ import (
 
 var labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
 
+// InitializeCapacity is a handle to make the function accessible to the tests.
+var InitializeCapacity = initializeCapacity
+
 const (
 	maxGcpLabelCharactersSize = 63
 	// ResourceGPU is the GPU resource. It should be a non-negative integer.
@@ -255,14 +258,15 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				nodeTemplate = workerConfig.NodeTemplate
 			}
 			if nodeTemplate != nil {
-				machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
+				template := machinev1alpha1.NodeTemplate{
 					// always overwrite the GPU count if it was provided in the WorkerConfig.
 					Capacity:     initializeCapacity(nodeTemplate.Capacity, gpuCount),
 					InstanceType: pool.MachineType,
 					Region:       w.worker.Spec.Region,
 					Zone:         zone,
 				}
-				numGpus := nodeTemplate.Capacity[ResourceGPU]
+				machineClassSpec["nodeTemplate"] = template
+				numGpus := template.Capacity[ResourceGPU]
 				if !numGpus.IsZero() {
 					isLiveMigrationAllowed = false
 				}
