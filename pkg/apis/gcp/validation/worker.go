@@ -161,19 +161,16 @@ func validateScratchDisk(volumeType string, workerConfig *gcp.WorkerConfig) fiel
 func validateDataVolumeNames(workerConfigDataVolumes []gcp.DataVolume, dataVolumes []core.DataVolume) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	// Extracting a dataVolume names
-	var dataVolumeNames []string
-	for _, dv := range dataVolumes {
-		dataVolumeNames = append(dataVolumeNames, dv.Name)
-	}
-
 	for _, configDataVolume := range workerConfigDataVolumes {
-		if !slices.Contains(dataVolumeNames, configDataVolume.Name) {
-			allErrs = append(allErrs, field.Invalid(
-				dataVolumeFldPath,
-				configDataVolume.Name,
-				fmt.Sprintf("could not find dataVolume with name %s", configDataVolume.Name)))
+		if slices.ContainsFunc(dataVolumes, func(dataVolume core.DataVolume) bool {
+			return configDataVolume.Name == dataVolume.Name
+		}) {
+			continue
 		}
+		allErrs = append(allErrs, field.Invalid(
+			dataVolumeFldPath,
+			configDataVolume.Name,
+			fmt.Sprintf("could not find dataVolume with name %s", configDataVolume.Name)))
 	}
 
 	return allErrs
