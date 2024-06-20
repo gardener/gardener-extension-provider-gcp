@@ -423,6 +423,8 @@ func Convert_gcp_ControlPlaneConfig_To_v1alpha1_ControlPlaneConfig(in *gcp.Contr
 func autoConvert_v1alpha1_DataVolume_To_gcp_DataVolume(in *DataVolume, out *gcp.DataVolume, s conversion.Scope) error {
 	out.Name = in.Name
 	out.SourceImage = (*string)(unsafe.Pointer(in.SourceImage))
+	out.ProvisionedIops = (*int64)(unsafe.Pointer(in.ProvisionedIops))
+	out.ProvisionedThroughput = (*int64)(unsafe.Pointer(in.ProvisionedThroughput))
 	return nil
 }
 
@@ -434,6 +436,8 @@ func Convert_v1alpha1_DataVolume_To_gcp_DataVolume(in *DataVolume, out *gcp.Data
 func autoConvert_gcp_DataVolume_To_v1alpha1_DataVolume(in *gcp.DataVolume, out *DataVolume, s conversion.Scope) error {
 	out.Name = in.Name
 	out.SourceImage = (*string)(unsafe.Pointer(in.SourceImage))
+	out.ProvisionedIops = (*int64)(unsafe.Pointer(in.ProvisionedIops))
+	out.ProvisionedThroughput = (*int64)(unsafe.Pointer(in.ProvisionedThroughput))
 	return nil
 }
 
@@ -889,8 +893,6 @@ func Convert_gcp_VPC_To_v1alpha1_VPC(in *gcp.VPC, out *VPC, s conversion.Scope) 
 func autoConvert_v1alpha1_Volume_To_gcp_Volume(in *Volume, out *gcp.Volume, s conversion.Scope) error {
 	out.LocalSSDInterface = (*string)(unsafe.Pointer(in.LocalSSDInterface))
 	out.Encryption = (*gcp.DiskEncryption)(unsafe.Pointer(in.Encryption))
-	out.ProvisionedIops = (*int64)(unsafe.Pointer(in.ProvisionedIops))
-	out.ProvisionedThroughput = (*int64)(unsafe.Pointer(in.ProvisionedThroughput))
 	return nil
 }
 
@@ -902,8 +904,6 @@ func Convert_v1alpha1_Volume_To_gcp_Volume(in *Volume, out *gcp.Volume, s conver
 func autoConvert_gcp_Volume_To_v1alpha1_Volume(in *gcp.Volume, out *Volume, s conversion.Scope) error {
 	out.LocalSSDInterface = (*string)(unsafe.Pointer(in.LocalSSDInterface))
 	out.Encryption = (*DiskEncryption)(unsafe.Pointer(in.Encryption))
-	out.ProvisionedIops = (*int64)(unsafe.Pointer(in.ProvisionedIops))
-	out.ProvisionedThroughput = (*int64)(unsafe.Pointer(in.ProvisionedThroughput))
 	return nil
 }
 

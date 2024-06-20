@@ -307,9 +307,12 @@ var _ = Describe("#ValidateWorkers", func() {
 	Describe("#Volume type hyper-disk", func() {
 		It("should pass because setting ProvisionedIops is allowed for hyperdisk-extreme", func() {
 			workers[0].DataVolumes[0].Type = ptr.To("hyperdisk-extreme")
-			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
-				Volume: &gcp.Volume{
-					ProvisionedIops: ptr.To[int64](3000),
+			errorList := validateWorkerConfig([]core.Worker{workers[0]}, &gcp.WorkerConfig{
+				DataVolumes: []gcp.DataVolume{
+					{
+						Name:            workers[0].DataVolumes[0].Name,
+						ProvisionedIops: ptr.To[int64](3000),
+					},
 				},
 			})
 			Expect(errorList).To(BeEmpty())
@@ -317,24 +320,30 @@ var _ = Describe("#ValidateWorkers", func() {
 
 		It("should fail because setting ProvisionedIops is not allowed for hyperdisk-balanced", func() {
 			workers[0].DataVolumes[0].Type = ptr.To("hyperdisk-balanced")
-			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
-				Volume: &gcp.Volume{
-					ProvisionedIops: ptr.To[int64](3000),
+			errorList := validateWorkerConfig([]core.Worker{workers[0]}, &gcp.WorkerConfig{
+				DataVolumes: []gcp.DataVolume{
+					{
+						Name:            workers[0].DataVolumes[0].Name,
+						ProvisionedIops: ptr.To[int64](3000),
+					},
 				},
 			})
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeForbidden),
-					"Field": Equal("providerConfig.volume.provisionedIops"),
+					"Field": Equal("providerConfig.dataVolume.provisionedIops"),
 				})),
 			))
 		})
 
 		It("should pass because setting ProvisionedThroughput is allowed for hyperdisk-throughput", func() {
 			workers[0].DataVolumes[0].Type = ptr.To("hyperdisk-throughput")
-			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
-				Volume: &gcp.Volume{
-					ProvisionedThroughput: ptr.To[int64](150),
+			errorList := validateWorkerConfig([]core.Worker{workers[0]}, &gcp.WorkerConfig{
+				DataVolumes: []gcp.DataVolume{
+					{
+						Name:                  workers[0].DataVolumes[0].Name,
+						ProvisionedThroughput: ptr.To[int64](150),
+					},
 				},
 			})
 			Expect(errorList).To(BeEmpty())
@@ -342,15 +351,18 @@ var _ = Describe("#ValidateWorkers", func() {
 
 		It("should fail because setting ProvisionedThroughput is not allowed for hyperdisk-balanced", func() {
 			workers[0].DataVolumes[0].Type = ptr.To("hyperdisk-balanced")
-			errorList := validateWorkerConfig(workers, &gcp.WorkerConfig{
-				Volume: &gcp.Volume{
-					ProvisionedThroughput: ptr.To[int64](150),
+			errorList := validateWorkerConfig([]core.Worker{workers[0]}, &gcp.WorkerConfig{
+				DataVolumes: []gcp.DataVolume{
+					{
+						Name:                  workers[0].DataVolumes[0].Name,
+						ProvisionedThroughput: ptr.To[int64](150),
+					},
 				},
 			})
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeForbidden),
-					"Field": Equal("providerConfig.volume.provisionedThroughput"),
+					"Field": Equal("providerConfig.dataVolume.provisionedThroughput"),
 				})),
 			))
 		})

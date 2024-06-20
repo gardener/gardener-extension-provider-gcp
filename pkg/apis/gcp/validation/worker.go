@@ -45,7 +45,7 @@ func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.Dat
 		}
 		allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, providerFldPath.Child("nodeTemplate"))...)
 		if workerConfig.DataVolumes != nil {
-			allErrs = append(allErrs, validateDataVolumeNames(workerConfig.DataVolumes, dataVolumes)...)
+			allErrs = append(allErrs, validateDataVolumeConfigs(dataVolumes, workerConfig.DataVolumes)...)
 		}
 	}
 
@@ -128,10 +128,6 @@ func validateDataVolume(workerConfig *gcp.WorkerConfig, volume core.DataVolume, 
 
 	allErrs = append(allErrs, validateScratchDisk(*volume.Type, workerConfig)...)
 
-	if workerConfig != nil && workerConfig.Volume != nil {
-		allErrs = append(allErrs, validateHyperDisk(*volume.Type, workerConfig)...)
-	}
-
 	return allErrs
 }
 
@@ -162,35 +158,35 @@ func validateScratchDisk(volumeType string, workerConfig *gcp.WorkerConfig) fiel
 	return allErrs
 }
 
-func validateHyperDisk(volumeType string, workerConfig *gcp.WorkerConfig) field.ErrorList {
+func validateHyperDisk(dataVolume core.DataVolume, config gcp.DataVolume) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if workerConfig.Volume.ProvisionedIops != nil && !slices.Contains(worker.AllowedTypesIops, volumeType) {
+	if config.ProvisionedIops != nil && !slices.Contains(worker.AllowedTypesIops, *dataVolume.Type) {
 		allErrs = append(allErrs, field.Forbidden(
-			volumeFldPath.Child("provisionedIops"),
+			dataVolumeFldPath.Child("provisionedIops"),
 			fmt.Sprintf("is only allowed for types: %v", worker.AllowedTypesIops)))
 	}
-	if workerConfig.Volume.ProvisionedThroughput != nil && !slices.Contains(worker.AllowedTypesThroughput, volumeType) {
+	if config.ProvisionedThroughput != nil && !slices.Contains(worker.AllowedTypesThroughput, *dataVolume.Type) {
 		allErrs = append(allErrs, field.Forbidden(
-			volumeFldPath.Child("provisionedThroughput"),
+			dataVolumeFldPath.Child("provisionedThroughput"),
 			fmt.Sprintf("is only allowed for types: %v", worker.AllowedTypesThroughput)))
 	}
 	return allErrs
 }
 
-func validateDataVolumeNames(workerConfigDataVolumes []gcp.DataVolume, dataVolumes []core.DataVolume) field.ErrorList {
+func validateDataVolumeConfigs(dataVolumes []core.DataVolume, configs []gcp.DataVolume) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	for _, configDataVolume := range workerConfigDataVolumes {
-		if slices.ContainsFunc(dataVolumes, func(dataVolume core.DataVolume) bool {
-			return configDataVolume.Name == dataVolume.Name
-		}) {
+	for _, configDataVolume := range configs {
+		idx := slices.IndexFunc(dataVolumes, func(dv core.DataVolume) bool { return dv.Name == configDataVolume.Name })
+		if idx == -1 {
+			allErrs = append(allErrs, field.Invalid(
+				dataVolumeFldPath,
+				configDataVolume.Name,
+				fmt.Sprintf("could not find dataVolume with name %s", configDataVolume.Name)))
 			continue
 		}
-		allErrs = append(allErrs, field.Invalid(
-			dataVolumeFldPath,
-			configDataVolume.Name,
-			fmt.Sprintf("could not find dataVolume with name %s", configDataVolume.Name)))
+		allErrs = append(allErrs, validateHyperDisk(dataVolumes[idx], configDataVolume)...)
 	}
 
 	return allErrs

@@ -544,6 +544,37 @@ another disk form the very same image causes the LABELs to be duplicated.
 See: <a href="https://github.com/gardener/gardener-extension-provider-gcp/issues/323">https://github.com/gardener/gardener-extension-provider-gcp/issues/323</a></p>
 </td>
 </tr>
+<tr>
+<td>
+<code>provisionedIops</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>ProvisionedIops of disk to create.
+Only for use with disk of types like pd-extreme and hyperdisk-extreme.
+The IOPS must be specified within defined limits.
+If not set gcp calculates a default value taking the disk size into consideration.
+Hyperdisk Extreme and Hyperdisk Throughput volumes can&rsquo;t be used as boot disks.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>provisionedThroughput</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>ProvisionedThroughput of disk to create.
+Only for hyperdisk-balanced or hyperdisk-throughput volumes,
+measured in MiB per second, that the disk can handle.
+The throughput must be specified within defined limits.
+If not set gcp calculates a default value taking the disk size into consideration.
+Hyperdisk Extreme and Hyperdisk Throughput volumes can&rsquo;t be used as boot disks.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.DiskEncryption">DiskEncryption
@@ -1395,35 +1426,6 @@ DiskEncryption
 <td>
 <em>(Optional)</em>
 <p>Encryption refers to the disk encryption details for this volume</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>provisionedIops</code></br>
-<em>
-int64
-</em>
-</td>
-<td>
-<p>ProvisionedIops of disk to create.
-Only for use with disk of types like pd-extreme and hyperdisk-extreme.
-The IOPS must be specified within defined limits.
-If not set gcp calculates a default value taking the disk size into consideration.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>provisionedThroughput</code></br>
-<em>
-int64
-</em>
-</td>
-<td>
-<p>ProvisionedThroughput of disk to create.
-Only for hyperdisk-balanced or hyperdisk-throughput volumes,
-measured in MiB per second, that the disk can handle.
-The throughput must be specified within defined limits.
-If not set gcp calculates a default value taking the disk size into consideration.</p>
 </td>
 </tr>
 </tbody>

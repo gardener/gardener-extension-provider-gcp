@@ -48,19 +48,6 @@ type Volume struct {
 
 	// Encryption refers to the disk encryption details for this volume
 	Encryption *DiskEncryption
-
-	// ProvisionedIops of disk to create.
-	// Only for use with disk of types like pd-extreme and hyperdisk-extreme.
-	// The IOPS must be specified within defined limits.
-	// If not set gcp calculates a default value taking the disk size into consideration.
-	ProvisionedIops *int64
-
-	// ProvisionedThroughput of disk to create.
-	// Only for hyperdisk-balanced or hyperdisk-throughput volumes,
-	// measured in MiB per second, that the disk can handle.
-	// The throughput must be specified within defined limits.
-	// If not set gcp calculates a default value taking the disk size into consideration.
-	ProvisionedThroughput *int64
 }
 
 // DataVolume contains configuration for data volumes attached to VMs.
@@ -74,6 +61,21 @@ type DataVolume struct {
 	// another disk form the very same image causes the LABELs to be duplicated.
 	// See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323
 	SourceImage *string
+
+	// ProvisionedIops of disk to create.
+	// Only for use with disk of types like pd-extreme and hyperdisk-extreme.
+	// The IOPS must be specified within defined limits.
+	// If not set gcp calculates a default value taking the disk size into consideration.
+	// Hyperdisk Extreme and Hyperdisk Throughput volumes can't be used as boot disks.
+	ProvisionedIops *int64
+
+	// ProvisionedThroughput of disk to create.
+	// Only for hyperdisk-balanced or hyperdisk-throughput volumes,
+	// measured in MiB per second, that the disk can handle.
+	// The throughput must be specified within defined limits.
+	// If not set gcp calculates a default value taking the disk size into consideration.
+	// Hyperdisk Extreme and Hyperdisk Throughput volumes can't be used as boot disks.
+	ProvisionedThroughput *int64
 }
 
 // DiskEncryption encapsulates the encryption configuration for a disk.
