@@ -130,7 +130,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		disks := make([]map[string]interface{}, 0)
 		// root volume
 		if pool.Volume != nil {
-			disk, err := createDiskSpec(pool.Volume.Size, true, &machineImage, pool.Volume.Type, workerConfig, poolLabels)
+			disk, err := createDiskSpecForVolume(pool.Volume, machineImage, workerConfig, poolLabels)
 			if err != nil {
 				return err
 			}
@@ -139,9 +139,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		// additional volumes
 		for _, volume := range pool.DataVolumes {
-			// Don't set machine image for data volumes. Any pre-existing data on the disk can interfere with the boot disk.
-			// See https://github.com/gardener/gardener-extension-provider-gcp/issues/323
-			disk, err := createDiskSpec(volume.Size, false, nil, volume.Type, workerConfig, poolLabels)
+			disk, err := createDiskSpecForDataVolume(volume, workerConfig, poolLabels)
 			if err != nil {
 				return err
 			}
@@ -284,7 +282,18 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	return nil
 }
 
-func createDiskSpec(size string, boot bool, machineImage, volumeType *string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
+func createDiskSpecForVolume(volume *v1alpha1.Volume, image string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
+	return createDiskSpec(volume.Size, true, &image, volume.Type, workerConfig, labels)
+}
+
+func createDiskSpecForDataVolume(volume v1alpha1.DataVolume, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
+	// Careful when setting machine image for data volumes. Any pre-existing data on the disk can interfere with the boot disk.
+	// See https://github.com/gardener/gardener-extension-provider-gcp/issues/323
+	dataVolumeImage := getDataVolumeImage(volume.Name, workerConfig.DataVolumes)
+	return createDiskSpec(volume.Size, false, dataVolumeImage, volume.Type, workerConfig, labels)
+}
+
+func createDiskSpec(size string, boot bool, image, volumeType *string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
 	volumeSize, err := worker.DiskSize(size)
 	if err != nil {
 		return nil, err
@@ -300,8 +309,8 @@ func createDiskSpec(size string, boot bool, machineImage, volumeType *string, wo
 		disk["labels"] = labels
 	}
 
-	if machineImage != nil {
-		disk["image"] = *machineImage
+	if image != nil {
+		disk["image"] = *image
 	}
 
 	if volumeType != nil {
@@ -332,6 +341,15 @@ func addDiskEncryptionDetails(disk map[string]interface{}, encryption *apisgcp.D
 		encryptionMap["kmsKeyServiceAccount"] = *encryption.KmsKeyServiceAccount
 	}
 	disk["encryption"] = encryptionMap
+}
+
+func getDataVolumeImage(volumeName string, dataVolumes []apisgcp.DataVolume) *string {
+	for _, dv := range dataVolumes {
+		if dv.Name == volumeName {
+			return dv.SourceImage
+		}
+	}
+	return nil
 }
 
 func getGcePoolLabels(worker *v1alpha1.Worker, pool v1alpha1.WorkerPool) map[string]interface{} {

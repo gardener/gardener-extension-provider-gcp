@@ -10,6 +10,7 @@ import (
 
 	"github.com/gardener/gardener/pkg/apis/core"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -22,8 +23,9 @@ import (
 var (
 	validVolumeLocalSSDInterfacesTypes = sets.New("NVME", "SCSI")
 
-	providerFldPath = field.NewPath("providerConfig")
-	volumeFldPath   = providerFldPath.Child("volume")
+	providerFldPath   = field.NewPath("providerConfig")
+	volumeFldPath     = providerFldPath.Child("volume")
+	dataVolumeFldPath = providerFldPath.Child("dataVolume")
 )
 
 // ValidateWorkerConfig validates a WorkerConfig object.
@@ -42,6 +44,9 @@ func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.Dat
 			allErrs = append(allErrs, validateDiskEncryption(workerConfig.Volume.Encryption, volumeFldPath.Child("encryption"))...)
 		}
 		allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, providerFldPath.Child("nodeTemplate"))...)
+		if workerConfig.DataVolumes != nil {
+			allErrs = append(allErrs, validateDataVolumeNames(workerConfig.DataVolumes, dataVolumes)...)
+		}
 	}
 
 	return allErrs
@@ -120,23 +125,52 @@ func validateDataVolume(workerConfig *gcp.WorkerConfig, volume core.DataVolume, 
 		allErrs = append(allErrs, field.Required(fldPath.Child("type"), "must not be empty"))
 		return allErrs
 	}
-	if *volume.Type == worker.VolumeTypeScratch {
+
+	allErrs = append(allErrs, validateScratchDisk(*volume.Type, workerConfig)...)
+
+	return allErrs
+}
+
+func validateScratchDisk(volumeType string, workerConfig *gcp.WorkerConfig) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	interfacePath := volumeFldPath.Child("interface")
+	encryptionPath := volumeFldPath.Child("encryption")
+
+	if volumeType == worker.VolumeTypeScratch {
 		if workerConfig == nil || workerConfig.Volume == nil || workerConfig.Volume.LocalSSDInterface == nil {
-			allErrs = append(allErrs, field.Required(volumeFldPath.Child("interface"), fmt.Sprintf("must be set when using %s volumes", worker.VolumeTypeScratch)))
+			allErrs = append(allErrs, field.Required(interfacePath, fmt.Sprintf("must be set when using %s volumes", worker.VolumeTypeScratch)))
 		} else {
 			if !validVolumeLocalSSDInterfacesTypes.Has(*workerConfig.Volume.LocalSSDInterface) {
-				allErrs = append(allErrs, field.NotSupported(volumeFldPath.Child("interface"), *workerConfig.Volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.UnsortedList()))
+				allErrs = append(allErrs, field.NotSupported(interfacePath, *workerConfig.Volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.UnsortedList()))
 			}
 		}
 		// DiskEncryption not allowed for type SCRATCH
 		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.Encryption != nil {
-			allErrs = append(allErrs, field.Invalid(volumeFldPath.Child("encryption"), *workerConfig.Volume.Encryption, fmt.Sprintf("must not be set in combination with %s volumes", worker.VolumeTypeScratch)))
+			allErrs = append(allErrs, field.Invalid(encryptionPath, *workerConfig.Volume.Encryption, fmt.Sprintf("must not be set in combination with %s volumes", worker.VolumeTypeScratch)))
 		}
 	} else {
 		// LocalSSDInterface only allowed for type SCRATCH
 		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
-			allErrs = append(allErrs, field.Invalid(volumeFldPath.Child("interface"), *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", worker.VolumeTypeScratch)))
+			allErrs = append(allErrs, field.Invalid(encryptionPath, *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", worker.VolumeTypeScratch)))
 		}
+	}
+	return allErrs
+}
+
+func validateDataVolumeNames(workerConfigDataVolumes []gcp.DataVolume, dataVolumes []core.DataVolume) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for _, configDataVolume := range workerConfigDataVolumes {
+		if slices.ContainsFunc(dataVolumes, func(dataVolume core.DataVolume) bool {
+			return configDataVolume.Name == dataVolume.Name
+		}) {
+			continue
+		}
+		allErrs = append(allErrs, field.Invalid(
+			dataVolumeFldPath,
+			configDataVolume.Name,
+			fmt.Sprintf("could not find dataVolume with name %s", configDataVolume.Name)))
 	}
 
 	return allErrs

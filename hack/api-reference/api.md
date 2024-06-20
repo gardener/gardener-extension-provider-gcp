@@ -240,6 +240,20 @@ Volume
 </tr>
 <tr>
 <td>
+<code>dataVolumes</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.DataVolume">
+[]DataVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DataVolumes contains configuration for the additional disks attached to VMs.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>minCpuPlatform</code></br>
 <em>
 string
@@ -483,6 +497,51 @@ string
 </td>
 <td>
 <p>Name is the CloudRouter name.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.DataVolume">DataVolume
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+</p>
+<p>
+<p>DataVolume contains configuration for data volumes attached to VMs.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the data volume this configuration applies to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sourceImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SourceImage is the image to create this disk
+However, this parameter should only be used with particular caution.
+For example GardenLinux works with filesystem LABELs only and creating
+another disk form the very same image causes the LABELs to be duplicated.
+See: <a href="https://github.com/gardener/gardener-extension-provider-gcp/issues/323">https://github.com/gardener/gardener-extension-provider-gcp/issues/323</a></p>
 </td>
 </tr>
 </tbody>

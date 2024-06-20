@@ -95,6 +95,8 @@ spec:
   #     encryption: # Encryption Details
   #       kmsKeyName: "projects/projectId/locations/<zoneName>/keyRings/<keyRingName>/cryptoKeys/alpha"
   #       kmsKeyServiceAccount: "user@projectId.iam.gserviceaccount.com"
+  #   dataVolume: # provider specific dataVolume configuration
+  #     sourceImage: "projects/sap-se-gcp-gardenlinux/global/images/..."
   #   gpu:
   #     acceleratorType: nvidia-tesla-t4
   #     count: 1

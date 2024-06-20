@@ -22,6 +22,10 @@ type WorkerConfig struct {
 	// Volume contains configuration for the root disks attached to VMs.
 	Volume *Volume
 
+	// DataVolumes contains configuration for the additional disks attached to VMs.
+	// +optional
+	DataVolumes []DataVolume
+
 	// MinCpuPlatform is the name of the minimum CPU platform that is to be
 	// requested for the VM.
 	MinCpuPlatform *string
@@ -44,6 +48,19 @@ type Volume struct {
 
 	// Encryption refers to the disk encryption details for this volume
 	Encryption *DiskEncryption
+}
+
+// DataVolume contains configuration for data volumes attached to VMs.
+type DataVolume struct {
+	// Name is the name of the data volume this configuration applies to.
+	Name string
+
+	// SourceImage is the image to create this disk
+	// However, this parameter should only be used with particular caution.
+	// For example GardenLinux works with filesystem LABELs only and creating
+	// another disk form the very same image causes the LABELs to be duplicated.
+	// See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323
+	SourceImage *string
 }
 
 // DiskEncryption encapsulates the encryption configuration for a disk.

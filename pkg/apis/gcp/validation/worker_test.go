@@ -37,6 +37,7 @@ var _ = Describe("#ValidateWorkers", func() {
 				},
 				DataVolumes: []core.DataVolume{
 					{
+						Name:       "foo",
 						Type:       ptr.To("Volume"),
 						VolumeSize: "30G",
 					},
@@ -278,6 +279,29 @@ var _ = Describe("#ValidateWorkers", func() {
 		)
 
 		Expect(errorList).To(BeEmpty())
+	})
+
+	It("should allow valid dataVolume name", func() {
+		errorList := validateWorkerConfig([]core.Worker{workers[0]}, &gcp.WorkerConfig{
+			DataVolumes: []gcp.DataVolume{{
+				Name: "foo",
+			}},
+		})
+		Expect(errorList).To(BeEmpty())
+	})
+
+	It("should forbid invalid dataVolume name", func() {
+		errorList := validateWorkerConfig([]core.Worker{workers[0]}, &gcp.WorkerConfig{
+			DataVolumes: []gcp.DataVolume{{
+				Name: "foo-invalid",
+			}},
+		})
+		Expect(errorList).To(ConsistOf(
+			PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("providerConfig.dataVolume"),
+			})),
+		))
 	})
 
 	Describe("#Volume type SCRATCH", func() {
