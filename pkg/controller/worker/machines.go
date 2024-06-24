@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
@@ -37,11 +38,23 @@ var labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
 var InitializeCapacity = initializeCapacity
 
 const (
+	persistentDiskExtreme     = "pd-extreme"
+	hyperDiskExtreme          = "hyperdisk-extreme"
+	hyperDiskThroughput       = "hyperdisk-throughput"
 	maxGcpLabelCharactersSize = 63
 	// ResourceGPU is the GPU resource. It should be a non-negative integer.
 	ResourceGPU v1.ResourceName = "gpu"
 	// VolumeTypeScratch is the gcp SCRATCH volume type
 	VolumeTypeScratch = "SCRATCH"
+)
+
+var (
+	// AllowedTypesIops are the volume types for which iops can be configured
+	// https://cloud.google.com/sdk/gcloud/reference/compute/disks/create#--provisioned-iops
+	AllowedTypesIops = []string{persistentDiskExtreme, hyperDiskExtreme}
+	// AllowedTypesThroughput are the volume types for which throughput can be configured
+	// https://cloud.google.com/sdk/gcloud/reference/compute/disks/create#--provisioned-throughput
+	AllowedTypesThroughput = []string{hyperDiskThroughput}
 )
 
 // MachineClassKind yields the name of the machine class kind used by GCP provider.
@@ -283,17 +296,15 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 }
 
 func createDiskSpecForVolume(volume *v1alpha1.Volume, image string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
-	return createDiskSpec(volume.Size, true, &image, volume.Type, workerConfig, labels)
+	return createDiskSpec(volume.Size, true, &image, volume.Type, workerConfig.Volume, nil, labels)
 }
 
 func createDiskSpecForDataVolume(volume v1alpha1.DataVolume, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
-	// Careful when setting machine image for data volumes. Any pre-existing data on the disk can interfere with the boot disk.
-	// See https://github.com/gardener/gardener-extension-provider-gcp/issues/323
-	dataVolumeImage := getDataVolumeImage(volume.Name, workerConfig.DataVolumes)
-	return createDiskSpec(volume.Size, false, dataVolumeImage, volume.Type, workerConfig, labels)
+	dataVolumeConf := getDataVolumeWorkerConf(volume.Name, workerConfig.DataVolumes)
+	return createDiskSpec(volume.Size, false, dataVolumeConf.SourceImage, volume.Type, workerConfig.Volume, &dataVolumeConf, labels)
 }
 
-func createDiskSpec(size string, boot bool, image, volumeType *string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
+func createDiskSpec(size string, boot bool, image, volumeType *string, volumeConf *apisgcp.Volume, dataVolumeConf *apisgcp.DataVolume, labels map[string]interface{}) (map[string]interface{}, error) {
 	volumeSize, err := worker.DiskSize(size)
 	if err != nil {
 		return nil, err
@@ -309,6 +320,8 @@ func createDiskSpec(size string, boot bool, image, volumeType *string, workerCon
 		disk["labels"] = labels
 	}
 
+	// Careful when setting machine image for data volumes. Any pre-existing data on the disk can interfere with the boot disk.
+	// See https://github.com/gardener/gardener-extension-provider-gcp/issues/323
 	if image != nil {
 		disk["image"] = *image
 	}
@@ -317,12 +330,21 @@ func createDiskSpec(size string, boot bool, image, volumeType *string, workerCon
 		disk["type"] = *volumeType
 	}
 
-	if workerConfig.Volume != nil {
+	if volumeConf != nil {
 		// Only add encryption details for non-scratch disks, checked by worker validation
-		addDiskEncryptionDetails(disk, workerConfig.Volume.Encryption)
+		addDiskEncryptionDetails(disk, volumeConf.Encryption)
 		// only allowed if volume type is SCRATCH - checked by worker validation
-		if workerConfig.Volume.LocalSSDInterface != nil && *volumeType == VolumeTypeScratch {
-			disk["interface"] = *workerConfig.Volume.LocalSSDInterface
+		if volumeConf.LocalSSDInterface != nil && *volumeType == VolumeTypeScratch {
+			disk["interface"] = *volumeConf.LocalSSDInterface
+		}
+	}
+
+	if dataVolumeConf != nil {
+		if dataVolumeConf.ProvisionedIops != nil && slices.Contains(AllowedTypesIops, *volumeType) {
+			disk["provisionedIops"] = *dataVolumeConf.ProvisionedIops
+		}
+		if dataVolumeConf.ProvisionedThroughput != nil && slices.Contains(AllowedTypesThroughput, *volumeType) {
+			disk["provisionedThroughput"] = *dataVolumeConf.ProvisionedThroughput
 		}
 	}
 
@@ -343,13 +365,13 @@ func addDiskEncryptionDetails(disk map[string]interface{}, encryption *apisgcp.D
 	disk["encryption"] = encryptionMap
 }
 
-func getDataVolumeImage(volumeName string, dataVolumes []apisgcp.DataVolume) *string {
+func getDataVolumeWorkerConf(volumeName string, dataVolumes []apisgcp.DataVolume) apisgcp.DataVolume {
 	for _, dv := range dataVolumes {
 		if dv.Name == volumeName {
-			return dv.SourceImage
+			return dv
 		}
 	}
-	return nil
+	return apisgcp.DataVolume{}
 }
 
 func getGcePoolLabels(worker *v1alpha1.Worker, pool v1alpha1.WorkerPool) map[string]interface{} {

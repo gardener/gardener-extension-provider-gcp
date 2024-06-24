@@ -168,10 +168,13 @@ The worker configuration contains:
     serviceAccount:name@projectIdgserviceaccount.com --role roles/cloudkms.cryptoKeyEncrypterDecrypter
     ```
 
-* Setting a volume image with `dataVolume.sourceImage`.
+* Setting a volume image with `dataVolumes.sourceImage`.
   However, this parameter should only be used with particular caution.
   For example Gardenlinux works with filesystem LABELs only and creating another disk form the very same image causes the LABELs to be duplicated.
   See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323
+
+* Some hyperdisks allow adjustment of their default values for `provisionedIops` and `provisionedThroughput`.
+  Keep in mind though that Hyperdisk Extreme and Hyperdisk Throughput volumes can't be used as boot disks.
 
 * Service Account with their specified scopes, authorized for this worker.
 
@@ -204,6 +207,14 @@ apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
 kind: WorkerConfig
 volume:
   interface: NVME
+  encryption:
+    kmsKeyName: "projects/projectId/locations/<zoneName>/keyRings/<keyRingName>/cryptoKeys/alpha"
+    kmsKeyServiceAccount: "user@projectId.iam.gserviceaccount.com"
+dataVolumes:
+  - name: test
+    sourceImage: projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-gcp-gardener-prod-amd64-1443-3-c261f887
+    provisionedIops: 3000
+    provisionedThroughput: 140
 serviceAccount:
   email: foo@bar.com
   scopes:

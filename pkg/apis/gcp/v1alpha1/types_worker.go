@@ -67,6 +67,21 @@ type DataVolume struct {
 	// another disk form the very same image causes the LABELs to be duplicated.
 	// See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323
 	SourceImage *string `json:"sourceImage,omitempty"`
+
+	// ProvisionedIops of disk to create.
+	// Only for use with disk of types like pd-extreme and hyperdisk-extreme.
+	// The IOPS must be specified within defined limits.
+	// If not set gcp calculates a default value taking the disk size into consideration.
+	// Hyperdisk Extreme and Hyperdisk Throughput volumes can't be used as boot disks.
+	ProvisionedIops *int64 `json:"provisionedIops"`
+
+	// ProvisionedThroughput of disk to create.
+	// Only for hyperdisk-balanced or hyperdisk-throughput volumes,
+	// measured in MiB per second, that the disk can handle.
+	// The throughput must be specified within defined limits.
+	// If not set gcp calculates a default value taking the disk size into consideration.
+	// Hyperdisk Extreme and Hyperdisk Throughput volumes can't be used as boot disks.
+	ProvisionedThroughput *int64 `json:"provisionedThroughput"`
 }
 
 // DiskEncryption encapsulates the encryption configuration for a disk.

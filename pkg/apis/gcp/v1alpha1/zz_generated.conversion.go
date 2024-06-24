@@ -423,6 +423,8 @@ func Convert_gcp_ControlPlaneConfig_To_v1alpha1_ControlPlaneConfig(in *gcp.Contr
 func autoConvert_v1alpha1_DataVolume_To_gcp_DataVolume(in *DataVolume, out *gcp.DataVolume, s conversion.Scope) error {
 	out.Name = in.Name
 	out.SourceImage = (*string)(unsafe.Pointer(in.SourceImage))
+	out.ProvisionedIops = (*int64)(unsafe.Pointer(in.ProvisionedIops))
+	out.ProvisionedThroughput = (*int64)(unsafe.Pointer(in.ProvisionedThroughput))
 	return nil
 }
 
@@ -434,6 +436,8 @@ func Convert_v1alpha1_DataVolume_To_gcp_DataVolume(in *DataVolume, out *gcp.Data
 func autoConvert_gcp_DataVolume_To_v1alpha1_DataVolume(in *gcp.DataVolume, out *DataVolume, s conversion.Scope) error {
 	out.Name = in.Name
 	out.SourceImage = (*string)(unsafe.Pointer(in.SourceImage))
+	out.ProvisionedIops = (*int64)(unsafe.Pointer(in.ProvisionedIops))
+	out.ProvisionedThroughput = (*int64)(unsafe.Pointer(in.ProvisionedThroughput))
 	return nil
 }
 

@@ -189,6 +189,16 @@ func (in *DataVolume) DeepCopyInto(out *DataVolume) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.ProvisionedIops != nil {
+		in, out := &in.ProvisionedIops, &out.ProvisionedIops
+		*out = new(int64)
+		**out = **in
+	}
+	if in.ProvisionedThroughput != nil {
+		in, out := &in.ProvisionedThroughput, &out.ProvisionedThroughput
+		*out = new(int64)
+		**out = **in
+	}
 	return
 }
 
