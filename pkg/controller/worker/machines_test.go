@@ -149,7 +149,7 @@ var _ = Describe("Machines", func() {
 				region = "eu-west-1"
 
 				machineImageName = "my-os"
-				machineImageVersion = "123"
+				machineImageVersion = "123.4.5-foo+bar123"
 				machineImage = "path/to/project/machine/image"
 
 				serviceAccountEmail = "service@account.com"
@@ -469,7 +469,7 @@ var _ = Describe("Machines", func() {
 						},
 						"operatingSystem": map[string]interface{}{
 							"operatingSystemName":    machineImageName,
-							"operatingSystemVersion": machineImageVersion,
+							"operatingSystemVersion": strings.Replace(machineImageVersion, "+", "_", -1),
 						},
 						"gpu": map[string]interface{}{
 							"acceleratorType": acceleratorTypeName,
