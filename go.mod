@@ -19,18 +19,18 @@ require (
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.4.0
-	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8
+	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8
 	golang.org/x/oauth2 v0.21.0
 	golang.org/x/tools v0.22.0
 	google.golang.org/api v0.183.0
-	k8s.io/api v0.29.5
-	k8s.io/apiextensions-apiserver v0.29.5
-	k8s.io/apimachinery v0.29.5
+	k8s.io/api v0.29.6
+	k8s.io/apiextensions-apiserver v0.29.6
+	k8s.io/apimachinery v0.29.6
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.1.2
-	k8s.io/client-go v0.29.5
-	k8s.io/code-generator v0.29.5
-	k8s.io/component-base v0.29.5
-	k8s.io/kubelet v0.29.5
+	k8s.io/client-go v0.29.6
+	k8s.io/code-generator v0.29.6
+	k8s.io/component-base v0.29.6
+	k8s.io/kubelet v0.29.6
 	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
 	sigs.k8s.io/controller-runtime v0.17.5
 	sigs.k8s.io/controller-tools v0.14.0
@@ -46,6 +46,7 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
+	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -152,17 +153,19 @@ require (
 	helm.sh/helm/v3 v3.14.4 // indirect
 	istio.io/api v1.22.1 // indirect
 	istio.io/client-go v1.22.0 // indirect
-	k8s.io/apiserver v0.29.5 // indirect
-	k8s.io/cluster-bootstrap v0.29.5 // indirect
-	k8s.io/component-helpers v0.29.5 // indirect
+	k8s.io/apiserver v0.29.6 // indirect
+	k8s.io/cluster-bootstrap v0.29.6 // indirect
+	k8s.io/component-helpers v0.29.6 // indirect
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
-	k8s.io/kube-aggregator v0.29.5 // indirect
+	k8s.io/kube-aggregator v0.29.6 // indirect
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
-	k8s.io/metrics v0.29.5 // indirect
+	k8s.io/metrics v0.29.6 // indirect
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20231015215740-bf15e44028f9 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
+
+replace github.com/gardener/gardener => github.com/LucaBernstein/gardener v0.0.0-20240624085408-d0f957c929e9
