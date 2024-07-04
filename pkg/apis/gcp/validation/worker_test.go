@@ -318,8 +318,8 @@ var _ = Describe("#ValidateWorkers", func() {
 			Expect(errorList).To(BeEmpty())
 		})
 
-		It("should fail because setting ProvisionedIops is not allowed for hyperdisk-balanced", func() {
-			workers[0].DataVolumes[0].Type = ptr.To("hyperdisk-balanced")
+		It("should fail because setting ProvisionedIops is not allowed for hyperdisk-throughput", func() {
+			workers[0].DataVolumes[0].Type = ptr.To("hyperdisk-throughput")
 			errorList := validateWorkerConfig([]core.Worker{workers[0]}, &gcp.WorkerConfig{
 				DataVolumes: []gcp.DataVolume{
 					{
@@ -349,8 +349,8 @@ var _ = Describe("#ValidateWorkers", func() {
 			Expect(errorList).To(BeEmpty())
 		})
 
-		It("should fail because setting ProvisionedThroughput is not allowed for hyperdisk-balanced", func() {
-			workers[0].DataVolumes[0].Type = ptr.To("hyperdisk-balanced")
+		It("should fail because setting ProvisionedThroughput is not allowed for hyperdisk-extreme", func() {
+			workers[0].DataVolumes[0].Type = ptr.To("hyperdisk-extreme")
 			errorList := validateWorkerConfig([]core.Worker{workers[0]}, &gcp.WorkerConfig{
 				DataVolumes: []gcp.DataVolume{
 					{
