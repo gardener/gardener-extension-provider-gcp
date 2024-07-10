@@ -39,6 +39,7 @@ var InitializeCapacity = initializeCapacity
 
 const (
 	persistentDiskExtreme     = "pd-extreme"
+	hyperDiskBalanced         = "hyperdisk-balanced"
 	hyperDiskExtreme          = "hyperdisk-extreme"
 	hyperDiskThroughput       = "hyperdisk-throughput"
 	maxGcpLabelCharactersSize = 63
@@ -50,11 +51,9 @@ const (
 
 var (
 	// AllowedTypesIops are the volume types for which iops can be configured
-	// https://cloud.google.com/sdk/gcloud/reference/compute/disks/create#--provisioned-iops
-	AllowedTypesIops = []string{persistentDiskExtreme, hyperDiskExtreme}
+	AllowedTypesIops = []string{persistentDiskExtreme, hyperDiskExtreme, hyperDiskBalanced}
 	// AllowedTypesThroughput are the volume types for which throughput can be configured
-	// https://cloud.google.com/sdk/gcloud/reference/compute/disks/create#--provisioned-throughput
-	AllowedTypesThroughput = []string{hyperDiskThroughput}
+	AllowedTypesThroughput = []string{hyperDiskThroughput, hyperDiskBalanced}
 )
 
 // MachineClassKind yields the name of the machine class kind used by GCP provider.
