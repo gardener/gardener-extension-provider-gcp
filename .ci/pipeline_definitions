@@ -1,4 +1,25 @@
 gardener-extension-provider-gcp:
+  templates: 
+    helmcharts:
+    - &provider-gcp
+      name: provider-gcp
+      dir: charts/gardener-extension-provider-gcp
+      registry: europe-docker.pkg.dev/gardener-project/snapshots/charts/gardener/extensions
+      mappings:
+      - ref: ocm-resource:gardener-extension-provider-gcp.repository
+        attribute: image.repository
+      - ref: ocm-resource:gardener-extension-provider-gcp.tag
+        attribute: image.tag
+    - &admission-gcp
+      name: admission-gcp
+      dir: charts/gardener-extension-admission-gcp
+      registry: europe-docker.pkg.dev/gardener-project/snapshots/charts/gardener/extensions
+      mappings:
+      - ref: ocm-resource:gardener-extension-admission-gcp.repository
+        attribute: global.image.repository
+      - ref: ocm-resource:gardener-extension-admission-gcp.tag
+        attribute: global.image.tag
+
   base_definition:
     traits:
       version:
@@ -50,6 +71,10 @@ gardener-extension-provider-gcp:
         draft_release: ~
         options:
           public_build_logs: true
+        publish:
+          helmcharts:
+          - *provider-gcp
+          - *admission-gcp
     pull-request:
       traits:
         pull-request: ~
@@ -58,6 +83,10 @@ gardener-extension-provider-gcp:
             - repository: europe-docker.pkg.dev/gardener-project/releases
         options:
           public_build_logs: true
+        publish:
+          helmcharts:
+          - *provider-gcp
+          - *admission-gcp
     release:
       steps:
         test-integration:
@@ -90,3 +119,8 @@ gardener-extension-provider-gcp:
             gardener-extension-admission-gcp:
               image: europe-docker.pkg.dev/gardener-project/releases/gardener/extensions/admission-gcp
               tag_as_latest: true
+          helmcharts:
+          - <<: *provider-gcp
+            registry: europe-docker.pkg.dev/gardener-project/releases/charts/gardener/extensions
+          - <<: *admission-gcp
+            registry: europe-docker.pkg.dev/gardener-project/releases/charts/gardener/extensions
