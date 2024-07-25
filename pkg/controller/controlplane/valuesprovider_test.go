@@ -194,7 +194,7 @@ var _ = Describe("ValuesProvider", func() {
 		ccmChartValues := utils.MergeMaps(enabledTrue, map[string]interface{}{
 			"replicas":    1,
 			"clusterName": namespace,
-			"podNetwork":  cidr,
+			"podNetwork":  []string{cidr},
 			"podAnnotations": map[string]interface{}{
 				"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
 				"checksum/configmap-" + internal.CloudProviderConfigName:      "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
