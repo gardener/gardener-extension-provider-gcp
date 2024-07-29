@@ -274,6 +274,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					InstanceType: pool.MachineType,
 					Region:       w.worker.Spec.Region,
 					Zone:         zone,
+					Architecture: ptr.To(arch),
 				}
 				machineClassSpec["nodeTemplate"] = template
 				numGpus := template.Capacity[ResourceGPU]
