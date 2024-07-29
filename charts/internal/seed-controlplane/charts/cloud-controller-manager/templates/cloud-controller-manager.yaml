@@ -37,8 +37,7 @@ spec:
       - name: gcp-cloud-controller-manager
         image: {{ index .Values.images "cloud-controller-manager" }}
         imagePullPolicy: IfNotPresent
-        command:
-        - /gcp-cloud-controller-manager
+        args:
         - --allocate-node-cidrs=true
         - --cloud-provider=gce
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
