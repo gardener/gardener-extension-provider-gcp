@@ -300,6 +300,34 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 func (w *workerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, workerConfig apisgcp.WorkerConfig) (string, error) {
 	var additionalData []string
 
+	volumes := slices.Clone(pool.DataVolumes)
+	slices.SortFunc(volumes, func(i, j v1alpha1.DataVolume) int {
+		return strings.Compare(i.Name, j.Name)
+	})
+	for _, volume := range volumes {
+		additionalData = append(additionalData, volume.Name, volume.Size)
+		if encrypted := volume.Encrypted; encrypted != nil && *encrypted {
+			additionalData = append(additionalData, strconv.FormatBool(*encrypted))
+		}
+	}
+
+	worker_volumes := slices.Clone(workerConfig.DataVolumes)
+	slices.SortFunc(worker_volumes, func(i, j apisgcp.DataVolume) int {
+		return strings.Compare(i.Name, j.Name)
+	})
+	for _, volume := range worker_volumes {
+		additionalData = append(additionalData, volume.Name)
+		if sourceImage := volume.SourceImage; sourceImage != nil {
+			additionalData = append(additionalData, *sourceImage)
+		}
+		if ops := volume.ProvisionedIops; ops != nil {
+			additionalData = append(additionalData, strconv.Itoa(int(*ops)))
+		}
+		if throughput := volume.ProvisionedThroughput; throughput != nil {
+			additionalData = append(additionalData, strconv.Itoa(int(*throughput)))
+		}
+	}
+
 	// see https://cloud.google.com/compute/docs/instances/update-instance-properties?hl=de#updatable-properties
 	// for a list of properties that requires a restart.
 
@@ -331,7 +359,7 @@ func (w *workerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, worker
 		}
 	}
 
-	return worker.WorkerPoolHash(pool, w.cluster, additionalData, additionalData)
+	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalData)
 }
 
 func createDiskSpecForVolume(volume *v1alpha1.Volume, image string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
