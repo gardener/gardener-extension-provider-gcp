@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
@@ -412,7 +413,7 @@ func (vp *valuesProvider) getCCMChartValues(
 		"replicas":          extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		"clusterName":       cp.Namespace,
 		"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-		"podNetwork":        extensionscontroller.GetPodNetwork(cluster),
+		"podNetwork":        strings.Join(extensionscontroller.GetPodNetwork(cluster), ","),
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
 			"checksum/configmap-" + internal.CloudProviderConfigName:      checksums[internal.CloudProviderConfigName],

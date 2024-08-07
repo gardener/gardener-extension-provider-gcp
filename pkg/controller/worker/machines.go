@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
@@ -112,7 +114,14 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	for _, pool := range w.worker.Spec.Pools {
 		zoneLen := int32(len(pool.Zones))
 
-		workerPoolHash, err := worker.WorkerPoolHash(pool, w.cluster)
+		workerConfig := &apisgcp.WorkerConfig{}
+		if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
+			if _, _, err := w.decoder.Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
+				return fmt.Errorf("could not decode provider config: %+v", err)
+			}
+		}
+
+		workerPoolHash, err := w.generateWorkerPoolHash(pool, *workerConfig)
 		if err != nil {
 			return err
 		}
@@ -131,13 +140,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			Image:        machineImage,
 			Architecture: &arch,
 		})
-
-		workerConfig := &apisgcp.WorkerConfig{}
-		if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
-			if _, _, err := w.decoder.Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
-				return fmt.Errorf("could not decode provider config: %+v", err)
-			}
-		}
 
 		disks := make([]map[string]interface{}, 0)
 		// root volume
@@ -293,6 +295,71 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	w.machineImages = machineImages
 
 	return nil
+}
+
+func (w *workerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, workerConfig apisgcp.WorkerConfig) (string, error) {
+	var additionalData []string
+
+	volumes := slices.Clone(pool.DataVolumes)
+	slices.SortFunc(volumes, func(i, j v1alpha1.DataVolume) int {
+		return strings.Compare(i.Name, j.Name)
+	})
+	for _, volume := range volumes {
+		additionalData = append(additionalData, volume.Name, volume.Size)
+		if encrypted := volume.Encrypted; encrypted != nil && *encrypted {
+			additionalData = append(additionalData, strconv.FormatBool(*encrypted))
+		}
+	}
+
+	worker_volumes := slices.Clone(workerConfig.DataVolumes)
+	slices.SortFunc(worker_volumes, func(i, j apisgcp.DataVolume) int {
+		return strings.Compare(i.Name, j.Name)
+	})
+	for _, volume := range worker_volumes {
+		additionalData = append(additionalData, volume.Name)
+		if sourceImage := volume.SourceImage; sourceImage != nil {
+			additionalData = append(additionalData, *sourceImage)
+		}
+		if ops := volume.ProvisionedIops; ops != nil {
+			additionalData = append(additionalData, strconv.Itoa(int(*ops)))
+		}
+		if throughput := volume.ProvisionedThroughput; throughput != nil {
+			additionalData = append(additionalData, strconv.Itoa(int(*throughput)))
+		}
+	}
+
+	// see https://cloud.google.com/compute/docs/instances/update-instance-properties?hl=de#updatable-properties
+	// for a list of properties that requires a restart.
+
+	if minCpuPlatform := workerConfig.MinCpuPlatform; minCpuPlatform != nil {
+		additionalData = append(additionalData, *minCpuPlatform)
+	}
+
+	if gpu := workerConfig.GPU; gpu != nil {
+		additionalData = append(additionalData, gpu.AcceleratorType, strconv.Itoa(int(gpu.Count)))
+	}
+
+	if serviceaccount := workerConfig.ServiceAccount; serviceaccount != nil {
+		additionalData = append(additionalData, serviceaccount.Email)
+		sort.Strings(serviceaccount.Scopes)
+		additionalData = append(additionalData, serviceaccount.Scopes...)
+	}
+
+	if volume := workerConfig.Volume; volume != nil {
+		if encryption := volume.Encryption; encryption != nil {
+			if kmsKeyName := encryption.KmsKeyName; kmsKeyName != nil {
+				additionalData = append(additionalData, *kmsKeyName)
+			}
+			if kmsKeyServiceAccount := encryption.KmsKeyServiceAccount; kmsKeyServiceAccount != nil {
+				additionalData = append(additionalData, *kmsKeyServiceAccount)
+			}
+		}
+		if localSSDInterface := volume.LocalSSDInterface; localSSDInterface != nil {
+			additionalData = append(additionalData, *localSSDInterface)
+		}
+	}
+
+	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalData)
 }
 
 func createDiskSpecForVolume(volume *v1alpha1.Volume, image string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {

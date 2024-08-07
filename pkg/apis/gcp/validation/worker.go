@@ -189,6 +189,16 @@ func validateDataVolumeConfigs(dataVolumes []core.DataVolume, configs []gcp.Data
 		allErrs = append(allErrs, validateHyperDisk(dataVolumes[idx], configDataVolume)...)
 	}
 
+	volumeNames := map[string]int{}
+	for _, v := range configs {
+		volumeNames[v.Name]++
+	}
+	for k, v := range volumeNames {
+		if v > 1 {
+			allErrs = append(allErrs, field.Duplicate(dataVolumeFldPath, k))
+		}
+	}
+
 	return allErrs
 }
 

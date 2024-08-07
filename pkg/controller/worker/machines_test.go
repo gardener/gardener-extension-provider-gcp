@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -411,8 +412,10 @@ var _ = Describe("Machines", func() {
 					},
 				}
 
-				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster)
-				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster)
+				additionalData1 := []string{fmt.Sprintf("%dGi", volumeSize), minCpuPlatform, acceleratorTypeName, strconv.Itoa(int(acceleratorCount)), localVolumeInterface}
+				additionalData2 := []string{fmt.Sprintf("%dGi", volumeSize), minCpuPlatform, "foo", "bar", localVolumeInterface}
+				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, []string{}, additionalData1)
+				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, []string{}, additionalData2)
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, clusterWithoutImages)
 			})
