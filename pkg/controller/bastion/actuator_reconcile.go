@@ -6,9 +6,9 @@ package bastion
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -25,10 +25,6 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
-)
-
-const (
-	osImage = "debian-cloud"
 )
 
 // bastionEndpoints collects the endpoints the bastion host provides; the
@@ -79,7 +75,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		}
 	}
 
-	bytes, err := marshalProviderStatus(opt.Zone)
+	bytes, err := json.Marshal(&providerStatusRaw{Zone: opt.Zone})
 	if err != nil {
 		return err
 	}
@@ -93,11 +89,6 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 	err = ensureFirewallRules(ctx, log, gcpClient, bastion, opt)
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("failed to ensure firewall rule: %w", err), helper.KnownCodes)
-	}
-
-	err = ensureDisk(ctx, log, gcpClient, opt)
-	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	instance, err := ensureComputeInstance(ctx, log, bastion, gcpClient, opt)
@@ -221,9 +212,8 @@ func IngressReady(ingress *corev1.LoadBalancerIngress) bool {
 	return ingress != nil && (ingress.Hostname != "" || ingress.IP != "")
 }
 
-// addressToIngress converts the IP address into a
-// corev1.LoadBalancerIngress resource. If both arguments are nil, then
-// nil is returned.
+// addressToIngress converts the IP address into a corev1.LoadBalancerIngress resource.
+// If both arguments are nil, then nil is returned.
 func addressToIngress(dnsName *string, ipAddress *string) *corev1.LoadBalancerIngress {
 	var ingress *corev1.LoadBalancerIngress
 
@@ -239,33 +229,6 @@ func addressToIngress(dnsName *string, ipAddress *string) *corev1.LoadBalancerIn
 	}
 
 	return ingress
-}
-
-func ensureDisk(ctx context.Context, log logr.Logger, client gcpclient.ComputeClient, opt *Options) error {
-	disk, err := getDisk(ctx, client, opt)
-	if disk != nil || err != nil {
-		return err
-	}
-
-	log.Info("create new bastion compute instance disk")
-
-	osFamily, err := getOSImage(ctx, client)
-	if err != nil {
-		return err
-	}
-
-	disk = diskDefine(opt.Zone, opt.DiskName, osFamily)
-	_, err = client.InsertDisk(ctx, opt.Zone, disk)
-	if err != nil {
-		return fmt.Errorf("failed to create compute instance disk: %w", err)
-	}
-
-	disk, err = getDisk(ctx, client, opt)
-	if disk != nil || err != nil {
-		return err
-	}
-
-	return fmt.Errorf("failed to get (create) compute instance disk: %w", err)
 }
 
 func computeInstanceDefine(opt *Options, userData []byte) *compute.Instance {
@@ -296,7 +259,7 @@ func metadataItemsDefine(userData []byte) []*compute.MetadataItems {
 }
 
 func machineTypeDefine(opt *Options) string {
-	return fmt.Sprintf("zones/%s/machineTypes/n1-standard-1", opt.Zone)
+	return fmt.Sprintf("zones/%s/machineTypes/%s", opt.Zone, opt.MachineName)
 }
 
 func networkInterfacesDefine(opt *Options) []*compute.NetworkInterface {
@@ -315,35 +278,12 @@ func disksDefine(opt *Options) []*compute.AttachedDisk {
 			AutoDelete: true,
 			Boot:       true,
 			DiskSizeGb: 10,
-			Source:     fmt.Sprintf("projects/%s/zones/%s/disks/%s", opt.ProjectID, opt.Zone, opt.DiskName),
 			Mode:       "READ_WRITE",
+			InitializeParams: &compute.AttachedDiskInitializeParams{
+				DiskName:    opt.DiskName,
+				Description: "Gardenctl Bastion disk",
+				SourceImage: opt.ImagePath,
+			},
 		},
 	}
-}
-
-func diskDefine(zone string, diskName, osFamily string) *compute.Disk {
-	return &compute.Disk{
-		Description: "Gardenctl Bastion disk",
-		Name:        diskName,
-		SizeGb:      10,
-		SourceImage: fmt.Sprintf("projects/%s/global/images/family/%s", osImage, osFamily),
-		Zone:        zone,
-	}
-}
-
-func getOSImage(ctx context.Context, client gcpclient.ComputeClient) (string, error) {
-	imageList, err := client.ListImages(ctx, osImage, "creationTimestamp desc", "items(name,creationTimestamp,family)")
-	if err != nil {
-		return "", err
-	}
-
-	// looking for fist os x86 arch version sorted by creationTimestamp
-	for _, k := range imageList.Items {
-		if strings.Contains(k.Family, "-arm64") {
-			continue
-		}
-		return k.Family, nil
-	}
-
-	return "", nil
 }
