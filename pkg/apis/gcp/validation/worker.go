@@ -177,26 +177,23 @@ func validateHyperDisk(dataVolume core.DataVolume, config gcp.DataVolume) field.
 func validateDataVolumeConfigs(dataVolumes []core.DataVolume, configs []gcp.DataVolume) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	for _, configDataVolume := range configs {
+	volumeNames := sets.New[string]()
+	for i, configDataVolume := range configs {
 		idx := slices.IndexFunc(dataVolumes, func(dv core.DataVolume) bool { return dv.Name == configDataVolume.Name })
+		volumeName := configDataVolume.Name
 		if idx == -1 {
 			allErrs = append(allErrs, field.Invalid(
 				dataVolumeFldPath,
-				configDataVolume.Name,
-				fmt.Sprintf("could not find dataVolume with name %s", configDataVolume.Name)))
+				volumeName,
+				fmt.Sprintf("could not find dataVolume with name %s", volumeName)))
 			continue
 		}
-		allErrs = append(allErrs, validateHyperDisk(dataVolumes[idx], configDataVolume)...)
-	}
-
-	volumeNames := map[string]int{}
-	for _, v := range configs {
-		volumeNames[v.Name]++
-	}
-	for k, v := range volumeNames {
-		if v > 1 {
-			allErrs = append(allErrs, field.Duplicate(dataVolumeFldPath, k))
+		if volumeNames.Has(volumeName) {
+			allErrs = append(allErrs, field.Duplicate(dataVolumeFldPath.Index(i), volumeName))
+			continue
 		}
+		volumeNames.Insert(volumeName)
+		allErrs = append(allErrs, validateHyperDisk(dataVolumes[idx], configDataVolume)...)
 	}
 
 	return allErrs
