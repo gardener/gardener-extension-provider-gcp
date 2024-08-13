@@ -290,6 +290,24 @@ var _ = Describe("#ValidateWorkers", func() {
 		Expect(errorList).To(BeEmpty())
 	})
 
+	It("should detect duplicate dataVolume names", func() {
+		errorList := validateWorkerConfig([]core.Worker{workers[0]}, &gcp.WorkerConfig{
+			DataVolumes: []gcp.DataVolume{
+				{
+					Name: "foo",
+				}, {
+					Name: "foo",
+				},
+			},
+		})
+		Expect(errorList).To(ConsistOf(
+			PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeDuplicate),
+				"Field": Equal("providerConfig.dataVolume[1]"),
+			})),
+		))
+	})
+
 	It("should forbid invalid dataVolume name", func() {
 		errorList := validateWorkerConfig([]core.Worker{workers[0]}, &gcp.WorkerConfig{
 			DataVolumes: []gcp.DataVolume{{
