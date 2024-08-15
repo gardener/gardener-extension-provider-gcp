@@ -10,13 +10,15 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"slices"
 
+	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/extensions"
-
-	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 // Maximum length for "base" name due to fact that we use this name to name other GCP resources,
@@ -37,6 +39,8 @@ type Options struct {
 	ProjectID           string
 	Network             string
 	WorkersCIDR         string
+	ImagePath           string
+	MachineName         string
 }
 
 type providerStatusRaw struct {
@@ -65,6 +69,18 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 	}
 
 	region := cluster.Shoot.Spec.Region
+
+	bastionVmDetails, err := DetermineVmDetails(cluster.CloudProfile.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine OS image for bastion host: %w", err)
+	}
+
+	cloudProfileConfig, err := getCloudProfileConfig(cluster)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract cloud provider config from cluster: %w", err)
+	}
+	image, err := GetProviderSpecificImage(cloudProfileConfig.MachineImages, bastionVmDetails)
+
 	return &Options{
 		Shoot:               cluster.Shoot,
 		BastionInstanceName: baseResourceName,
@@ -74,6 +90,8 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		ProjectID:           projectID,
 		Network:             fmt.Sprintf("projects/%s/global/networks/%s", projectID, vNetworkName),
 		WorkersCIDR:         workersCidr,
+		MachineName:         bastionVmDetails.MachineName,
+		ImagePath:           image.Image,
 	}, nil
 }
 
@@ -195,4 +213,47 @@ func FirewallEgressAllowOnlyResourceName(baseName string) string {
 // FirewallEgressDenyAllResourceName is Firewall egress deny all rule resource name
 func FirewallEgressDenyAllResourceName(baseName string) string {
 	return fmt.Sprintf("%s-deny-all", baseName)
+}
+
+func getCloudProfileConfig(cluster *extensions.Cluster) (*gcpv1alpha1.CloudProfileConfig, error) {
+	if cluster.CloudProfile.Spec.ProviderConfig.Raw == nil {
+		return nil, fmt.Errorf("no cloud provider config set in cluster's CloudProfile")
+	}
+
+	var (
+		cloudProfileConfig = &gcpv1alpha1.CloudProfileConfig{}
+		decoder            = kubernetes.GardenCodec.UniversalDeserializer()
+	)
+
+	if _, _, err := decoder.Decode(cluster.CloudProfile.Spec.ProviderConfig.Raw, nil, cloudProfileConfig); err != nil {
+		return nil, err
+	}
+
+	return cloudProfileConfig, nil
+}
+
+// GetProviderSpecificImage returns the provider specific MachineImageVersion
+// which is contains a version and a provider-specific identifier
+func GetProviderSpecificImage(images []gcpv1alpha1.MachineImages, vm VmDetails) (gcpv1alpha1.MachineImageVersion, error) {
+	imageIndex := slices.IndexFunc(images, func(image gcpv1alpha1.MachineImages) bool {
+		return image.Name == vm.ImageBaseName
+	})
+
+	if imageIndex == -1 {
+		return gcpv1alpha1.MachineImageVersion{},
+			fmt.Errorf("machine image with name %s not found in cloudProfileConfig", vm.ImageBaseName)
+	}
+
+	versions := images[imageIndex].Versions
+	versionIndex := slices.IndexFunc(versions, func(version gcpv1alpha1.MachineImageVersion) bool {
+		return version.Version == vm.ImageVersion && version.Architecture != nil && *version.Architecture == vm.Architecture
+	})
+
+	if versionIndex == -1 {
+		return gcpv1alpha1.MachineImageVersion{},
+			fmt.Errorf("version %s for arch %s of image %s not found in cloudProfileConfig",
+				vm.ImageVersion, vm.Architecture, vm.ImageBaseName)
+	}
+
+	return versions[versionIndex], nil
 }
