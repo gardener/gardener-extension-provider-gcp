@@ -12,13 +12,13 @@ import (
 	"net"
 	"slices"
 
-	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/extensions"
+
+	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 )
 
 // Maximum length for "base" name due to fact that we use this name to name other GCP resources,
@@ -72,14 +72,17 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 
 	bastionVmDetails, err := DetermineVmDetails(cluster.CloudProfile.Spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to determine OS image for bastion host: %w", err)
+		return nil, fmt.Errorf("failed to determine VM details for bastion host: %w", err)
 	}
 
 	cloudProfileConfig, err := getCloudProfileConfig(cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract cloud provider config from cluster: %w", err)
 	}
-	image, err := GetProviderSpecificImage(cloudProfileConfig.MachineImages, bastionVmDetails)
+	image, err := getProviderSpecificImage(cloudProfileConfig.MachineImages, bastionVmDetails)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract image from provider config: %w", err)
+	}
 
 	return &Options{
 		Shoot:               cluster.Shoot,
@@ -101,30 +104,11 @@ func getZone(cluster *extensions.Cluster, region string, providerStatus *provide
 	}
 
 	for _, j := range cluster.CloudProfile.Spec.Regions {
-		if j.Name == region {
-			if len(j.Zones) > 0 {
-				return j.Zones[0].Name
-			}
+		if j.Name == region && len(j.Zones) > 0 {
+			return j.Zones[0].Name
 		}
 	}
 	return ""
-}
-
-func getNetworkName(cluster *extensions.Cluster, projectID string, clusterName string) (string, error) {
-	var networkName string
-	infrastructureConfig := &gcpapi.InfrastructureConfig{}
-	err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig)
-	if err != nil {
-		return "", err
-	}
-
-	if infrastructureConfig.Networks.VPC != nil {
-		networkName = fmt.Sprintf("projects/%s/global/networks/%s", projectID, infrastructureConfig.Networks.VPC.Name)
-	} else {
-		networkName = fmt.Sprintf("projects/%s/global/networks/%s", projectID, clusterName)
-	}
-
-	return networkName, nil
 }
 
 func ingressPermissions(bastion *extensionsv1alpha1.Bastion) ([]string, error) {
@@ -145,7 +129,6 @@ func ingressPermissions(bastion *extensionsv1alpha1.Bastion) ([]string, error) {
 			// https://cloud.google.com/compute/docs/reference/rest/v1/firewalls/insert
 			return nil, errors.New("IPv6 is currently not fully supported")
 		}
-
 	}
 
 	return cidrs, nil
@@ -177,12 +160,6 @@ func getProviderStatus(bastion *extensionsv1alpha1.Bastion) (*providerStatusRaw,
 		return unmarshalProviderStatus(bastion.Status.ProviderStatus.Raw)
 	}
 	return nil, nil
-}
-
-func marshalProviderStatus(zone string) ([]byte, error) {
-	return json.Marshal(&providerStatusRaw{
-		Zone: zone,
-	})
 }
 
 func unmarshalProviderStatus(bytes []byte) (*providerStatusRaw, error) {
@@ -232,9 +209,8 @@ func getCloudProfileConfig(cluster *extensions.Cluster) (*gcpv1alpha1.CloudProfi
 	return cloudProfileConfig, nil
 }
 
-// GetProviderSpecificImage returns the provider specific MachineImageVersion
-// which is contains a version and a provider-specific identifier
-func GetProviderSpecificImage(images []gcpv1alpha1.MachineImages, vm VmDetails) (gcpv1alpha1.MachineImageVersion, error) {
+// getProviderSpecificImage returns the provider specific MachineImageVersion that matches with the given VmDetails
+func getProviderSpecificImage(images []gcpv1alpha1.MachineImages, vm VmDetails) (gcpv1alpha1.MachineImageVersion, error) {
 	imageIndex := slices.IndexFunc(images, func(image gcpv1alpha1.MachineImages) bool {
 		return image.Name == vm.ImageBaseName
 	})
