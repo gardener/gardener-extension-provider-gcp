@@ -1,65 +1,36 @@
-// SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Gardener contributors
-//
-// SPDX-License-Identifier: Apache-2.0
-
 package bastion
 
 import (
-	"encoding/json"
 	"fmt"
-	"testing"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
-	"github.com/gardener/gardener/extensions/pkg/controller"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/mock/gomock"
-	"google.golang.org/api/compute/v1"
-	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 )
 
-func TestBastion(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Bastion Suite")
-}
-
-var _ = Describe("Bastion", func() {
+var _ = Describe("Bastion Options", func() {
 	var (
 		cluster *extensions.Cluster
+		opt     Options
 		bastion *extensionsv1alpha1.Bastion
-
-		opt  Options
-		ctrl *gomock.Controller
 	)
+
 	BeforeEach(func() {
 		cluster = createGCPTestCluster()
+		opt = createTestOptions(opt)
 		bastion = createTestBastion()
-		ctrl = gomock.NewController(GinkgoT())
-	})
-	AfterEach(func() {
-		ctrl.Finish()
 	})
 
-	Describe("getWorkersCIDR", func() {
-		It("getWorkersCIDR", func() {
-			cidr, err := getWorkersCIDR(createGCPTestCluster())
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(cidr).To(Equal("10.250.0.0/16"))
-		})
-	})
-
-	Describe("Determine options", func() {
+	Context("DetermineOptions", func() {
 		It("should return options", func() {
+			cluster := createGCPTestCluster()
+			bastion := createTestBastion()
 			options, err := DetermineOptions(bastion, cluster, "projectID", "vNet", "subnet")
 			Expect(err).To(Not(HaveOccurred()))
 
@@ -73,7 +44,7 @@ var _ = Describe("Bastion", func() {
 		})
 	})
 
-	Describe("check Names generations", func() {
+	Context("check Names generations", func() {
 		It("should generate idempotent name", func() {
 			expected := "clusterName-shortName-bastion-79641"
 
@@ -111,7 +82,7 @@ var _ = Describe("Bastion", func() {
 		)
 	})
 
-	Describe("check getZone", func() {
+	Context("check getZone", func() {
 		var testProviderStatusRaw providerStatusRaw
 		It("should return an empty string", func() {
 			testProviderStatusRaw = providerStatusRaw{""}
@@ -126,8 +97,18 @@ var _ = Describe("Bastion", func() {
 		})
 	})
 
-	Describe("check getNetworkName", func() {
-		opt = createTestOptions(opt)
+	Context("unMarshalProviderStatus", func() {
+		It("should update a ProviderStatusRaw Object from a Byte array", func() {
+			testInput := []byte(`{"zone":"us-west1-a"}`)
+			res, err := unmarshalProviderStatus(testInput)
+			expectedMarshalOutput := "us-west1-a"
+
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(res.Zone).To(Equal(expectedMarshalOutput))
+		})
+	})
+
+	Context("check getNetworkName", func() {
 		It("should return network name vpc-123", func() {
 			network := &gcpapi.NetworkConfig{
 				VPC: &gcpapi.VPC{
@@ -152,41 +133,6 @@ var _ = Describe("Bastion", func() {
 		})
 	})
 
-	Describe("check unMarshalProviderStatus", func() {
-		It("should update a ProviderStatusRaw Object from a Byte array", func() {
-			testInput := []byte(`{"zone":"us-west1-a"}`)
-			res, err := unmarshalProviderStatus(testInput)
-			expectedMarshalOutput := "us-west1-a"
-
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(res.Zone).To(Equal(expectedMarshalOutput))
-		})
-	})
-
-	Describe("check Ingress Permissions", func() {
-		It("Should return a string array with ipV4 normalized addresses", func() {
-			bastion.Spec.Ingress = []extensionsv1alpha1.BastionIngressPolicy{
-				{IPBlock: networkingv1.IPBlock{
-					CIDR: "213.69.151.253/24",
-				}},
-			}
-			res, err := ingressPermissions(bastion)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(res[0]).To(Equal("213.69.151.0/24"))
-
-		})
-		It("Should throw an error with invalid CIDR entry", func() {
-			bastion.Spec.Ingress = []extensionsv1alpha1.BastionIngressPolicy{
-				{IPBlock: networkingv1.IPBlock{
-					CIDR: "1234",
-				}},
-			}
-			res, err := ingressPermissions(bastion)
-			Expect(err).To(HaveOccurred())
-			Expect(res).To(BeEmpty())
-		})
-	})
-
 	Describe("check getProviderStatus", func() {
 		It("Should return an error and nil", func() {
 			res, err := getProviderStatus(bastion)
@@ -201,15 +147,7 @@ var _ = Describe("Bastion", func() {
 		})
 	})
 
-	Describe("check PatchCIDRs ", func() {
-		It("should return equally", func() {
-			cidrs := []string{"213.69.151.0/24"}
-			value := &compute.Firewall{SourceRanges: cidrs}
-			Expect(patchCIDRs(cidrs)).To(Equal(value))
-		})
-	})
-
-	Describe("getProviderSpecificImage", func() {
+	Context("getProviderSpecificImage", func() {
 		var (
 			desiredVM      VmDetails
 			providerImages []v1alpha1.MachineImages
@@ -252,134 +190,3 @@ var _ = Describe("Bastion", func() {
 		})
 	})
 })
-
-func createShootTestStruct() *gardencorev1beta1.Shoot {
-	return &gardencorev1beta1.Shoot{
-		Spec: gardencorev1beta1.ShootSpec{
-			Region: "us-west",
-			Provider: gardencorev1beta1.Provider{
-				InfrastructureConfig: &runtime.RawExtension{Raw: mustEncode(gcpapi.InfrastructureConfig{
-					Networks: gcpapi.NetworkConfig{
-						Workers: "10.250.0.0/16",
-					},
-				})},
-			},
-		},
-	}
-}
-
-func createTestMachineImages() []gardencorev1beta1.MachineImage {
-	return []gardencorev1beta1.MachineImage{{
-		Name: "gardenlinux",
-		Versions: []gardencorev1beta1.MachineImageVersion{{
-			ExpirableVersion: gardencorev1beta1.ExpirableVersion{
-				Version:        "1.2.3",
-				Classification: ptr.To(gardencorev1beta1.ClassificationSupported),
-			},
-			Architectures: []string{"amd64"},
-		}},
-	}}
-}
-
-func createTestMachineTypes() []gardencorev1beta1.MachineType {
-	return []gardencorev1beta1.MachineType{{
-		CPU:          resource.MustParse("4"),
-		Name:         "machineName",
-		Architecture: ptr.To("amd64"),
-	}}
-}
-
-func createTestProviderConfig() *v1alpha1.CloudProfileConfig {
-	return &v1alpha1.CloudProfileConfig{MachineImages: []v1alpha1.MachineImages{{
-		Name: "gardenlinux",
-		Versions: []v1alpha1.MachineImageVersion{{
-			Version:      "1.2.3",
-			Image:        "/path/to/images",
-			Architecture: ptr.To("amd64"),
-		}},
-	}}}
-}
-
-func createGCPTestCluster() *extensions.Cluster {
-	return &controller.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "cluster1"},
-		Shoot:      createShootTestStruct(),
-		CloudProfile: &gardencorev1beta1.CloudProfile{
-			Spec: gardencorev1beta1.CloudProfileSpec{
-				Regions: []gardencorev1beta1.Region{
-					{Name: "regionName"},
-					{Name: "us-west", Zones: []gardencorev1beta1.AvailabilityZone{
-						{Name: "us-west1-a"},
-						{Name: "us-west1-b"},
-					}},
-				},
-				MachineImages: createTestMachineImages(),
-				MachineTypes:  createTestMachineTypes(),
-				ProviderConfig: &runtime.RawExtension{
-					Raw: mustEncode(createTestProviderConfig()),
-				},
-			},
-		},
-	}
-}
-
-func createTestBastion() *extensionsv1alpha1.Bastion {
-	return &extensionsv1alpha1.Bastion{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "bastionName1",
-		},
-		Spec: extensionsv1alpha1.BastionSpec{
-			DefaultSpec: extensionsv1alpha1.DefaultSpec{},
-			UserData:    nil,
-			Ingress: []extensionsv1alpha1.BastionIngressPolicy{
-				{IPBlock: networkingv1.IPBlock{
-					CIDR: "213.69.151.0/24",
-				}},
-			},
-		},
-	}
-}
-
-func createTestCluster(networkConfig *gcpapi.NetworkConfig) *extensions.Cluster {
-	bytes, _ := json.Marshal(&gcpapi.InfrastructureConfig{
-		Networks: *networkConfig,
-	})
-	return &extensions.Cluster{
-		Shoot: &gardencorev1beta1.Shoot{
-			Spec: gardencorev1beta1.ShootSpec{
-				Provider: gardencorev1beta1.Provider{
-					InfrastructureConfig: &runtime.RawExtension{Raw: bytes},
-				},
-			},
-		},
-	}
-}
-
-func createTestOptions(opt Options) Options {
-	opt.ProjectID = "test-project"
-	opt.Zone = "us-west1-a"
-	opt.BastionInstanceName = "test-bastion1"
-	return opt
-}
-
-func getNetworkName(cluster *extensions.Cluster, projectID string, clusterName string) (string, error) {
-	infrastructureConfig := &gcpapi.InfrastructureConfig{}
-	err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig)
-	if err != nil {
-		return "", err
-	}
-
-	networkName := fmt.Sprintf("projects/%s/global/networks/%s", projectID, clusterName)
-
-	if infrastructureConfig.Networks.VPC != nil {
-		networkName = fmt.Sprintf("projects/%s/global/networks/%s", projectID, infrastructureConfig.Networks.VPC.Name)
-	}
-
-	return networkName, nil
-}
-
-func mustEncode(object any) []byte {
-	data, err := json.Marshal(object)
-	Expect(err).ToNot(HaveOccurred())
-	return data
-}

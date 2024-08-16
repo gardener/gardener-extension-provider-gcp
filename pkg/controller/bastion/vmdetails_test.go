@@ -1,9 +1,8 @@
 package bastion_test
 
 import (
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
-	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	core "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -11,13 +10,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
 
-	core "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
 )
 
 var _ = Describe("Bastion VM Details", func() {
 	var desired VmDetails
 	var spec core.CloudProfileSpec
-	var providerImages []v1alpha1.MachineImages
 
 	BeforeEach(func() {
 		desired = VmDetails{
@@ -37,8 +35,6 @@ var _ = Describe("Bastion VM Details", func() {
 			},
 			MachineTypes: []v1beta1.MachineType{{
 				CPU:          resource.MustParse("4"),
-				GPU:          resource.MustParse("0"),
-				Memory:       resource.MustParse("12"),
 				Name:         desired.MachineName,
 				Architecture: ptr.To(desired.Architecture),
 			}},
@@ -53,15 +49,6 @@ var _ = Describe("Bastion VM Details", func() {
 						Architectures: []string{desired.Architecture, "arm64"},
 					}},
 			}},
-		}
-
-		providerImages = []v1alpha1.MachineImages{
-			{
-				Name: desired.ImageBaseName,
-				Versions: []v1alpha1.MachineImageVersion{{
-					Version: desired.ImageVersion, Image: "/path/to/images", Architecture: ptr.To(desired.Architecture),
-				}},
-			},
 		}
 	})
 
