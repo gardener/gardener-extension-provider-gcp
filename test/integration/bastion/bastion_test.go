@@ -527,7 +527,7 @@ func createCloudProfile() *gardencorev1beta1.CloudProfile {
 				},
 			},
 			MachineTypes: []gardencorev1beta1.MachineType{{
-				CPU:          resource.MustParse("4"),
+				CPU:          resource.MustParse("1"),
 				Name:         "n1-standard-1",
 				Architecture: ptr.To("amd64"),
 			}},
