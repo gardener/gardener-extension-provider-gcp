@@ -498,7 +498,7 @@ func createShoot(infrastructureConfig []byte) *gardencorev1beta1.Shoot {
 	}
 }
 
-// TODO get real cloudProfile from landscape
+// TODO can be improved by getting real cloudProfile from landscape
 func createCloudProfile() *gardencorev1beta1.CloudProfile {
 	profileConfig := &gcpv1alpha1.CloudProfileConfig{MachineImages: []gcpv1alpha1.MachineImages{{
 		Name: imageName,
