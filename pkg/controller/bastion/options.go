@@ -79,6 +79,7 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract cloud provider config from cluster: %w", err)
 	}
+
 	image, err := getProviderSpecificImage(cloudProfileConfig.MachineImages, bastionVmDetails)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract image from provider config: %w", err)
