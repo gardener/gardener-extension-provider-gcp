@@ -320,12 +320,20 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 				log.Info(fmt.Sprintf("failed to create firewall %s rule: %v", rule.Name, err))
 				return err
 			}
-			continue
-		}
-		_, err = fctx.updater.Firewall(ctx, rule)
-		if err != nil {
-			log.Info(fmt.Sprintf("failed to update firewall %s rule: %v", rule.Name, err))
-			return err
+		} else {
+			updateRule, err := firewallUpdate(gcpRule, rule)
+			if err != nil {
+				log.Info(fmt.Sprintf("failed calculate update for firewall %s rule: %v", rule.Name, err))
+				return err
+			}
+			if updateRule != nil {
+				if _, err = fctx.updater.Firewall(ctx, updateRule); err != nil {
+					log.Info(fmt.Sprintf("failed to update firewall %s rule: %v", rule.Name, err))
+					return err
+				}
+			} else {
+				log.Info(fmt.Sprintf("no change to firewall %s rule, skipping update", rule.Name))
+			}
 		}
 	}
 	return nil

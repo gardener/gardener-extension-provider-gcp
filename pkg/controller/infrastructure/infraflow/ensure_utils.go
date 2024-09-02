@@ -1,7 +1,10 @@
 package infraflow
 
 import (
+	"encoding/json"
 	"fmt"
+	"reflect"
+	"slices"
 
 	"google.golang.org/api/compute/v1"
 
@@ -295,4 +298,146 @@ func isUserRouter(config *gcp.InfrastructureConfig) bool {
 
 func isUserVPC(config *gcp.InfrastructureConfig) bool {
 	return config.Networks.VPC != nil && len(config.Networks.VPC.Name) > 0
+}
+
+// isSimilar return whether to slices are similar using reflect.DeepEqual
+//
+// Similar in this context means they contain the same elements, not necessarily in the same order.
+// In essence, this is set equality using DeepEqual.
+func isSimilar[T any](s1, s2 []T) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+	for _, v := range s1 {
+		if !slices.ContainsFunc(s2, func(e T) bool { return reflect.DeepEqual(v, e) }) {
+			return false
+		}
+	}
+	return true
+}
+
+// firewallUpdate returns a firewall rule that reflects the differences from 'left' towards 'right'.
+//
+// The intended use for the returned firewall rule is to serve as a minimal patch when updating
+// firewall rules on gcp.
+func firewallUpdate(left, right *compute.Firewall) (*compute.Firewall, error) {
+	if left == right {
+		// both identical, nothing to do
+		return nil, nil
+	}
+	if left == nil && right != nil {
+		// everything is right, return right
+		return right, nil
+	}
+	if right == nil && left != nil {
+		// strictly speaking, the update here would be an empty Firewall-object with its
+		// ForceSendFields set to all fields. In the intended context of this function,
+		// just return nil signalling that there is nothing to do
+		return nil, nil
+	}
+
+	// The basic idea is to construct a map holding all the differences from left to right and
+	// then use Golang's json-marshalling to create an actual Firewall-instance with the
+	// corresponding attributes set to the expected values.
+	// If only there was a way to supply function args from maps, like foo(**kwargs) :(
+	diff := map[string]interface{}{}
+
+	// Note: CreationTimestamp is ignored, everything else is checked.
+
+	if len(right.Allowed) != 0 {
+		// n.b.: This replaces the entries on the left, it does not merge (same behaviour as Terraform)
+		if len(left.Allowed) == 0 || !isSimilar(left.Allowed, right.Allowed) {
+			diff["allowed"] = right.Allowed
+		}
+	}
+	if len(right.Denied) != 0 {
+		if len(left.Denied) == 0 || !isSimilar(left.Denied, right.Denied) {
+			diff["denied"] = right.Denied
+		}
+	}
+	if right.Description != "" && left.Description != right.Description {
+		diff["description"] = right.Description
+	}
+	if len(right.DestinationRanges) != 0 {
+		if len(left.DestinationRanges) == 0 || !isSimilar(left.DestinationRanges, right.DestinationRanges) {
+			diff["destinationRanges"] = right.DestinationRanges
+		}
+	}
+
+	if right.Direction != "" && left.Direction != right.Direction {
+		diff["direction"] = right.Direction
+	}
+	if left.Disabled != right.Disabled {
+		diff["disabled"] = right.Disabled
+	}
+
+	if right.Id != 0 && left.Id != right.Id {
+		diff["id"] = fmt.Sprint(right.Id)
+	}
+	if right.Kind != "" && left.Kind != right.Kind {
+		diff["kind"] = right.Kind
+	}
+	if right.LogConfig != nil {
+		if left.LogConfig == nil {
+			diff["logConfig"] = right.LogConfig
+		} else {
+			if left.LogConfig.Enable != right.LogConfig.Enable || left.LogConfig.Metadata != right.LogConfig.Metadata {
+				diff["logConfig"] = right.LogConfig
+			}
+		}
+	}
+	if right.Name != "" && left.Name != right.Name {
+		diff["name"] = right.Name
+	}
+	if right.Network != "" && left.Network != right.Network {
+		diff["network"] = right.Network
+	}
+	if right.Priority != 0 && left.Priority != right.Priority {
+		diff["priority"] = right.Priority
+	}
+	if right.SelfLink != "" && left.SelfLink != right.SelfLink {
+		diff["selfLink"] = right.SelfLink
+	}
+
+	if len(right.SourceRanges) != 0 {
+		if len(left.SourceRanges) == 0 || !isSimilar(left.SourceRanges, right.SourceRanges) {
+			diff["sourceRanges"] = right.SourceRanges
+		}
+	}
+	if len(right.SourceServiceAccounts) != 0 {
+		if len(left.SourceServiceAccounts) == 0 || !isSimilar(left.SourceServiceAccounts, right.SourceServiceAccounts) {
+			diff["sourceServiceAccounts"] = right.SourceServiceAccounts
+		}
+	}
+	if len(right.SourceTags) != 0 {
+		if len(left.SourceTags) == 0 || !isSimilar(left.SourceTags, right.SourceTags) {
+			diff["sourceTags"] = right.SourceTags
+		}
+	}
+	if len(right.TargetServiceAccounts) != 0 {
+		if len(left.TargetServiceAccounts) == 0 || !isSimilar(left.TargetServiceAccounts, right.TargetServiceAccounts) {
+			diff["targetServiceAccounts"] = right.TargetServiceAccounts
+		}
+	}
+	if len(right.TargetTags) != 0 {
+		if len(left.TargetTags) == 0 || !isSimilar(left.TargetTags, right.TargetTags) {
+			diff["targetTags"] = right.TargetTags
+		}
+	}
+
+	if len(diff) == 0 {
+		return nil, nil
+	}
+
+	jsondiff, err := json.Marshal(diff)
+	if err != nil {
+		return nil, err
+	}
+	firewall := &compute.Firewall{}
+	err = json.Unmarshal(jsondiff, firewall)
+
+	if err != nil {
+		return nil, err
+	}
+	return firewall, nil
 }
