@@ -305,7 +305,18 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 	}
 
 	for _, rule := range rules {
-		if _, err := fctx.updater.Firewall(ctx, rule); err != nil {
+		gcprule, err := fctx.computeClient.GetFirewallRule(ctx, rule.Name)
+		if err != nil {
+			return fmt.Errorf("failed to ensure firewall rule [name=%s]: %v", rule.Name, err)
+		}
+		if gcprule == nil {
+			_, err := fctx.computeClient.InsertFirewallRule(ctx, rule)
+			if err != nil {
+				return fmt.Errorf("failed to create firewall rule [name=%s]: %v", rule.Name, err)
+			}
+			return nil
+		}
+		if _, err = fctx.updater.Firewall(ctx, rule, gcprule); err != nil {
 			return err
 		}
 	}

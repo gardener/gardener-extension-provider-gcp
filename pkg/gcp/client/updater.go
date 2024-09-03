@@ -27,7 +27,7 @@ type Updater interface {
 	// will remove the NAT with specified name.
 	DeleteNAT(ctx context.Context, region, router, nat string) (*compute.Router, error)
 	// Firewall updates the respective infrastructure object according to desired state.
-	Firewall(ctx context.Context, firewall *compute.Firewall) (*compute.Firewall, error)
+	Firewall(ctx context.Context, desired, current *compute.Firewall) (*compute.Firewall, error)
 }
 
 type updater struct {
@@ -255,34 +255,18 @@ func (u *updater) DeleteNAT(ctx context.Context, region, routerId, natId string)
 	return router, nil
 }
 
-// Firewall updates a given Firewall in GCP, or creates it if it is absent
-//
-// Before updating, we make sure not to apply a noop.
-func (u *updater) Firewall(ctx context.Context, firewall *compute.Firewall) (*compute.Firewall, error) {
-	existingFirewall, err := u.compute.GetFirewallRule(ctx, firewall.Name)
-	if err != nil {
-		u.log.Info(fmt.Sprintf("failed to create firewall %s rule: %v", existingFirewall.Name, err))
-		return nil, fmt.Errorf("failed to update firewall rule [name=%s]: %v", existingFirewall.Name, err)
-	}
-
-	if existingFirewall == nil {
-		fw, err := u.compute.InsertFirewallRule(ctx, firewall)
+// Firewall updates a given Firewall in GCP to the desired state, making sure to only apply if there are
+// applicable changes between the objects.
+func (u *updater) Firewall(ctx context.Context, current, desired *compute.Firewall) (*compute.Firewall, error) {
+	if shouldUpdate(current, desired) {
+		fw, err := u.compute.PatchFirewallRule(ctx, desired.Name, desired)
 		if err != nil {
-			u.log.Info(fmt.Sprintf("failed to create firewall %s rule: %v", firewall.Name, err))
-			return nil, err
+			return nil, fmt.Errorf("failed to update firewall rule [name=%s]: %v", desired.Name, err)
 		}
 		return fw, nil
 	}
-	if shouldUpdate(firewall, existingFirewall) {
-		fw, err := u.compute.PatchFirewallRule(ctx, firewall.Name, firewall)
-		if err != nil {
-			u.log.Info(fmt.Sprintf("failed to update firewall %s rule: %v", firewall.Name, err))
-			return nil, err
-		}
-		return fw, nil
-	}
-	u.log.Info(fmt.Sprintf("no change to firewall %s rule, skipping update", firewall.Name))
-	return existingFirewall, nil
+	u.log.Info(fmt.Sprintf("no change to firewall %s rule, skipping update", desired.Name))
+	return desired, nil
 }
 
 // shouldUpdate returns a boolean indicating whether there is a change between the two given rules
@@ -295,7 +279,7 @@ func shouldUpdate(oldRule, newRule *compute.Firewall) bool {
 		return true
 	}
 
-	// Check everything except the immutable 'Name', 'Description', and 'SelfLink'.
+	// Check everything except the immutable 'Name', 'Description', 'Id', and 'SelfLink'.
 	// Also CreationTimestamp is ignored.
 
 	if !isEquivalent(oldRule.Allowed, newRule.Allowed) {
