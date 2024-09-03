@@ -1,4 +1,4 @@
-package infraflow
+package client
 
 import (
 	. "github.com/onsi/ginkgo/v2"
@@ -82,6 +82,9 @@ var _ = Describe("Firewall Rules", func() {
 			Expect(shouldUpdate(baseRule, newRule)).To(BeFalse())
 
 			newRule.SelfLink = "Foobar"
+			Expect(shouldUpdate(baseRule, newRule)).To(BeFalse())
+
+			newRule.Id = 7
 			Expect(shouldUpdate(baseRule, newRule)).To(BeFalse())
 
 			// Also check that irrelevant fields are ignored

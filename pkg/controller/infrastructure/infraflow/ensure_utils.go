@@ -2,8 +2,6 @@ package infraflow
 
 import (
 	"fmt"
-	"reflect"
-	"slices"
 
 	"google.golang.org/api/compute/v1"
 
@@ -297,99 +295,4 @@ func isUserRouter(config *gcp.InfrastructureConfig) bool {
 
 func isUserVPC(config *gcp.InfrastructureConfig) bool {
 	return config.Networks.VPC != nil && len(config.Networks.VPC.Name) > 0
-}
-
-// isEquivalent return whether two slices are equivalent using reflect.DeepEqual
-//
-// Equivalent in this context means they contain the same elements, not necessarily in the same order.
-// In essence, this is set equality using DeepEqual.
-func isEquivalent[T any](s1, s2 []T) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-	for _, v := range s1 {
-		if !slices.ContainsFunc(s2, func(e T) bool { return reflect.DeepEqual(v, e) }) {
-			return false
-		}
-	}
-	return true
-}
-
-// shouldUpdate returns a boolean indicating whether there is a change between the two given rules
-// that would necessitate an update
-func shouldUpdate(oldRule, newRule *compute.Firewall) bool {
-	if oldRule == newRule {
-		return false
-	}
-	if oldRule == nil || newRule == nil {
-		return true
-	}
-
-	// Check everything except the immutable 'Name', 'Description', and 'SelfLink'.
-	// Also CreationTimestamp is ignored.
-
-	if len(newRule.Allowed) != 0 {
-		if len(oldRule.Allowed) == 0 || !isEquivalent(oldRule.Allowed, newRule.Allowed) {
-			return true
-		}
-	}
-	if len(newRule.Denied) != 0 {
-		if len(oldRule.Denied) == 0 || !isEquivalent(oldRule.Denied, newRule.Denied) {
-			return true
-		}
-	}
-	if len(newRule.DestinationRanges) != 0 {
-		if len(oldRule.DestinationRanges) == 0 || !isEquivalent(oldRule.DestinationRanges, newRule.DestinationRanges) {
-			return true
-		}
-	}
-	if oldRule.Direction != newRule.Direction {
-		return true
-	}
-	if oldRule.Disabled != newRule.Disabled {
-		return true
-	}
-	if oldRule.Id != newRule.Id {
-		return true
-	}
-	if oldRule.Kind != newRule.Kind {
-		return true
-	}
-	if newRule.LogConfig != nil {
-		if oldRule.LogConfig == nil || oldRule.LogConfig.Enable != newRule.LogConfig.Enable || oldRule.LogConfig.Metadata != newRule.LogConfig.Metadata {
-			return true
-		}
-	}
-	if oldRule.Network != newRule.Network {
-		return true
-	}
-	if oldRule.Priority != newRule.Priority {
-		return true
-	}
-	if len(newRule.SourceRanges) != 0 {
-		if len(oldRule.SourceRanges) == 0 || !isEquivalent(oldRule.SourceRanges, newRule.SourceRanges) {
-			return true
-		}
-	}
-	if len(newRule.SourceServiceAccounts) != 0 {
-		if len(oldRule.SourceServiceAccounts) == 0 || !isEquivalent(oldRule.SourceServiceAccounts, newRule.SourceServiceAccounts) {
-			return true
-		}
-	}
-	if len(newRule.SourceTags) != 0 {
-		if len(oldRule.SourceTags) == 0 || !isEquivalent(oldRule.SourceTags, newRule.SourceTags) {
-			return true
-		}
-	}
-	if len(newRule.TargetServiceAccounts) != 0 {
-		if len(oldRule.TargetServiceAccounts) == 0 || !isEquivalent(oldRule.TargetServiceAccounts, newRule.TargetServiceAccounts) {
-			return true
-		}
-	}
-	if len(newRule.TargetTags) != 0 {
-		if len(oldRule.TargetTags) == 0 || !isEquivalent(oldRule.TargetTags, newRule.TargetTags) {
-			return true
-		}
-	}
-	return false
 }

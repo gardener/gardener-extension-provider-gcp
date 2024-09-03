@@ -292,10 +292,6 @@ func (fctx *FlowContext) ensureCloudNAT(ctx context.Context) error {
 }
 
 func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
-	var (
-		log = shared.LogFromContext(ctx)
-	)
-
 	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
 		return err
 	}
@@ -309,24 +305,8 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 	}
 
 	for _, rule := range rules {
-		gcpRule, err := fctx.computeClient.GetFirewallRule(ctx, rule.Name)
-		if err != nil {
-			log.Info(fmt.Sprintf("failed to create firewall %s rule: %v", rule.Name, err))
-			return fmt.Errorf("failed to ensure firewall rule [name=%s]: %v", rule.Name, err)
-		}
-
-		if gcpRule == nil {
-			if _, err = fctx.computeClient.InsertFirewallRule(ctx, rule); err != nil {
-				log.Info(fmt.Sprintf("failed to create firewall %s rule: %v", rule.Name, err))
-				return err
-			}
-		} else if shouldUpdate(rule, gcpRule) {
-			if _, err = fctx.updater.Firewall(ctx, gcpRule); err != nil {
-				log.Info(fmt.Sprintf("failed to update firewall %s rule: %v", rule.Name, err))
-				return err
-			}
-		} else {
-			log.Info(fmt.Sprintf("no change to firewall %s rule, skipping update", rule.Name))
+		if _, err := fctx.updater.Firewall(ctx, rule); err != nil {
+			return err
 		}
 	}
 	return nil
