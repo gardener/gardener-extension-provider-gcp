@@ -1,7 +1,6 @@
 package infraflow
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"slices"
@@ -300,11 +299,11 @@ func isUserVPC(config *gcp.InfrastructureConfig) bool {
 	return config.Networks.VPC != nil && len(config.Networks.VPC.Name) > 0
 }
 
-// isSimilar return whether to slices are similar using reflect.DeepEqual
+// isEquivalent return whether two slices are equivalent using reflect.DeepEqual
 //
-// Similar in this context means they contain the same elements, not necessarily in the same order.
+// Equivalent in this context means they contain the same elements, not necessarily in the same order.
 // In essence, this is set equality using DeepEqual.
-func isSimilar[T any](s1, s2 []T) bool {
+func isEquivalent[T any](s1, s2 []T) bool {
 	if len(s1) != len(s2) {
 		return false
 	}
@@ -316,128 +315,81 @@ func isSimilar[T any](s1, s2 []T) bool {
 	return true
 }
 
-// firewallUpdate returns a firewall rule that reflects the differences from 'left' towards 'right'.
-//
-// The intended use for the returned firewall rule is to serve as a minimal patch when updating
-// firewall rules on gcp.
-func firewallUpdate(left, right *compute.Firewall) (*compute.Firewall, error) {
-	if left == right {
-		// both identical, nothing to do
-		return nil, nil
+// shouldUpdate returns a boolean indicating whether there is a change between the two given rules
+// that would necessitate an update
+func shouldUpdate(oldRule, newRule *compute.Firewall) bool {
+	if oldRule == newRule {
+		return false
 	}
-	if left == nil && right != nil {
-		// everything is right, return right
-		return right, nil
-	}
-	if right == nil && left != nil {
-		// strictly speaking, the update here would be an empty Firewall-object with its
-		// ForceSendFields set to all fields. In the intended context of this function,
-		// just return nil signalling that there is nothing to do
-		return nil, nil
+	if oldRule == nil || newRule == nil {
+		return true
 	}
 
-	// The basic idea is to construct a map holding all the differences from left to right and
-	// then use Golang's json-marshalling to create an actual Firewall-instance with the
-	// corresponding attributes set to the expected values.
-	// If only there was a way to supply function args from maps, like foo(**kwargs) :(
-	diff := map[string]interface{}{}
+	// Check everything except the immutable 'Name', 'Description', and 'SelfLink'.
+	// Also CreationTimestamp is ignored.
 
-	// Note: CreationTimestamp is ignored, everything else is checked.
-
-	if len(right.Allowed) != 0 {
-		// n.b.: This replaces the entries on the left, it does not merge (same behaviour as Terraform)
-		if len(left.Allowed) == 0 || !isSimilar(left.Allowed, right.Allowed) {
-			diff["allowed"] = right.Allowed
+	if len(newRule.Allowed) != 0 {
+		if len(oldRule.Allowed) == 0 || !isEquivalent(oldRule.Allowed, newRule.Allowed) {
+			return true
 		}
 	}
-	if len(right.Denied) != 0 {
-		if len(left.Denied) == 0 || !isSimilar(left.Denied, right.Denied) {
-			diff["denied"] = right.Denied
+	if len(newRule.Denied) != 0 {
+		if len(oldRule.Denied) == 0 || !isEquivalent(oldRule.Denied, newRule.Denied) {
+			return true
 		}
 	}
-	if right.Description != "" && left.Description != right.Description {
-		diff["description"] = right.Description
-	}
-	if len(right.DestinationRanges) != 0 {
-		if len(left.DestinationRanges) == 0 || !isSimilar(left.DestinationRanges, right.DestinationRanges) {
-			diff["destinationRanges"] = right.DestinationRanges
+	if len(newRule.DestinationRanges) != 0 {
+		if len(oldRule.DestinationRanges) == 0 || !isEquivalent(oldRule.DestinationRanges, newRule.DestinationRanges) {
+			return true
 		}
 	}
-
-	if right.Direction != "" && left.Direction != right.Direction {
-		diff["direction"] = right.Direction
+	if oldRule.Direction != newRule.Direction {
+		return true
 	}
-	if left.Disabled != right.Disabled {
-		diff["disabled"] = right.Disabled
+	if oldRule.Disabled != newRule.Disabled {
+		return true
 	}
-
-	if right.Id != 0 && left.Id != right.Id {
-		diff["id"] = fmt.Sprint(right.Id)
+	if oldRule.Id != newRule.Id {
+		return true
 	}
-	if right.Kind != "" && left.Kind != right.Kind {
-		diff["kind"] = right.Kind
+	if oldRule.Kind != newRule.Kind {
+		return true
 	}
-	if right.LogConfig != nil {
-		if left.LogConfig == nil {
-			diff["logConfig"] = right.LogConfig
-		} else {
-			if left.LogConfig.Enable != right.LogConfig.Enable || left.LogConfig.Metadata != right.LogConfig.Metadata {
-				diff["logConfig"] = right.LogConfig
-			}
+	if newRule.LogConfig != nil {
+		if oldRule.LogConfig == nil || oldRule.LogConfig.Enable != newRule.LogConfig.Enable || oldRule.LogConfig.Metadata != newRule.LogConfig.Metadata {
+			return true
 		}
 	}
-	if right.Name != "" && left.Name != right.Name {
-		diff["name"] = right.Name
+	if oldRule.Network != newRule.Network {
+		return true
 	}
-	if right.Network != "" && left.Network != right.Network {
-		diff["network"] = right.Network
+	if oldRule.Priority != newRule.Priority {
+		return true
 	}
-	if right.Priority != 0 && left.Priority != right.Priority {
-		diff["priority"] = right.Priority
-	}
-	if right.SelfLink != "" && left.SelfLink != right.SelfLink {
-		diff["selfLink"] = right.SelfLink
-	}
-
-	if len(right.SourceRanges) != 0 {
-		if len(left.SourceRanges) == 0 || !isSimilar(left.SourceRanges, right.SourceRanges) {
-			diff["sourceRanges"] = right.SourceRanges
+	if len(newRule.SourceRanges) != 0 {
+		if len(oldRule.SourceRanges) == 0 || !isEquivalent(oldRule.SourceRanges, newRule.SourceRanges) {
+			return true
 		}
 	}
-	if len(right.SourceServiceAccounts) != 0 {
-		if len(left.SourceServiceAccounts) == 0 || !isSimilar(left.SourceServiceAccounts, right.SourceServiceAccounts) {
-			diff["sourceServiceAccounts"] = right.SourceServiceAccounts
+	if len(newRule.SourceServiceAccounts) != 0 {
+		if len(oldRule.SourceServiceAccounts) == 0 || !isEquivalent(oldRule.SourceServiceAccounts, newRule.SourceServiceAccounts) {
+			return true
 		}
 	}
-	if len(right.SourceTags) != 0 {
-		if len(left.SourceTags) == 0 || !isSimilar(left.SourceTags, right.SourceTags) {
-			diff["sourceTags"] = right.SourceTags
+	if len(newRule.SourceTags) != 0 {
+		if len(oldRule.SourceTags) == 0 || !isEquivalent(oldRule.SourceTags, newRule.SourceTags) {
+			return true
 		}
 	}
-	if len(right.TargetServiceAccounts) != 0 {
-		if len(left.TargetServiceAccounts) == 0 || !isSimilar(left.TargetServiceAccounts, right.TargetServiceAccounts) {
-			diff["targetServiceAccounts"] = right.TargetServiceAccounts
+	if len(newRule.TargetServiceAccounts) != 0 {
+		if len(oldRule.TargetServiceAccounts) == 0 || !isEquivalent(oldRule.TargetServiceAccounts, newRule.TargetServiceAccounts) {
+			return true
 		}
 	}
-	if len(right.TargetTags) != 0 {
-		if len(left.TargetTags) == 0 || !isSimilar(left.TargetTags, right.TargetTags) {
-			diff["targetTags"] = right.TargetTags
+	if len(newRule.TargetTags) != 0 {
+		if len(oldRule.TargetTags) == 0 || !isEquivalent(oldRule.TargetTags, newRule.TargetTags) {
+			return true
 		}
 	}
-
-	if len(diff) == 0 {
-		return nil, nil
-	}
-
-	jsondiff, err := json.Marshal(diff)
-	if err != nil {
-		return nil, err
-	}
-	firewall := &compute.Firewall{}
-	err = json.Unmarshal(jsondiff, firewall)
-
-	if err != nil {
-		return nil, err
-	}
-	return firewall, nil
+	return false
 }
