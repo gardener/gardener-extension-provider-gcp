@@ -34,6 +34,7 @@ var _ = Describe("SecretBinding validator", func() {
 
 			ctrl      *gomock.Controller
 			apiReader *mockclient.MockReader
+			ctx       = context.TODO()
 
 			secretBinding = &core.SecretBinding{
 				SecretRef: corev1.SecretReference{
@@ -61,24 +62,24 @@ var _ = Describe("SecretBinding validator", func() {
 		})
 
 		It("should return err when obj is not a SecretBinding", func() {
-			err := secretBindingValidator.Validate(context.TODO(), &corev1.Secret{}, nil)
+			err := secretBindingValidator.Validate(ctx, &corev1.Secret{}, nil)
 			Expect(err).To(MatchError("wrong object type *v1.Secret"))
 		})
 
 		It("should return err when oldObj is not a SecretBinding", func() {
-			err := secretBindingValidator.Validate(context.TODO(), &core.SecretBinding{}, &corev1.Secret{})
+			err := secretBindingValidator.Validate(ctx, &core.SecretBinding{}, &corev1.Secret{})
 			Expect(err).To(MatchError("wrong object type *v1.Secret for old object"))
 		})
 
 		It("should return err if it fails to get the corresponding Secret", func() {
-			apiReader.EXPECT().Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).Return(fakeErr)
+			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).Return(fakeErr)
 
-			err := secretBindingValidator.Validate(context.TODO(), secretBinding, nil)
+			err := secretBindingValidator.Validate(ctx, secretBinding, nil)
 			Expect(err).To(MatchError(fakeErr))
 		})
 
 		It("should return err when the corresponding Secret does not contain a 'serviceaccount.json' field", func() {
-			apiReader.EXPECT().Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
+			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
 					secret := &corev1.Secret{Data: map[string][]byte{
 						"foo": []byte("bar"),
@@ -87,12 +88,12 @@ var _ = Describe("SecretBinding validator", func() {
 					return nil
 				})
 
-			err := secretBindingValidator.Validate(context.TODO(), secretBinding, nil)
+			err := secretBindingValidator.Validate(ctx, secretBinding, nil)
 			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: missing \"serviceaccount.json\" field in secret"))
 		})
 
 		It("should return err when the corresponding Secret does not contain a valid 'serviceaccount.json' field", func() {
-			apiReader.EXPECT().Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
+			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
 					secret := &corev1.Secret{Data: map[string][]byte{
 						gcp.ServiceAccountJSONField: []byte(``),
@@ -101,12 +102,12 @@ var _ = Describe("SecretBinding validator", func() {
 					return nil
 				})
 
-			err := secretBindingValidator.Validate(context.TODO(), secretBinding, nil)
+			err := secretBindingValidator.Validate(ctx, secretBinding, nil)
 			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: could not get service account from \"serviceaccount.json\" field: failed to unmarshal json object: unexpected end of JSON input"))
 		})
 
 		It("should return nil when the corresponding Secret is valid", func() {
-			apiReader.EXPECT().Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
+			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
 					secret := &corev1.Secret{Data: map[string][]byte{
 						gcp.ServiceAccountJSONField: []byte(`{"project_id": "project", "type": "service_account"}`),
@@ -115,7 +116,7 @@ var _ = Describe("SecretBinding validator", func() {
 					return nil
 				})
 
-			err := secretBindingValidator.Validate(context.TODO(), secretBinding, nil)
+			err := secretBindingValidator.Validate(ctx, secretBinding, nil)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
