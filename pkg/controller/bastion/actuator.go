@@ -61,19 +61,6 @@ func createFirewallRuleIfNotExist(ctx context.Context, log logr.Logger, client g
 	return nil
 }
 
-func deleteFirewallRule(ctx context.Context, log logr.Logger, client gcpclient.ComputeClient, firewallRuleName string) error {
-	if err := client.DeleteFirewallRule(ctx, firewallRuleName); err != nil {
-		var googleError *googleapi.Error
-		if errors.As(err, &googleError) && googleError.Code == http.StatusNotFound {
-			return nil
-		}
-		return fmt.Errorf("failed to delete firewall rule %s: %w", firewallRuleName, err)
-	}
-
-	log.Info("Firewall rule removed", "rule", firewallRuleName)
-	return nil
-}
-
 func patchFirewallRule(ctx context.Context, client gcpclient.ComputeClient, firewallRuleName string, cidrs []string) error {
 	if _, err := client.PatchFirewallRule(ctx, firewallRuleName, patchCIDRs(cidrs)); err != nil {
 		return err
