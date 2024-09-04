@@ -5,7 +5,6 @@
 package bastion
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -14,7 +13,6 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -22,10 +20,8 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/mock/client"
 )
 
 func TestBastion(t *testing.T) {
@@ -37,7 +33,6 @@ var _ = Describe("Bastion", func() {
 	var (
 		cluster *extensions.Cluster
 		bastion *extensionsv1alpha1.Bastion
-		log     logr.Logger
 
 		opt  Options
 		ctrl *gomock.Controller
@@ -46,7 +41,6 @@ var _ = Describe("Bastion", func() {
 		cluster = createGCPTestCluster()
 		bastion = createTestBastion()
 		ctrl = gomock.NewController(GinkgoT())
-		log = logf.Log.WithName("test")
 	})
 	AfterEach(func() {
 		ctrl.Finish()
@@ -210,50 +204,6 @@ var _ = Describe("Bastion", func() {
 			res, err := getProviderStatus(bastion)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(res.Zone).To(Equal("us-west1-a"))
-		})
-	})
-
-	Describe("check patchFirewallRule ", func() {
-		It("should patch firewalls", func() {
-			var (
-				ctx                = context.TODO()
-				firewallName       = "test-fw"
-				client             = mockgcpclient.NewMockInterface(ctrl)
-				firewalls          = mockgcpclient.NewMockFirewallsService(ctrl)
-				firewallsPatchCall = mockgcpclient.NewMockFirewallsPatchCall(ctrl)
-			)
-			opt = createTestOptions(opt)
-			cidrs := []string{"213.69.151.0/24"}
-
-			gomock.InOrder(
-				client.EXPECT().Firewalls().Return(firewalls),
-				firewalls.EXPECT().Patch(opt.ProjectID, firewallName, patchCIDRs(cidrs)).Return(firewallsPatchCall),
-				firewallsPatchCall.EXPECT().Context(ctx).Return(firewallsPatchCall),
-				firewallsPatchCall.EXPECT().Do(),
-			)
-			Expect(patchFirewallRule(ctx, client, &opt, firewallName, cidrs)).To(Succeed())
-		})
-	})
-
-	Describe("check DeleteFirewalls works", func() {
-		It("should delete all firewalls", func() {
-			var (
-				ctx                 = context.TODO()
-				firewallName        = fmt.Sprintf("%sfw", "test-")
-				client              = mockgcpclient.NewMockInterface(ctrl)
-				firewalls           = mockgcpclient.NewMockFirewallsService(ctrl)
-				firewallsDeleteCall = mockgcpclient.NewMockFirewallsDeleteCall(ctrl)
-			)
-			opt = createTestOptions(opt)
-
-			gomock.InOrder(
-				client.EXPECT().Firewalls().Return(firewalls),
-				firewalls.EXPECT().Delete(opt.ProjectID, firewallName).Return(firewallsDeleteCall),
-				firewallsDeleteCall.EXPECT().Context(ctx).Return(firewallsDeleteCall),
-				firewallsDeleteCall.EXPECT().Do(),
-			)
-			Expect(deleteFirewallRule(ctx, log, client, &opt, firewallName)).To(Succeed())
-
 		})
 	})
 

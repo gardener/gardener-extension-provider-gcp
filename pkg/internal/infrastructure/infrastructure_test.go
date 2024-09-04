@@ -13,7 +13,8 @@ import (
 	"go.uber.org/mock/gomock"
 	"google.golang.org/api/compute/v1"
 
-	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/mock/client"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
+	mockgcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client/mock"
 )
 
 var _ = Describe("Infrastructure", func() {
@@ -27,7 +28,6 @@ var _ = Describe("Infrastructure", func() {
 		It("should list all kubernetes related firewall names", func() {
 			var (
 				ctx                     = context.TODO()
-				projectID               = "foo"
 				network                 = "bar"
 				shootSeedNamespace      = "shoot--foobar--gcp"
 				otherShootSeedNamespace = "shoot--foo--other"
@@ -35,36 +35,40 @@ var _ = Describe("Infrastructure", func() {
 				k8sFirewallName   = fmt.Sprintf("%sbar-fw", KubernetesFirewallNamePrefix)
 				shootFirewallName = fmt.Sprintf("%sbar-fw", shootSeedNamespace)
 
-				оtherK8SFirewallName   = fmt.Sprintf("%sother-fw", KubernetesFirewallNamePrefix)
+				otherK8SFirewallName   = fmt.Sprintf("%sother-fw", KubernetesFirewallNamePrefix)
 				otherShootFirewallName = fmt.Sprintf("%sother-fw", otherShootSeedNamespace)
 
-				firewallNames = []string{k8sFirewallName, shootFirewallName}
+				firewalls = []*compute.Firewall{
+					{Name: k8sFirewallName, Network: network, TargetTags: []string{shootSeedNamespace}},
+					{Name: shootFirewallName, Network: network},
+					{Name: otherK8SFirewallName, Network: network, TargetTags: []string{otherShootSeedNamespace}},
+					{Name: otherShootFirewallName, Network: network},
+				}
 
-				client            = mockgcpclient.NewMockInterface(ctrl)
-				firewalls         = mockgcpclient.NewMockFirewallsService(ctrl)
-				firewallsListCall = mockgcpclient.NewMockFirewallsListCall(ctrl)
+				expectedResult = []*compute.Firewall{
+					{Name: k8sFirewallName, Network: network, TargetTags: []string{shootSeedNamespace}},
+					{Name: shootFirewallName, Network: network},
+				}
+
+				client = mockgcpclient.NewMockComputeClient(ctrl)
 			)
 
-			gomock.InOrder(
-				client.EXPECT().Firewalls().Return(firewalls),
-				firewalls.EXPECT().List(projectID).Return(firewallsListCall),
-				firewallsListCall.EXPECT().Pages(ctx, gomock.AssignableToTypeOf(func(*compute.FirewallList) error { return nil })).
-					DoAndReturn(func(_ context.Context, f func(*compute.FirewallList) error) error {
-						return f(&compute.FirewallList{
-							Items: []*compute.Firewall{
-								{Name: k8sFirewallName, Network: network, TargetTags: []string{shootSeedNamespace}},
-								{Name: shootFirewallName, Network: network},
-								{Name: оtherK8SFirewallName, Network: network, TargetTags: []string{otherShootSeedNamespace}},
-								{Name: otherShootFirewallName, Network: network},
-							},
-						})
-					}),
-			)
+			client.EXPECT().ListFirewallRules(ctx, gomock.AssignableToTypeOf(gcpclient.FirewallListOpts{})).
+				DoAndReturn(func(_ context.Context, _ gcpclient.FirewallListOpts) ([]*compute.Firewall, error) {
+					var result []*compute.Firewall
+					opts := CreateFirewallListOpts(network, shootSeedNamespace)
+					for _, rule := range firewalls {
+						if opts.ClientFilter(rule) {
+							result = append(result, rule)
+						}
+					}
+					return result, nil
+				})
 
-			actual, err := ListKubernetesFirewalls(ctx, client, projectID, network, shootSeedNamespace)
+			actual, err := ListKubernetesFirewalls(ctx, client, network, shootSeedNamespace)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(actual).To(Equal(firewallNames))
+			Expect(actual).To(Equal(expectedResult))
 		})
 	})
 
@@ -89,57 +93,51 @@ var _ = Describe("Infrastructure", func() {
 					otherShootSeedNamespace,
 				)
 
-				routeNames = []string{routeName}
+				routes = []*compute.Route{
+					{Name: routeName, Network: network, NextHopInstance: nextHopInstance},
+					{Name: otherRouteName, Network: network, NextHopInstance: otherNextHopInstance},
+					{Name: otherRouteName, Network: network},
+				}
 
-				client         = mockgcpclient.NewMockInterface(ctrl)
-				routes         = mockgcpclient.NewMockRoutesService(ctrl)
-				routesListCall = mockgcpclient.NewMockRoutesListCall(ctrl)
+				expectedResult = []*compute.Route{
+					{Name: routeName, Network: network, NextHopInstance: nextHopInstance},
+				}
+
+				client = mockgcpclient.NewMockComputeClient(ctrl)
 			)
 
-			gomock.InOrder(
-				client.EXPECT().Routes().Return(routes),
-				routes.EXPECT().List(projectID).Return(routesListCall),
-				routesListCall.EXPECT().Pages(ctx, gomock.AssignableToTypeOf(func(*compute.RouteList) error { return nil })).
-					DoAndReturn(func(_ context.Context, f func(*compute.RouteList) error) error {
-						return f(&compute.RouteList{
-							Items: []*compute.Route{
-								{Name: routeName, Network: network, NextHopInstance: nextHopInstance},
-								{Name: otherRouteName, Network: network, NextHopInstance: otherNextHopInstance},
-								{Name: otherRouteName, Network: network},
-							},
-						})
-					}),
-			)
+			client.EXPECT().ListRoutes(ctx, gomock.AssignableToTypeOf(gcpclient.RouteListOpts{})).
+				DoAndReturn(func(_ context.Context, _ gcpclient.RouteListOpts) ([]*compute.Route, error) {
+					var result []*compute.Route
+					opts := CreateRoutesListOpts(network, shootSeedNamespace)
+					for _, rule := range routes {
+						if opts.ClientFilter(rule) {
+							result = append(result, rule)
+						}
+					}
+					return result, nil
+				})
 
-			actual, err := ListKubernetesRoutes(ctx, client, projectID, network, shootSeedNamespace)
+			actual, err := ListKubernetesRoutes(ctx, client, network, shootSeedNamespace)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(actual).To(Equal(routeNames))
+			Expect(actual).To(Equal(expectedResult))
 		})
 	})
 
 	Describe("#DeleteFirewalls", func() {
 		It("should delete all firewalls", func() {
 			var (
-				ctx       = context.TODO()
-				projectID = "foo"
-
+				ctx           = context.TODO()
 				firewallName  = fmt.Sprintf("%sfw", KubernetesFirewallNamePrefix)
-				firewallNames = []string{firewallName}
+				firewallRules = []*compute.Firewall{{Name: firewallName}}
 
-				client              = mockgcpclient.NewMockInterface(ctrl)
-				firewalls           = mockgcpclient.NewMockFirewallsService(ctrl)
-				firewallsDeleteCall = mockgcpclient.NewMockFirewallsDeleteCall(ctrl)
+				client = mockgcpclient.NewMockComputeClient(ctrl)
 			)
 
-			gomock.InOrder(
-				client.EXPECT().Firewalls().Return(firewalls),
-				firewalls.EXPECT().Delete(projectID, firewallName).Return(firewallsDeleteCall),
-				firewallsDeleteCall.EXPECT().Context(ctx).Return(firewallsDeleteCall),
-				firewallsDeleteCall.EXPECT().Do(),
-			)
+			client.EXPECT().DeleteFirewallRule(ctx, firewallRules[0].Name).Return(nil)
 
-			Expect(DeleteFirewalls(ctx, client, projectID, firewallNames)).To(Succeed())
+			Expect(DeleteFirewalls(ctx, client, firewallRules)).To(Succeed())
 		})
 	})
 
@@ -147,24 +145,14 @@ var _ = Describe("Infrastructure", func() {
 		It("should delete all routess", func() {
 			var (
 				ctx       = context.TODO()
-				projectID = "foo"
-
-				routeName  = "shoot--foobar--gcp-2690fa98-450f-11e9-8ebe-ce2a79d67b14"
-				routeNames = []string{routeName}
-
-				client           = mockgcpclient.NewMockInterface(ctrl)
-				routes           = mockgcpclient.NewMockRoutesService(ctrl)
-				routesDeleteCall = mockgcpclient.NewMockRoutesDeleteCall(ctrl)
+				routeName = "shoot--foobar--gcp-2690fa98-450f-11e9-8ebe-ce2a79d67b14"
+				routes    = []*compute.Route{{Name: routeName}}
+				client    = mockgcpclient.NewMockComputeClient(ctrl)
 			)
 
-			gomock.InOrder(
-				client.EXPECT().Routes().Return(routes),
-				routes.EXPECT().Delete(projectID, routeName).Return(routesDeleteCall),
-				routesDeleteCall.EXPECT().Context(ctx).Return(routesDeleteCall),
-				routesDeleteCall.EXPECT().Do(),
-			)
+			client.EXPECT().DeleteRoute(ctx, routes[0].Name).Return(nil)
 
-			Expect(DeleteRoutes(ctx, client, projectID, routeNames)).To(Succeed())
+			Expect(DeleteRoutes(ctx, client, routes)).To(Succeed())
 		})
 	})
 })

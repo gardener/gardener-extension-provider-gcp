@@ -12,12 +12,14 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/util"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
@@ -26,7 +28,12 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		return fmt.Errorf("failed to get service account: %w", err)
 	}
 
-	gcpClient, err := createGCPClient(ctx, serviceAccount)
+	secretReference := corev1.SecretReference{
+		Namespace: cluster.ObjectMeta.Name,
+		Name:      v1beta1constants.SecretNameCloudProvider,
+	}
+
+	gcpClient, err := gcpclient.New().Compute(ctx, a.client, secretReference)
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("failed to create GCP client: %w", err), helper.KnownCodes)
 	}
@@ -42,7 +49,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 	}
 
 	if opt.Zone == "" {
-		opt.Zone, err = getDefaultGCPZone(ctx, gcpClient, opt, cluster.Shoot.Spec.Region)
+		opt.Zone, err = getDefaultGCPZone(ctx, gcpClient, cluster.Shoot.Spec.Region)
 		if err != nil {
 			return util.DetermineError(err, helper.KnownCodes)
 		}
@@ -68,25 +75,25 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		return util.DetermineError(fmt.Errorf("failed to remove disk: %w", err), helper.KnownCodes)
 	}
 
-	if err := removeFirewallRules(ctx, log, gcpClient, opt); err != nil {
+	if err := removeFirewallRules(ctx, gcpClient, opt); err != nil {
 		return util.DetermineError(fmt.Errorf("failed to remove firewall rule: %w", err), helper.KnownCodes)
 	}
 
 	return nil
 }
 
-func removeFirewallRules(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interface, opt *Options) error {
+func removeFirewallRules(ctx context.Context, client gcpclient.ComputeClient, opt *Options) error {
 	firewallList := []string{FirewallIngressAllowSSHResourceName(opt.BastionInstanceName), FirewallEgressDenyAllResourceName(opt.BastionInstanceName), FirewallEgressAllowOnlyResourceName(opt.BastionInstanceName)}
 	for _, firewall := range firewallList {
-		if err := deleteFirewallRule(ctx, log, gcpclient, opt, firewall); err != nil {
+		if err := client.DeleteFirewallRule(ctx, firewall); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func removeBastionInstance(ctx context.Context, logger logr.Logger, gcpclient gcpclient.Interface, opt *Options) error {
-	instance, err := getBastionInstance(ctx, gcpclient, opt)
+func removeBastionInstance(ctx context.Context, logger logr.Logger, client gcpclient.ComputeClient, opt *Options) error {
+	instance, err := getBastionInstance(ctx, client, opt)
 	if err != nil {
 		return err
 	}
@@ -95,7 +102,7 @@ func removeBastionInstance(ctx context.Context, logger logr.Logger, gcpclient gc
 		return nil
 	}
 
-	if _, err := gcpclient.Instances().Delete(opt.ProjectID, opt.Zone, opt.BastionInstanceName).Context(ctx).Do(); err != nil {
+	if err = client.DeleteInstance(ctx, opt.Zone, opt.BastionInstanceName); err != nil {
 		return fmt.Errorf("failed to terminate bastion instance: %w", err)
 	}
 
@@ -103,8 +110,8 @@ func removeBastionInstance(ctx context.Context, logger logr.Logger, gcpclient gc
 	return nil
 }
 
-func isInstanceDeleted(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) (bool, error) {
-	instance, err := getBastionInstance(ctx, gcpclient, opt)
+func isInstanceDeleted(ctx context.Context, client gcpclient.ComputeClient, opt *Options) (bool, error) {
+	instance, err := getBastionInstance(ctx, client, opt)
 	if err != nil {
 		return false, err
 	}
@@ -112,8 +119,8 @@ func isInstanceDeleted(ctx context.Context, gcpclient gcpclient.Interface, opt *
 	return instance == nil, nil
 }
 
-func removeDisk(ctx context.Context, logger logr.Logger, gcpclient gcpclient.Interface, opt *Options) error {
-	disk, err := getDisk(ctx, gcpclient, opt)
+func removeDisk(ctx context.Context, logger logr.Logger, client gcpclient.ComputeClient, opt *Options) error {
+	disk, err := getDisk(ctx, client, opt)
 	if err != nil {
 		return err
 	}
@@ -122,7 +129,7 @@ func removeDisk(ctx context.Context, logger logr.Logger, gcpclient gcpclient.Int
 		return nil
 	}
 
-	if _, err := gcpclient.Disks().Delete(opt.ProjectID, opt.Zone, opt.DiskName).Context(ctx).Do(); err != nil {
+	if err = client.DeleteDisk(ctx, opt.Zone, opt.DiskName); err != nil {
 		return fmt.Errorf("failed to delete disk: %w", err)
 	}
 
