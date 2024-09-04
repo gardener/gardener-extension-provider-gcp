@@ -63,6 +63,9 @@ func (s *storageClient) CreateBucketIfNotExists(ctx context.Context, bucketName,
 		UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
 			Enabled: true,
 		},
+		SoftDeletePolicy: &storage.SoftDeletePolicy{
+			RetentionDuration: 0,
+		},
 	}); err != nil {
 		if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == errCodeBucketAlreadyOwnedByYou {
 			return nil
