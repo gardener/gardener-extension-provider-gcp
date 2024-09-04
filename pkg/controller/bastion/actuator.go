@@ -7,7 +7,6 @@ package bastion
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -18,7 +17,6 @@ import (
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	compute "google.golang.org/api/compute/v1"
-	"google.golang.org/api/googleapi"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -50,8 +48,7 @@ func getBastionInstance(ctx context.Context, client gcpclient.ComputeClient, opt
 
 func createFirewallRuleIfNotExist(ctx context.Context, log logr.Logger, client gcpclient.ComputeClient, firewallRule *compute.Firewall) error {
 	if _, err := client.InsertFirewallRule(ctx, firewallRule); err != nil {
-		var googleError *googleapi.Error
-		if errors.As(err, &googleError) && googleError.Code == http.StatusConflict {
+		if gcpclient.IsErrorCode(err, http.StatusConflict) {
 			return nil
 		}
 		return fmt.Errorf("could not create firewall rule %s: %w", firewallRule.Name, err)
