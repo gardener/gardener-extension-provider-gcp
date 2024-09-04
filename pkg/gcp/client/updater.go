@@ -27,7 +27,7 @@ type Updater interface {
 	// will remove the NAT with specified name.
 	DeleteNAT(ctx context.Context, region, router, nat string) (*compute.Router, error)
 	// Firewall updates the respective infrastructure object according to desired state.
-	Firewall(ctx context.Context, firewall *compute.Firewall) (*compute.Firewall, error)
+	Firewall(ctx context.Context, desired, current *compute.Firewall) (*compute.Firewall, error)
 }
 
 type updater struct {
@@ -255,11 +255,76 @@ func (u *updater) DeleteNAT(ctx context.Context, region, routerId, natId string)
 	return router, nil
 }
 
-func (u *updater) Firewall(ctx context.Context, firewall *compute.Firewall) (*compute.Firewall, error) {
-	fw, err := u.compute.PatchFirewallRule(ctx, firewall.Name, firewall)
-	if err != nil {
-		return nil, err
+// Firewall updates a given Firewall in GCP to the desired state, making sure to only apply if there are
+// applicable changes between the objects.
+func (u *updater) Firewall(ctx context.Context, current, desired *compute.Firewall) (*compute.Firewall, error) {
+	if shouldUpdate(current, desired) {
+		fw, err := u.compute.PatchFirewallRule(ctx, desired.Name, desired)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update firewall rule [name=%s]: %v", desired.Name, err)
+		}
+		return fw, nil
+	}
+	u.log.Info(fmt.Sprintf("no change to firewall %s rule, skipping update", desired.Name))
+	return desired, nil
+}
+
+// shouldUpdate returns a boolean indicating whether there is a change between the two given rules
+// that would necessitate an update
+func shouldUpdate(oldRule, newRule *compute.Firewall) bool {
+	if oldRule == newRule {
+		return false
+	}
+	if oldRule == nil || newRule == nil {
+		return true
 	}
 
-	return fw, nil
+	// Check everything except the immutable 'Name', 'Description', 'Id', and 'SelfLink'.
+	// Also CreationTimestamp is ignored.
+
+	if !isEquivalent(oldRule.Allowed, newRule.Allowed) {
+		return true
+	}
+	if !isEquivalent(oldRule.Denied, newRule.Denied) {
+		return true
+	}
+	if !isEquivalent(oldRule.DestinationRanges, newRule.DestinationRanges) {
+		return true
+	}
+	if oldRule.Direction != newRule.Direction {
+		return true
+	}
+	if oldRule.Disabled != newRule.Disabled {
+		return true
+	}
+	if oldRule.Kind != newRule.Kind {
+		return true
+	}
+	if newRule.LogConfig != nil {
+		if oldRule.LogConfig == nil || oldRule.LogConfig.Enable != newRule.LogConfig.Enable || oldRule.LogConfig.Metadata != newRule.LogConfig.Metadata {
+			return true
+		}
+	}
+	if oldRule.Network != newRule.Network {
+		return true
+	}
+	if oldRule.Priority != newRule.Priority {
+		return true
+	}
+	if !isEquivalent(oldRule.SourceRanges, newRule.SourceRanges) {
+		return true
+	}
+	if !isEquivalent(oldRule.SourceServiceAccounts, newRule.SourceServiceAccounts) {
+		return true
+	}
+	if !isEquivalent(oldRule.SourceTags, newRule.SourceTags) {
+		return true
+	}
+	if !isEquivalent(oldRule.TargetServiceAccounts, newRule.TargetServiceAccounts) {
+		return true
+	}
+	if !isEquivalent(oldRule.TargetTags, newRule.TargetTags) {
+		return true
+	}
+	return false
 }
