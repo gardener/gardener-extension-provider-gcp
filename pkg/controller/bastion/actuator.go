@@ -17,14 +17,13 @@ import (
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	compute "google.golang.org/api/compute/v1"
-	"google.golang.org/api/googleapi"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 const (
@@ -42,31 +41,14 @@ func newActuator(mgr manager.Manager) bastion.Actuator {
 	}
 }
 
-func getBastionInstance(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) (*compute.Instance, error) {
-	instance, err := gcpclient.Instances().Get(opt.ProjectID, opt.Zone, opt.BastionInstanceName).Context(ctx).Do()
-	if err != nil {
-		if googleError, ok := err.(*googleapi.Error); ok && googleError.Code == http.StatusNotFound {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return instance, nil
+func getBastionInstance(ctx context.Context, client gcpclient.ComputeClient, opt *Options) (*compute.Instance, error) {
+	instance, err := client.GetInstance(ctx, opt.Zone, opt.BastionInstanceName)
+	return instance, gcpclient.IgnoreNotFoundError(err)
 }
 
-func getFirewallRule(ctx context.Context, gcpclient gcpclient.Interface, opt *Options, firewallRuleName string) (*compute.Firewall, error) {
-	firewall, err := gcpclient.Firewalls().Get(opt.ProjectID, firewallRuleName).Context(ctx).Do()
-	if err != nil {
-		if googleError, ok := err.(*googleapi.Error); ok && googleError.Code == http.StatusNotFound {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return firewall, nil
-}
-
-func createFirewallRuleIfNotExist(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interface, opt *Options, firewallRule *compute.Firewall) error {
-	if _, err := gcpclient.Firewalls().Insert(opt.ProjectID, firewallRule).Context(ctx).Do(); err != nil {
-		if googleError, ok := err.(*googleapi.Error); ok && googleError.Code == http.StatusConflict {
+func createFirewallRuleIfNotExist(ctx context.Context, log logr.Logger, client gcpclient.ComputeClient, firewallRule *compute.Firewall) error {
+	if _, err := client.InsertFirewallRule(ctx, firewallRule); err != nil {
+		if gcpclient.IsErrorCode(err, http.StatusConflict) {
 			return nil
 		}
 		return fmt.Errorf("could not create firewall rule %s: %w", firewallRule.Name, err)
@@ -76,42 +58,20 @@ func createFirewallRuleIfNotExist(ctx context.Context, log logr.Logger, gcpclien
 	return nil
 }
 
-func deleteFirewallRule(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interface, opt *Options, firewallRuleName string) error {
-	if _, err := gcpclient.Firewalls().Delete(opt.ProjectID, firewallRuleName).Context(ctx).Do(); err != nil {
-		if googleError, ok := err.(*googleapi.Error); ok && googleError.Code == http.StatusNotFound {
-			return nil
-		}
-		return fmt.Errorf("failed to delete firewall rule %s: %w", firewallRuleName, err)
-	}
-
-	log.Info("Firewall rule removed", "rule", firewallRuleName)
-	return nil
-}
-
-func patchFirewallRule(ctx context.Context, gcpclient gcpclient.Interface, opt *Options, firewallRuleName string, cidrs []string) error {
-	if _, err := gcpclient.Firewalls().Patch(opt.ProjectID, firewallRuleName, patchCIDRs(cidrs)).Context(ctx).Do(); err != nil {
+func patchFirewallRule(ctx context.Context, client gcpclient.ComputeClient, firewallRuleName string, cidrs []string) error {
+	if _, err := client.PatchFirewallRule(ctx, firewallRuleName, patchCIDRs(cidrs)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func getDisk(ctx context.Context, gcpclient gcpclient.Interface, opt *Options) (*compute.Disk, error) {
-	disk, err := gcpclient.Disks().Get(opt.ProjectID, opt.Zone, opt.DiskName).Context(ctx).Do()
-	if err != nil {
-		if googleError, ok := err.(*googleapi.Error); ok && googleError.Code == http.StatusNotFound {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return disk, nil
+func getDisk(ctx context.Context, client gcpclient.ComputeClient, opt *Options) (*compute.Disk, error) {
+	disk, err := client.GetDisk(ctx, opt.Zone, opt.DiskName)
+	return disk, gcpclient.IgnoreNotFoundError(err)
 }
 
 func getServiceAccount(ctx context.Context, c client.Client, bastion *v1alpha1.Bastion) (*gcp.ServiceAccount, error) {
 	return gcp.GetServiceAccountFromSecretReference(ctx, c, corev1.SecretReference{Namespace: bastion.Namespace, Name: constants.SecretNameCloudProvider})
-}
-
-func createGCPClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (gcpclient.Interface, error) {
-	return gcpclient.NewFromServiceAccount(ctx, serviceAccount.Raw)
 }
 
 func getWorkersCIDR(cluster *controller.Cluster) (string, error) {
@@ -123,8 +83,8 @@ func getWorkersCIDR(cluster *controller.Cluster) (string, error) {
 	return infrastructureConfig.Networks.Workers, nil
 }
 
-func getDefaultGCPZone(ctx context.Context, gcpclient gcpclient.Interface, opt *Options, region string) (string, error) {
-	resp, err := gcpclient.Regions().Get(opt.ProjectID, region).Context(ctx).Do()
+func getDefaultGCPZone(ctx context.Context, client gcpclient.ComputeClient, region string) (string, error) {
+	resp, err := client.GetRegion(ctx, region)
 	if err != nil {
 		return "", err
 	}

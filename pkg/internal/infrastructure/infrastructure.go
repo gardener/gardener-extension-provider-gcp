@@ -9,11 +9,11 @@ import (
 	"strings"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	compute "google.golang.org/api/compute/v1"
+	"google.golang.org/api/compute/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 // KubernetesFirewallNamePrefix is the name prefix that Kubernetes related firewall rules have.
@@ -22,57 +22,59 @@ const (
 	ShootPrefix                  string = "shoot--"
 )
 
-// ListKubernetesFirewalls lists all firewalls that are in the given network and for the given shoot and have the KubernetesFirewallNamePrefix.
-func ListKubernetesFirewalls(ctx context.Context, client gcpclient.Interface, projectID, network, shootSeedNamespace string) ([]string, error) {
-	var names []string
-	err := client.Firewalls().List(projectID).Pages(ctx, func(list *compute.FirewallList) error {
-		for _, firewall := range list.Items {
+// CreateFirewallListOpts creates the FirewallListOpts options.
+func CreateFirewallListOpts(network, shootSeedNamespace string) gcpclient.FirewallListOpts {
+	return gcpclient.FirewallListOpts{
+		ClientFilter: func(firewall *compute.Firewall) bool {
 			if strings.HasSuffix(firewall.Network, network) {
 				if strings.HasPrefix(firewall.Name, KubernetesFirewallNamePrefix) {
 					for _, targetTag := range firewall.TargetTags {
 						if targetTag == shootSeedNamespace {
-							names = append(names, firewall.Name)
-							break
+							return true
 						}
 					}
 				} else if strings.HasPrefix(firewall.Name, shootSeedNamespace) {
-					names = append(names, firewall.Name)
+					return true
 				}
 			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
+			return false
+		},
 	}
-	return names, nil
 }
 
-// ListKubernetesRoutes returns a list of all routes within the shoot network which have the shoot's seed namespace as prefix.
-func ListKubernetesRoutes(ctx context.Context, client gcpclient.Interface, projectID, network, shootSeedNamespace string) ([]string, error) {
-	var routes []string
-	if err := client.Routes().List(projectID).Pages(ctx, func(page *compute.RouteList) error {
-		for _, route := range page.Items {
+// ListKubernetesFirewalls lists all firewalls that are in the given network and for the given shoot and have the KubernetesFirewallNamePrefix.
+func ListKubernetesFirewalls(ctx context.Context, client gcpclient.ComputeClient, network, shootSeedNamespace string) ([]*compute.Firewall, error) {
+	opts := CreateFirewallListOpts(network, shootSeedNamespace)
+	return client.ListFirewallRules(ctx, opts)
+}
+
+// CreateRoutesListOpts creates the RouteListOpts options.
+func CreateRoutesListOpts(network, shootSeedNamespace string) gcpclient.RouteListOpts {
+	return gcpclient.RouteListOpts{
+		ClientFilter: func(route *compute.Route) bool {
 			if strings.HasPrefix(route.Name, ShootPrefix) && strings.HasSuffix(route.Network, network) {
 				urlParts := strings.Split(route.NextHopInstance, "/")
 				if strings.HasPrefix(urlParts[len(urlParts)-1], shootSeedNamespace) {
-					routes = append(routes, route.Name)
+					return true
 				}
 			}
-		}
-		return nil
-	}); err != nil {
-		return nil, err
+			return false
+		},
 	}
-	return routes, nil
+}
+
+// ListKubernetesRoutes returns a list of all routes within the shoot network which have the shoot's seed namespace as prefix.
+func ListKubernetesRoutes(ctx context.Context, client gcpclient.ComputeClient, network, shootSeedNamespace string) ([]*compute.Route, error) {
+	opts := CreateRoutesListOpts(network, shootSeedNamespace)
+	return client.ListRoutes(ctx, opts)
 }
 
 // DeleteFirewalls deletes the firewalls with the given names in the given project.
 //
 // If a deletion fails, it immediately returns the error of that deletion.
-func DeleteFirewalls(ctx context.Context, client gcpclient.Interface, projectID string, firewalls []string) error {
+func DeleteFirewalls(ctx context.Context, client gcpclient.ComputeClient, firewalls []*compute.Firewall) error {
 	for _, firewall := range firewalls {
-		if _, err := client.Firewalls().Delete(projectID, firewall).Context(ctx).Do(); err != nil {
+		if err := client.DeleteFirewallRule(ctx, firewall.Name); err != nil {
 			return err
 		}
 	}
@@ -82,9 +84,9 @@ func DeleteFirewalls(ctx context.Context, client gcpclient.Interface, projectID 
 // DeleteRoutes deletes the route entries with the given names in the given project.
 //
 // If a deletion fails, it immediately returns the error of that deletion.
-func DeleteRoutes(ctx context.Context, client gcpclient.Interface, projectID string, routes []string) error {
+func DeleteRoutes(ctx context.Context, client gcpclient.ComputeClient, routes []*compute.Route) error {
 	for _, route := range routes {
-		if _, err := client.Routes().Delete(projectID, route).Context(ctx).Do(); err != nil {
+		if err := client.DeleteRoute(ctx, route.Name); err != nil {
 			return err
 		}
 	}
@@ -94,25 +96,25 @@ func DeleteRoutes(ctx context.Context, client gcpclient.Interface, projectID str
 // CleanupKubernetesFirewalls lists all Kubernetes firewall rules and then deletes them one after another.
 //
 // If a deletion fails, this method returns immediately with the encountered error.
-func CleanupKubernetesFirewalls(ctx context.Context, client gcpclient.Interface, projectID, network, shootSeedNamespace string) error {
-	firewallNames, err := ListKubernetesFirewalls(ctx, client, projectID, network, shootSeedNamespace)
+func CleanupKubernetesFirewalls(ctx context.Context, client gcpclient.ComputeClient, network, shootSeedNamespace string) error {
+	firewallRules, err := ListKubernetesFirewalls(ctx, client, network, shootSeedNamespace)
 	if err != nil {
 		return err
 	}
 
-	return DeleteFirewalls(ctx, client, projectID, firewallNames)
+	return DeleteFirewalls(ctx, client, firewallRules)
 }
 
 // CleanupKubernetesRoutes lists all Kubernetes route rules and then deletes them one after another.
 //
 // If a deletion fails, this method returns immediately with the encountered error.
-func CleanupKubernetesRoutes(ctx context.Context, client gcpclient.Interface, projectID, network, shootSeedNamespace string) error {
-	routeNames, err := ListKubernetesRoutes(ctx, client, projectID, network, shootSeedNamespace)
+func CleanupKubernetesRoutes(ctx context.Context, client gcpclient.ComputeClient, network, shootSeedNamespace string) error {
+	routes, err := ListKubernetesRoutes(ctx, client, network, shootSeedNamespace)
 	if err != nil {
 		return err
 	}
 
-	return DeleteRoutes(ctx, client, projectID, routeNames)
+	return DeleteRoutes(ctx, client, routes)
 }
 
 // GetServiceAccountFromInfrastructure retrieves the ServiceAccount from the Secret referenced in the given Infrastructure.

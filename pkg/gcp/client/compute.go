@@ -6,12 +6,14 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -23,6 +25,20 @@ type ComputeClient interface {
 	GetExternalAddresses(ctx context.Context, region string) (map[string][]string, error)
 	// GetAddress returns a Address.
 	GetAddress(ctx context.Context, region, name string) (*compute.Address, error)
+
+	// GetInstance returns the Instance specified by zone and name.
+	GetInstance(ctx context.Context, zone, instanceName string) (*compute.Instance, error)
+	// InsertInstance creates a new Instance with the given specification.
+	InsertInstance(ctx context.Context, zone string, instance *compute.Instance) (*compute.Instance, error)
+	// DeleteInstance deletes the Instance. Returns no error if the Instance is not found.
+	DeleteInstance(ctx context.Context, zone, instanceName string) error
+
+	// GetDisk returns the Disk specified by zone and name.
+	GetDisk(ctx context.Context, zone, instanceName string) (*compute.Disk, error)
+	// InsertDisk creates a new Disk with the given specification.
+	InsertDisk(ctx context.Context, zone string, disk *compute.Disk) (*compute.Disk, error)
+	// DeleteDisk deletes the Disk. Returns no error if the Disk is not found.
+	DeleteDisk(ctx context.Context, zone, diskName string) error
 
 	// InsertNetwork creates a Network with the given specification.
 	InsertNetwork(ctx context.Context, nw *compute.Network) (*compute.Network, error)
@@ -67,6 +83,12 @@ type ComputeClient interface {
 	DeleteFirewallRule(ctx context.Context, firewall string) error
 	// ListFirewallRules lists all firewall rules.
 	ListFirewallRules(ctx context.Context, opts FirewallListOpts) ([]*compute.Firewall, error)
+
+	// ListImages lists all Images with specified name.
+	ListImages(ctx context.Context, imageName, orderBy, fields string) (*compute.ImageList, error)
+
+	// GetRegion returns the Region specified.
+	GetRegion(ctx context.Context, region string) (*compute.Region, error)
 }
 
 type computeClient struct {
@@ -118,6 +140,66 @@ func (c *computeClient) GetExternalAddresses(ctx context.Context, region string)
 		return nil, err
 	}
 	return addresses, nil
+}
+
+// GetInstance returns the Instance specified by zone and name.
+func (c *computeClient) GetInstance(ctx context.Context, zone, instanceName string) (*compute.Instance, error) {
+	return c.service.Instances.Get(c.projectID, zone, instanceName).Context(ctx).Do()
+}
+
+// InsertInstance creates a new Instance with the given specification.
+func (c *computeClient) InsertInstance(ctx context.Context, zone string, instance *compute.Instance) (*compute.Instance, error) {
+	op, err := c.service.Instances.Insert(c.projectID, zone, instance).Context(ctx).Do()
+	if err != nil {
+		return nil, err
+	}
+	err = c.wait(ctx, op)
+	if err != nil {
+		return nil, err
+	}
+	return c.GetInstance(ctx, zone, instance.Name)
+}
+
+// DeleteInstance deletes the Instance. Returns no error if the Instance is not found.
+func (c *computeClient) DeleteInstance(ctx context.Context, zone, instanceName string) error {
+	op, err := c.service.Instances.Delete(c.projectID, zone, instanceName).Context(ctx).Do()
+	if IgnoreNotFoundError(err) != nil {
+		return err
+	}
+	if IsNotFoundError(err) {
+		return nil
+	}
+	return c.wait(ctx, op)
+}
+
+// GetDisk returns the Disk specified by zone and name.
+func (c *computeClient) GetDisk(ctx context.Context, zone, diskName string) (*compute.Disk, error) {
+	return c.service.Disks.Get(c.projectID, zone, diskName).Context(ctx).Do()
+}
+
+// InsertDisk creates a new Disk with the given specification.
+func (c *computeClient) InsertDisk(ctx context.Context, zone string, disk *compute.Disk) (*compute.Disk, error) {
+	op, err := c.service.Disks.Insert(c.projectID, zone, disk).Context(ctx).Do()
+	if err != nil {
+		return nil, err
+	}
+	err = c.wait(ctx, op)
+	if err != nil {
+		return nil, err
+	}
+	return c.GetDisk(ctx, zone, disk.Name)
+}
+
+// DeleteDisk deletes the Disk. Returns no error if the Disk is not found.
+func (c *computeClient) DeleteDisk(ctx context.Context, zone, diskName string) error {
+	op, err := c.service.Disks.Delete(c.projectID, zone, diskName).Context(ctx).Do()
+	if IgnoreNotFoundError(err) != nil {
+		return err
+	}
+	if IsNotFoundError(err) {
+		return nil
+	}
+	return c.wait(ctx, op)
 }
 
 // InsertNetwork creates a Network with the given specification.
@@ -433,4 +515,23 @@ func (c *computeClient) DeleteRoute(ctx context.Context, name string) error {
 	}
 
 	return c.wait(ctx, op)
+}
+
+// ListImages lists all Images with specified name.
+func (c *computeClient) ListImages(ctx context.Context, imageName, orderBy, fields string) (*compute.ImageList, error) {
+	imageList, err := c.service.Images.List(imageName).OrderBy(orderBy).Fields(googleapi.Field(fields)).Context(ctx).Do()
+	if err != nil {
+		return nil, err
+	}
+
+	if imageList == nil || len(imageList.Items) == 0 {
+		return nil, fmt.Errorf("no available image with name %s found", imageName)
+	}
+
+	return imageList, nil
+}
+
+// GetRegion returns the Region specified.
+func (c *computeClient) GetRegion(ctx context.Context, region string) (*compute.Region, error) {
+	return c.service.Regions.Get(c.projectID, region).Context(ctx).Do()
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/util"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
@@ -23,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 const (
@@ -51,7 +52,12 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return fmt.Errorf("failed to get service account: %w", err)
 	}
 
-	gcpClient, err := createGCPClient(ctx, serviceAccount)
+	secretReference := corev1.SecretReference{
+		Namespace: cluster.ObjectMeta.Name,
+		Name:      v1beta1constants.SecretNameCloudProvider,
+	}
+
+	gcpClient, err := gcpclient.New().Compute(ctx, a.client, secretReference)
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("failed to create GCP client: %w", err), helper.KnownCodes)
 	}
@@ -67,7 +73,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 	}
 
 	if opt.Zone == "" {
-		opt.Zone, err = getDefaultGCPZone(ctx, gcpClient, opt, cluster.Shoot.Spec.Region)
+		opt.Zone, err = getDefaultGCPZone(ctx, gcpClient, cluster.Shoot.Spec.Region)
 		if err != nil {
 			return util.DetermineError(err, helper.KnownCodes)
 		}
@@ -121,7 +127,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 	return a.client.Status().Patch(ctx, bastion, patch)
 }
 
-func ensureFirewallRules(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interface, bastion *extensionsv1alpha1.Bastion, opt *Options) error {
+func ensureFirewallRules(ctx context.Context, log logr.Logger, client gcpclient.ComputeClient, bastion *extensionsv1alpha1.Bastion, opt *Options) error {
 	cidrs, err := ingressPermissions(bastion)
 	if err != nil {
 		return err
@@ -130,12 +136,12 @@ func ensureFirewallRules(ctx context.Context, log logr.Logger, gcpclient gcpclie
 	firewallList := []*compute.Firewall{IngressAllowSSH(opt, cidrs), EgressDenyAll(opt), EgressAllowOnly(opt)}
 
 	for _, item := range firewallList {
-		if err := createFirewallRuleIfNotExist(ctx, log, gcpclient, opt, item); err != nil {
+		if err := createFirewallRuleIfNotExist(ctx, log, client, item); err != nil {
 			return err
 		}
 	}
 
-	firewall, err := getFirewallRule(ctx, gcpclient, opt, IngressAllowSSH(opt, cidrs).Name)
+	firewall, err := client.GetFirewallRule(ctx, IngressAllowSSH(opt, cidrs).Name)
 	if err != nil || firewall == nil {
 		return fmt.Errorf("could not get firewall rule: %w", err)
 	}
@@ -144,26 +150,26 @@ func ensureFirewallRules(ctx context.Context, log logr.Logger, gcpclient gcpclie
 	wantedCIDRs := cidrs
 
 	if !reflect.DeepEqual(currentCIDRs, wantedCIDRs) {
-		return patchFirewallRule(ctx, gcpclient, opt, IngressAllowSSH(opt, cidrs).Name, cidrs)
+		return patchFirewallRule(ctx, client, IngressAllowSSH(opt, cidrs).Name, cidrs)
 	}
 
 	return nil
 }
 
-func ensureComputeInstance(ctx context.Context, logger logr.Logger, bastion *extensionsv1alpha1.Bastion, gcpclient gcpclient.Interface, opt *Options) (*compute.Instance, error) {
-	instance, err := getBastionInstance(ctx, gcpclient, opt)
+func ensureComputeInstance(ctx context.Context, logger logr.Logger, bastion *extensionsv1alpha1.Bastion, client gcpclient.ComputeClient, opt *Options) (*compute.Instance, error) {
+	instance, err := getBastionInstance(ctx, client, opt)
 	if instance != nil || err != nil {
 		return instance, err
 	}
 
 	logger.Info("Creating new bastion compute instance")
 	computeInstance := computeInstanceDefine(opt, bastion.Spec.UserData)
-	_, err = gcpclient.Instances().Insert(opt.ProjectID, opt.Zone, computeInstance).Context(ctx).Do()
+	_, err = client.InsertInstance(ctx, opt.Zone, computeInstance)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bastion compute instance: %w", err)
 	}
 
-	instance, err = getBastionInstance(ctx, gcpclient, opt)
+	instance, err = getBastionInstance(ctx, client, opt)
 	if instance != nil || err != nil {
 		return instance, err
 	}
@@ -235,26 +241,26 @@ func addressToIngress(dnsName *string, ipAddress *string) *corev1.LoadBalancerIn
 	return ingress
 }
 
-func ensureDisk(ctx context.Context, log logr.Logger, gcpclient gcpclient.Interface, opt *Options) error {
-	disk, err := getDisk(ctx, gcpclient, opt)
+func ensureDisk(ctx context.Context, log logr.Logger, client gcpclient.ComputeClient, opt *Options) error {
+	disk, err := getDisk(ctx, client, opt)
 	if disk != nil || err != nil {
 		return err
 	}
 
 	log.Info("create new bastion compute instance disk")
 
-	osFamily, err := getOSImage(gcpclient)
+	osFamily, err := getOSImage(ctx, client)
 	if err != nil {
 		return err
 	}
 
 	disk = diskDefine(opt.Zone, opt.DiskName, osFamily)
-	_, err = gcpclient.Disks().Insert(opt.ProjectID, opt.Zone, disk).Context(ctx).Do()
+	_, err = client.InsertDisk(ctx, opt.Zone, disk)
 	if err != nil {
 		return fmt.Errorf("failed to create compute instance disk: %w", err)
 	}
 
-	disk, err = getDisk(ctx, gcpclient, opt)
+	disk, err = getDisk(ctx, client, opt)
 	if disk != nil || err != nil {
 		return err
 	}
@@ -325,18 +331,14 @@ func diskDefine(zone string, diskName, osFamily string) *compute.Disk {
 	}
 }
 
-func getOSImage(gcpClient gcpclient.Interface) (string, error) {
-	resp, err := gcpClient.Images().List(osImage).OrderBy("creationTimestamp desc").Fields("items(name,creationTimestamp,family)").Do()
+func getOSImage(ctx context.Context, client gcpclient.ComputeClient) (string, error) {
+	imageList, err := client.ListImages(ctx, osImage, "creationTimestamp desc", "items(name,creationTimestamp,family)")
 	if err != nil {
 		return "", err
 	}
 
-	if resp == nil || len(resp.Items) == 0 {
-		return "", fmt.Errorf("no available os image find")
-	}
-
 	// looking for fist os x86 arch version sorted by creationTimestamp
-	for _, k := range resp.Items {
+	for _, k := range imageList.Items {
 		if strings.Contains(k.Family, "-arm64") {
 			continue
 		}

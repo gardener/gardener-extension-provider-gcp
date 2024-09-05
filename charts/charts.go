@@ -14,4 +14,5 @@ import (
 //go:embed internal
 var InternalChart embed.FS
 
+// InternalChartsPath ist the internal charts path
 const InternalChartsPath = "internal"

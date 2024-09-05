@@ -26,9 +26,8 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/client"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
 )
 
@@ -144,12 +143,7 @@ func (t *TerraformReconciler) delete(ctx context.Context, infra *extensionsv1alp
 		return err
 	}
 
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, t.client, infra.Spec.SecretRef)
-	if err != nil {
-		return err
-	}
-
-	gcpClient, err := gcpclient.NewFromServiceAccount(ctx, serviceAccount.Raw)
+	gcpClient, err := gcpclient.New().Compute(ctx, t.client, infra.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
@@ -164,7 +158,7 @@ func (t *TerraformReconciler) delete(ctx context.Context, infra *extensionsv1alp
 		destroyKubernetesFirewallRules = g.Add(flow.Task{
 			Name: "Destroying Kubernetes firewall rules",
 			Fn: flow.TaskFn(func(ctx context.Context) error {
-				return cleanupKubernetesFirewallRules(ctx, config, gcpClient, tf, serviceAccount, infra.Namespace)
+				return cleanupKubernetesFirewallRules(ctx, config, gcpClient, tf, infra.Namespace)
 			}).RetryUntilTimeout(10*time.Second, 5*time.Minute),
 			SkipIf: !configExists,
 		})
@@ -172,7 +166,7 @@ func (t *TerraformReconciler) delete(ctx context.Context, infra *extensionsv1alp
 		destroyKubernetesRoutes = g.Add(flow.Task{
 			Name: "Destroying Kubernetes route entries",
 			Fn: flow.TaskFn(func(ctx context.Context) error {
-				return cleanupKubernetesRoutes(ctx, config, gcpClient, tf, serviceAccount, infra.Namespace)
+				return cleanupKubernetesRoutes(ctx, config, gcpClient, tf, infra.Namespace)
 			}).RetryUntilTimeout(10*time.Second, 5*time.Minute),
 			SkipIf: !configExists,
 		})
@@ -231,9 +225,8 @@ func getTerraformerRawState(state *runtime.RawExtension) (*terraformer.RawState,
 func cleanupKubernetesFirewallRules(
 	ctx context.Context,
 	config *api.InfrastructureConfig,
-	gcpClient gcpclient.Interface,
+	client gcpclient.ComputeClient,
 	tf terraformer.Terraformer,
-	account *gcp.ServiceAccount,
 	shootSeedNamespace string,
 ) error {
 	state, err := infrastructure.ExtractTerraformState(ctx, tf, config, false)
@@ -244,15 +237,14 @@ func cleanupKubernetesFirewallRules(
 		return err
 	}
 
-	return infrastructure.CleanupKubernetesFirewalls(ctx, gcpClient, account.ProjectID, state.VPCName, shootSeedNamespace)
+	return infrastructure.CleanupKubernetesFirewalls(ctx, client, state.VPCName, shootSeedNamespace)
 }
 
 func cleanupKubernetesRoutes(
 	ctx context.Context,
 	config *api.InfrastructureConfig,
-	gcpClient gcpclient.Interface,
+	client gcpclient.ComputeClient,
 	tf terraformer.Terraformer,
-	account *gcp.ServiceAccount,
 	shootSeedNamespace string,
 ) error {
 	state, err := infrastructure.ExtractTerraformState(ctx, tf, config, false)
@@ -263,7 +255,7 @@ func cleanupKubernetesRoutes(
 		return err
 	}
 
-	return infrastructure.CleanupKubernetesRoutes(ctx, gcpClient, account.ProjectID, state.VPCName, shootSeedNamespace)
+	return infrastructure.CleanupKubernetesRoutes(ctx, client, state.VPCName, shootSeedNamespace)
 }
 
 func (t *TerraformReconciler) computeTerraformStatus(
