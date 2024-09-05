@@ -257,8 +257,8 @@ func (u *updater) DeleteNAT(ctx context.Context, region, routerId, natId string)
 
 // Firewall updates a given Firewall in GCP to the desired state, making sure to only apply if there are
 // applicable changes between the objects.
-func (u *updater) Firewall(ctx context.Context, current, desired *compute.Firewall) (*compute.Firewall, error) {
-	if shouldUpdate(current, desired) {
+func (u *updater) Firewall(ctx context.Context, desired, current *compute.Firewall) (*compute.Firewall, error) {
+	if shouldPatchFirewallRule(desired, current) {
 		fw, err := u.compute.PatchFirewallRule(ctx, desired.Name, desired)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update firewall rule [name=%s]: %v", desired.Name, err)
@@ -269,9 +269,9 @@ func (u *updater) Firewall(ctx context.Context, current, desired *compute.Firewa
 	return desired, nil
 }
 
-// shouldUpdate returns a boolean indicating whether there is a change between the two given rules
+// shouldPatchFirewallRule returns a boolean indicating whether there is a change between the two given rules
 // that would necessitate an update
-func shouldUpdate(oldRule, newRule *compute.Firewall) bool {
+func shouldPatchFirewallRule(newRule, oldRule *compute.Firewall) bool {
 	if oldRule == newRule {
 		return false
 	}
@@ -279,7 +279,7 @@ func shouldUpdate(oldRule, newRule *compute.Firewall) bool {
 		return true
 	}
 
-	// Check everything except the immutable 'Name', 'Description', 'Id', and 'SelfLink'.
+	// Check everything except the immutable 'Name', 'Description', 'Id', 'Kind', and 'SelfLink'.
 	// Also CreationTimestamp is ignored.
 
 	if !isEquivalent(oldRule.Allowed, newRule.Allowed) {
@@ -297,14 +297,7 @@ func shouldUpdate(oldRule, newRule *compute.Firewall) bool {
 	if oldRule.Disabled != newRule.Disabled {
 		return true
 	}
-	if oldRule.Kind != newRule.Kind {
-		return true
-	}
-	if newRule.LogConfig != nil {
-		if oldRule.LogConfig == nil || oldRule.LogConfig.Enable != newRule.LogConfig.Enable || oldRule.LogConfig.Metadata != newRule.LogConfig.Metadata {
-			return true
-		}
-	}
+
 	if oldRule.Network != newRule.Network {
 		return true
 	}
