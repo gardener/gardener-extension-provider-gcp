@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
@@ -251,7 +251,7 @@ func NewValuesProvider(mgr manager.Manager) genericactuator.ValuesProvider {
 // valuesProvider is a ValuesProvider that provides GCP-specific values for the 2 charts applied by the generic actuator.
 type valuesProvider struct {
 	genericactuator.NoopValuesProvider
-	client  client.Client
+	client  k8sclient.Client
 	decoder runtime.Decoder
 }
 
@@ -265,14 +265,14 @@ func (vp *valuesProvider) GetConfigChartValues(
 	cpConfig := &apisgcp.ControlPlaneConfig{}
 	if cp.Spec.ProviderConfig != nil {
 		if _, _, err := vp.decoder.Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
-			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", kutil.ObjectName(cp), err)
+			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 		}
 	}
 
 	// Decode infrastructureProviderStatus
 	infraStatus := &apisgcp.InfrastructureStatus{}
 	if _, _, err := vp.decoder.Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
-		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
+		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 	}
 
 	// Get service account
@@ -300,7 +300,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	cpConfig := &apisgcp.ControlPlaneConfig{}
 	if cp.Spec.ProviderConfig != nil {
 		if _, _, err := vp.decoder.Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
-			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", kutil.ObjectName(cp), err)
+			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 		}
 	}
 
@@ -316,7 +316,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	}
 
 	// TODO(rfranzke): Delete this after August 2024.
-	gep19Monitoring := vp.client.Get(ctx, client.ObjectKey{Name: "prometheus-shoot", Namespace: cp.Namespace}, &appsv1.StatefulSet{}) == nil
+	gep19Monitoring := vp.client.Get(ctx, k8sclient.ObjectKey{Name: "prometheus-shoot", Namespace: cp.Namespace}, &appsv1.StatefulSet{}) == nil
 	if gep19Monitoring {
 		if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-observability-config", Namespace: cp.Namespace}}); err != nil {
 			return nil, fmt.Errorf("failed deleting cloud-controller-manager-observability-config ConfigMap: %w", err)
@@ -516,7 +516,7 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 	cpConfig := &apisgcp.ControlPlaneConfig{}
 	if cp.Spec.ProviderConfig != nil {
 		if _, _, err := vp.decoder.Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
-			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", kutil.ObjectName(cp), err)
+			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 		}
 	}
 
