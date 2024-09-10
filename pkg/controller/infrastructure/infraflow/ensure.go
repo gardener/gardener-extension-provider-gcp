@@ -303,7 +303,6 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 		firewallRuleAllowInternal(firewallRuleAllowInternalName(fctx.clusterName), vpc.SelfLink, cidrs),
 		firewallRuleAllowHealthChecks(firewallRuleAllowHealthChecksName(fctx.clusterName), vpc.SelfLink),
 	}
-
 	for _, rule := range rules {
 		gcprule, err := fctx.computeClient.GetFirewallRule(ctx, rule.Name)
 		if err != nil {
@@ -314,10 +313,10 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("failed to create firewall rule [name=%s]: %v", rule.Name, err)
 			}
-			return nil
-		}
-		if _, err = fctx.updater.Firewall(ctx, rule, gcprule); err != nil {
-			return err
+		} else {
+			if _, err = fctx.updater.Firewall(ctx, rule, gcprule); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

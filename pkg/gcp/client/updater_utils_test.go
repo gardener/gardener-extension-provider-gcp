@@ -27,20 +27,20 @@ var _ = Describe("Firewall Rules", func() {
 		})
 
 		It("Should handle identical inputs", func() {
-			Expect(shouldUpdate(baseRule, baseRule)).To(BeFalse())
+			Expect(shouldPatchFirewallRule(baseRule, baseRule)).To(BeFalse())
 		})
 
 		It("Should handle nil-pointer correctly", func() {
-			Expect(shouldUpdate(nil, nil)).To(BeFalse())
-			Expect(shouldUpdate(baseRule, nil)).To(BeTrue())
-			Expect(shouldUpdate(nil, baseRule)).To(BeTrue())
+			Expect(shouldPatchFirewallRule(nil, nil)).To(BeFalse())
+			Expect(shouldPatchFirewallRule(baseRule, nil)).To(BeTrue())
+			Expect(shouldPatchFirewallRule(nil, baseRule)).To(BeTrue())
 		})
 
 		// Test example cases for FirewallRules - a slice, bool, string, and int
 		It("Should detect changes to 'Allowed'", func() {
 			// A little bit of paranoia: Test order-invariance once on the actual rule
 			newRule.Allowed[0], newRule.Allowed[1] = newRule.Allowed[1], newRule.Allowed[0]
-			Expect(shouldUpdate(baseRule, newRule)).To(BeFalse())
+			Expect(shouldPatchFirewallRule(baseRule, newRule)).To(BeFalse())
 
 			newRule.Allowed = []*compute.FirewallAllowed{
 				{
@@ -56,40 +56,43 @@ var _ = Describe("Firewall Rules", func() {
 					Ports:      []string{"2", "4", "6"},
 				},
 			}
-			Expect(shouldUpdate(baseRule, newRule)).To(BeTrue())
+			Expect(shouldPatchFirewallRule(baseRule, newRule)).To(BeTrue())
 		})
 
 		It("Should detect changes to 'Direction'", func() {
 			newRule.Direction = "EGRESS"
-			Expect(shouldUpdate(baseRule, newRule)).To(BeTrue())
+			Expect(shouldPatchFirewallRule(baseRule, newRule)).To(BeTrue())
 		})
 
 		It("Should detect changes to 'Disabled'", func() {
 			newRule.Disabled = true
-			Expect(shouldUpdate(baseRule, newRule)).To(BeTrue())
+			Expect(shouldPatchFirewallRule(baseRule, newRule)).To(BeTrue())
 		})
 
 		It("Should detect changes to 'Priority'", func() {
 			newRule.Priority = 56565
-			Expect(shouldUpdate(baseRule, newRule)).To(BeTrue())
+			Expect(shouldPatchFirewallRule(baseRule, newRule)).To(BeTrue())
 		})
 
 		It("Should ignore changes to immutable fields", func() {
 			newRule.Name = "Foobar"
-			Expect(shouldUpdate(baseRule, newRule)).To(BeFalse())
+			Expect(shouldPatchFirewallRule(baseRule, newRule)).To(BeFalse())
 
 			newRule.Description = "Foobar"
-			Expect(shouldUpdate(baseRule, newRule)).To(BeFalse())
+			Expect(shouldPatchFirewallRule(baseRule, newRule)).To(BeFalse())
 
 			newRule.SelfLink = "Foobar"
-			Expect(shouldUpdate(baseRule, newRule)).To(BeFalse())
+			Expect(shouldPatchFirewallRule(baseRule, newRule)).To(BeFalse())
 
 			newRule.Id = 7
-			Expect(shouldUpdate(baseRule, newRule)).To(BeFalse())
+			Expect(shouldPatchFirewallRule(baseRule, newRule)).To(BeFalse())
+
+			newRule.Kind = "Foobar"
+			Expect(shouldPatchFirewallRule(baseRule, newRule)).To(BeFalse())
 
 			// Also check that irrelevant fields are ignored
 			newRule.CreationTimestamp = "Foobar"
-			Expect(shouldUpdate(baseRule, newRule)).To(BeFalse())
+			Expect(shouldPatchFirewallRule(baseRule, newRule)).To(BeFalse())
 		})
 	})
 })
