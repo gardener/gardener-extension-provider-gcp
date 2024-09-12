@@ -9,7 +9,7 @@ images:
   cloud-controller-manager: image-repository:image-tag
 resources:
   requests:
-    cpu: 100m 
+    cpu: 100m
     memory: 75Mi
 tlsCipherSuites: []
 secrets:
