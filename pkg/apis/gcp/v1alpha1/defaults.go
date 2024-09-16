@@ -30,3 +30,18 @@ func SetDefaults_Storage(obj *Storage) {
 		obj.ManagedDefaultVolumeSnapshotClass = ptr.To(true)
 	}
 }
+
+func SetDefaults_DualStack(obj *InfrastructureConfig) {
+	// If DualStack is nil, initialize it with defaults.
+	if obj.Networks.DualStack == nil {
+		obj.Networks.DualStack = &DualStack{
+			Enabled:       false,       // By default, dual-stack is disabled
+			Ipv6CidrRange: "fd00::/64", // Default private IPv6 CIDR range
+		}
+	} else {
+		// Apply defaults to Ipv6CidrRange if it's empty
+		if obj.Networks.DualStack.Ipv6CidrRange == "" {
+			obj.Networks.DualStack.Ipv6CidrRange = "fd00::/64"
+		}
+	}
+}

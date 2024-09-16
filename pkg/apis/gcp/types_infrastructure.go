@@ -34,6 +34,30 @@ type NetworkConfig struct {
 	Workers string
 	// FlowLogs contains the flow log configuration for the subnet.
 	FlowLogs *FlowLogs
+	// DualStack specifies whether the VPC and subnets should be configured for dual-stack networking.
+	// When enabled, both IPv4 and IPv6 addresses will be assigned to resources within the network.
+	DualStack *DualStack
+}
+
+// DualStack represents the configuration for enabling dual-stack networking
+// within a Google Cloud VPC, allowing the use of both IPv4 and IPv6 addresses.
+//
+// When dual-stack is enabled, both an IPv4 and an IPv6 CIDR range will be
+// assigned to the relevant subnets and resources. IPv4 will continue to use
+// NAT, while IPv6 can be assigned either internally or externally without
+// requiring NAT.
+type DualStack struct {
+	// Enabled indicates whether dual-stack networking is enabled.
+	// If true, both IPv4 and IPv6 CIDR ranges will be provisioned and configured
+	// in the VPC and subnets. If false, only IPv4 will be used.
+	Enabled bool
+
+	// Ipv6CidrRange specifies the IPv6 CIDR block to be used for the VPC and
+	// its associated subnets. This range must be provided when dual-stack
+	// networking is enabled, otherwise, it can be left empty.
+	//
+	// Example: "2600::/64"
+	Ipv6CidrRange string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
