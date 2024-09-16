@@ -23,7 +23,10 @@ resource "google_service_account" "serviceaccount" {
 resource "google_compute_network" "network" {
   name                    = "{{ .clusterName }}"
   auto_create_subnetworks = "false"
-
+{{ if .networks.dualStack }}
+  enable_ula_internal_ipv6 = true  # Enable ULA for internal IPv6
+  routing_mode             = "GLOBAL" # Required for dual-stack networks
+{{ end }}
   timeouts {
     create = "5m"
     update = "5m"
@@ -37,6 +40,14 @@ resource "google_compute_subnetwork" "subnetwork-nodes" {
   ip_cidr_range = "{{ .networks.workers }}"
   network       = {{ .vpc.name }}
   region        = "{{ .google.region }}"
+{{ if .networks.dualStack }}
+  ipv6_access_type    = "EXTERNAL"  # or "INTERNAL" based on your needs
+{{ if .networks.ipv6CidrRange }}
+  ipv6_cidr_range = "{{ .networks.ipv6CidrRange }}"
+{{ end }}
+  stack_type          = "IPV4_IPV6"  # Enable dual-stack
+{{ end }}
+
 {{- if .networks.flowLogs }}
   log_config {
     {{ if .networks.flowLogs.aggregationInterval }}aggregation_interval = "{{ .networks.flowLogs.aggregationInterval }}"{{ end }}
@@ -125,6 +136,14 @@ resource "google_compute_subnetwork" "subnetwork-internal" {
   ip_cidr_range = "{{ .networks.internal }}"
   network       = {{ .vpc.name }}
   region        = "{{ .google.region }}"
+{{ if .networks.dualStack }}
+    ipv6_access_type    = "EXTERNAL"  # or "INTERNAL"
+    stack_type          = "IPV4_IPV6"
+    
+{{ if .networks.ipv6CidrRange }}
+    ipv6_cidr_range = "{{ .networks.ipv6CidrRange }}"
+{{ end }}
+{{ end }}
 
   timeouts {
     create = "5m"
