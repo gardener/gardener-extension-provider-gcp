@@ -16,7 +16,7 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
-	"google.golang.org/api/compute/v1"
+	computev1 "google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -41,12 +41,12 @@ func newActuator(mgr manager.Manager) bastion.Actuator {
 	}
 }
 
-func getBastionInstance(ctx context.Context, client gcpclient.ComputeClient, opt *Options) (*compute.Instance, error) {
+func getBastionInstance(ctx context.Context, client gcpclient.ComputeClient, opt *Options) (*computev1.Instance, error) {
 	instance, err := client.GetInstance(ctx, opt.Zone, opt.BastionInstanceName)
 	return instance, gcpclient.IgnoreNotFoundError(err)
 }
 
-func createFirewallRuleIfNotExist(ctx context.Context, log logr.Logger, client gcpclient.ComputeClient, firewallRule *compute.Firewall) error {
+func createFirewallRuleIfNotExist(ctx context.Context, log logr.Logger, client gcpclient.ComputeClient, firewallRule *computev1.Firewall) error {
 	if _, err := client.InsertFirewallRule(ctx, firewallRule); err != nil {
 		if gcpclient.IsErrorCode(err, http.StatusConflict) {
 			return nil
@@ -65,7 +65,7 @@ func patchFirewallRule(ctx context.Context, client gcpclient.ComputeClient, fire
 	return nil
 }
 
-func getDisk(ctx context.Context, client gcpclient.ComputeClient, opt *Options) (*compute.Disk, error) {
+func getDisk(ctx context.Context, client gcpclient.ComputeClient, opt *Options) (*computev1.Disk, error) {
 	disk, err := client.GetDisk(ctx, opt.Zone, opt.DiskName)
 	return disk, gcpclient.IgnoreNotFoundError(err)
 }
