@@ -6,10 +6,11 @@ package validator_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
-	"github.com/gardener/gardener/pkg/apis/core"
+	"github.com/gardener/gardener/pkg/apis/security"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
@@ -22,7 +23,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
-var _ = Describe("SecretBinding validator", func() {
+var _ = Describe("CredentialsBinding validator", func() {
 	Describe("#Validate", func() {
 		const (
 			namespace = "garden-dev"
@@ -30,51 +31,62 @@ var _ = Describe("SecretBinding validator", func() {
 		)
 
 		var (
-			secretBindingValidator extensionswebhook.Validator
+			credentialsBindingValidator extensionswebhook.Validator
 
 			ctrl      *gomock.Controller
+			mgr       *mockmanager.MockManager
 			apiReader *mockclient.MockReader
-			ctx       = context.TODO()
 
-			secretBinding = &core.SecretBinding{
-				SecretRef: corev1.SecretReference{
-					Name:      name,
-					Namespace: namespace,
-				},
-			}
+			ctx                = context.TODO()
+			credentialsBinding *security.CredentialsBinding
+
 			fakeErr = fmt.Errorf("fake err")
-
-			mgr *mockmanager.MockManager
 		)
 
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
-			apiReader = mockclient.NewMockReader(ctrl)
 
 			mgr = mockmanager.NewMockManager(ctrl)
+
+			apiReader = mockclient.NewMockReader(ctrl)
 			mgr.EXPECT().GetAPIReader().Return(apiReader)
 
-			secretBindingValidator = validator.NewSecretBindingValidator(mgr)
+			credentialsBindingValidator = validator.NewCredentialsBindingValidator(mgr)
+
+			credentialsBinding = &security.CredentialsBinding{
+				CredentialsRef: corev1.ObjectReference{
+					Name:       name,
+					Namespace:  namespace,
+					Kind:       "Secret",
+					APIVersion: "v1",
+				},
+			}
 		})
 
 		AfterEach(func() {
 			ctrl.Finish()
 		})
 
-		It("should return err when obj is not a SecretBinding", func() {
-			err := secretBindingValidator.Validate(ctx, &corev1.Secret{}, nil)
+		It("should return err when obj is not a CredentialsBinding", func() {
+			err := credentialsBindingValidator.Validate(ctx, &corev1.Secret{}, nil)
 			Expect(err).To(MatchError("wrong object type *v1.Secret"))
 		})
 
-		It("should return err when oldObj is not a SecretBinding", func() {
-			err := secretBindingValidator.Validate(ctx, &core.SecretBinding{}, &corev1.Secret{})
+		It("should return err when oldObj is not a CredentialsBinding", func() {
+			err := credentialsBindingValidator.Validate(ctx, &security.CredentialsBinding{}, &corev1.Secret{})
 			Expect(err).To(MatchError("wrong object type *v1.Secret for old object"))
+		})
+
+		It("should return err if the CredentialsBinding references unknown credentials type", func() {
+			credentialsBinding.CredentialsRef.APIVersion = "unknown"
+			err := credentialsBindingValidator.Validate(ctx, credentialsBinding, nil)
+			Expect(err).To(MatchError(errors.New(`unsupported credentials reference: version "unknown", kind "Secret"`)))
 		})
 
 		It("should return err if it fails to get the corresponding Secret", func() {
 			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).Return(fakeErr)
 
-			err := secretBindingValidator.Validate(ctx, secretBinding, nil)
+			err := credentialsBindingValidator.Validate(ctx, credentialsBinding, nil)
 			Expect(err).To(MatchError(fakeErr))
 		})
 
@@ -88,7 +100,7 @@ var _ = Describe("SecretBinding validator", func() {
 					return nil
 				})
 
-			err := secretBindingValidator.Validate(ctx, secretBinding, nil)
+			err := credentialsBindingValidator.Validate(ctx, credentialsBinding, nil)
 			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: missing \"serviceaccount.json\" field in secret"))
 		})
 
@@ -102,11 +114,11 @@ var _ = Describe("SecretBinding validator", func() {
 					return nil
 				})
 
-			err := secretBindingValidator.Validate(ctx, secretBinding, nil)
+			err := credentialsBindingValidator.Validate(ctx, credentialsBinding, nil)
 			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: could not get service account from \"serviceaccount.json\" field: failed to unmarshal json object: unexpected end of JSON input"))
 		})
 
-		It("should return nil when the corresponding Secret is valid", func() {
+		It("should succeed when the corresponding Secret is valid", func() {
 			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
 					secret := &corev1.Secret{Data: map[string][]byte{
@@ -116,8 +128,13 @@ var _ = Describe("SecretBinding validator", func() {
 					return nil
 				})
 
-			err := secretBindingValidator.Validate(ctx, secretBinding, nil)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(credentialsBindingValidator.Validate(ctx, credentialsBinding, nil)).To(Succeed())
+		})
+
+		It("should return nil when the CredentialsBinding did not change", func() {
+			old := credentialsBinding.DeepCopy()
+
+			Expect(credentialsBindingValidator.Validate(ctx, credentialsBinding, old)).To(Succeed())
 		})
 	})
 })

@@ -8,6 +8,7 @@ import (
 	extensionspredicate "github.com/gardener/gardener/extensions/pkg/predicate"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
+	"github.com/gardener/gardener/pkg/apis/security"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,19 +27,22 @@ const (
 
 var logger = log.Log.WithName("gcp-validator-webhook")
 
-// New creates a new validation webhook for `core.gardener.cloud` resources.
+// New creates a new validation webhook for `core.gardener.cloud` and `security.gardener.cloud` resources.
 func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	logger.Info("Setting up webhook", "name", Name)
 
 	return extensionswebhook.New(mgr, extensionswebhook.Args{
-		Provider:   gcp.Type,
-		Name:       Name,
-		Path:       "/webhooks/validate",
+		Provider: gcp.Type,
+		Name:     Name,
+		Path:     "/webhooks/validate",
+		// TODO(dimityrmirchev): Uncomment this line once this extension uses a g/g version that contains https://github.com/gardener/gardener/pull/10499
+		// Predicates: []predicate.Predicate{predicate.Or(extensionspredicate.GardenCoreProviderType(gcp.Type), extensionspredicate.GardenSecurityProviderType(gcp.Type))},
 		Predicates: []predicate.Predicate{extensionspredicate.GardenCoreProviderType(gcp.Type)},
 		Validators: map[extensionswebhook.Validator][]extensionswebhook.Type{
-			NewShootValidator(mgr):         {{Obj: &core.Shoot{}}},
-			NewCloudProfileValidator(mgr):  {{Obj: &core.CloudProfile{}}},
-			NewSecretBindingValidator(mgr): {{Obj: &core.SecretBinding{}}},
+			NewShootValidator(mgr):              {{Obj: &core.Shoot{}}},
+			NewCloudProfileValidator(mgr):       {{Obj: &core.CloudProfile{}}},
+			NewSecretBindingValidator(mgr):      {{Obj: &core.SecretBinding{}}},
+			NewCredentialsBindingValidator(mgr): {{Obj: &security.CredentialsBinding{}}},
 		},
 		Target: extensionswebhook.TargetSeed,
 		ObjectSelector: &metav1.LabelSelector{
