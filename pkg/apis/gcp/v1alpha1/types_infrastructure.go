@@ -55,13 +55,6 @@ type DualStack struct {
 	// If true, both IPv4 and IPv6 CIDR ranges will be provisioned and configured
 	// in the VPC and subnets. If false, only IPv4 will be used.
 	Enabled bool `json:"enabled,omitempty"`
-
-	// Ipv6CidrRange specifies the IPv6 CIDR block to be used for the VPC and
-	// its associated subnets. This range must be provided when dual-stack
-	// networking is enabled, otherwise, it can be left empty.
-	//
-	// Example: "2600::/64"
-	Ipv6CidrRange string `json:"ipv6CidrRange,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

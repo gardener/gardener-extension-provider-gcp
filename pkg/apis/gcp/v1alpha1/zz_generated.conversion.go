@@ -480,7 +480,6 @@ func Convert_gcp_DiskEncryption_To_v1alpha1_DiskEncryption(in *gcp.DiskEncryptio
 
 func autoConvert_v1alpha1_DualStack_To_gcp_DualStack(in *DualStack, out *gcp.DualStack, s conversion.Scope) error {
 	out.Enabled = in.Enabled
-	out.Ipv6CidrRange = in.Ipv6CidrRange
 	return nil
 }
 
@@ -491,7 +490,6 @@ func Convert_v1alpha1_DualStack_To_gcp_DualStack(in *DualStack, out *gcp.DualSta
 
 func autoConvert_gcp_DualStack_To_v1alpha1_DualStack(in *gcp.DualStack, out *DualStack, s conversion.Scope) error {
 	out.Enabled = in.Enabled
-	out.Ipv6CidrRange = in.Ipv6CidrRange
 	return nil
 }
 
