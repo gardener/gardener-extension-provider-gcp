@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -26,6 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 )
 
 func TestBastion(t *testing.T) {
