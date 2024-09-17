@@ -82,15 +82,14 @@ func firewallRuleAllowHealthChecksName(base string) string {
 	return fmt.Sprintf("%s-allow-health-checks", base)
 }
 
-func targetNetwork(name string, dualStack bool) *compute.Network {
+func targetNetwork(name string) *compute.Network {
 	return &compute.Network{
 		Name:                  name,
 		AutoCreateSubnetworks: false,
 		RoutingConfig: &compute.NetworkRoutingConfig{
 			RoutingMode: DefaultVPCRoutingConfigRegional,
 		},
-		ForceSendFields:       []string{"AutoCreateSubnetworks"},
-		EnableUlaInternalIpv6: dualStack,
+		ForceSendFields: []string{"AutoCreateSubnetworks"},
 	}
 }
 
@@ -108,7 +107,6 @@ func targetSubnetState(name, description, cidr, networkName string, flowLogs *gc
 	if dualStack.Enabled {
 		subnet.Ipv6AccessType = "EXTERNAL"
 		subnet.StackType = "IPV4_IPV6"
-		subnet.Ipv6CidrRange = dualStack.Ipv6CidrRange
 	}
 
 	if flowLogs != nil {
