@@ -31,6 +31,7 @@ func SetDefaults_Storage(obj *Storage) {
 	}
 }
 
+// SetDefaults_DualStack sets the defaults for the dualStack configuration in Infrastructure
 func SetDefaults_DualStack(obj *InfrastructureConfig) {
 	// If DualStack is nil, initialize it with defaults.
 	if obj.Networks.DualStack == nil {

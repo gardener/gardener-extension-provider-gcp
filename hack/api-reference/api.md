@@ -1246,6 +1246,17 @@ VPC
 <p>NatIPs is a list of all user provided external premium ips which can be used by the nat gateway</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>dualStackEnabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>DualStackEnabled indicates whether dual-stack is enabled in the infrastructure.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.ServiceAccount">ServiceAccount
