@@ -30,3 +30,13 @@ func SetDefaults_Storage(obj *Storage) {
 		obj.ManagedDefaultVolumeSnapshotClass = ptr.To(true)
 	}
 }
+
+// SetDefaults_DualStack sets the defaults for the dualStack configuration in Infrastructure
+func SetDefaults_DualStack(obj *InfrastructureConfig) {
+	// If DualStack is nil, initialize it with defaults.
+	if obj.Networks.DualStack == nil {
+		obj.Networks.DualStack = &DualStack{
+			Enabled: false, // By default, dual-stack is disabled
+		}
+	}
+}

@@ -161,10 +161,16 @@ func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 	status := &v1alpha1.InfrastructureStatus{
 		TypeMeta: infrastructure.StatusTypeMeta,
 		Networks: v1alpha1.NetworkStatus{
-			VPC:     v1alpha1.VPC{},
-			Subnets: []v1alpha1.Subnet{},
-			NatIPs:  []v1alpha1.NatIP{},
+			VPC:              v1alpha1.VPC{},
+			Subnets:          []v1alpha1.Subnet{},
+			NatIPs:           []v1alpha1.NatIP{},
+			DualStackEnabled: false, // Default value for DualStackEnabled
 		},
+	}
+
+	// Set DualStackEnabled based on the InfrastructureConfig
+	if fctx.config.Networks.DualStack != nil && fctx.config.Networks.DualStack.Enabled {
+		status.Networks.DualStackEnabled = true
 	}
 
 	if n := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC); n != nil {

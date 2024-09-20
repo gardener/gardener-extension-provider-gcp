@@ -38,6 +38,23 @@ type NetworkConfig struct {
 	// FlowLogs contains the flow log configuration for the subnet.
 	// +optional
 	FlowLogs *FlowLogs `json:"flowLogs,omitempty"`
+	// DualStack specifies whether the VPC and subnets should be configured for dual-stack networking.
+	// When enabled, both IPv4 and IPv6 addresses will be assigned to resources within the network.
+	DualStack *DualStack `json:"dualStack,omitempty"`
+}
+
+// DualStack represents the configuration for enabling dual-stack networking
+// within a Google Cloud VPC, allowing the use of both IPv4 and IPv6 addresses.
+//
+// When dual-stack is enabled, both an IPv4 and an IPv6 CIDR range will be
+// assigned to the relevant subnets and resources. IPv4 will continue to use
+// NAT, while IPv6 can be assigned either internally or externally without
+// requiring NAT.
+type DualStack struct {
+	// Enabled indicates whether dual-stack networking is enabled.
+	// If true, both IPv4 and IPv6 CIDR ranges will be provisioned and configured
+	// in the VPC and subnets. If false, only IPv4 will be used.
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -64,6 +81,9 @@ type NetworkStatus struct {
 	// NatIPs is a list of all user provided external premium ips which can be used by the nat gateway
 	// +optional
 	NatIPs []NatIP `json:"natIPs,omitempty"`
+
+	// DualStackEnabled indicates whether dual-stack is enabled in the infrastructure.
+	DualStackEnabled bool `json:"dualStackEnabled"`
 }
 
 // SubnetPurpose is a purpose of a subnet.

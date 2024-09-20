@@ -93,7 +93,7 @@ func targetNetwork(name string) *compute.Network {
 	}
 }
 
-func targetSubnetState(name, description, cidr, networkName string, flowLogs *gcp.FlowLogs) *compute.Subnetwork {
+func targetSubnetState(name, description, cidr, networkName string, flowLogs *gcp.FlowLogs, dualStack *gcp.DualStack) *compute.Subnetwork {
 	subnet := &compute.Subnetwork{
 		Description:           description,
 		PrivateIpGoogleAccess: false,
@@ -102,6 +102,11 @@ func targetSubnetState(name, description, cidr, networkName string, flowLogs *gc
 		Network:               networkName,
 		EnableFlowLogs:        false,
 		LogConfig:             nil,
+	}
+
+	if dualStack.Enabled {
+		subnet.Ipv6AccessType = "EXTERNAL"
+		subnet.StackType = "IPV4_IPV6"
 	}
 
 	if flowLogs != nil {
