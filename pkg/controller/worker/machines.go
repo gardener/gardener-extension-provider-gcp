@@ -186,6 +186,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				"region":             w.worker.Spec.Region,
 				"zone":               zone,
 				"canIpForward":       true,
+				"dualStack":          infrastructureStatus.Networks.DualStackEnabled,
 				"deletionProtection": false,
 				"description":        fmt.Sprintf("Machine of Shoot %s created by machine-controller-manager.", w.worker.Name),
 				"disks":              disks,
