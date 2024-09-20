@@ -76,6 +76,9 @@ type NetworkStatus struct {
 
 	// NatIPs is a list of all user provided external premium ips which can be used by the nat gateway
 	NatIPs []NatIP
+
+	// DualStackEnabled indicates whether dual-stack is enabled in the infrastructure.
+	DualStackEnabled bool
 }
 
 // SubnetPurpose is a purpose of a subnet.
