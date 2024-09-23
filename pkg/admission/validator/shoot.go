@@ -13,6 +13,7 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorehelper "github.com/gardener/gardener/pkg/apis/core/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/gardener/gardener/pkg/utils/gardener"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -78,7 +79,7 @@ type validationContext struct {
 	shoot                *core.Shoot
 	infrastructureConfig *apisgcp.InfrastructureConfig
 	controlPlaneConfig   *apisgcp.ControlPlaneConfig
-	cloudProfile         *gardencorev1beta1.CloudProfile
+	cloudProfileSpec     *gardencorev1beta1.CloudProfileSpec
 	cloudProfileConfig   *apisgcp.CloudProfileConfig
 }
 
@@ -91,9 +92,9 @@ func workersZones(workers []core.Worker) sets.Set[string] {
 }
 
 // getAllowedRegionZonesFromCloudProfile fetches the set of allowed zones from the Cloud Profile.
-func getAllowedRegionZonesFromCloudProfile(shoot *core.Shoot, cloudProfile *gardencorev1beta1.CloudProfile) sets.Set[string] {
+func getAllowedRegionZonesFromCloudProfile(shoot *core.Shoot, cloudProfileSpec *gardencorev1beta1.CloudProfileSpec) sets.Set[string] {
 	shootRegion := shoot.Spec.Region
-	for _, region := range cloudProfile.Spec.Regions {
+	for _, region := range cloudProfileSpec.Regions {
 		if region.Name == shootRegion {
 			gcpZones := sets.New[string]()
 			for _, gcpZone := range region.Zones {
@@ -108,7 +109,7 @@ func getAllowedRegionZonesFromCloudProfile(shoot *core.Shoot, cloudProfile *gard
 func (s *shoot) validateContext(valContext *validationContext) field.ErrorList {
 	var (
 		allErrors    = field.ErrorList{}
-		allowedZones = getAllowedRegionZonesFromCloudProfile(valContext.shoot, valContext.cloudProfile)
+		allowedZones = getAllowedRegionZonesFromCloudProfile(valContext.shoot, valContext.cloudProfileSpec)
 	)
 
 	if valContext.shoot.Spec.Networking != nil {
@@ -191,13 +192,17 @@ func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client
 		return nil, fmt.Errorf("error decoding controlPlaneConfig: %v", err)
 	}
 
-	if shoot.Spec.CloudProfile == nil {
-		return nil, fmt.Errorf("shoot.spec.cloudprofile must not be nil <nil>")
-	}
-
-	cloudProfile := &gardencorev1beta1.CloudProfile{}
-	if err := c.Get(ctx, client.ObjectKey{Name: shoot.Spec.CloudProfile.Name}, cloudProfile); err != nil {
+	shootV1Beta1 := &gardencorev1beta1.Shoot{}
+	err = gardencorev1beta1.Convert_core_Shoot_To_v1beta1_Shoot(shoot, shootV1Beta1, nil)
+	if err != nil {
 		return nil, err
+	}
+	cloudProfile, err := gardener.GetCloudProfile(ctx, c, shootV1Beta1)
+	if err != nil {
+		return nil, err
+	}
+	if cloudProfile == nil {
+		return nil, fmt.Errorf("cloudprofile could not be found")
 	}
 
 	if cloudProfile.Spec.ProviderConfig == nil {
@@ -212,7 +217,7 @@ func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client
 		shoot:                shoot,
 		infrastructureConfig: infrastructureConfig,
 		controlPlaneConfig:   controlPlaneConfig,
-		cloudProfile:         cloudProfile,
+		cloudProfileSpec:     &cloudProfile.Spec,
 		cloudProfileConfig:   cloudProfileConfig,
 	}, nil
 }

@@ -239,7 +239,8 @@ metadata:
   name: johndoe-gcp
   namespace: garden-dev
 spec:
-  cloudProfileName: gcp
+  cloudProfile:
+    name: gcp
   region: europe-west1
   secretBindingName: core-gcp
   provider:

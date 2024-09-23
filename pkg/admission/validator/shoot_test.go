@@ -34,7 +34,7 @@ var _ = Describe("Shoot validator", func() {
 			mgr   *mockmanager.MockManager
 			shoot *core.Shoot
 
-			ctx = context.TODO()
+			ctx = context.Background()
 		)
 
 		BeforeEach(func() {
