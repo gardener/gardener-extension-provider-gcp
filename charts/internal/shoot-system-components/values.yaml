@@ -2,3 +2,5 @@ cloud-controller-manager:
   enabled: true
 csi-driver-node:
   enabled: true
+default-http-backend:
+  enabled: true
