@@ -151,6 +151,16 @@ var (
 					{Type: &corev1.Service{}, Name: gcp.CSISnapshotValidationName},
 				},
 			},
+			{
+				Name: gcp.IngressGCEName,
+				Images: []string{
+					gcp.IngressGCEImageName,
+				},
+				Objects: []*chart.Object{
+					{Type: &appsv1.Deployment{}, Name: gcp.IngressGCEName},
+					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: gcp.IngressGCEName},
+				},
+			},
 		},
 	}
 
@@ -212,6 +222,21 @@ var (
 					{Type: &admissionregistrationv1.ValidatingWebhookConfiguration{}, Name: gcp.CSISnapshotValidationName},
 					{Type: &rbacv1.ClusterRole{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotValidationName},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotValidationName},
+				},
+			},
+			{
+				Name: "default-http-backend",
+				Images: []string{
+					gcp.DefaultHTTPBackendImageName,
+				},
+				Objects: []*chart.Object{
+					{Type: &appsv1.Deployment{}, Name: "l7-default-backend"},
+					{Type: &corev1.Service{}, Name: "default-http-backend"},
+					{Type: &corev1.ServiceAccount{}, Name: "glbc"},
+					{Type: &rbacv1.Role{}, Name: "system:controller:glbc"},
+					{Type: &rbacv1.RoleBinding{}, Name: "system:controller:glbc"},
+					{Type: &rbacv1.ClusterRole{}, Name: "system:controller:glbc"},
+					{Type: &rbacv1.ClusterRoleBinding{}, Name: "system:controller:glbc"},
 				},
 			},
 		},
@@ -333,10 +358,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	cluster *extensionscontroller.Cluster,
 	secretsReader secretsmanager.Reader,
 	_ map[string]string,
-) (
-	map[string]interface{},
-	error,
-) {
+) (map[string]interface{}, error) {
 	return getControlPlaneShootChartValues(cluster, cp, secretsReader)
 }
 
@@ -390,6 +412,7 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 		},
 		gcp.CloudControllerManagerName: ccm,
 		gcp.CSIControllerName:          csi,
+		gcp.IngressGCEName:             map[string]interface{}{"enabled": true},
 	}, nil
 }
 
@@ -501,6 +524,7 @@ func getControlPlaneShootChartValues(
 				"caBundle": string(caSecret.Data[secretutils.DataKeyCertificateBundle]),
 			},
 		},
+		"default-http-backend": map[string]interface{}{"enabled": true},
 	}, nil
 }
 

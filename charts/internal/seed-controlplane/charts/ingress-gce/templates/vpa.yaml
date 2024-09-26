@@ -1,0 +1,21 @@
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: ingress-gce
+  namespace: {{ .Release.Namespace }}
+spec:
+  targetRef:
+    apiVersion: {{ include "deploymentversion" . }}
+    kind: Deployment
+    name: ingress-gce
+  updatePolicy:
+    updateMode: Auto
+  resourcePolicy:
+    containerPolicies:
+    - containerName: glbc
+      minAllowed:
+        memory: {{ .Values.resources.requests.memory }}
+      maxAllowed:
+        cpu: {{ .Values.vpa.resourcePolicy.maxAllowed.cpu }}
+        memory: {{ .Values.vpa.resourcePolicy.maxAllowed.memory }}
+      controlledValues: RequestsOnly
