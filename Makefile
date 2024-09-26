@@ -120,7 +120,7 @@ tidy:
 .PHONY: clean
 clean:
 	@$(shell find ./example -type f -name "controller-registration.yaml" -exec rm '{}' \;)
-	@bash $(GARDENER_HACK_DIR)/clean.sh ./cmd/... ./pkg/... ./test/...
+	@bash $(GARDENER_HACK_DIR)/clean.sh ./cmd/... ./pkg/... ./test/... ./internal/...
 
 .PHONY: check-generate
 check-generate:
@@ -128,7 +128,7 @@ check-generate:
 
 .PHONY: check
 check: $(GOIMPORTS) $(GOLANGCI_LINT)
-	@REPO_ROOT=$(REPO_ROOT) bash $(GARDENER_HACK_DIR)/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/...
+	@REPO_ROOT=$(REPO_ROOT) bash $(GARDENER_HACK_DIR)/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/... ./internal/...
 	@REPO_ROOT=$(REPO_ROOT) bash $(GARDENER_HACK_DIR)/check-charts.sh ./charts
 
 .PHONY: generate
@@ -138,7 +138,7 @@ generate: $(VGOPATH) $(CONTROLLER_GEN) $(GEN_CRD_API_REFERENCE_DOCS) $(HELM) $(M
 
 .PHONY: format
 format: $(GOIMPORTS) $(GOIMPORTSREVISER)
-	@bash $(GARDENER_HACK_DIR)/format.sh ./cmd ./pkg ./test
+	@bash $(GARDENER_HACK_DIR)/format.sh ./cmd ./pkg ./test ./internal
 
 .PHONY: sast
 sast: $(GOSEC)
@@ -150,11 +150,11 @@ sast-report: $(GOSEC)
 
 .PHONY: test
 test:
-	@bash $(GARDENER_HACK_DIR)/test.sh ./cmd/... ./pkg/...
+	@bash $(GARDENER_HACK_DIR)/test.sh ./cmd/... ./pkg/... ./internal/...
 
 .PHONY: test-cov
 test-cov:
-	@bash $(GARDENER_HACK_DIR)/test-cover.sh ./cmd/... ./pkg/...
+	@bash $(GARDENER_HACK_DIR)/test-cover.sh ./cmd/... ./pkg/... ./internal/...
 
 .PHONY: test-clean
 test-clean:
