@@ -22,3 +22,5 @@ gep19Monitoring: false
 
 # IPAM configuration
 nodeCIDRMaskSizeIPv4:
+
+useWorkloadIdentityToken: false

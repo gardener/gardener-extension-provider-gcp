@@ -59,7 +59,11 @@ spec:
         - name: CSI_ENDPOINT
           value: unix://{{ .Values.socketPath }}/csi.sock
         - name: GOOGLE_APPLICATION_CREDENTIALS
-          value: /srv/cloudprovider/serviceaccount.json
+          {{- if .Values.useWorkloadIdentityToken }}
+          value: /var/run/secrets/gardener.cloud/workload-identity/credentialsConfig
+          {{- else }}
+          value: /srv/cloudprovider/credentialsConfig
+          {{- end }}
 {{- if .Values.resources.driver }}
         resources:
 {{ toYaml .Values.resources.driver | indent 10 }}
@@ -81,8 +85,15 @@ spec:
           mountPath: {{ .Values.socketPath }}
         - name: csi-driver-controller-config
           mountPath: /etc/kubernetes/cloudprovider
+        {{- if .Values.useWorkloadIdentityToken }}
+        - name: cloudprovider
+          mountPath: /var/run/secrets/gardener.cloud/workload-identity
+          readOnly: true
+        {{- else }}
         - name: cloudprovider
           mountPath: /srv/cloudprovider
+          readOnly: true
+        {{- end }}
 
       - name: gcp-csi-provisioner
         image: {{ index .Values.images "csi-provisioner" }}
@@ -266,8 +277,22 @@ spec:
                 name: shoot-access-csi-resizer
                 optional: false
       - name: cloudprovider
-        secret:
-          secretName: cloudprovider
+        projected:
+          defaultMode: 420
+          sources:
+          - secret:
+              items:
+                {{- if .Values.useWorkloadIdentityToken }}
+                - key: credentialsConfig
+                  path: credentialsConfig
+                - key: token
+                  path: token
+                {{- else }}
+                - key: serviceaccount.json
+                  path: credentialsConfig
+                {{- end }}
+              name: cloudprovider
+              optional: false
       - name: csi-driver-controller-config
         configMap:
           name: csi-driver-controller-config

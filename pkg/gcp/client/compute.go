@@ -101,13 +101,21 @@ type computeClient struct {
 // the completion of the respective operations before returning.
 // Delete operations will ignore errors when the respective resource can not be found, meaning that the Delete operations will never return HTTP 404 errors.
 // Update operations will ignore errors when the update operation is a no-op, meaning that Update operations will ignore HTTP 304 errors.
-func NewComputeClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (ComputeClient, error) {
-	jwt, err := google.JWTConfigFromJSON(serviceAccount.Raw, compute.ComputeScope)
+func NewComputeClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (ComputeClient, error) {
+	var tokenExchangeCtx context.Context
+	if credentialsConfig.TokenRequestClient != nil {
+		tokenExchangeCtx = context.WithValue(ctx, oauth2.HTTPClient, credentialsConfig.TokenRequestClient)
+	} else {
+		tokenExchangeCtx = ctx
+	}
+	creds, err := google.CredentialsFromJSONWithParams(tokenExchangeCtx, credentialsConfig.Raw, google.CredentialsParams{
+		Scopes: []string{compute.ComputeScope},
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	httpClient := oauth2.NewClient(ctx, jwt.TokenSource(ctx))
+	httpClient := oauth2.NewClient(ctx, creds.TokenSource)
 	service, err := compute.NewService(ctx, option.WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, err
@@ -115,7 +123,7 @@ func NewComputeClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (
 
 	return &computeClient{
 		service:   service,
-		projectID: serviceAccount.ProjectID,
+		projectID: credentialsConfig.ProjectID,
 	}, nil
 }
 

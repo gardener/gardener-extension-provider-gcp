@@ -6,6 +6,7 @@ package dnsrecord
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -29,13 +30,18 @@ type AddOptions struct {
 	IgnoreOperationAnnotation bool
 	// ExtensionClass defines the extension class this extension is responsible for.
 	ExtensionClass extensionsv1alpha1.ExtensionClass
+
+	// TokenMetadataClient is the client used to issue requests to the local token metadata server.
+	TokenMetadataClient *http.Client
+	// TokenMetadataBaseURL is the base URL of the token metadata server.
+	TokenMetadataBaseURL string
 }
 
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
 // The opts.Reconciler is being set with a newly instantiated actuator.
 func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddOptions) error {
 	return dnsrecord.Add(ctx, mgr, dnsrecord.AddArgs{
-		Actuator:          NewActuator(mgr, gcpclient.New()),
+		Actuator:          NewActuator(mgr, gcpclient.New(opts.TokenMetadataBaseURL, opts.TokenMetadataClient)),
 		ControllerOptions: opts.Controller,
 		Predicates:        dnsrecord.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
 		Type:              gcp.DNSType,

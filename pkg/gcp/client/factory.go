@@ -6,6 +6,7 @@ package client
 
 import (
 	"context"
+	"net/http"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,45 +30,80 @@ type Factory interface {
 	IAM(context.Context, client.Client, corev1.SecretReference) (IAMClient, error)
 }
 
-type factory struct{}
+type factory struct {
+	tokenMetadataClient  *http.Client
+	tokenMetadataBaseURL string
+}
 
 // New returns a new instance of Factory.
-func New() Factory {
-	return &factory{}
+func New(tokenMetadataBaseURL string, tokenMetadataClient *http.Client) Factory {
+	return &factory{
+		tokenMetadataBaseURL: tokenMetadataBaseURL,
+		tokenMetadataClient:  tokenMetadataClient,
+	}
 }
 
 // DNS returns a GCP cloud DNS service client.
 func (f factory) DNS(ctx context.Context, c client.Client, sr corev1.SecretReference) (DNSClient, error) {
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, c, sr)
+	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, c, sr)
 	if err != nil {
 		return nil, err
 	}
-	return NewDNSClient(ctx, serviceAccount)
+	if f.tokenMetadataClient != nil {
+		_, err := credentialsConfig.InjectURLCredentialSource(f.constructTokenRequestURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return NewDNSClient(ctx, credentialsConfig)
 }
 
 // Storage reads the secret from the passed reference and returns a GCP (blob) storage client.
 func (f factory) Storage(ctx context.Context, c client.Client, sr corev1.SecretReference) (StorageClient, error) {
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, c, sr)
+	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, c, sr)
 	if err != nil {
 		return nil, err
 	}
-	return NewStorageClient(ctx, serviceAccount)
+	if f.tokenMetadataClient != nil {
+		_, err := credentialsConfig.InjectURLCredentialSource(f.constructTokenRequestURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return NewStorageClient(ctx, credentialsConfig)
 }
 
 // Compute reads the secret from the passed reference and returns a GCP compute client.
 func (f factory) Compute(ctx context.Context, c client.Client, sr corev1.SecretReference) (ComputeClient, error) {
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, c, sr)
+	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, c, sr)
 	if err != nil {
 		return nil, err
 	}
-	return NewComputeClient(ctx, serviceAccount)
+	if f.tokenMetadataClient != nil {
+		_, err := credentialsConfig.InjectURLCredentialSource(f.constructTokenRequestURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return NewComputeClient(ctx, credentialsConfig)
 }
 
 // IAM reads the secret from the passed reference and returns a GCP compute client.
 func (f factory) IAM(ctx context.Context, c client.Client, sr corev1.SecretReference) (IAMClient, error) {
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, c, sr)
+	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, c, sr)
 	if err != nil {
 		return nil, err
 	}
-	return NewIAMClient(ctx, serviceAccount)
+	if f.tokenMetadataClient != nil {
+		_, err := credentialsConfig.InjectURLCredentialSource(f.constructTokenRequestURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return NewIAMClient(ctx, credentialsConfig)
+}
+
+func (f factory) constructTokenRequestURL(secretName, secretNamespace string) string {
+	// TODO(dimityrmirchev): replace this with injectable function
+	return f.tokenMetadataBaseURL + "/namespaces/" + secretNamespace + "/secrets/" + secretName + "/token"
 }

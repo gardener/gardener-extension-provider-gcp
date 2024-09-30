@@ -9,6 +9,8 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/storage"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
@@ -33,30 +35,43 @@ type StorageClient interface {
 }
 
 type storageClient struct {
-	client         *storage.Client
-	serviceAccount *gcp.ServiceAccount
+	client    *storage.Client
+	projectID string
 }
 
-// NewStorageClient creates a new storage client from the given  serviceAccount.
-func NewStorageClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (StorageClient, error) {
-	client, err := storage.NewClient(ctx, option.WithCredentialsJSON(serviceAccount.Raw), option.WithScopes(storage.ScopeFullControl))
+// NewStorageClient creates a new storage client from the given credentials configuration.
+func NewStorageClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (StorageClient, error) {
+	var tokenExchangeCtx context.Context
+	if credentialsConfig.TokenRequestClient != nil {
+		tokenExchangeCtx = context.WithValue(ctx, oauth2.HTTPClient, credentialsConfig.TokenRequestClient)
+	} else {
+		tokenExchangeCtx = ctx
+	}
+	credentials, err := google.CredentialsFromJSONWithParams(tokenExchangeCtx, credentialsConfig.Raw, google.CredentialsParams{
+		Scopes: []string{storage.ScopeFullControl},
+	})
+	if err != nil {
+		return nil, err
+	}
+	httpClient := oauth2.NewClient(ctx, credentials.TokenSource)
+	client, err := storage.NewClient(ctx, option.WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, err
 	}
 	return &storageClient{
-		client:         client,
-		serviceAccount: serviceAccount,
+		client:    client,
+		projectID: credentialsConfig.ProjectID,
 	}, nil
 }
 
 // NewStorageClientFromSecretRef creates a new storage client from the given <secretRef>.
 func NewStorageClientFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (StorageClient, error) {
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, c, secretRef)
+	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, c, secretRef)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewStorageClient(ctx, serviceAccount)
+	return NewStorageClient(ctx, credentialsConfig)
 }
 
 // Attrs retrieves the attributes of the specified bucket.
@@ -67,7 +82,7 @@ func (s *storageClient) Attrs(ctx context.Context, bucketName string) (*storage.
 
 // CreateBucket creates a new bucket with the specified attributes.
 func (s *storageClient) CreateBucket(ctx context.Context, attrs *storage.BucketAttrs) error {
-	return s.client.Bucket(attrs.Name).Create(ctx, s.serviceAccount.ProjectID, attrs)
+	return s.client.Bucket(attrs.Name).Create(ctx, s.projectID, attrs)
 }
 
 // UpdateBucket updates the bucket with the specified attributes.
