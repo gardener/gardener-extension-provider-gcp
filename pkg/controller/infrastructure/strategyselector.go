@@ -48,14 +48,14 @@ type ReconcilerFactoryImpl struct {
 // Build builds the Reconciler according to the arguments.
 func (f ReconcilerFactoryImpl) Build(useFlow bool) (Reconciler, error) {
 	if useFlow {
-		reconciler, err := NewFlowReconciler(f.a.client, f.a.restConfig, f.log, f.a.disableProjectedTokenMount)
+		reconciler, err := NewFlowReconciler(f.a.client, f.a.restConfig, f.log, f.a.disableProjectedTokenMount, f.a.tokenMetadataBaseURL, f.a.tokenMetadataClient)
 		if err != nil {
 			return nil, fmt.Errorf("failed to init flow reconciler: %w", err)
 		}
 		return reconciler, nil
 	}
 
-	reconciler := NewTerraformReconciler(f.a.client, f.a.restConfig, f.log, f.a.disableProjectedTokenMount)
+	reconciler := NewTerraformReconciler(f.a.client, f.a.restConfig, f.log, f.a.disableProjectedTokenMount, f.a.tokenMetadataBaseURL, f.a.tokenMetadataClient)
 	return reconciler, nil
 }
 

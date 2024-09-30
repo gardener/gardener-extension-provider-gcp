@@ -79,7 +79,7 @@ func (h *Handler) tokenRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, ok := secret.Data["token"]
+	t, ok := secret.Data[securityv1alpha1constants.DataKeyToken]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		if _, err := w.Write([]byte("Secret does not contain a token")); err != nil {

@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -30,15 +31,20 @@ type FlowReconciler struct {
 	restConfig                 *rest.Config
 	log                        logr.Logger
 	disableProjectedTokenMount bool
+
+	tokenMetadataClient  *http.Client
+	tokenMetadataBaseURL string
 }
 
 // NewFlowReconciler creates a new flow reconciler.
-func NewFlowReconciler(client client.Client, restConfig *rest.Config, log logr.Logger, projToken bool) (Reconciler, error) {
+func NewFlowReconciler(client client.Client, restConfig *rest.Config, log logr.Logger, projToken bool, tokenMetadataBaseURL string, tokenMetadataClient *http.Client) (Reconciler, error) {
 	return &FlowReconciler{
 		client:                     client,
 		restConfig:                 restConfig,
 		log:                        log,
 		disableProjectedTokenMount: projToken,
+		tokenMetadataBaseURL:       tokenMetadataBaseURL,
+		tokenMetadataClient:        tokenMetadataClient,
 	}, nil
 }
 
@@ -70,19 +76,19 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		}
 	}
 
-	serviceAccount, err := gcpinternal.GetServiceAccountFromSecretReference(ctx, f.client, infra.Spec.SecretRef)
+	credentialsConfig, err := gcpinternal.GetCredentialsConfigFromSecretReference(ctx, f.client, infra.Spec.SecretRef)
 	if err != nil {
 		return err
 	}
 
 	fctx, err := infraflow.NewFlowContext(ctx, infraflow.Opts{
-		Log:            f.log,
-		Infra:          infra,
-		State:          infraState,
-		Cluster:        cluster,
-		ServiceAccount: serviceAccount,
-		Factory:        gcpclient.New(),
-		Client:         f.client,
+		Log:               f.log,
+		Infra:             infra,
+		State:             infraState,
+		Cluster:           cluster,
+		CredentialsConfig: credentialsConfig,
+		Factory:           gcpclient.New(f.tokenMetadataBaseURL, f.tokenMetadataClient),
+		Client:            f.client,
 		PersistFunc: func(ctx context.Context, state *runtime.RawExtension) error {
 			return patchProviderStatusAndState(ctx, f.client, infra, nil, state)
 		},
@@ -110,19 +116,19 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 		return err
 	}
 
-	serviceAccount, err := gcpinternal.GetServiceAccountFromSecretReference(ctx, f.client, infra.Spec.SecretRef)
+	credentialsConfig, err := gcpinternal.GetCredentialsConfigFromSecretReference(ctx, f.client, infra.Spec.SecretRef)
 	if err != nil {
 		return err
 	}
-	gc := gcpclient.New()
+	gc := gcpclient.New(f.tokenMetadataBaseURL, f.tokenMetadataClient)
 	fctx, err := infraflow.NewFlowContext(ctx, infraflow.Opts{
-		Log:            f.log,
-		Infra:          infra,
-		Cluster:        cluster,
-		ServiceAccount: serviceAccount,
-		Factory:        gc,
-		Client:         f.client,
-		State:          infraState,
+		Log:               f.log,
+		Infra:             infra,
+		Cluster:           cluster,
+		CredentialsConfig: credentialsConfig,
+		Factory:           gc,
+		Client:            f.client,
+		State:             infraState,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create flow context: %v", err)
