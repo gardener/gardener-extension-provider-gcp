@@ -44,7 +44,7 @@ type CredentialsConfig struct {
 	// ProjectID is the project id the credentials are associated to.
 	ProjectID string
 	// Email is the email associated with the service account.
-	Email string // TODO(dimityrmirchev): Remove this?
+	Email string
 	// Type is the type of credentials.
 	Type string
 
