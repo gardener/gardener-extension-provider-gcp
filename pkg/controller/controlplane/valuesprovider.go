@@ -275,14 +275,13 @@ func (vp *valuesProvider) GetConfigChartValues(
 		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 	}
 
-	// Get service account
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, vp.client, cp.Spec.SecretRef)
+	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, vp.client, cp.Spec.SecretRef)
 	if err != nil {
-		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
+		return nil, fmt.Errorf("could not get credentials config from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
 
 	// Get config chart values
-	return getConfigChartValues(cpConfig, infraStatus, cp, serviceAccount)
+	return getConfigChartValues(cpConfig, infraStatus, cp, credentialsConfig)
 }
 
 // GetControlPlaneChartValues returns the values for the control plane chart applied by the generic actuator.
@@ -304,8 +303,8 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		}
 	}
 
-	// Get service account
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, vp.client, cp.Spec.SecretRef)
+	// Get credentials configuration
+	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, vp.client, cp.Spec.SecretRef)
 	if err != nil {
 		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
@@ -323,7 +322,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		}
 	}
 
-	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, serviceAccount, checksums, scaledDown, gep19Monitoring)
+	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown, gep19Monitoring)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
@@ -345,19 +344,23 @@ func getConfigChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	infraStatus *apisgcp.InfrastructureStatus,
 	cp *extensionsv1alpha1.ControlPlane,
-	serviceAccount *gcp.ServiceAccount,
+	credentialsConfig *gcp.CredentialsConfig,
 ) (map[string]interface{}, error) {
 	// Determine network names
 	networkName, subNetworkName := getNetworkNames(infraStatus, cp)
 
 	// Collect config chart values
 	return map[string]interface{}{
-		"projectID":      serviceAccount.ProjectID,
+		"projectID":      credentialsConfig.ProjectID,
 		"networkName":    networkName,
 		"subNetworkName": subNetworkName,
 		"zone":           cpConfig.Zone,
 		"nodeTags":       cp.Namespace,
 	}, nil
+}
+
+func shouldUseWorkloadIdentityToken(credentialsConfig *gcp.CredentialsConfig) bool {
+	return credentialsConfig.Type == gcp.ExternalAccountCredentialType && len(credentialsConfig.TokenFilePath) > 0
 }
 
 // getControlPlaneChartValues collects and returns the control plane chart values.
@@ -366,7 +369,7 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 	secretsReader secretsmanager.Reader,
-	serviceAccount *gcp.ServiceAccount,
+	credentialsConfig *gcp.CredentialsConfig,
 	checksums map[string]string,
 	scaledDown bool,
 	gep19Monitoring bool,
@@ -374,12 +377,12 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring)
+	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring, shouldUseWorkloadIdentityToken(credentialsConfig))
 	if err != nil {
 		return nil, err
 	}
 
-	csi, err := getCSIControllerChartValues(cpConfig, cp, cluster, secretsReader, serviceAccount, checksums, scaledDown)
+	csi, err := getCSIControllerChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
 	if err != nil {
 		return nil, err
 	}
@@ -402,6 +405,7 @@ func (vp *valuesProvider) getCCMChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 	gep19Monitoring bool,
+	useWorkloadIdentityToken bool,
 ) (map[string]interface{}, error) {
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
 	if !found {
@@ -425,7 +429,8 @@ func (vp *valuesProvider) getCCMChartValues(
 		"secrets": map[string]interface{}{
 			"server": serverSecret.Name,
 		},
-		"gep19Monitoring": gep19Monitoring,
+		"gep19Monitoring":          gep19Monitoring,
+		"useWorkloadIdentityToken": useWorkloadIdentityToken,
 	}
 
 	if cpConfig.CloudControllerManager != nil {
@@ -447,7 +452,7 @@ func getCSIControllerChartValues(
 	_ *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 	secretsReader secretsmanager.Reader,
-	serviceAccount *gcp.ServiceAccount,
+	credentialsConfig *gcp.CredentialsConfig,
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
@@ -459,7 +464,7 @@ func getCSIControllerChartValues(
 	return map[string]interface{}{
 		"enabled":   true,
 		"replicas":  extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-		"projectID": serviceAccount.ProjectID,
+		"projectID": credentialsConfig.ProjectID,
 		"zone":      cpConfig.Zone,
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
@@ -474,6 +479,7 @@ func getCSIControllerChartValues(
 			},
 			"topologyAwareRoutingEnabled": gardencorev1beta1helper.IsTopologyAwareRoutingForShootControlPlaneEnabled(cluster.Seed, cluster.Shoot),
 		},
+		"useWorkloadIdentityToken": shouldUseWorkloadIdentityToken(credentialsConfig),
 	}, nil
 }
 
