@@ -58,8 +58,6 @@ type PersistStateFunc func(ctx context.Context, state *runtime.RawExtension) err
 
 // FlowContext is capable of reconciling and deleting the infrastructure for a shoot.
 type FlowContext struct {
-	bfg *shared.BasicFlowContext // TODO(dimityrmirchev): remove this?
-
 	infra             *extensionsv1alpha1.Infrastructure
 	config            *gcp.InfrastructureConfig
 	state             *gcp.InfrastructureState
