@@ -27,7 +27,7 @@ spec:
           image: {{ index .Values.images "default-http-backend" }}
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: /healthy
               port: 8080
               scheme: HTTP
             initialDelaySeconds: 30
