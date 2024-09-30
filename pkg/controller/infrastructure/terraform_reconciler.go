@@ -8,6 +8,7 @@ package infrastructure
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -26,6 +27,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
@@ -37,15 +39,20 @@ type TerraformReconciler struct {
 	restConfig                 *rest.Config
 	log                        logr.Logger
 	disableProjectedTokenMount bool
+
+	tokenMetadataClient  *http.Client
+	tokenMetadataBaseURL string
 }
 
 // NewTerraformReconciler returns a new instance of TerraformReconciler.
-func NewTerraformReconciler(client k8sClient.Client, restConfig *rest.Config, log logr.Logger, disableProjectedTokenMount bool) *TerraformReconciler {
+func NewTerraformReconciler(client k8sClient.Client, restConfig *rest.Config, log logr.Logger, disableProjectedTokenMount bool, tokenMetadataBaseURL string, tokenMetadataClient *http.Client) *TerraformReconciler {
 	return &TerraformReconciler{
 		client:                     client,
 		restConfig:                 restConfig,
 		log:                        log,
 		disableProjectedTokenMount: disableProjectedTokenMount,
+		tokenMetadataBaseURL:       tokenMetadataBaseURL,
+		tokenMetadataClient:        tokenMetadataClient,
 	}
 }
 
@@ -73,12 +80,13 @@ func (t *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 	log := t.log
 
 	log.Info("reconcile infrastructure using terraform reconciler")
-	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount)
+	credentialsConfig, err := infrastructure.GetCredentialsConfigFromInfrastructure(ctx, t.client, infra)
 	if err != nil {
 		return err
 	}
 
-	serviceAccount, err := infrastructure.GetServiceAccountFromInfrastructure(ctx, t.client, infra)
+	useWorkloadIdentityToken := credentialsConfig.Type == gcp.ExternalAccountCredentialType && len(credentialsConfig.TokenFilePath) > 0
+	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount, useWorkloadIdentityToken)
 	if err != nil {
 		return err
 	}
@@ -93,7 +101,7 @@ func (t *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 		return err
 	}
 
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, serviceAccount, config, cluster.Shoot.Spec.Networking.Pods, createSA)
+	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, credentialsConfig, config, cluster.Shoot.Spec.Networking.Pods, createSA)
 	if err != nil {
 		return err
 	}
@@ -120,7 +128,13 @@ func (t *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 func (t *TerraformReconciler) delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, _ *extensions.Cluster) error {
 	log := t.log
 
-	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount)
+	credentialsConfig, err := infrastructure.GetCredentialsConfigFromInfrastructure(ctx, t.client, infra)
+	if err != nil {
+		return err
+	}
+
+	useWorkloadIdentityToken := credentialsConfig.Type == gcp.ExternalAccountCredentialType && len(credentialsConfig.TokenFilePath) > 0
+	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount, useWorkloadIdentityToken)
 	if err != nil {
 		return err
 	}
@@ -143,7 +157,7 @@ func (t *TerraformReconciler) delete(ctx context.Context, infra *extensionsv1alp
 		return err
 	}
 
-	gcpClient, err := gcpclient.New().Compute(ctx, t.client, infra.Spec.SecretRef)
+	gcpClient, err := gcpclient.New(t.tokenMetadataBaseURL, t.tokenMetadataClient).Compute(ctx, t.client, infra.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}

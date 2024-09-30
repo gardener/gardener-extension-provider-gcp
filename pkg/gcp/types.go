@@ -39,9 +39,13 @@ const (
 
 	// ServiceAccountJSONField is the field in a secret where the service account JSON is stored at.
 	ServiceAccountJSONField = "serviceaccount.json"
+	// CredentialsConfigField is the field in a secret where the credentials config JSON is stored at.
+	CredentialsConfigField = "credentialsConfig"
 
 	// ServiceAccountCredentialType is the type of the credentials contained in the serviceaccount.json file.
 	ServiceAccountCredentialType = "service_account"
+	// ExternalAccountCredentialType is the type of the credentials contained in the credentialsConfig file.
+	ExternalAccountCredentialType = "external_account"
 
 	// CloudControllerManagerName is a constant for the name of the CloudController deployed by the worker controller.
 	CloudControllerManagerName = "cloud-controller-manager"
@@ -81,6 +85,9 @@ const (
 	SeedAnnotationKeyUseFlow = AnnotationKeyUseFlow
 	// SeedAnnotationUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
 	SeedAnnotationUseFlowValueNew = "new"
+
+	// WorkloadIdentityMountPath is the path where the workload identity token and GCP config file are usually mounted.
+	WorkloadIdentityMountPath = "/var/run/secrets/gardener.cloud/workload-identity"
 )
 
 var (
