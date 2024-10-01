@@ -38,16 +38,16 @@ type AddOptions struct {
 
 	// TokenMetadataClient is the client used to issue requests to the local token metadata server.
 	TokenMetadataClient *http.Client
-	// TokenMetadataBaseURL is the base URL of the token metadata server.
-	TokenMetadataBaseURL string
+	// TokenMetadataURL is a function that constructs the URL that should be called in order to retrieve the token contents of a secret.
+	TokenMetadataURL func(secretName, secretNamespace string) string
 }
 
 // AddToManagerWithOptions adds a controller with the given AddOptions to the given manager.
 // The opts.Reconciler is being set with a newly instantiated actuator.
 func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddOptions) error {
 	return infrastructure.Add(ctx, mgr, infrastructure.AddArgs{
-		Actuator:          NewActuator(mgr, opts.DisableProjectedTokenMount, opts.TokenMetadataBaseURL, opts.TokenMetadataClient),
-		ConfigValidator:   NewConfigValidator(mgr, log.Log, gcpclient.New(opts.TokenMetadataBaseURL, opts.TokenMetadataClient)),
+		Actuator:          NewActuator(mgr, opts.DisableProjectedTokenMount, opts.TokenMetadataURL, opts.TokenMetadataClient),
+		ConfigValidator:   NewConfigValidator(mgr, log.Log, gcpclient.New(opts.TokenMetadataURL, opts.TokenMetadataClient)),
 		ControllerOptions: opts.Controller,
 		Predicates:        infrastructure.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
 		Type:              gcp.Type,
