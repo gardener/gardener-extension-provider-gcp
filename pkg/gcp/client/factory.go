@@ -31,15 +31,15 @@ type Factory interface {
 }
 
 type factory struct {
-	tokenMetadataClient  *http.Client
-	tokenMetadataBaseURL string
+	tokenMetadataClient *http.Client
+	tokenMetadataURL    func(secretName, secretNamespace string) string
 }
 
 // New returns a new instance of Factory.
-func New(tokenMetadataBaseURL string, tokenMetadataClient *http.Client) Factory {
+func New(tokenMetadataURL func(secretName, secretNamespace string) string, tokenMetadataClient *http.Client) Factory {
 	return &factory{
-		tokenMetadataBaseURL: tokenMetadataBaseURL,
-		tokenMetadataClient:  tokenMetadataClient,
+		tokenMetadataURL:    tokenMetadataURL,
+		tokenMetadataClient: tokenMetadataClient,
 	}
 }
 
@@ -50,7 +50,7 @@ func (f factory) DNS(ctx context.Context, c client.Client, sr corev1.SecretRefer
 		return nil, err
 	}
 	if f.tokenMetadataClient != nil {
-		_, err := credentialsConfig.InjectURLCredentialSource(f.constructTokenRequestURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
+		_, err := credentialsConfig.InjectURLCredentialSource(f.tokenMetadataURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +65,7 @@ func (f factory) Storage(ctx context.Context, c client.Client, sr corev1.SecretR
 		return nil, err
 	}
 	if f.tokenMetadataClient != nil {
-		_, err := credentialsConfig.InjectURLCredentialSource(f.constructTokenRequestURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
+		_, err := credentialsConfig.InjectURLCredentialSource(f.tokenMetadataURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +80,7 @@ func (f factory) Compute(ctx context.Context, c client.Client, sr corev1.SecretR
 		return nil, err
 	}
 	if f.tokenMetadataClient != nil {
-		_, err := credentialsConfig.InjectURLCredentialSource(f.constructTokenRequestURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
+		_, err := credentialsConfig.InjectURLCredentialSource(f.tokenMetadataURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
 		if err != nil {
 			return nil, err
 		}
@@ -95,15 +95,10 @@ func (f factory) IAM(ctx context.Context, c client.Client, sr corev1.SecretRefer
 		return nil, err
 	}
 	if f.tokenMetadataClient != nil {
-		_, err := credentialsConfig.InjectURLCredentialSource(f.constructTokenRequestURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
+		_, err := credentialsConfig.InjectURLCredentialSource(f.tokenMetadataURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return NewIAMClient(ctx, credentialsConfig)
-}
-
-func (f factory) constructTokenRequestURL(secretName, secretNamespace string) string {
-	// TODO(dimityrmirchev): replace this with injectable function
-	return f.tokenMetadataBaseURL + "/namespaces/" + secretNamespace + "/secrets/" + secretName + "/token"
 }

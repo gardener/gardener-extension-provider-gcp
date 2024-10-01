@@ -53,7 +53,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		Name:      v1beta1constants.SecretNameCloudProvider,
 	}
 
-	gcpClient, err := gcpclient.New(a.tokenMetadataBaseURL, a.tokenMetadataClient).Compute(ctx, a.client, secretReference)
+	gcpClient, err := gcpclient.New(a.tokenMetadataURL, a.tokenMetadataClient).Compute(ctx, a.client, secretReference)
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("failed to create GCP client: %w", err), helper.KnownCodes)
 	}

@@ -25,17 +25,17 @@ type actuator struct {
 	restConfig                 *rest.Config
 	disableProjectedTokenMount bool
 
-	tokenMetadataClient  *http.Client
-	tokenMetadataBaseURL string
+	tokenMetadataClient *http.Client
+	tokenMetadataURL    func(secretName, secretNamespace string) string
 }
 
 // NewActuator creates a new infrastructure.Actuator.
-func NewActuator(mgr manager.Manager, disableProjectedTokenMount bool, tokenMetadataBaseURL string, tokenMetadataClient *http.Client) infrastructure.Actuator {
+func NewActuator(mgr manager.Manager, disableProjectedTokenMount bool, tokenMetadataURL func(secretName, secretNamespace string) string, tokenMetadataClient *http.Client) infrastructure.Actuator {
 	return &actuator{
 		client:                     mgr.GetClient(),
 		restConfig:                 mgr.GetConfig(),
 		disableProjectedTokenMount: disableProjectedTokenMount,
-		tokenMetadataBaseURL:       tokenMetadataBaseURL,
+		tokenMetadataURL:           tokenMetadataURL,
 		tokenMetadataClient:        tokenMetadataClient,
 	}
 }

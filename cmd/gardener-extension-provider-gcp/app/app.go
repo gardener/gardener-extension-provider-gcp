@@ -266,12 +266,15 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			// to communicate with the token metadata server.
 			tokenMetadataServerAddr := net.JoinHostPort("127.0.0.1", "50607")
 			tokenMetadataServerBaseURL := "https://" + tokenMetadataServerAddr
+			tokenMetadataURL := func(secretName, secretNamespace string) string {
+				return tokenMetadataServerBaseURL + "/namespaces/" + secretNamespace + "/secrets/" + secretName + "/token"
+			}
 			gcpbastion.DefaultAddOptions.TokenMetadataClient = tokenMetaClient
 			gcpdnsrecord.DefaultAddOptions.TokenMetadataClient = tokenMetaClient
 			gcpinfrastructure.DefaultAddOptions.TokenMetadataClient = tokenMetaClient
-			gcpbastion.DefaultAddOptions.TokenMetadataBaseURL = tokenMetadataServerBaseURL
-			gcpdnsrecord.DefaultAddOptions.TokenMetadataBaseURL = tokenMetadataServerBaseURL
-			gcpinfrastructure.DefaultAddOptions.TokenMetadataBaseURL = tokenMetadataServerBaseURL
+			gcpbastion.DefaultAddOptions.TokenMetadataURL = tokenMetadataURL
+			gcpdnsrecord.DefaultAddOptions.TokenMetadataURL = tokenMetadataURL
+			gcpinfrastructure.DefaultAddOptions.TokenMetadataURL = tokenMetadataURL
 
 			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil)
 			if err != nil {
