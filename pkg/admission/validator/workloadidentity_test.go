@@ -67,8 +67,8 @@ credentialsConfig:
 		})
 
 		It("should successfully validate the update of a workload identity", func() {
-			new := workloadIdentity.DeepCopy()
-			new.Spec.TargetSystem.ProviderConfig.Raw = []byte(`
+			newWorkloadIdentity := workloadIdentity.DeepCopy()
+			newWorkloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = []byte(`
 apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
 kind: WorkloadIdentityConfig
 projectID: "foo-valid"
@@ -79,12 +79,12 @@ credentialsConfig:
   "subject_token_type": "urn:ietf:params:oauth:token-type:jwt"
   "token_url": "https://gardener.cloud/new-url"
 `)
-			Expect(workloadIdentityValidator.Validate(ctx, new, workloadIdentity)).To(Succeed())
+			Expect(workloadIdentityValidator.Validate(ctx, newWorkloadIdentity, workloadIdentity)).To(Succeed())
 		})
 
 		It("should not allow changing the projectID", func() {
-			new := workloadIdentity.DeepCopy()
-			new.Spec.TargetSystem.ProviderConfig.Raw = []byte(`
+			newWorkloadIdentity := workloadIdentity.DeepCopy()
+			newWorkloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = []byte(`
 apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
 kind: WorkloadIdentityConfig
 projectID: "foo-valid-new"
@@ -95,7 +95,7 @@ credentialsConfig:
   "subject_token_type": "urn:ietf:params:oauth:token-type:jwt"
   "token_url": "https://sts.googleapis.com/v1/token"
 `)
-			err := workloadIdentityValidator.Validate(ctx, new, workloadIdentity)
+			err := workloadIdentityValidator.Validate(ctx, newWorkloadIdentity, workloadIdentity)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("validation of target system's configuration failed: spec.targetSystem.providerConfig.projectID: Invalid value: \"foo-valid-new\": field is immutable"))
 		})

@@ -117,6 +117,7 @@ func GetCredentialsConfigFromJSON(data []byte) (*CredentialsConfig, error) {
 	}, nil
 }
 
+// InjectURLCredentialSource modifies the credentials configuration to include the passed URL and the http client.
 func (c *CredentialsConfig) InjectURLCredentialSource(url string, client *http.Client) (bool, error) {
 	if c.Type != ExternalAccountCredentialType {
 		return false, nil

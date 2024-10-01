@@ -92,14 +92,14 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	})
 
 	It("should validate the config successfully during update", func() {
-		new := workloadIdentityConfig.DeepCopy()
-		Expect(validation.ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, new, field.NewPath(""))).To(BeEmpty())
+		newConfig := workloadIdentityConfig.DeepCopy()
+		Expect(validation.ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath(""))).To(BeEmpty())
 	})
 
 	It("should not allow chaning the projectID during update", func() {
-		new := workloadIdentityConfig.DeepCopy()
-		new.ProjectID = "valid123"
-		errorList := validation.ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, new, field.NewPath("providerConfig"))
+		newConfig := workloadIdentityConfig.DeepCopy()
+		newConfig.ProjectID = "valid123"
+		errorList := validation.ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath("providerConfig"))
 
 		Expect(errorList).To(ConsistOfFields(
 			Fields{
