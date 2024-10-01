@@ -42,7 +42,7 @@ var _ = Describe("Ensurer", func() {
 		mgr = mockmanager.NewMockManager(ctrl)
 
 		scheme := kubernetes.SeedScheme
-		install.AddToScheme(scheme)
+		Expect(install.AddToScheme(scheme)).To(Succeed())
 		mgr.EXPECT().GetScheme().Return(scheme)
 
 		secret = &corev1.Secret{
