@@ -14,7 +14,7 @@ import (
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
-	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencorcorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -412,8 +412,19 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 		},
 		gcp.CloudControllerManagerName: ccm,
 		gcp.CSIControllerName:          csi,
-		gcp.IngressGCEName:             map[string]interface{}{"enabled": true},
+		gcp.IngressGCEName: map[string]interface{}{
+			"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking),
+			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
+		},
 	}, nil
+}
+
+func isDualstackEnabled(networking *gardencorcorev1beta1.Networking) bool {
+	if networking != nil {
+		return !gardencorcorev1beta1.IsIPv4SingleStack(networking.IPFamilies)
+	}
+
+	return false
 }
 
 // getCCMChartValues collects and returns the CCM chart values.
@@ -523,7 +534,9 @@ func getControlPlaneShootChartValues(
 				"caBundle": string(caSecret.Data[secretutils.DataKeyCertificateBundle]),
 			},
 		},
-		"default-http-backend": map[string]interface{}{"enabled": true},
+		gcp.DefaultHTTPBackendImageName: map[string]interface{}{
+			"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
+		},
 	}, nil
 }
 
@@ -574,7 +587,7 @@ func getNetworkNames(
 	return networkName, subNetworkName
 }
 
-func (vp *valuesProvider) isOverlayEnabled(network *v1beta1.Networking) (bool, error) {
+func (vp *valuesProvider) isOverlayEnabled(network *gardencorcorev1beta1.Networking) (bool, error) {
 	if network == nil || network.ProviderConfig == nil {
 		return true, nil
 	}

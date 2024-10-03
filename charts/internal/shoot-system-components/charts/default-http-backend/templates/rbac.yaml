@@ -56,9 +56,6 @@ rules:
 - apiGroups: ["extensions", "networking.k8s.io"]
   resources: ["ingresses"]
   verbs: ["get", "list", "watch"]
-# For now, GLBC annotates ingress resources with various state and statuses:
-# https://github.com/kubernetes/ingress-gce/blob/50d49b077d9ab4362a02fae05f94e433cd3f08dc/pkg/controller/controller.go#L579
-# TODO(rramkumar1): Remove unnecessary `update` permission once statuses are propagated through `ingresses/status`
 - apiGroups: ["extensions", "networking.k8s.io"]
   resources: ["ingresses"]
   verbs: ["update"]
