@@ -73,11 +73,11 @@ apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
 kind: WorkloadIdentityConfig
 projectID: "foo-valid"
 credentialsConfig:
-  "universe_domain": "googleapis.com"
-  "type": "external_account"
-  "audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
-  "subject_token_type": "urn:ietf:params:oauth:token-type:jwt"
-  "token_url": "https://gardener.cloud/new-url"
+  universe_domain: "googleapis.com"
+  type: "external_account"
+  audience: "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
+  subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
+  token_url: "https://gardener.cloud/new-url"
 `)
 			Expect(workloadIdentityValidator.Validate(ctx, newWorkloadIdentity, workloadIdentity)).To(Succeed())
 		})
@@ -89,11 +89,11 @@ apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
 kind: WorkloadIdentityConfig
 projectID: "foo-valid-new"
 credentialsConfig:
-  "universe_domain": "googleapis.com"
-  "type": "external_account"
-  "audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
-  "subject_token_type": "urn:ietf:params:oauth:token-type:jwt"
-  "token_url": "https://sts.googleapis.com/v1/token"
+  universe_domain: "googleapis.com"
+  type: "external_account"
+  audience: "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
+  subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
+  token_url: "https://sts.googleapis.com/v1/token"
 `)
 			err := workloadIdentityValidator.Validate(ctx, newWorkloadIdentity, workloadIdentity)
 			Expect(err).To(HaveOccurred())
