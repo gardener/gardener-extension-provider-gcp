@@ -4,11 +4,19 @@ The [`core.gardener.cloud/v1beta1.Shoot` resource](https://github.com/gardener/g
 
 This document describes the configurable options for GCP and provides an example `Shoot` manifest with minimal configuration that can be used to create a GCP cluster (modulo the landscape-specific information like cloud profile names, secret binding names, etc.).
 
-## GCP Provider Credentials
+## Accessing GCP APIs
 
-In order for Gardener to create a Kubernetes cluster using GCP infrastructure components, a Shoot has to provide credentials with sufficient permissions to the desired GCP project.
-Every shoot cluster references a `SecretBinding` or a `CredentialsBinding` which itself references a `Secret`, and this `Secret` contains the provider credentials of the GCP project.
+In order for Gardener to create a Kubernetes cluster using GCP infrastructure components, a Shoot has to provide an authentication mechanism giving sufficient permissions to the desired GCP project.
+Every shoot cluster references a `SecretBinding` or a `CredentialsBinding` which itself references a `Secret` which contains the provider credentials of the GCP project.
+
+> [!IMPORTANT]
+> While `SecretBinding`s can only reference `Secret`s, `CredentialsBinding`s can also reference `WorkloadIdentity`s which provide an alternative authentication method.
+> `WorkloadIdentity`s do not directly contain credentials but are rather a representation of the workload that is going to access the user's account.
+> If the user has configured [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation) with Gardener's Workload Identity Issuer then the GCP infrastructure components can access the user's account without the need of preliminary exchange of credentials.
+
 The `SecretBinding`/`CredentialsBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`/`credentialsBindingName`.
+
+### GCP Service Account Credentials
 
 The required credentials for the GCP project are a [Service Account Key](https://cloud.google.com/iam/docs/service-accounts#service_account_keys) to authenticate as a [GCP Service Account](https://cloud.google.com/compute/docs/access/service-accounts).
 A service account is a special account that can be used by services and applications to interact with Google Cloud Platform APIs.
@@ -38,8 +46,83 @@ data:
   serviceaccount.json: base64(serviceaccount-json)
 ```
 
-⚠️ Depending on your API usage it can be problematic to reuse the same Service Account Key for different Shoot clusters due to rate limits.
-Please consider spreading your Shoots over multiple Service Accounts on different GCP projects if you are hitting those limits, see https://cloud.google.com/compute/docs/api-rate-limits.
+> [!WARNING]
+> Depending on your API usage it can be problematic to reuse the same Service Account Key for different Shoot clusters due to rate limits.
+> Please consider spreading your Shoots over multiple Service Accounts on different GCP projects if you are hitting those limits, see https://cloud.google.com/compute/docs/api-rate-limits.
+
+### GCP Workload Identity Federation
+
+Users can choose to trust Gardener's Workload Identity Issuer and eliminate the need for providing GCP Service Account credentials.
+
+As a first step users should configure [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation-with-kubernetes#kubernetes) with Gardener's Workload Identity Issuer.
+In the example attribute mapping shown below all `WorkloadIdentity`s that are created in the `garden-myproj` namespace will be authenticated.
+Now that the Workload Identity Federation is configured the user should download the credential configuration file.
+
+> [!IMPORTANT]
+> If required, users can use a stricter mapping to authenticate only certain `WorkloadIdentity`s.
+> Please, refer to the [attribute mappings documentation](https://cloud.google.com/iam/docs/workload-identity-federation#mapping) for more information.
+
+![Attribute Mapping](images/attribute_mapping.png)
+
+As a second step a resource of type `WorkloadIdentity` should be created in the Garden cluster and configured with the information from the already downloaded credential configuration file.
+This identity will be used by infrastructure components to authenticate against GCP APIs.
+A sample of such resource is shown below:
+
+```yaml
+apiVersion: security.gardener.cloud/v1alpha1
+kind: WorkloadIdentity
+metadata:
+  name: gcp
+  namespace: garden-myproj
+spec:
+  audiences:
+  # This is the audience that you configure during workload identity pool creation
+  - https://iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_name>/providers/<provider_name>
+  targetSystem:
+    type: gcp
+    providerConfig:
+      apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+      kind: WorkloadIdentityConfig
+      projectID: gcp-project-name # This is the name of the project which the workload identity will access
+      # Use the downloaded credential configuration file to set this field. The credential_source field is not important to Gardener and can be omitted.
+      credentialsConfig:
+        universe_domain: "googleapis.com"
+        type: "external_account"
+        audience: "//iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_name>/providers/<provider_name>"
+        subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
+        token_url: "https://sts.googleapis.com/v1/token"
+```
+
+Now users should give permissions to the `WorkloadIdentity` to perform operations in the GCP project.
+In order to construct the principal that will require to be given permissions retrieve the subject of the created `WorkloadIdentity`.
+```bash
+SUBJECT=$(kubectl -n garden-myproj get workloadidentity gcp -o=jsonpath='{.status.sub}')
+echo "principal://iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_name>/subject/$SUBJECT"
+```
+The principal template is also shown in the Google Console Workload Identity Pool UI.
+
+This principal should be [granted with the following IAM roles.](https://cloud.google.com/iam/docs/granting-changing-revoking-access)
+- Service Account Admin
+- Service Account Token Creator
+- Service Account User
+- Compute Admin
+
+As a final step create a `CredentialsBinding` referencing the GCP `WorkloadIdentity` and use it in our `Shoot` definitions.
+
+```yaml
+apiVersion: security.gardener.cloud/v1alpha1
+kind: CredentialsBinding
+metadata:
+  name: gcp
+  namespace: garden-myproj
+credentialsRef:
+  apiVersion: security.gardener.cloud/v1alpha1
+  kind: WorkloadIdentity
+  name: gcp
+  namespace: garden-myproj
+provider:
+  type: gcp
+```
 
 ## `InfrastructureConfig`
 
