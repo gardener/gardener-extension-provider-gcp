@@ -57,20 +57,16 @@ apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
 kind: WorkloadIdentityConfig
 projectID: test-proj
 credentialsConfig:
-    {
-        "unused_field": "foo",
-        "universe_domain": "googleapis.com",
-        "type": "external_account",
-        "audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
-        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
-        "token_url": "https://sts.googleapis.com/v1/token",
-        "credential_source": {
-            "file": "/abc/cloudprovider/xyz",
-            "abc": {
-              "foo": "text"
-            }
-        }
-    }
+  unused_field: "foo"
+  universe_domain: "googleapis.com"
+  type: "external_account"
+  audience: "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
+  subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
+  token_url: "https://sts.googleapis.com/v1/token"
+  credential_source:
+    file: "/abc/cloudprovider/xyz"
+    abc: 
+      foo: "text"
 `),
 			},
 		}
