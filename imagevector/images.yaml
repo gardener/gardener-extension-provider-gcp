@@ -57,7 +57,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
-  tag: "v1.28.9"
+  tag: "v1.28.14"
   targetVersion: "1.28.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -71,7 +71,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
-  tag: "v1.29.4"
+  tag: "v1.29.9"
   targetVersion: "1.29.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -85,7 +85,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
-  tag: "v1.30.0"
+  tag: "v1.30.5"
   targetVersion: "1.30.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -99,6 +99,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
+  # TODO(AndreasBurger,kon-angelo): Update to v31.x.y image of the cloud-controller-manager when it is available.
   tag: "v30.0.0"
   targetVersion: ">= 1.31"
   labels:
