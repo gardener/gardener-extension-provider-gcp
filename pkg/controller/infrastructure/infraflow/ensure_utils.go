@@ -102,6 +102,12 @@ func targetSubnetState(name, description, cidr, networkName string, flowLogs *gc
 		Network:               networkName,
 		EnableFlowLogs:        false,
 		LogConfig:             nil,
+		SecondaryIpRanges: []*compute.SubnetworkSecondaryRange{
+			&compute.SubnetworkSecondaryRange{
+				IpCidrRange: "192.168.0.0/16",
+				RangeName:   "ipv4-pod-cidr",
+			},
+		},
 	}
 
 	if dualStack.Enabled {
