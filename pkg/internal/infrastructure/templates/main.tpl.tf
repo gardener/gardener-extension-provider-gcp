@@ -42,6 +42,10 @@ resource "google_compute_subnetwork" "subnetwork-nodes" {
 {{ if .networks.dualStack }}
   ipv6_access_type    = "EXTERNAL"  # or "INTERNAL" based on your needs
   stack_type          = "IPV4_IPV6"  # Enable dual-stack
+  secondary_ip_range {
+      range_name    = "ipv4-pod-cidr"
+      ip_cidr_range = "192.168.0.0/16"
+  }
 {{ end }}
 
 {{- if .networks.flowLogs }}
@@ -135,6 +139,10 @@ resource "google_compute_subnetwork" "subnetwork-internal" {
 {{ if .networks.dualStack }}
     ipv6_access_type    = "EXTERNAL"  # or "INTERNAL"
     stack_type          = "IPV4_IPV6"
+    secondary_ip_range {
+      range_name    = "ipv4-pod-cidr"
+      ip_cidr_range = "192.168.0.0/16"
+  }
 {{ end }}
 
   timeouts {
