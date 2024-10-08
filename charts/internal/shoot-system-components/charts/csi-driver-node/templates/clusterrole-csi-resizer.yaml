@@ -13,6 +13,11 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumeclaims/status"]
   verbs: ["update", "patch"]
+{{- if .Values.setVolumeAttributeClassPermissions }}
+- apiGroups: ["storage.k8s.io"]
+  resources: ["volumeattributesclasses"]
+  verbs: ["get", "list", "watch"]
+{{- end }}
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["list", "watch", "create", "update", "patch"]
