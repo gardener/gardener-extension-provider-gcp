@@ -5,6 +5,7 @@ images:
 
 socketPath: /csi/csi.sock
 vpaEnabled: false
+volumeAttributeClass: true
 
 webhookConfig:
   url: https://service-name.service-namespace/volumesnapshot
