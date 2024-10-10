@@ -159,7 +159,10 @@ func (c *computeClient) PatchNetwork(ctx context.Context, id string, n *compute.
 	op, err := c.service.Networks.Patch(c.projectID, id, n).Context(ctx).Do()
 	if IsErrorCode(err, http.StatusNotModified) {
 		return n, nil
+	} else if err != nil {
+		return nil, err
 	}
+
 	err = c.wait(ctx, op)
 	if err != nil {
 		return nil, err
