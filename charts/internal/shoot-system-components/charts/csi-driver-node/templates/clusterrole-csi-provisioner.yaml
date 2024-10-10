@@ -13,6 +13,11 @@ rules:
 - apiGroups: ["storage.k8s.io"]
   resources: ["storageclasses"]
   verbs: ["get", "list", "watch"]
+{{- if .Values.volumeAttributeClass }}
+- apiGroups: ["storage.k8s.io"]
+  resources: ["volumeattributesclasses"]
+  verbs: ["get", "list", "watch"]
+{{- end }}
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["list", "watch", "create", "update", "patch"]

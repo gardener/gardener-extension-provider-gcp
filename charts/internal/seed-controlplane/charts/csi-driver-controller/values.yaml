@@ -49,6 +49,25 @@ csiSnapshotController:
       cpu: 11m
       memory: 32Mi
 
+csiResizer:
+  featureGates:
+    VolumeAttributesClass: true
+
+csiProvisioner:
+  featureGates:
+    Topology: true
+    VolumeAttributesClass: true
+
+
+csiDriver:
+  storage:
+    supportsDynamicIopsProvisioning:
+    - "hyperdisk-balanced"
+    - "hyperdisk-extreme"
+    supportsDynamicThroughputProvisioning:
+    - "hyperdisk-balanced"
+    - "hyperdisk-throughput"
+
 csiSnapshotValidationWebhook:
   replica: 1
   podAnnotations: {}
