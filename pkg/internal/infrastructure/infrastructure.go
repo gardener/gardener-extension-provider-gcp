@@ -117,7 +117,7 @@ func CleanupKubernetesRoutes(ctx context.Context, client gcpclient.ComputeClient
 	return DeleteRoutes(ctx, client, routes)
 }
 
-// GetServiceAccountFromInfrastructure retrieves the ServiceAccount from the Secret referenced in the given Infrastructure.
-func GetServiceAccountFromInfrastructure(ctx context.Context, c client.Client, config *extensionsv1alpha1.Infrastructure) (*gcp.ServiceAccount, error) {
-	return gcp.GetServiceAccountFromSecretReference(ctx, c, config.Spec.SecretRef)
+// GetCredentialsConfigFromInfrastructure retrieves the credentials configuration from the Secret referenced in the given Infrastructure.
+func GetCredentialsConfigFromInfrastructure(ctx context.Context, c client.Client, config *extensionsv1alpha1.Infrastructure) (*gcp.CredentialsConfig, error) {
+	return gcp.GetCredentialsConfigFromSecretReference(ctx, c, config.Spec.SecretRef)
 }
