@@ -30,7 +30,7 @@ func NewWorkloadIdentityValidator(decoder runtime.Decoder) extensionswebhook.Val
 	}
 }
 
-// Validate checks whether the given new secret contains a valid GCP service account.
+// Validate checks whether the given new workloadidentity contains a valid GCP configuration.
 func (wi *workloadIdentity) Validate(_ context.Context, newObj, oldObj client.Object) error {
 	workloadIdentity, ok := newObj.(*securityv1alpha1.WorkloadIdentity)
 	if !ok {
@@ -51,10 +51,6 @@ func (wi *workloadIdentity) Validate(_ context.Context, newObj, oldObj client.Ob
 		oldWorkloadIdentity, ok := oldObj.(*securityv1alpha1.WorkloadIdentity)
 		if !ok {
 			return fmt.Errorf("wrong object type %T for old object", oldObj)
-		}
-
-		if workloadIdentity.Spec.TargetSystem.ProviderConfig == nil {
-			return errors.New("the old target system is missing configuration")
 		}
 
 		oldConfig, err := admission.DecodeWorkloadIdentityConfig(wi.decoder, oldWorkloadIdentity.Spec.TargetSystem.ProviderConfig)
