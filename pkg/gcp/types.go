@@ -81,6 +81,8 @@ const (
 	SeedAnnotationKeyUseFlow = AnnotationKeyUseFlow
 	// SeedAnnotationUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
 	SeedAnnotationUseFlowValueNew = "new"
+
+	AnnotationEnableModifyVolume = "gcp.provider.extensions.gardener.cloud/enable-modify-volume"
 )
 
 var (
