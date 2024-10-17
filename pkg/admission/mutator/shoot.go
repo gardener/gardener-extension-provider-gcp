@@ -31,8 +31,9 @@ type shoot struct {
 }
 
 const (
-	overlayKey = "overlay"
-	enabledKey = "enabled"
+	overlayKey           = "overlay"
+	snatToUpstreamDNSKey = "snatToUpstreamDNS"
+	enabledKey           = "enabled"
 )
 
 // Mutate mutates the given shoot object.
@@ -93,6 +94,10 @@ func (s *shoot) Mutate(_ context.Context, new, old client.Object) error {
 			if oldNetworkConfig[overlayKey] != nil {
 				networkConfig[overlayKey] = oldNetworkConfig[overlayKey]
 			}
+		}
+
+		if networkConfig[overlayKey] != nil && !networkConfig[overlayKey].(map[string]interface{})[enabledKey].(bool) {
+			networkConfig[snatToUpstreamDNSKey] = map[string]interface{}{enabledKey: false}
 		}
 
 		modifiedJSON, err := json.Marshal(networkConfig)
