@@ -10,6 +10,7 @@
 !example/
 !hack/
 !imagevector/
+!internal/
 !pkg/
 !test/
 !tools/
