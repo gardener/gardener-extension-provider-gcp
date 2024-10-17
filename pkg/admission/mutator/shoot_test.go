@@ -161,7 +161,7 @@ var _ = Describe("Shoot mutator", func() {
 				err := shootMutator.Mutate(ctx, shoot, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(shoot.Spec.Networking.ProviderConfig).To(Equal(&runtime.RawExtension{
-					Raw: []byte(`{"overlay":{"enabled":false}}`),
+					Raw: []byte(`{"overlay":{"enabled":false},"snatToUpstreamDNS":{"enabled":false}}`),
 				}))
 			})
 
@@ -172,7 +172,7 @@ var _ = Describe("Shoot mutator", func() {
 				err := shootMutator.Mutate(ctx, shoot, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(shoot.Spec.Networking.ProviderConfig).To(Equal(&runtime.RawExtension{
-					Raw: []byte(`{"foo":{"enabled":true},"overlay":{"enabled":false}}`),
+					Raw: []byte(`{"foo":{"enabled":true},"overlay":{"enabled":false},"snatToUpstreamDNS":{"enabled":false}}`),
 				}))
 			})
 
