@@ -1,6 +1,6 @@
 image:
-  repository: europe-docker.pkg.dev/gardener-project/public/gardener/extensions/provider-gcp
-  tag: latest
+  repository: ghcr.io/mohamed-rafraf/provider-gcp
+  tag: v1.41.5-dev
   pullPolicy: IfNotPresent
 
 replicaCount: 1
@@ -43,11 +43,10 @@ ignoreResources: false
 
 # imageVectorOverwrite: |
 #   images:
-#   - name: pause-container
-#     sourceRepository: github.com/kubernetes/kubernetes/blob/master/build/pause/Dockerfile
-#     repository: gcr.io/google_containers/pause-amd64
-#     tag: "3.0"
-#     version: 1.11.x
+#     - name: machine-controller-manager-provider-gcp
+#       sourceRepository: github.com/gardener/machine-controller-manager-provider-gcp
+#       repository: ghcr.io/mohamed-rafraf/mcm-gcp
+#       tag: "v0.0.2"
 #   - name: pause-container
 #     sourceRepository: github.com/kubernetes/kubernetes/blob/master/build/pause/Dockerfile
 #     repository: gcr.io/google_containers/pause-amd64

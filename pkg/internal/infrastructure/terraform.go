@@ -167,9 +167,10 @@ func ComputeTerraformerTemplateValues(
 		"vpc":         vpc,
 		"clusterName": infra.Namespace,
 		"networks": map[string]interface{}{
-			"workers":  workersCIDR,
-			"internal": config.Networks.Internal,
-			"cloudNAT": cN,
+			"workers":   workersCIDR,
+			"internal":  config.Networks.Internal,
+			"cloudNAT":  cN,
+			"dualStack": config.Networks.DualStack.Enabled,
 		},
 		"podCIDR":    *podCIDR,
 		"outputKeys": outputKeys,

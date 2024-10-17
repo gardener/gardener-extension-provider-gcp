@@ -221,6 +221,14 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-config=")
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--external-cloud-volume-plugin=")
+
+	for i, v := range c.Command {
+		if v == "--allocate-node-cidrs=true" {
+			c.Command = append(c.Command[:i], c.Command[i+1:]...)
+		}
+	}
+	c.Command = append(c.Command, "--allocate-node-cidrs=false")
+
 }
 
 func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
