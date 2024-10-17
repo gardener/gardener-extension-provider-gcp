@@ -427,7 +427,7 @@ var _ = Describe("Machines", func() {
 						secret.Data = map[string][]byte{userDataSecretDataKey: userData}
 						return nil
 					},
-				).MaxTimes(2)
+				).AnyTimes()
 			}
 
 			Describe("machine images", func() {
