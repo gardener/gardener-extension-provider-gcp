@@ -202,6 +202,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					{
 						"subnetwork":        nodesSubnet.Name,
 						"disableExternalIP": true,
+						"dualStack":         infrastructureStatus.Networks.DualStackEnabled,
 					},
 				},
 				"secret": map[string]interface{}{
