@@ -45,7 +45,7 @@ spec:
         - --service-cluster-ip-range=10.96.0.0/12,fd00::/108
         - --cluster-cidr={{ .Values.podNetwork }}
         - --cluster-name={{ .Values.clusterName }}
-        - --cidr-allocator-type=CloudAllocator
+        - --cidr-allocator-type={{ .Values.allocatorType }}
         - --concurrent-service-syncs=10
         - --configure-cloud-routes={{ .Values.configureCloudRoutes }}
         {{- include "cloud-controller-manager.featureGates" . | trimSuffix "," | indent 8 }}
