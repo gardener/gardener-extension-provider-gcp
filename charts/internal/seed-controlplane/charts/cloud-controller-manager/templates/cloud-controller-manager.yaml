@@ -37,16 +37,15 @@ spec:
       - name: gcp-cloud-controller-manager
         image: {{ index .Values.images "cloud-controller-manager" }}
         imagePullPolicy: IfNotPresent
-        {{- if semverCompare ">= 1.31" .Values.kubernetesVersion }}
         command: ["/cloud-controller-manager"]
-        {{- end}}
         args:
         - --allocate-node-cidrs=true
         - --cloud-provider=gce
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
+        - --service-cluster-ip-range=10.96.0.0/12,fd00::/108
         - --cluster-cidr={{ .Values.podNetwork }}
         - --cluster-name={{ .Values.clusterName }}
-        - --cidr-allocator-type="CloudAllocator"
+        - --cidr-allocator-type=CloudAllocator
         - --concurrent-service-syncs=10
         - --configure-cloud-routes={{ .Values.configureCloudRoutes }}
         {{- include "cloud-controller-manager.featureGates" . | trimSuffix "," | indent 8 }}
