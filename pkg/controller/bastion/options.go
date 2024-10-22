@@ -12,6 +12,7 @@ import (
 	"net"
 	"slices"
 
+	extensionsbastion "github.com/gardener/gardener/extensions/pkg/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -70,7 +71,7 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 
 	region := cluster.Shoot.Spec.Region
 
-	bastionVmDetails, err := DetermineVmDetails(cluster.CloudProfile.Spec)
+	bastionVmDetails, err := extensionsbastion.GetMachineSpecFromCloudProfile(cluster.CloudProfile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to determine VM details for bastion host: %w", err)
 	}
@@ -94,7 +95,7 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		ProjectID:           projectID,
 		Network:             fmt.Sprintf("projects/%s/global/networks/%s", projectID, vNetworkName),
 		WorkersCIDR:         workersCidr,
-		MachineName:         bastionVmDetails.MachineName,
+		MachineName:         bastionVmDetails.MachineTypeName,
 		ImagePath:           image.Image,
 	}, nil
 }
@@ -210,8 +211,8 @@ func getCloudProfileConfig(cluster *extensions.Cluster) (*gcpv1alpha1.CloudProfi
 	return cloudProfileConfig, nil
 }
 
-// getProviderSpecificImage returns the provider specific MachineImageVersion that matches with the given VmDetails
-func getProviderSpecificImage(images []gcpv1alpha1.MachineImages, vm VmDetails) (gcpv1alpha1.MachineImageVersion, error) {
+// getProviderSpecificImage returns the provider specific MachineImageVersion that matches with the given MachineSpec
+func getProviderSpecificImage(images []gcpv1alpha1.MachineImages, vm extensionsbastion.MachineSpec) (gcpv1alpha1.MachineImageVersion, error) {
 	imageIndex := slices.IndexFunc(images, func(image gcpv1alpha1.MachineImages) bool {
 		return image.Name == vm.ImageBaseName
 	})
