@@ -216,6 +216,7 @@ func firewallRuleAllowInternal(name, network string, cidrs []*string) *compute.F
 		Name:      name,
 		Network:   network,
 		Direction: "INGRESS",
+		Priority:  1000,
 		Allowed: []*compute.FirewallAllowed{
 			{
 				IPProtocol: "icmp",
@@ -232,7 +233,7 @@ func firewallRuleAllowInternal(name, network string, cidrs []*string) *compute.F
 				Ports:      []string{"1-65535"},
 			},
 		},
-		ForceSendFields: []string{"Disabled", "Priority"},
+		ForceSendFields: []string{"Disabled"},
 		NullFields:      []string{"Denied", "DestinationRanges", "SourceServiceAccounts", "SourceTags", "TargetTags", "TargetServiceAccounts"},
 	}
 	for _, cidr := range cidrs {
@@ -256,7 +257,8 @@ func firewallRuleAllowExternal(name, network string) *compute.Firewall {
 		Direction:       "INGRESS",
 		Name:            name,
 		Network:         network,
-		ForceSendFields: []string{"Disabled", "Priority"},
+		Priority:        1000,
+		ForceSendFields: []string{"Disabled"},
 		NullFields:      []string{"Denied", "DestinationRanges", "SourceServiceAccounts", "SourceTags", "TargetTags", "TargetServiceAccounts"},
 	}
 }
@@ -266,6 +268,7 @@ func firewallRuleAllowHealthChecks(name, network string) *compute.Firewall {
 		Name:      name,
 		Network:   network,
 		Direction: "INGRESS",
+		Priority:  1000,
 		SourceRanges: []string{
 			"35.191.0.0/16",
 			"209.85.204.0/22",
@@ -282,7 +285,7 @@ func firewallRuleAllowHealthChecks(name, network string) *compute.Firewall {
 				Ports:      []string{"30000-32767"},
 			},
 		},
-		ForceSendFields: []string{"Disabled", "Priority"},
+		ForceSendFields: []string{"Disabled"},
 		NullFields:      []string{"Denied", "DestinationRanges", "SourceServiceAccounts", "SourceTags", "TargetTags", "TargetServiceAccounts"},
 	}
 }
