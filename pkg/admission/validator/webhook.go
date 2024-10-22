@@ -81,9 +81,7 @@ func NewWorkloadIdentitiesWebhook(mgr manager.Manager) (*extensionswebhook.Webho
 		Validators: map[extensionswebhook.Validator][]extensionswebhook.Type{
 			NewWorkloadIdentityValidator(serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder()): {{Obj: &securityv1alpha1.WorkloadIdentity{}}},
 		},
-		Target: extensionswebhook.TargetSeed,
-		ObjectSelector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{"provider.shoot.gardener.cloud/gcp": "true"},
-		},
+		Target:     extensionswebhook.TargetSeed,
+		Predicates: []predicate.Predicate{extensionspredicate.GardenCoreProviderType(gcp.Type)},
 	})
 }
