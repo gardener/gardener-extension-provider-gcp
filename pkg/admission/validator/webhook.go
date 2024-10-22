@@ -82,6 +82,6 @@ func NewWorkloadIdentitiesWebhook(mgr manager.Manager) (*extensionswebhook.Webho
 			NewWorkloadIdentityValidator(serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder()): {{Obj: &securityv1alpha1.WorkloadIdentity{}}},
 		},
 		Target:     extensionswebhook.TargetSeed,
-		Predicates: []predicate.Predicate{extensionspredicate.GardenCoreProviderType(gcp.Type)},
+		Predicates: []predicate.Predicate{extensionspredicate.GardenSecurityProviderType(gcp.Type)},
 	})
 }
