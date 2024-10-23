@@ -822,6 +822,7 @@ func verifyCreation(
 	Expect(allowInternalAccess.Network).To(Equal(network.SelfLink))
 	Expect(allowInternalAccess.SourceRanges).To(HaveLen(3))
 	Expect(allowInternalAccess.SourceRanges).To(ConsistOf(workersSubnetCIDR, internalSubnetCIDR, podCIDR))
+	Expect(allowInternalAccess.Priority).To(Equal(1000))
 	Expect(allowInternalAccess.Allowed).To(ConsistOf([]*computev1.FirewallAllowed{
 		{
 			IPProtocol: "icmp",
@@ -844,6 +845,7 @@ func verifyCreation(
 
 	Expect(allowExternalAccess.Network).To(Equal(network.SelfLink))
 	Expect(allowExternalAccess.SourceRanges).To(Equal([]string{"0.0.0.0/0"}))
+	Expect(allowExternalAccess.Priority).To(Equal(1000))
 	Expect(allowExternalAccess.Allowed).To(ConsistOf([]*computev1.FirewallAllowed{
 		{
 			IPProtocol: "tcp",
@@ -855,6 +857,7 @@ func verifyCreation(
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(allowHealthChecks.Network).To(Equal(network.SelfLink))
+	Expect(allowHealthChecks.Priority).To(Equal(1000))
 	Expect(allowHealthChecks.SourceRanges).To(ConsistOf([]string{
 		"35.191.0.0/16",
 		"209.85.204.0/22",
