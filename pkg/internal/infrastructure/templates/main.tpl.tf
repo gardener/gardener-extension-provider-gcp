@@ -173,23 +173,6 @@ resource "google_compute_firewall" "rule-allow-internal-access" {
   }
 }
 
-resource "google_compute_firewall" "rule-allow-external-access" {
-  name          = "{{ .clusterName }}-allow-external-access"
-  network       = {{ .vpc.name }}
-  source_ranges = ["0.0.0.0/0"]
-
-  allow {
-    protocol = "tcp"
-    ports    = ["443"] // Allow ingress
-  }
-
-  timeouts {
-    create = "5m"
-    update = "5m"
-    delete = "5m"
-  }
-}
-
 // Required to allow Google to perform health checks on our instances.
 // https://cloud.google.com/compute/docs/load-balancing/internal/
 // https://cloud.google.com/compute/docs/load-balancing/network/
