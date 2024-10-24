@@ -299,7 +299,6 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 
 	cidrs := []*string{fctx.podCIDR, fctx.config.Networks.Internal, ptr.To(fctx.config.Networks.Workers), ptr.To(fctx.config.Networks.Worker)}
 	rules := []*compute.Firewall{
-		firewallRuleAllowExternal(firewallRuleAllowExternalName(fctx.clusterName), vpc.SelfLink),
 		firewallRuleAllowInternal(firewallRuleAllowInternalName(fctx.clusterName), vpc.SelfLink, cidrs),
 		firewallRuleAllowHealthChecks(firewallRuleAllowHealthChecksName(fctx.clusterName), vpc.SelfLink),
 	}
@@ -319,7 +318,9 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 			}
 		}
 	}
-	return nil
+
+	// delete unnecessary firewall rule.
+	return fctx.computeClient.DeleteFirewallRule(ctx, firewallRuleAllowExternalName(fctx.clusterName))
 }
 
 func (fctx *FlowContext) ensureVPCDeleted(ctx context.Context) error {

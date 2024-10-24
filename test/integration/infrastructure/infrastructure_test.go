@@ -840,19 +840,6 @@ func verifyCreation(
 		},
 	}))
 
-	allowExternalAccess, err := computeService.Firewalls.Get(project, infra.Namespace+"-allow-external-access").Context(ctx).Do()
-	Expect(err).NotTo(HaveOccurred())
-
-	Expect(allowExternalAccess.Network).To(Equal(network.SelfLink))
-	Expect(allowExternalAccess.SourceRanges).To(Equal([]string{"0.0.0.0/0"}))
-	Expect(allowExternalAccess.Priority).To(Equal(int64(1000)))
-	Expect(allowExternalAccess.Allowed).To(ConsistOf([]*computev1.FirewallAllowed{
-		{
-			IPProtocol: "tcp",
-			Ports:      []string{"443"},
-		},
-	}))
-
 	allowHealthChecks, err := computeService.Firewalls.Get(project, infra.Namespace+"-allow-health-checks").Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
 
