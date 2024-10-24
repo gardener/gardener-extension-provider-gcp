@@ -113,6 +113,7 @@ func (fctx *FlowContext) ensureSubnet(ctx context.Context) error {
 		cidr,
 		vpc.SelfLink,
 		fctx.config.Networks.FlowLogs,
+		fctx.config.Networks.DualStack,
 	)
 
 	subnet, err := fctx.computeClient.GetSubnet(ctx, region, subnetName)
@@ -164,6 +165,7 @@ func (fctx *FlowContext) ensureInternalSubnet(ctx context.Context) error {
 		*fctx.config.Networks.Internal,
 		vpc.SelfLink,
 		nil,
+		fctx.config.Networks.DualStack,
 	)
 	if subnet == nil {
 		subnet, err = fctx.computeClient.InsertSubnet(ctx, region, desired)

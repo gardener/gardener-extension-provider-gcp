@@ -203,7 +203,7 @@ var _ = Describe("Infrastructure tests", func() {
 		})
 
 		It("should successfully create and delete", func() {
-			providerConfig := newProviderConfig(nil, nil)
+			providerConfig := newProviderConfig(nil, nil, false)
 
 			namespace, err := generateNamespaceName()
 			Expect(err).NotTo(HaveOccurred())
@@ -257,7 +257,7 @@ var _ = Describe("Infrastructure tests", func() {
 				EnableDynamicPortAllocation: true,
 				NatIPNames:                  natIPNames,
 			}
-			providerConfig := newProviderConfig(vpc, cloudNAT)
+			providerConfig := newProviderConfig(vpc, cloudNAT, false)
 
 			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
 			Expect(err).NotTo(HaveOccurred())
@@ -270,7 +270,7 @@ var _ = Describe("Infrastructure tests", func() {
 				if *reconciler != reconcilerUseFlow {
 					Skip("test is not working for terraform because the state is not exactly empty")
 				}
-				providerConfig := newProviderConfig(nil, nil)
+				providerConfig := newProviderConfig(nil, nil, false)
 				var (
 					namespace *corev1.Namespace
 					cluster   *extensionsv1alpha1.Cluster
@@ -359,6 +359,22 @@ var _ = Describe("Infrastructure tests", func() {
 			})
 		})
 	})
+
+	Context("with dualstack enabled", func() {
+		It("should create VPC and subnets with dualstack enabled", func() {
+			providerConfig := newProviderConfig(nil, nil, true)
+
+			namespace, err := generateNamespaceName()
+			Expect(err).NotTo(HaveOccurred())
+
+			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Here you would add assertions to check that IPv6 ranges were set up correctly
+			verifyDualStackSetup(ctx, project, computeService, namespace)
+		})
+	})
+
 })
 
 func runTest(
@@ -526,7 +542,15 @@ func runTest(
 	return err
 }
 
-func newProviderConfig(vpc *gcpv1alpha1.VPC, cloudNAT *gcpv1alpha1.CloudNAT) *gcpv1alpha1.InfrastructureConfig {
+func verifyDualStackSetup(ctx context.Context, project string, computeService *computev1.Service, namespace string) {
+	// Verify that the subnets have IPv6 CIDR ranges, firewalls allow IPv6 traffic, etc.
+	subnetNodes, err := computeService.Subnetworks.Get(project, *region, namespace+"-nodes").Context(ctx).Do()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(subnetNodes.Ipv6CidrRange).To(Not(BeEmpty()), "Expected IPv6 CIDR to be set for nodes subnet")
+
+}
+
+func newProviderConfig(vpc *gcpv1alpha1.VPC, cloudNAT *gcpv1alpha1.CloudNAT, dualStackEnabled bool) *gcpv1alpha1.InfrastructureConfig {
 	return &gcpv1alpha1.InfrastructureConfig{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: gcpv1alpha1.SchemeGroupVersion.String(),
@@ -541,6 +565,9 @@ func newProviderConfig(vpc *gcpv1alpha1.VPC, cloudNAT *gcpv1alpha1.CloudNAT) *gc
 				AggregationInterval: ptr.To("INTERVAL_5_SEC"),
 				FlowSampling:        ptr.To[float32](0.2),
 				Metadata:            ptr.To("INCLUDE_ALL_METADATA"),
+			},
+			DualStack: &gcpv1alpha1.DualStack{
+				Enabled: dualStackEnabled,
 			},
 		},
 	}
@@ -760,10 +787,22 @@ func verifyCreation(
 	Expect(subnetNodes.LogConfig.FlowSampling).To(Equal(float64(0.2)))
 	Expect(subnetNodes.LogConfig.Metadata).To(Equal("INCLUDE_ALL_METADATA"))
 
+	if providerConfig.Networks.DualStack.Enabled {
+		// Ensure dual-stack subnets are created
+		Expect(err).NotTo(HaveOccurred())
+		Expect(subnetNodes.Ipv6CidrRange).To(Not(BeEmpty()), "Expected IPv6 CIDR range for dualstack setup")
+	}
+
 	subnetInternal, err := computeService.Subnetworks.Get(project, *region, infra.Namespace+"-internal").Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(subnetInternal.Network).To(Equal(network.SelfLink))
 	Expect(subnetInternal.IpCidrRange).To(Equal(internalSubnetCIDR))
+
+	if providerConfig.Networks.DualStack.Enabled {
+		// Ensure dual-stack subnets are created
+		Expect(err).NotTo(HaveOccurred())
+		Expect(subnetInternal.Ipv6CidrRange).To(Not(BeEmpty()), "Expected IPv6 CIDR range for dualstack setup")
+	}
 
 	// router
 
