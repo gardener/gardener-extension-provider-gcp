@@ -13,6 +13,12 @@ resource "google_service_account" "serviceaccount" {
   account_id   = "{{ .clusterName }}"
   display_name = "{{ .clusterName }}"
 }
+
+resource "google_project_iam_member" "service_account_role_binding" {
+  project = "{{ .google.project }}"
+  role    = "roles/logging.logWriter"  
+  member  = "serviceAccount:${google_service_account.serviceaccount.email}"
+}
 {{- end }}
 
 //=====================================================================
