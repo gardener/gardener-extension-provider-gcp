@@ -30,8 +30,16 @@ type dnsClient struct {
 }
 
 // NewDNSClient returns a client for GCP's CloudDNS service.
-func NewDNSClient(ctx context.Context, serviceAccount *gcp.ServiceAccount) (DNSClient, error) {
-	credentials, err := google.CredentialsFromJSON(ctx, serviceAccount.Raw, googledns.NdevClouddnsReadwriteScope)
+func NewDNSClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (DNSClient, error) {
+	var tokenExchangeCtx context.Context
+	if credentialsConfig.TokenRequestClient != nil {
+		tokenExchangeCtx = context.WithValue(ctx, oauth2.HTTPClient, credentialsConfig.TokenRequestClient)
+	} else {
+		tokenExchangeCtx = ctx
+	}
+	credentials, err := google.CredentialsFromJSONWithParams(tokenExchangeCtx, credentialsConfig.Raw, google.CredentialsParams{
+		Scopes: []string{googledns.NdevClouddnsReadwriteScope},
+	})
 	if err != nil {
 		return nil, err
 	}

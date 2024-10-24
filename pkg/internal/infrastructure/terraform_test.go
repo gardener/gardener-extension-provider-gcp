@@ -25,11 +25,11 @@ import (
 
 var _ = Describe("Terraform", func() {
 	var (
-		infra              *extensionsv1alpha1.Infrastructure
-		config             *api.InfrastructureConfig
-		projectID          string
-		serviceAccountData []byte
-		serviceAccount     *gcp.ServiceAccount
+		infra                 *extensionsv1alpha1.Infrastructure
+		config                *api.InfrastructureConfig
+		projectID             string
+		credentialsConfigData []byte
+		credentialsConfig     *gcp.CredentialsConfig
 
 		podCIDR                          = "100.96.0.0/11"
 		minPortsPerVM                    = int32(2048)
@@ -113,8 +113,8 @@ var _ = Describe("Terraform", func() {
 		}
 
 		projectID = "project"
-		serviceAccountData = []byte(fmt.Sprintf(`{"project_id": "%s"}`, projectID))
-		serviceAccount = &gcp.ServiceAccount{ProjectID: projectID, Raw: serviceAccountData}
+		credentialsConfigData = []byte(fmt.Sprintf(`{"project_id": "%s"}`, projectID))
+		credentialsConfig = &gcp.CredentialsConfig{ProjectID: projectID, Raw: credentialsConfigData}
 	})
 
 	Describe("#ExtractTerraformState", func() {
@@ -211,7 +211,7 @@ var _ = Describe("Terraform", func() {
 
 	Describe("#ComputeTerraformerTemplateValues", func() {
 		It("should correctly compute the terraformer chart values without serviceAccount", func() {
-			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, &podCIDR, false)
+			values, err := ComputeTerraformerTemplateValues(infra, credentialsConfig, config, &podCIDR, false)
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -248,7 +248,7 @@ var _ = Describe("Terraform", func() {
 		})
 
 		It("should correctly compute the terraformer chart values with serviceAccount", func() {
-			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, &podCIDR, true)
+			values, err := ComputeTerraformerTemplateValues(infra, credentialsConfig, config, &podCIDR, true)
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -313,7 +313,7 @@ var _ = Describe("Terraform", func() {
 				},
 			}
 
-			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, &podCIDR, true)
+			values, err := ComputeTerraformerTemplateValues(infra, credentialsConfig, config, &podCIDR, true)
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -385,7 +385,7 @@ var _ = Describe("Terraform", func() {
 				},
 			}
 
-			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, &podCIDR, true)
+			values, err := ComputeTerraformerTemplateValues(infra, credentialsConfig, config, &podCIDR, true)
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
@@ -428,7 +428,7 @@ var _ = Describe("Terraform", func() {
 
 		It("should correctly compute the terraformer chart values with vpc creation", func() {
 			config.Networks.VPC = nil
-			values, err := ComputeTerraformerTemplateValues(infra, serviceAccount, config, &podCIDR, true)
+			values, err := ComputeTerraformerTemplateValues(infra, credentialsConfig, config, &podCIDR, true)
 			Expect(err).To(BeNil())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{

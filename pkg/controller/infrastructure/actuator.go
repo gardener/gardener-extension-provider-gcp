@@ -7,6 +7,7 @@ package infrastructure
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
@@ -23,14 +24,19 @@ type actuator struct {
 	client                     client.Client
 	restConfig                 *rest.Config
 	disableProjectedTokenMount bool
+
+	tokenMetadataClient *http.Client
+	tokenMetadataURL    func(secretName, secretNamespace string) string
 }
 
 // NewActuator creates a new infrastructure.Actuator.
-func NewActuator(mgr manager.Manager, disableProjectedTokenMount bool) infrastructure.Actuator {
+func NewActuator(mgr manager.Manager, disableProjectedTokenMount bool, tokenMetadataURL func(secretName, secretNamespace string) string, tokenMetadataClient *http.Client) infrastructure.Actuator {
 	return &actuator{
 		client:                     mgr.GetClient(),
 		restConfig:                 mgr.GetConfig(),
 		disableProjectedTokenMount: disableProjectedTokenMount,
+		tokenMetadataURL:           tokenMetadataURL,
+		tokenMetadataClient:        tokenMetadataClient,
 	}
 }
 
