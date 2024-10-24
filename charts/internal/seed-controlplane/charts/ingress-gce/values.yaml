@@ -1,0 +1,18 @@
+replicas: 1
+
+images:
+  ingress-gce: image-repository:image-tag
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 75Mi
+
+vpa:
+  resourcePolicy:
+    maxAllowed:
+      cpu: 1
+      memory: 2G
+
+podAnnotations: {}
+podLabels: {}

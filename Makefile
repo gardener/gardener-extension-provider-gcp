@@ -16,7 +16,7 @@ EFFECTIVE_VERSION           := $(VERSION)-$(shell git rev-parse HEAD)
 LD_FLAGS                    := "-w $(shell bash $(GARDENER_HACK_DIR)/get-build-ld-flags.sh k8s.io/component-base $(REPO_ROOT)/VERSION $(EXTENSION_PREFIX))"
 LEADER_ELECTION             := false
 IGNORE_OPERATION_ANNOTATION := true
-PLATFORM 					:= linux/amd64
+PLATFORM                    := linux/amd64
 TEST_RECONCILER             := tf
 
 WEBHOOK_CONFIG_PORT	:= 8443
