@@ -223,10 +223,6 @@ func (e *ensurer) EnsureClusterAutoscalerDeployment(ctx context.Context,
 }
 
 func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
-	if versionutils.ConstraintK8sLess127.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"CSIMigration=true", ",")
-	}
 	if !versionutils.ConstraintK8sGreaterEqual128.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"CSIMigrationGCE=true", ",")
@@ -248,11 +244,6 @@ func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 
 func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
 	c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--cloud-provider=", "external")
-
-	if versionutils.ConstraintK8sLess127.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"CSIMigration=true", ",")
-	}
 	if !versionutils.ConstraintK8sGreaterEqual128.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"CSIMigrationGCE=true", ",")
@@ -273,10 +264,6 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 }
 
 func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
-	if versionutils.ConstraintK8sLess127.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"CSIMigration=true", ",")
-	}
 	if !versionutils.ConstraintK8sGreaterEqual128.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"CSIMigrationGCE=true", ",")
@@ -289,10 +276,6 @@ func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 
 // ensureClusterAutoscalerCommandLineArgs ensures the cluster-autoscaler command line args.
 func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
-	if versionutils.ConstraintK8sLess127.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"CSIMigration=true", ",")
-	}
 	if !versionutils.ConstraintK8sGreaterEqual128.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"CSIMigrationGCE=true", ",")
@@ -390,9 +373,6 @@ func (e *ensurer) EnsureKubeletConfiguration(
 	_ gcontext.GardenContext,
 	kubeletVersion *semver.Version,
 	newKubeletConfiguration, _ *kubeletconfigv1beta1.KubeletConfiguration) error {
-	if versionutils.ConstraintK8sLess127.Check(kubeletVersion) {
-		setKubletConfigurationFeatureGate(newKubeletConfiguration, "CSIMigration", true)
-	}
 	if !versionutils.ConstraintK8sGreaterEqual128.Check(kubeletVersion) {
 		setKubletConfigurationFeatureGate(newKubeletConfiguration, "CSIMigrationGCE", true)
 	}
