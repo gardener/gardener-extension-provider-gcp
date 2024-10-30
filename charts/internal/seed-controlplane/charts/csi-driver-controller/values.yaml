@@ -48,4 +48,4 @@ csiSnapshotController:
       cpu: 11m
       memory: 32Mi
 
-useWorkloadIdentityToken: false
+useWorkloadIdentity: false

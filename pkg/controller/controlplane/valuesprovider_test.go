@@ -238,9 +238,9 @@ var _ = Describe("ValuesProvider", func() {
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion":        cluster.Shoot.Spec.Kubernetes.Version,
-					"gep19Monitoring":          false,
-					"useWorkloadIdentityToken": false,
+					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
+					"gep19Monitoring":     false,
+					"useWorkloadIdentity": false,
 				}),
 				gcp.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas":  1,
@@ -252,7 +252,7 @@ var _ = Describe("ValuesProvider", func() {
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
 					},
-					"useWorkloadIdentityToken": false,
+					"useWorkloadIdentity": false,
 				}),
 			}))
 		})
@@ -267,10 +267,10 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values[gcp.CloudControllerManagerName]).To(Equal(utils.MergeMaps(ccmChartValues, map[string]interface{}{
-				"kubernetesVersion":        cluster.Shoot.Spec.Kubernetes.Version,
-				"configureCloudRoutes":     true,
-				"gep19Monitoring":          false,
-				"useWorkloadIdentityToken": false,
+				"kubernetesVersion":    cluster.Shoot.Spec.Kubernetes.Version,
+				"configureCloudRoutes": true,
+				"gep19Monitoring":      false,
+				"useWorkloadIdentity":  false,
 			})))
 		})
 
