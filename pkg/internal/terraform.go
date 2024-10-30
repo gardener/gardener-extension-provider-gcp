@@ -55,7 +55,7 @@ func NewTerraformerWithAuth(
 	purpose string,
 	infra *extensionsv1alpha1.Infrastructure,
 	disableProjectedTokenMount bool,
-	useWorkloadIdentityToken bool,
+	useWorkloadIdentity bool,
 ) (
 	terraformer.Terraformer,
 	error,
@@ -66,7 +66,7 @@ func NewTerraformerWithAuth(
 	}
 
 	secretKey := gcp.ServiceAccountJSONField
-	if useWorkloadIdentityToken {
+	if useWorkloadIdentity {
 		secretKey = gcp.CredentialsConfigField
 	}
 	return SetTerraformerEnvVars(tf, infra.Spec.SecretRef, secretKey)
