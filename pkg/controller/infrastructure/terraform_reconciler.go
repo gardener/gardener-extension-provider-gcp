@@ -85,8 +85,8 @@ func (t *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 		return err
 	}
 
-	useWorkloadIdentityToken := credentialsConfig.Type == gcp.ExternalAccountCredentialType && len(credentialsConfig.TokenFilePath) > 0
-	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount, useWorkloadIdentityToken)
+	useWorkloadIdentity := credentialsConfig.Type == gcp.ExternalAccountCredentialType && len(credentialsConfig.TokenFilePath) > 0
+	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount, useWorkloadIdentity)
 	if err != nil {
 		return err
 	}
@@ -133,8 +133,8 @@ func (t *TerraformReconciler) delete(ctx context.Context, infra *extensionsv1alp
 		return err
 	}
 
-	useWorkloadIdentityToken := credentialsConfig.Type == gcp.ExternalAccountCredentialType && len(credentialsConfig.TokenFilePath) > 0
-	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount, useWorkloadIdentityToken)
+	useWorkloadIdentity := credentialsConfig.Type == gcp.ExternalAccountCredentialType && len(credentialsConfig.TokenFilePath) > 0
+	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount, useWorkloadIdentity)
 	if err != nil {
 		return err
 	}

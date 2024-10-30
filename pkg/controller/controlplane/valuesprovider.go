@@ -360,7 +360,7 @@ func getConfigChartValues(
 	}, nil
 }
 
-func shouldUseWorkloadIdentityToken(credentialsConfig *gcp.CredentialsConfig) bool {
+func shouldUseWorkloadIdentity(credentialsConfig *gcp.CredentialsConfig) bool {
 	return credentialsConfig.Type == gcp.ExternalAccountCredentialType && len(credentialsConfig.TokenFilePath) > 0
 }
 
@@ -378,7 +378,7 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring, shouldUseWorkloadIdentityToken(credentialsConfig))
+	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring, shouldUseWorkloadIdentity(credentialsConfig))
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +406,7 @@ func (vp *valuesProvider) getCCMChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 	gep19Monitoring bool,
-	useWorkloadIdentityToken bool,
+	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
 	if !found {
@@ -430,8 +430,8 @@ func (vp *valuesProvider) getCCMChartValues(
 		"secrets": map[string]interface{}{
 			"server": serverSecret.Name,
 		},
-		"gep19Monitoring":          gep19Monitoring,
-		"useWorkloadIdentityToken": useWorkloadIdentityToken,
+		"gep19Monitoring":     gep19Monitoring,
+		"useWorkloadIdentity": useWorkloadIdentity,
 	}
 
 	if cpConfig.CloudControllerManager != nil {
@@ -480,7 +480,7 @@ func getCSIControllerChartValues(
 			},
 			"topologyAwareRoutingEnabled": gardencorev1beta1helper.IsTopologyAwareRoutingForShootControlPlaneEnabled(cluster.Seed, cluster.Shoot),
 		},
-		"useWorkloadIdentityToken": shouldUseWorkloadIdentityToken(credentialsConfig),
+		"useWorkloadIdentity": shouldUseWorkloadIdentity(credentialsConfig),
 	}
 
 	k8sVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
