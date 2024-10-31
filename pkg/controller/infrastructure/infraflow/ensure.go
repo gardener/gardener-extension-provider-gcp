@@ -37,9 +37,7 @@ func (fctx *FlowContext) ensureServiceAccount(ctx context.Context) error {
 }
 
 func (fctx *FlowContext) ensureVPC(ctx context.Context) error {
-	var (
-		err error
-	)
+	var err error
 
 	if fctx.config.Networks.VPC != nil {
 		return fctx.ensureUserManagedVPC(ctx)
@@ -108,9 +106,7 @@ func (fctx *FlowContext) ensureSubnetIPv6CidrBlock(ctx context.Context) error {
 	return nil
 }
 func (fctx *FlowContext) ensureSubnet(ctx context.Context) error {
-	var (
-		region = fctx.infra.Spec.Region
-	)
+	region := fctx.infra.Spec.Region
 
 	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
 		return err
@@ -155,9 +151,7 @@ func (fctx *FlowContext) ensureSubnet(ctx context.Context) error {
 }
 
 func (fctx *FlowContext) ensureInternalSubnet(ctx context.Context) error {
-	var (
-		region = fctx.infra.Spec.Region
-	)
+	region := fctx.infra.Spec.Region
 
 	if fctx.config.Networks.Internal == nil {
 		return fctx.ensureInternalSubnetDeleted(ctx)
@@ -197,6 +191,50 @@ func (fctx *FlowContext) ensureInternalSubnet(ctx context.Context) error {
 
 	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
 	fctx.whiteboard.SetObject(ObjectKeyInternalSubnet, subnet)
+	return nil
+}
+
+func (fctx *FlowContext) ensureServicesSubnet(ctx context.Context) error {
+	region := fctx.infra.Spec.Region
+
+	if !fctx.config.Networks.DualStack.Enabled {
+		return nil
+	}
+
+	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
+		return err
+	}
+	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
+
+	subnetName := fctx.servicesSubnetNameFromConfig()
+
+	subnet, err := fctx.computeClient.GetSubnet(ctx, region, subnetName)
+	if err != nil {
+		return err
+	}
+
+	desired := targetSubnetState(
+		subnetName,
+		"gardener-managed services subnet",
+		"10.255.0.0/16",
+		vpc.SelfLink,
+		nil,
+		fctx.config.Networks.DualStack,
+	)
+	if subnet == nil {
+		subnet, err = fctx.computeClient.InsertSubnet(ctx, region, desired)
+		if err != nil {
+			return err
+		}
+	} else {
+		subnet, err = fctx.updater.Subnet(ctx, fctx.infra.Spec.Region, desired, subnet)
+		if err != nil {
+			return err
+		}
+	}
+
+	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
+	fctx.whiteboard.SetObject(ObjectKeyServicesSubnet, subnet)
 	return nil
 }
 

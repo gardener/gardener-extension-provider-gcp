@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
 	"k8s.io/utils/ptr"
@@ -30,6 +31,18 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/imagevector"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
+
+// constraintK8sLess131 is a version constraint for versions < 1.31.
+//
+// TODO(ialidzhikov): Replace with versionutils.ConstraintK8sLess131 when vendoring a gardener/gardener version
+// that contains https://github.com/gardener/gardener/pull/10472.
+var constraintK8sLess131 *semver.Constraints
+
+func init() {
+	var err error
+	constraintK8sLess131, err = semver.NewConstraint("< 1.31-0")
+	utilruntime.Must(err)
+}
 
 // NewEnsurer creates a new controlplane ensurer.
 func NewEnsurer(logger logr.Logger) genericmutator.Ensurer {
@@ -212,20 +225,8 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 	}
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-config=")
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--external-cloud-volume-plugin=")
-
-	for i, v := range c.Command {
-		if v == "--allocate-node-cidrs=true" {
-			c.Command = append(c.Command[:i], c.Command[i+1:]...)
-		}
-	}
+	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--allocate-node-cidrs=")
 	c.Command = append(c.Command, "--allocate-node-cidrs=false")
-	for i, v := range c.Command {
-		if strings.Contains(v, "--service-cluster-ip-range") {
-			c.Command = append(c.Command[:i], c.Command[i+1:]...)
-		}
-	}
-	c.Command = append(c.Command, "--service-cluster-ip-range=10.96.0.0/12,fd00::/108")
-
 }
 
 func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {

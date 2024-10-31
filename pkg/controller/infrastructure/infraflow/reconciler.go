@@ -47,6 +47,8 @@ const (
 	ObjectKeyNodeSubnet = "subnet-nodes"
 	// ObjectKeyInternalSubnet is the key to store the internal subnet object.
 	ObjectKeyInternalSubnet = "subnet-internal"
+	// ObjectKeyInternalSubnet is the key to store the internal subnet object.
+	ObjectKeyServicesSubnet = "subnet-services"
 	// ObjectKeyRouter router is the key for the CloudRouter.
 	ObjectKeyRouter = "router"
 	// ObjectKeyNAT is the key for the .CloudNAT object.
@@ -55,10 +57,8 @@ const (
 	ObjectKeyIPAddresses = "addresses/ip"
 )
 
-var (
-	// DefaultUpdaterFunc is the default constructor used for an Updated used in the package.
-	DefaultUpdaterFunc = gcpclient.NewUpdater
-)
+// DefaultUpdaterFunc is the default constructor used for an Updated used in the package.
+var DefaultUpdaterFunc = gcpclient.NewUpdater
 
 // FlowContext is capable of reconciling and deleting the infrastructure for a shoot.
 type FlowContext struct {
@@ -195,6 +195,13 @@ func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 		status.Networks.Subnets = append(status.Networks.Subnets, v1alpha1.Subnet{
 			Name:    s.Name,
 			Purpose: v1alpha1.PurposeInternal,
+		})
+	}
+
+	if s := GetObject[*compute.Subnetwork](fctx.whiteboard, ObjectKeyServicesSubnet); s != nil {
+		status.Networks.Subnets = append(status.Networks.Subnets, v1alpha1.Subnet{
+			Name:    s.Name,
+			Purpose: v1alpha1.PurposeServices,
 		})
 	}
 

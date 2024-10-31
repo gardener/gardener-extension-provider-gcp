@@ -60,6 +60,10 @@ func (fctx *FlowContext) internalSubnetNameFromConfig() string {
 	return fmt.Sprintf("%s-internal", fctx.clusterName)
 }
 
+func (fctx *FlowContext) servicesSubnetNameFromConfig() string {
+	return fmt.Sprintf("%s-services", fctx.clusterName)
+}
+
 func (fctx *FlowContext) cloudRouterNameFromConfig() string {
 	routerName := fmt.Sprintf("%s-cloud-router", fctx.clusterName)
 	if fctx.config.Networks.VPC != nil && fctx.config.Networks.VPC.CloudRouter != nil {
@@ -104,17 +108,17 @@ func targetSubnetState(name, description, cidr, networkName string, flowLogs *gc
 		Network:               networkName,
 		EnableFlowLogs:        false,
 		LogConfig:             nil,
-		SecondaryIpRanges: []*compute.SubnetworkSecondaryRange{
-			&compute.SubnetworkSecondaryRange{
-				IpCidrRange: "192.168.0.0/16",
-				RangeName:   "ipv4-pod-cidr",
-			},
-		},
 	}
 
 	if dualStack.Enabled {
 		subnet.Ipv6AccessType = "EXTERNAL"
 		subnet.StackType = "IPV4_IPV6"
+		subnet.SecondaryIpRanges = []*compute.SubnetworkSecondaryRange{
+			{
+				IpCidrRange: "192.168.0.0/16",
+				RangeName:   "ipv4-pod-cidr",
+			},
+		}
 	}
 
 	if flowLogs != nil {
