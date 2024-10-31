@@ -16,10 +16,10 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/extensions"
 
-	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
+	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 )
 
 // Maximum length for "base" name due to fact that we use this name to name other GCP resources,
@@ -76,7 +76,7 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		return nil, fmt.Errorf("failed to determine VM details for bastion host: %w", err)
 	}
 
-	cloudProfileConfig, err := getCloudProfileConfig(cluster)
+	cloudProfileConfig, err := helper.CloudProfileConfigFromCluster(cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract cloud provider config from cluster: %w", err)
 	}
@@ -194,41 +194,24 @@ func FirewallEgressDenyAllResourceName(baseName string) string {
 	return fmt.Sprintf("%s-deny-all", baseName)
 }
 
-func getCloudProfileConfig(cluster *extensions.Cluster) (*gcpv1alpha1.CloudProfileConfig, error) {
-	if cluster.CloudProfile.Spec.ProviderConfig.Raw == nil {
-		return nil, fmt.Errorf("no cloud provider config set in cluster's CloudProfile")
-	}
-
-	var (
-		cloudProfileConfig = &gcpv1alpha1.CloudProfileConfig{}
-		decoder            = kubernetes.GardenCodec.UniversalDeserializer()
-	)
-
-	if _, _, err := decoder.Decode(cluster.CloudProfile.Spec.ProviderConfig.Raw, nil, cloudProfileConfig); err != nil {
-		return nil, err
-	}
-
-	return cloudProfileConfig, nil
-}
-
 // getProviderSpecificImage returns the provider specific MachineImageVersion that matches with the given MachineSpec
-func getProviderSpecificImage(images []gcpv1alpha1.MachineImages, vm extensionsbastion.MachineSpec) (gcpv1alpha1.MachineImageVersion, error) {
-	imageIndex := slices.IndexFunc(images, func(image gcpv1alpha1.MachineImages) bool {
+func getProviderSpecificImage(images []api.MachineImages, vm extensionsbastion.MachineSpec) (api.MachineImageVersion, error) {
+	imageIndex := slices.IndexFunc(images, func(image api.MachineImages) bool {
 		return image.Name == vm.ImageBaseName
 	})
 
 	if imageIndex == -1 {
-		return gcpv1alpha1.MachineImageVersion{},
+		return api.MachineImageVersion{},
 			fmt.Errorf("machine image with name %s not found in cloudProfileConfig", vm.ImageBaseName)
 	}
 
 	versions := images[imageIndex].Versions
-	versionIndex := slices.IndexFunc(versions, func(version gcpv1alpha1.MachineImageVersion) bool {
+	versionIndex := slices.IndexFunc(versions, func(version api.MachineImageVersion) bool {
 		return version.Version == vm.ImageVersion && version.Architecture != nil && *version.Architecture == vm.Architecture
 	})
 
 	if versionIndex == -1 {
-		return gcpv1alpha1.MachineImageVersion{},
+		return api.MachineImageVersion{},
 			fmt.Errorf("version %s for arch %s of image %s not found in cloudProfileConfig",
 				vm.ImageVersion, vm.Architecture, vm.ImageBaseName)
 	}

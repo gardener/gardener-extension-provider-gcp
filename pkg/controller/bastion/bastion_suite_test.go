@@ -26,7 +26,6 @@ import (
 	"k8s.io/utils/ptr"
 
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 )
 
 func TestBastion(t *testing.T) {
@@ -213,7 +212,7 @@ var _ = Describe("Bastion", func() {
 	Describe("getProviderSpecificImage", func() {
 		var (
 			desiredVM      extensionsbastion.MachineSpec
-			providerImages []v1alpha1.MachineImages
+			providerImages []gcpapi.MachineImages
 		)
 
 		BeforeEach(func() {
@@ -290,10 +289,10 @@ func createTestMachineTypes() []gardencorev1beta1.MachineType {
 	}}
 }
 
-func createTestProviderConfig() *v1alpha1.CloudProfileConfig {
-	return &v1alpha1.CloudProfileConfig{MachineImages: []v1alpha1.MachineImages{{
+func createTestProviderConfig() *gcpapi.CloudProfileConfig {
+	return &gcpapi.CloudProfileConfig{MachineImages: []gcpapi.MachineImages{{
 		Name: "gardenlinux",
-		Versions: []v1alpha1.MachineImageVersion{{
+		Versions: []gcpapi.MachineImageVersion{{
 			Version:      "1.2.3",
 			Image:        "/path/to/images",
 			Architecture: ptr.To("amd64"),
