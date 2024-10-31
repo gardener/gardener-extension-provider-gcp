@@ -32,13 +32,11 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
-var (
-	// constraintK8sLess131 is a version constraint for versions < 1.31.
-	//
-	// TODO(ialidzhikov): Replace with versionutils.ConstraintK8sLess131 when vendoring a gardener/gardener version
-	// that contains https://github.com/gardener/gardener/pull/10472.
-	constraintK8sLess131 *semver.Constraints
-)
+// constraintK8sLess131 is a version constraint for versions < 1.31.
+//
+// TODO(ialidzhikov): Replace with versionutils.ConstraintK8sLess131 when vendoring a gardener/gardener version
+// that contains https://github.com/gardener/gardener/pull/10472.
+var constraintK8sLess131 *semver.Constraints
 
 func init() {
 	var err error
@@ -227,20 +225,10 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 	}
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-config=")
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--external-cloud-volume-plugin=")
-
-	for i, v := range c.Command {
-		if v == "--allocate-node-cidrs=true" {
-			c.Command = append(c.Command[:i], c.Command[i+1:]...)
-		}
-	}
+	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--allocate-node-cidrs=")
 	c.Command = append(c.Command, "--allocate-node-cidrs=false")
-	for i, v := range c.Command {
-		if strings.Contains(v, "--service-cluster-ip-range") {
-			c.Command = append(c.Command[:i], c.Command[i+1:]...)
-		}
-	}
-	c.Command = append(c.Command, "--service-cluster-ip-range=10.96.0.0/12,fd00::/108")
-
+	// c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--service-cluster-ip-range=")
+	// c.Command = append(c.Command, "--service-cluster-ip-range=10.96.0.0/12,fd00::/108")
 }
 
 func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {

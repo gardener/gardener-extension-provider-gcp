@@ -39,6 +39,10 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
 	)
+	fctx.AddTask(g, "ensure IPv6 services subnet", fctx.ensureServicesSubnet,
+		shared.Timeout(defaultCreateTimeout),
+		shared.Dependencies(ensureVPC),
+	)
 	ensureRouter := fctx.AddTask(g, "ensure router", fctx.ensureCloudRouter,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
