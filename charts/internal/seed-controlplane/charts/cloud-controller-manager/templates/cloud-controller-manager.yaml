@@ -42,8 +42,8 @@ spec:
         - --allocate-node-cidrs=true
         - --cloud-provider=gce
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
-        - --service-cluster-ip-range=10.96.0.0/12,fd00::/108
         - --cluster-cidr={{ .Values.podNetwork }}
+        - --service-cluster-ip-range={{ .Values.serviceNetwork }}
         - --cluster-name={{ .Values.clusterName }}
         - --cidr-allocator-type={{ .Values.allocatorType }}
         - --concurrent-service-syncs=10

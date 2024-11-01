@@ -414,6 +414,7 @@ func (vp *valuesProvider) getCCMChartValues(
 		"clusterName":       cp.Namespace,
 		"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 		"podNetwork":        strings.Join(extensionscontroller.GetPodNetwork(cluster), ","),
+		"serviceNetwork":    strings.Join(extensionscontroller.GetServiceNetwork(cluster), ","),
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
 			"checksum/configmap-" + internal.CloudProviderConfigName:      checksums[internal.CloudProviderConfigName],
