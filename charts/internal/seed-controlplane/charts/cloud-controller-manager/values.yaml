@@ -3,6 +3,7 @@ allocatorType: CloudAllocator
 clusterName: shoot-foo-bar
 kubernetesVersion: 1.27.5
 podNetwork: 192.168.0.0/16
+serviceNetwork: 10.96.0.0/12
 podAnnotations: {}
 podLabels: {}
 featureGates: {}
