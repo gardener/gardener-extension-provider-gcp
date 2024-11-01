@@ -158,6 +158,37 @@ var _ = Describe("CredentialsBinding validator", func() {
 			Expect(credentialsBindingValidator.Validate(ctx, credentialsBindingSecret, old)).To(Succeed())
 		})
 
+		It("should succeed when the corresponding WorkloadIdentity is valid", func() {
+			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&securityv1alpha1.WorkloadIdentity{})).
+				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *securityv1alpha1.WorkloadIdentity, _ ...client.GetOption) error {
+					workloadIdentity := &securityv1alpha1.WorkloadIdentity{
+						Spec: securityv1alpha1.WorkloadIdentitySpec{
+							Audiences: []string{"foo"},
+							TargetSystem: securityv1alpha1.TargetSystem{
+								Type: "azure",
+								ProviderConfig: &runtime.RawExtension{
+									Raw: []byte(`
+apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+kind: WorkloadIdentityConfig
+projectID: "foo-valid"
+credentialsConfig:
+  universe_domain: "googleapis.com"
+  type: "external_account"
+  audience: "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
+  subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
+  token_url: "https://gardener.cloud/new-url"
+`),
+								},
+							},
+						},
+					}
+					*obj = *workloadIdentity
+					return nil
+				})
+
+			Expect(credentialsBindingValidator.Validate(ctx, credentialsBindingWorkloadIdentity, nil)).To(Succeed())
+		})
+
 		It("should return err if it fails to get the corresponding WorkloadIdentity", func() {
 			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&securityv1alpha1.WorkloadIdentity{})).Return(fakeErr)
 
