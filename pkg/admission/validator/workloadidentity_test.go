@@ -62,6 +62,11 @@ credentialsConfig:
 			workloadIdentityValidator = validator.NewWorkloadIdentityValidator(serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder())
 		})
 
+		It("should skip validation if workload identity is not of type 'gcp'", func() {
+			workloadIdentity.Spec.TargetSystem.Type = "foo"
+			Expect(workloadIdentityValidator.Validate(ctx, workloadIdentity, nil)).To(Succeed())
+		})
+
 		It("should successfully validate the creation of a workload identity", func() {
 			Expect(workloadIdentityValidator.Validate(ctx, workloadIdentity, nil)).To(Succeed())
 		})
