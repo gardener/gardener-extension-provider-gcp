@@ -82,10 +82,9 @@ func NewWorkloadIdentitiesWebhook(mgr manager.Manager) (*extensionswebhook.Webho
 			NewWorkloadIdentityValidator(serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder()): {{Obj: &securityv1alpha1.WorkloadIdentity{}}},
 		},
 		Target: extensionswebhook.TargetSeed,
-		ObjectSelector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{"provider.shoot.gardener.cloud/gcp": "true"},
-		},
-		// TODO(dimityrmirchev): Uncomment this line and remove the object selector once this extension uses a g/g version that contains https://github.com/gardener/gardener/pull/10784
-		// Predicates: []predicate.Predicate{extensionspredicate.GardenSecurityProviderType(gcp.Type)},
+		// TODO(dimityrmirchev): Uncomment this line and use the object selector once Gardener implements https://github.com/gardener/gardener/pull/10786
+		// ObjectSelector: &metav1.LabelSelector{
+		// 	MatchLabels: map[string]string{"provider.extensions.gardener.cloud/gcp": "true"},
+		// },
 	})
 }
