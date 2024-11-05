@@ -91,6 +91,22 @@ func (fctx *FlowContext) ensureUserManagedVPC(ctx context.Context) error {
 	return nil
 }
 
+func (fctx *FlowContext) ensureSubnetIPv6CidrBlock(ctx context.Context) error {
+	if fctx.config.Networks.DualStack != nil && fctx.config.Networks.DualStack.Enabled {
+		subnet := fctx.whiteboard.GetObject(ObjectKeyNodeSubnet).(*compute.Subnetwork)
+		if subnet == nil {
+			return fmt.Errorf("failed to get the subnet")
+		}
+		ipv6CidrBlock, err := fctx.computeClient.WaitForIPv6Cidr(ctx, fctx.infra.Spec.Region, fmt.Sprintf("%d", subnet.Id))
+		if err != nil {
+			return err
+		}
+		fctx.whiteboard.Set(IdentifierSubnetIPv6CidrBlock, ipv6CidrBlock)
+		cidr, _ := getLast96Subnet(subnet.ExternalIpv6Prefix)
+		fctx.whiteboard.Set(IdentifierIPv6ServiceCIDR, cidr)
+	}
+	return nil
+}
 func (fctx *FlowContext) ensureSubnet(ctx context.Context) error {
 	var (
 		region = fctx.infra.Spec.Region

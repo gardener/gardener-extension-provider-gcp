@@ -31,6 +31,10 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
 	)
+	_ = fctx.AddTask(g, "ensure IPv6 CIDR Block", fctx.ensureSubnetIPv6CidrBlock,
+		shared.Timeout(defaultCreateTimeout),
+		shared.Dependencies(ensureSubnet),
+	)
 	ensureInternalSubnet := fctx.AddTask(g, "ensure internal subnet", fctx.ensureInternalSubnet,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),

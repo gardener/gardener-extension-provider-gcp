@@ -2,9 +2,12 @@ package infraflow
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/go-logr/logr"
@@ -32,6 +35,10 @@ const (
 	CreatedResourcesExistKey = "resources_exist"
 	// ChildKeyIDs is the prefix key for all ids.
 	ChildKeyIDs = "ids"
+	// IdentifierSubnetIPv6CidrBlock is the IPv6 CIDR block attached to the subnet
+	IdentifierSubnetIPv6CidrBlock = "SubnetIPv6CidrBlock"
+	// IdentifierServiceCIDR is the key for the subnet cidr reservation for the service range.
+	IdentifierIPv6ServiceCIDR = "IPv6ServiceCIDR"
 	// KeyServiceAccountEmail is the key to store the service account object.
 	KeyServiceAccountEmail = "service-account-email"
 	// ObjectKeyVPC is the key to store the VPC object.
@@ -53,9 +60,6 @@ var (
 	DefaultUpdaterFunc = gcpclient.NewUpdater
 )
 
-// PersistStateFunc is a callback function that is used to persist the state during the reconciliation.
-type PersistStateFunc func(ctx context.Context, state *runtime.RawExtension) error
-
 // FlowContext is capable of reconciling and deleting the infrastructure for a shoot.
 type FlowContext struct {
 	bfg *shared.BasicFlowContext
@@ -66,9 +70,10 @@ type FlowContext struct {
 	updater        gcpclient.Updater
 	serviceAccount *gcpinternal.ServiceAccount
 	clusterName    string
+	runtimeClient  client.Client
+	networking     *v1beta1.Networking
 	whiteboard     shared.Whiteboard
 	podCIDR        *string
-	persistFn      PersistStateFunc
 	log            logr.Logger
 
 	computeClient gcpclient.ComputeClient
@@ -81,13 +86,14 @@ type Opts struct {
 	// Log is the logger using during the reconciliation.
 	Log logr.Logger
 	// Infra
-	Infra          *extensionsv1alpha1.Infrastructure
-	State          *gcp.InfrastructureState
-	Cluster        *controller.Cluster
+	Infra      *extensionsv1alpha1.Infrastructure
+	State      *gcp.InfrastructureState
+	Cluster    *controller.Cluster
+	Networking *v1beta1.Networking
+
 	ServiceAccount *gcpinternal.ServiceAccount
 	Factory        gcpclient.Factory
 	Client         client.Client
-	PersistFunc    PersistStateFunc
 }
 
 // NewFlowContext returns a new FlowContext.
@@ -116,19 +122,19 @@ func NewFlowContext(ctx context.Context, opts Opts) (*FlowContext, error) {
 		state:          opts.State,
 		updater:        DefaultUpdaterFunc(opts.Log, com),
 		clusterName:    opts.Cluster.ObjectMeta.Name,
+		runtimeClient:  opts.Client,
 		podCIDR:        opts.Cluster.Shoot.Spec.Networking.Pods,
-		persistFn:      opts.PersistFunc,
 		log:            opts.Log,
-
-		computeClient: com,
-		iamClient:     iam,
+		networking:     opts.Networking,
+		computeClient:  com,
+		iamClient:      iam,
 	}
 
 	return fr, nil
 }
 
 // Reconcile reconciles the infrastructure
-func (fctx *FlowContext) Reconcile(ctx context.Context) (*v1alpha1.InfrastructureStatus, *runtime.RawExtension, error) {
+func (fctx *FlowContext) Reconcile(ctx context.Context) error {
 	g := fctx.buildReconcileGraph()
 	f := g.Compile()
 	fctx.log.Info("starting Flow Reconciliation")
@@ -138,12 +144,14 @@ func (fctx *FlowContext) Reconcile(ctx context.Context) (*v1alpha1.Infrastructur
 	if err != nil {
 		err = flow.Causes(err)
 		fctx.log.Error(err, "flow reconciliation failed")
-		return nil, fctx.getCurrentState(), err
+		return errors.Join(flow.Causes(err), fctx.persistState(ctx))
 	}
 
 	status := fctx.getStatus()
 	state := fctx.getCurrentState()
-	return status, state, nil
+	subnetIPv6CidrBlock := fctx.whiteboard.Get(IdentifierSubnetIPv6CidrBlock)
+	serviceIPv6CIDR := fctx.whiteboard.Get(IdentifierIPv6ServiceCIDR)
+	return PatchProviderStatusAndState(ctx, fctx.runtimeClient, fctx.infra, fctx.networking, status, state, subnetIPv6CidrBlock, serviceIPv6CIDR)
 }
 
 // Delete is used to destroy the infrastructure.
@@ -172,7 +180,6 @@ func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 	if fctx.config.Networks.DualStack != nil && fctx.config.Networks.DualStack.Enabled {
 		status.Networks.DualStackEnabled = true
 	}
-
 	if n := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC); n != nil {
 		status.Networks.VPC.Name = n.Name
 	}
@@ -224,11 +231,9 @@ func (fctx *FlowContext) getCurrentState() *runtime.RawExtension {
 }
 
 func (fctx *FlowContext) persistState(ctx context.Context) error {
-	if fctx.persistFn == nil {
-		return nil
-	}
-
-	return fctx.persistFn(ctx, fctx.getCurrentState())
+	subnetIPv6CidrBlock := fctx.whiteboard.Get(IdentifierSubnetIPv6CidrBlock)
+	serviceIPv6CIDR := fctx.whiteboard.Get(IdentifierIPv6ServiceCIDR)
+	return PatchProviderStatusAndState(ctx, fctx.runtimeClient, fctx.infra, fctx.networking, nil, fctx.getCurrentState(), subnetIPv6CidrBlock, serviceIPv6CIDR)
 }
 
 func (fctx *FlowContext) loadWhiteBoard() {
@@ -240,4 +245,52 @@ func (fctx *FlowContext) loadWhiteBoard() {
 	}
 
 	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
+}
+
+func PatchProviderStatusAndState(
+	ctx context.Context,
+	runtimeClient client.Client,
+	infra *extensionsv1alpha1.Infrastructure,
+	networking *v1beta1.Networking,
+	status *v1alpha1.InfrastructureStatus,
+	state *runtime.RawExtension,
+	subnetIPv6CIDR, serviceIPv6CIDR *string,
+) error {
+	patch := client.MergeFrom(infra.DeepCopy())
+	if status != nil {
+		infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
+		infra.Status.EgressCIDRs = make([]string, len(status.Networks.NatIPs))
+		for i, natIP := range status.Networks.NatIPs {
+			infra.Status.EgressCIDRs[i] = fmt.Sprintf("%s/32", natIP.IP)
+		}
+		infra.Status.Networking = &extensionsv1alpha1.InfrastructureStatusNetworking{}
+		if networking != nil {
+			if networking.Nodes != nil {
+				infra.Status.Networking.Nodes = append(infra.Status.Networking.Nodes, *networking.Nodes)
+			}
+			if networking.Pods != nil {
+				infra.Status.Networking.Pods = append(infra.Status.Networking.Pods, *networking.Pods)
+			}
+			if networking.Services != nil {
+				infra.Status.Networking.Services = append(infra.Status.Networking.Services, *networking.Services)
+			}
+		}
+		if subnetIPv6CIDR != nil && serviceIPv6CIDR != nil {
+			infra.Status.Networking.Nodes = append(infra.Status.Networking.Nodes, *subnetIPv6CIDR)
+			infra.Status.Networking.Pods = append(infra.Status.Networking.Pods, *subnetIPv6CIDR)
+			infra.Status.Networking.Services = append(infra.Status.Networking.Services, *serviceIPv6CIDR)
+			infra.Status.EgressCIDRs = append(infra.Status.EgressCIDRs, *subnetIPv6CIDR)
+		}
+	}
+	if state != nil {
+		infra.Status.State = state
+	}
+
+	if data, err := patch.Data(infra); err != nil {
+		return fmt.Errorf("failed getting patch data for infra %s: %w", infra.Name, err)
+	} else if string(data) == `{}` {
+		return nil
+	}
+
+	return runtimeClient.Status().Patch(ctx, infra, patch)
 }
