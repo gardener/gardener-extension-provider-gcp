@@ -2,6 +2,8 @@ package infraflow
 
 import (
 	"fmt"
+	"math/big"
+	"net"
 
 	"google.golang.org/api/compute/v1"
 
@@ -309,4 +311,36 @@ func isUserRouter(config *gcp.InfrastructureConfig) bool {
 
 func isUserVPC(config *gcp.InfrastructureConfig) bool {
 	return config.Networks.VPC != nil && len(config.Networks.VPC.Name) > 0
+}
+
+// Helper function to convert IP to big.Int
+func ipToBigInt(ip net.IP) *big.Int {
+	i := new(big.Int)
+	i.SetBytes(ip)
+	return i
+}
+
+// Helper function to convert big.Int to IP
+func bigIntToIP(i *big.Int) net.IP {
+	return net.IP(i.Bytes())
+}
+
+// Function to get the latest /96 subnet in the /64 range
+func getLast96Subnet(prefix string) (string, error) {
+	// Parse the IP and CIDR notation
+	ip, ipnet, err := net.ParseCIDR(prefix)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse prefix: %v", err)
+	}
+
+	// Check if the prefix is a /64 IPv6 prefix
+	if ones, bits := ipnet.Mask.Size(); ones != 64 || bits != 128 {
+		return "", fmt.Errorf("prefix must be a /64 IPv6 prefix")
+	}
+
+	// Convert the IP to a 16-byte array and set bits 65-96 to 1
+	ip[8], ip[9], ip[10], ip[11] = 0xFF, 0xFF, 0xFF, 0xFF
+
+	// Return the result as a /96 prefix
+	return fmt.Sprintf("%s/96", ip.String()), nil
 }

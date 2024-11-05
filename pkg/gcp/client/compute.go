@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -59,7 +60,8 @@ type ComputeClient interface {
 	DeleteSubnet(ctx context.Context, region, id string) error
 	// ExpandSubnet expands the subnet to the target CIDR.
 	ExpandSubnet(ctx context.Context, region, id, cidr string) (*compute.Subnetwork, error)
-
+	// WaitForIPv6Cidr waits for the ipv6 cidr block association
+	WaitForIPv6Cidr(ctx context.Context, region string, subnetID string) (string, error)
 	// InsertRouter creates a router with the given specification.
 	InsertRouter(ctx context.Context, region string, router *compute.Router) (*compute.Router, error)
 	// GetRouter returns the Router specified by id.
@@ -94,6 +96,20 @@ type ComputeClient interface {
 type computeClient struct {
 	service   *compute.Service
 	projectID string
+}
+
+// RetryableIPv6CIDRError is a custom error type.
+type RetryableIPv6CIDRError struct{}
+
+// Error prints the error message of the RetryableIPv6CIDRError error.
+func (e *RetryableIPv6CIDRError) Error() string {
+	return "no ipv6 CIDR assigned"
+}
+
+// RetryableIPv6CIDRError returns true if the error indicates that getting the IPv6 CIDR can be retried.
+func IsRetryableIPv6CIDRError(err error) bool {
+	_, ok := err.(*RetryableIPv6CIDRError)
+	return ok
 }
 
 // NewComputeClient returns a client for Compute API. The client follows the following conventions:
@@ -537,4 +553,42 @@ func (c *computeClient) ListImages(ctx context.Context, imageName, orderBy, fiel
 // GetRegion returns the Region specified.
 func (c *computeClient) GetRegion(ctx context.Context, region string) (*compute.Region, error) {
 	return c.service.Regions.Get(c.projectID, region).Context(ctx).Do()
+}
+
+// WaitForIPv6Cidr waits for the ipv6 cidr block association
+func (c *computeClient) WaitForIPv6Cidr(ctx context.Context, region, subnetID string) (string, error) {
+
+	maxRetries := 30
+	waitInterval := 10 * time.Second
+	for i := 0; i < maxRetries; i++ {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(waitInterval):
+			ipv6CidrBlock, err := c.GetIPv6CidrForSubnet(ctx, region, subnetID)
+			if err == nil {
+				return ipv6CidrBlock, nil
+			}
+			if !IsRetryableIPv6CIDRError(err) {
+				return "", err
+			}
+		}
+	}
+	return "", fmt.Errorf("no IPv6 CIDR Block was assigned to VPC")
+}
+
+// GetIPv6CidrForSubnet retrieves the IPv6 CIDR range for a given GCP subnet.
+func (c *computeClient) GetIPv6CidrForSubnet(ctx context.Context, region, subnetID string) (string, error) {
+	// Retrieve the subnet information using the provided `region` and `subnetID`
+	subnet, err := c.GetSubnet(ctx, region, subnetID)
+	if err != nil {
+		return "", fmt.Errorf("error retrieving subnet: %v", err)
+	}
+
+	// Check for the IPv6 CIDR range in the subnet's information
+	if subnet.ExternalIpv6Prefix == "" {
+		return "", &RetryableIPv6CIDRError{}
+	}
+
+	return subnet.ExternalIpv6Prefix, nil
 }

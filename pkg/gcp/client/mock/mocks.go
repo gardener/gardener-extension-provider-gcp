@@ -637,3 +637,12 @@ func (mr *MockComputeClientMockRecorder) PatchSubnet(ctx, region, id, subnet any
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchSubnet", reflect.TypeOf((*MockComputeClient)(nil).PatchSubnet), ctx, region, id, subnet)
 }
+
+// WaitForIPv6Cidr mocks base method.
+func (m *MockComputeClient) WaitForIPv6Cidr(arg0 context.Context, arg1, arg2 string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WaitForIPv6Cidr", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
