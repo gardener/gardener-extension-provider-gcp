@@ -24,6 +24,7 @@ import (
 type MockFactory struct {
 	ctrl     *gomock.Controller
 	recorder *MockFactoryMockRecorder
+	isgomock struct{}
 }
 
 // MockFactoryMockRecorder is the mock recorder for MockFactory.
@@ -107,6 +108,7 @@ func (mr *MockFactoryMockRecorder) Storage(arg0, arg1, arg2 any) *gomock.Call {
 type MockDNSClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockDNSClientMockRecorder
+	isgomock struct{}
 }
 
 // MockDNSClientMockRecorder is the mock recorder for MockDNSClient.
@@ -127,52 +129,53 @@ func (m *MockDNSClient) EXPECT() *MockDNSClientMockRecorder {
 }
 
 // CreateOrUpdateRecordSet mocks base method.
-func (m *MockDNSClient) CreateOrUpdateRecordSet(arg0 context.Context, arg1, arg2, arg3 string, arg4 []string, arg5 int64) error {
+func (m *MockDNSClient) CreateOrUpdateRecordSet(ctx context.Context, managedZone, name, recordType string, rrdatas []string, ttl int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdateRecordSet", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "CreateOrUpdateRecordSet", ctx, managedZone, name, recordType, rrdatas, ttl)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateOrUpdateRecordSet indicates an expected call of CreateOrUpdateRecordSet.
-func (mr *MockDNSClientMockRecorder) CreateOrUpdateRecordSet(arg0, arg1, arg2, arg3, arg4, arg5 any) *gomock.Call {
+func (mr *MockDNSClientMockRecorder) CreateOrUpdateRecordSet(ctx, managedZone, name, recordType, rrdatas, ttl any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateRecordSet", reflect.TypeOf((*MockDNSClient)(nil).CreateOrUpdateRecordSet), arg0, arg1, arg2, arg3, arg4, arg5)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateRecordSet", reflect.TypeOf((*MockDNSClient)(nil).CreateOrUpdateRecordSet), ctx, managedZone, name, recordType, rrdatas, ttl)
 }
 
 // DeleteRecordSet mocks base method.
-func (m *MockDNSClient) DeleteRecordSet(arg0 context.Context, arg1, arg2, arg3 string) error {
+func (m *MockDNSClient) DeleteRecordSet(ctx context.Context, managedZone, name, recordType string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRecordSet", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "DeleteRecordSet", ctx, managedZone, name, recordType)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteRecordSet indicates an expected call of DeleteRecordSet.
-func (mr *MockDNSClientMockRecorder) DeleteRecordSet(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockDNSClientMockRecorder) DeleteRecordSet(ctx, managedZone, name, recordType any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRecordSet", reflect.TypeOf((*MockDNSClient)(nil).DeleteRecordSet), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRecordSet", reflect.TypeOf((*MockDNSClient)(nil).DeleteRecordSet), ctx, managedZone, name, recordType)
 }
 
 // GetManagedZones mocks base method.
-func (m *MockDNSClient) GetManagedZones(arg0 context.Context) (map[string]string, error) {
+func (m *MockDNSClient) GetManagedZones(ctx context.Context) (map[string]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetManagedZones", arg0)
+	ret := m.ctrl.Call(m, "GetManagedZones", ctx)
 	ret0, _ := ret[0].(map[string]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetManagedZones indicates an expected call of GetManagedZones.
-func (mr *MockDNSClientMockRecorder) GetManagedZones(arg0 any) *gomock.Call {
+func (mr *MockDNSClientMockRecorder) GetManagedZones(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetManagedZones", reflect.TypeOf((*MockDNSClient)(nil).GetManagedZones), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetManagedZones", reflect.TypeOf((*MockDNSClient)(nil).GetManagedZones), ctx)
 }
 
 // MockComputeClient is a mock of ComputeClient interface.
 type MockComputeClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockComputeClientMockRecorder
+	isgomock struct{}
 }
 
 // MockComputeClientMockRecorder is the mock recorder for MockComputeClient.
@@ -193,444 +196,444 @@ func (m *MockComputeClient) EXPECT() *MockComputeClientMockRecorder {
 }
 
 // DeleteDisk mocks base method.
-func (m *MockComputeClient) DeleteDisk(arg0 context.Context, arg1, arg2 string) error {
+func (m *MockComputeClient) DeleteDisk(ctx context.Context, zone, diskName string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteDisk", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "DeleteDisk", ctx, zone, diskName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteDisk indicates an expected call of DeleteDisk.
-func (mr *MockComputeClientMockRecorder) DeleteDisk(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) DeleteDisk(ctx, zone, diskName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDisk", reflect.TypeOf((*MockComputeClient)(nil).DeleteDisk), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDisk", reflect.TypeOf((*MockComputeClient)(nil).DeleteDisk), ctx, zone, diskName)
 }
 
 // DeleteFirewallRule mocks base method.
-func (m *MockComputeClient) DeleteFirewallRule(arg0 context.Context, arg1 string) error {
+func (m *MockComputeClient) DeleteFirewallRule(ctx context.Context, firewall string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteFirewallRule", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteFirewallRule", ctx, firewall)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteFirewallRule indicates an expected call of DeleteFirewallRule.
-func (mr *MockComputeClientMockRecorder) DeleteFirewallRule(arg0, arg1 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) DeleteFirewallRule(ctx, firewall any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFirewallRule", reflect.TypeOf((*MockComputeClient)(nil).DeleteFirewallRule), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFirewallRule", reflect.TypeOf((*MockComputeClient)(nil).DeleteFirewallRule), ctx, firewall)
 }
 
 // DeleteInstance mocks base method.
-func (m *MockComputeClient) DeleteInstance(arg0 context.Context, arg1, arg2 string) error {
+func (m *MockComputeClient) DeleteInstance(ctx context.Context, zone, instanceName string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteInstance", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "DeleteInstance", ctx, zone, instanceName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteInstance indicates an expected call of DeleteInstance.
-func (mr *MockComputeClientMockRecorder) DeleteInstance(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) DeleteInstance(ctx, zone, instanceName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteInstance", reflect.TypeOf((*MockComputeClient)(nil).DeleteInstance), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteInstance", reflect.TypeOf((*MockComputeClient)(nil).DeleteInstance), ctx, zone, instanceName)
 }
 
 // DeleteNetwork mocks base method.
-func (m *MockComputeClient) DeleteNetwork(arg0 context.Context, arg1 string) error {
+func (m *MockComputeClient) DeleteNetwork(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteNetwork", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteNetwork", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteNetwork indicates an expected call of DeleteNetwork.
-func (mr *MockComputeClientMockRecorder) DeleteNetwork(arg0, arg1 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) DeleteNetwork(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNetwork", reflect.TypeOf((*MockComputeClient)(nil).DeleteNetwork), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNetwork", reflect.TypeOf((*MockComputeClient)(nil).DeleteNetwork), ctx, id)
 }
 
 // DeleteRoute mocks base method.
-func (m *MockComputeClient) DeleteRoute(arg0 context.Context, arg1 string) error {
+func (m *MockComputeClient) DeleteRoute(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRoute", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteRoute", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteRoute indicates an expected call of DeleteRoute.
-func (mr *MockComputeClientMockRecorder) DeleteRoute(arg0, arg1 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) DeleteRoute(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRoute", reflect.TypeOf((*MockComputeClient)(nil).DeleteRoute), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRoute", reflect.TypeOf((*MockComputeClient)(nil).DeleteRoute), ctx, id)
 }
 
 // DeleteRouter mocks base method.
-func (m *MockComputeClient) DeleteRouter(arg0 context.Context, arg1, arg2 string) error {
+func (m *MockComputeClient) DeleteRouter(ctx context.Context, region, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRouter", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "DeleteRouter", ctx, region, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteRouter indicates an expected call of DeleteRouter.
-func (mr *MockComputeClientMockRecorder) DeleteRouter(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) DeleteRouter(ctx, region, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRouter", reflect.TypeOf((*MockComputeClient)(nil).DeleteRouter), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRouter", reflect.TypeOf((*MockComputeClient)(nil).DeleteRouter), ctx, region, id)
 }
 
 // DeleteSubnet mocks base method.
-func (m *MockComputeClient) DeleteSubnet(arg0 context.Context, arg1, arg2 string) error {
+func (m *MockComputeClient) DeleteSubnet(ctx context.Context, region, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteSubnet", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "DeleteSubnet", ctx, region, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteSubnet indicates an expected call of DeleteSubnet.
-func (mr *MockComputeClientMockRecorder) DeleteSubnet(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) DeleteSubnet(ctx, region, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSubnet", reflect.TypeOf((*MockComputeClient)(nil).DeleteSubnet), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSubnet", reflect.TypeOf((*MockComputeClient)(nil).DeleteSubnet), ctx, region, id)
 }
 
 // ExpandSubnet mocks base method.
-func (m *MockComputeClient) ExpandSubnet(arg0 context.Context, arg1, arg2, arg3 string) (*compute.Subnetwork, error) {
+func (m *MockComputeClient) ExpandSubnet(ctx context.Context, region, id, cidr string) (*compute.Subnetwork, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExpandSubnet", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "ExpandSubnet", ctx, region, id, cidr)
 	ret0, _ := ret[0].(*compute.Subnetwork)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ExpandSubnet indicates an expected call of ExpandSubnet.
-func (mr *MockComputeClientMockRecorder) ExpandSubnet(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) ExpandSubnet(ctx, region, id, cidr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandSubnet", reflect.TypeOf((*MockComputeClient)(nil).ExpandSubnet), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandSubnet", reflect.TypeOf((*MockComputeClient)(nil).ExpandSubnet), ctx, region, id, cidr)
 }
 
 // GetAddress mocks base method.
-func (m *MockComputeClient) GetAddress(arg0 context.Context, arg1, arg2 string) (*compute.Address, error) {
+func (m *MockComputeClient) GetAddress(ctx context.Context, region, name string) (*compute.Address, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAddress", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetAddress", ctx, region, name)
 	ret0, _ := ret[0].(*compute.Address)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAddress indicates an expected call of GetAddress.
-func (mr *MockComputeClientMockRecorder) GetAddress(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) GetAddress(ctx, region, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAddress", reflect.TypeOf((*MockComputeClient)(nil).GetAddress), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAddress", reflect.TypeOf((*MockComputeClient)(nil).GetAddress), ctx, region, name)
 }
 
 // GetDisk mocks base method.
-func (m *MockComputeClient) GetDisk(arg0 context.Context, arg1, arg2 string) (*compute.Disk, error) {
+func (m *MockComputeClient) GetDisk(ctx context.Context, zone, instanceName string) (*compute.Disk, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDisk", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetDisk", ctx, zone, instanceName)
 	ret0, _ := ret[0].(*compute.Disk)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetDisk indicates an expected call of GetDisk.
-func (mr *MockComputeClientMockRecorder) GetDisk(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) GetDisk(ctx, zone, instanceName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDisk", reflect.TypeOf((*MockComputeClient)(nil).GetDisk), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDisk", reflect.TypeOf((*MockComputeClient)(nil).GetDisk), ctx, zone, instanceName)
 }
 
 // GetExternalAddresses mocks base method.
-func (m *MockComputeClient) GetExternalAddresses(arg0 context.Context, arg1 string) (map[string][]string, error) {
+func (m *MockComputeClient) GetExternalAddresses(ctx context.Context, region string) (map[string][]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetExternalAddresses", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetExternalAddresses", ctx, region)
 	ret0, _ := ret[0].(map[string][]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetExternalAddresses indicates an expected call of GetExternalAddresses.
-func (mr *MockComputeClientMockRecorder) GetExternalAddresses(arg0, arg1 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) GetExternalAddresses(ctx, region any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExternalAddresses", reflect.TypeOf((*MockComputeClient)(nil).GetExternalAddresses), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExternalAddresses", reflect.TypeOf((*MockComputeClient)(nil).GetExternalAddresses), ctx, region)
 }
 
 // GetFirewallRule mocks base method.
-func (m *MockComputeClient) GetFirewallRule(arg0 context.Context, arg1 string) (*compute.Firewall, error) {
+func (m *MockComputeClient) GetFirewallRule(ctx context.Context, firewall string) (*compute.Firewall, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFirewallRule", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetFirewallRule", ctx, firewall)
 	ret0, _ := ret[0].(*compute.Firewall)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetFirewallRule indicates an expected call of GetFirewallRule.
-func (mr *MockComputeClientMockRecorder) GetFirewallRule(arg0, arg1 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) GetFirewallRule(ctx, firewall any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFirewallRule", reflect.TypeOf((*MockComputeClient)(nil).GetFirewallRule), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFirewallRule", reflect.TypeOf((*MockComputeClient)(nil).GetFirewallRule), ctx, firewall)
 }
 
 // GetInstance mocks base method.
-func (m *MockComputeClient) GetInstance(arg0 context.Context, arg1, arg2 string) (*compute.Instance, error) {
+func (m *MockComputeClient) GetInstance(ctx context.Context, zone, instanceName string) (*compute.Instance, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetInstance", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetInstance", ctx, zone, instanceName)
 	ret0, _ := ret[0].(*compute.Instance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetInstance indicates an expected call of GetInstance.
-func (mr *MockComputeClientMockRecorder) GetInstance(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) GetInstance(ctx, zone, instanceName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInstance", reflect.TypeOf((*MockComputeClient)(nil).GetInstance), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInstance", reflect.TypeOf((*MockComputeClient)(nil).GetInstance), ctx, zone, instanceName)
 }
 
 // GetNetwork mocks base method.
-func (m *MockComputeClient) GetNetwork(arg0 context.Context, arg1 string) (*compute.Network, error) {
+func (m *MockComputeClient) GetNetwork(ctx context.Context, id string) (*compute.Network, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetNetwork", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetNetwork", ctx, id)
 	ret0, _ := ret[0].(*compute.Network)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetNetwork indicates an expected call of GetNetwork.
-func (mr *MockComputeClientMockRecorder) GetNetwork(arg0, arg1 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) GetNetwork(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNetwork", reflect.TypeOf((*MockComputeClient)(nil).GetNetwork), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNetwork", reflect.TypeOf((*MockComputeClient)(nil).GetNetwork), ctx, id)
 }
 
 // GetRegion mocks base method.
-func (m *MockComputeClient) GetRegion(arg0 context.Context, arg1 string) (*compute.Region, error) {
+func (m *MockComputeClient) GetRegion(ctx context.Context, region string) (*compute.Region, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRegion", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetRegion", ctx, region)
 	ret0, _ := ret[0].(*compute.Region)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRegion indicates an expected call of GetRegion.
-func (mr *MockComputeClientMockRecorder) GetRegion(arg0, arg1 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) GetRegion(ctx, region any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRegion", reflect.TypeOf((*MockComputeClient)(nil).GetRegion), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRegion", reflect.TypeOf((*MockComputeClient)(nil).GetRegion), ctx, region)
 }
 
 // GetRouter mocks base method.
-func (m *MockComputeClient) GetRouter(arg0 context.Context, arg1, arg2 string) (*compute.Router, error) {
+func (m *MockComputeClient) GetRouter(ctx context.Context, region, id string) (*compute.Router, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRouter", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetRouter", ctx, region, id)
 	ret0, _ := ret[0].(*compute.Router)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRouter indicates an expected call of GetRouter.
-func (mr *MockComputeClientMockRecorder) GetRouter(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) GetRouter(ctx, region, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRouter", reflect.TypeOf((*MockComputeClient)(nil).GetRouter), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRouter", reflect.TypeOf((*MockComputeClient)(nil).GetRouter), ctx, region, id)
 }
 
 // GetSubnet mocks base method.
-func (m *MockComputeClient) GetSubnet(arg0 context.Context, arg1, arg2 string) (*compute.Subnetwork, error) {
+func (m *MockComputeClient) GetSubnet(ctx context.Context, region, id string) (*compute.Subnetwork, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSubnet", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetSubnet", ctx, region, id)
 	ret0, _ := ret[0].(*compute.Subnetwork)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSubnet indicates an expected call of GetSubnet.
-func (mr *MockComputeClientMockRecorder) GetSubnet(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) GetSubnet(ctx, region, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubnet", reflect.TypeOf((*MockComputeClient)(nil).GetSubnet), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubnet", reflect.TypeOf((*MockComputeClient)(nil).GetSubnet), ctx, region, id)
 }
 
 // InsertDisk mocks base method.
-func (m *MockComputeClient) InsertDisk(arg0 context.Context, arg1 string, arg2 *compute.Disk) (*compute.Disk, error) {
+func (m *MockComputeClient) InsertDisk(ctx context.Context, zone string, disk *compute.Disk) (*compute.Disk, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertDisk", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "InsertDisk", ctx, zone, disk)
 	ret0, _ := ret[0].(*compute.Disk)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InsertDisk indicates an expected call of InsertDisk.
-func (mr *MockComputeClientMockRecorder) InsertDisk(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) InsertDisk(ctx, zone, disk any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertDisk", reflect.TypeOf((*MockComputeClient)(nil).InsertDisk), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertDisk", reflect.TypeOf((*MockComputeClient)(nil).InsertDisk), ctx, zone, disk)
 }
 
 // InsertFirewallRule mocks base method.
-func (m *MockComputeClient) InsertFirewallRule(arg0 context.Context, arg1 *compute.Firewall) (*compute.Firewall, error) {
+func (m *MockComputeClient) InsertFirewallRule(ctx context.Context, firewall *compute.Firewall) (*compute.Firewall, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertFirewallRule", arg0, arg1)
+	ret := m.ctrl.Call(m, "InsertFirewallRule", ctx, firewall)
 	ret0, _ := ret[0].(*compute.Firewall)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InsertFirewallRule indicates an expected call of InsertFirewallRule.
-func (mr *MockComputeClientMockRecorder) InsertFirewallRule(arg0, arg1 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) InsertFirewallRule(ctx, firewall any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertFirewallRule", reflect.TypeOf((*MockComputeClient)(nil).InsertFirewallRule), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertFirewallRule", reflect.TypeOf((*MockComputeClient)(nil).InsertFirewallRule), ctx, firewall)
 }
 
 // InsertInstance mocks base method.
-func (m *MockComputeClient) InsertInstance(arg0 context.Context, arg1 string, arg2 *compute.Instance) (*compute.Instance, error) {
+func (m *MockComputeClient) InsertInstance(ctx context.Context, zone string, instance *compute.Instance) (*compute.Instance, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertInstance", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "InsertInstance", ctx, zone, instance)
 	ret0, _ := ret[0].(*compute.Instance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InsertInstance indicates an expected call of InsertInstance.
-func (mr *MockComputeClientMockRecorder) InsertInstance(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) InsertInstance(ctx, zone, instance any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertInstance", reflect.TypeOf((*MockComputeClient)(nil).InsertInstance), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertInstance", reflect.TypeOf((*MockComputeClient)(nil).InsertInstance), ctx, zone, instance)
 }
 
 // InsertNetwork mocks base method.
-func (m *MockComputeClient) InsertNetwork(arg0 context.Context, arg1 *compute.Network) (*compute.Network, error) {
+func (m *MockComputeClient) InsertNetwork(ctx context.Context, nw *compute.Network) (*compute.Network, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertNetwork", arg0, arg1)
+	ret := m.ctrl.Call(m, "InsertNetwork", ctx, nw)
 	ret0, _ := ret[0].(*compute.Network)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InsertNetwork indicates an expected call of InsertNetwork.
-func (mr *MockComputeClientMockRecorder) InsertNetwork(arg0, arg1 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) InsertNetwork(ctx, nw any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertNetwork", reflect.TypeOf((*MockComputeClient)(nil).InsertNetwork), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertNetwork", reflect.TypeOf((*MockComputeClient)(nil).InsertNetwork), ctx, nw)
 }
 
 // InsertRouter mocks base method.
-func (m *MockComputeClient) InsertRouter(arg0 context.Context, arg1 string, arg2 *compute.Router) (*compute.Router, error) {
+func (m *MockComputeClient) InsertRouter(ctx context.Context, region string, router *compute.Router) (*compute.Router, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertRouter", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "InsertRouter", ctx, region, router)
 	ret0, _ := ret[0].(*compute.Router)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InsertRouter indicates an expected call of InsertRouter.
-func (mr *MockComputeClientMockRecorder) InsertRouter(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) InsertRouter(ctx, region, router any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertRouter", reflect.TypeOf((*MockComputeClient)(nil).InsertRouter), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertRouter", reflect.TypeOf((*MockComputeClient)(nil).InsertRouter), ctx, region, router)
 }
 
 // InsertSubnet mocks base method.
-func (m *MockComputeClient) InsertSubnet(arg0 context.Context, arg1 string, arg2 *compute.Subnetwork) (*compute.Subnetwork, error) {
+func (m *MockComputeClient) InsertSubnet(ctx context.Context, region string, subnet *compute.Subnetwork) (*compute.Subnetwork, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertSubnet", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "InsertSubnet", ctx, region, subnet)
 	ret0, _ := ret[0].(*compute.Subnetwork)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InsertSubnet indicates an expected call of InsertSubnet.
-func (mr *MockComputeClientMockRecorder) InsertSubnet(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) InsertSubnet(ctx, region, subnet any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertSubnet", reflect.TypeOf((*MockComputeClient)(nil).InsertSubnet), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertSubnet", reflect.TypeOf((*MockComputeClient)(nil).InsertSubnet), ctx, region, subnet)
 }
 
 // ListFirewallRules mocks base method.
-func (m *MockComputeClient) ListFirewallRules(arg0 context.Context, arg1 client.FirewallListOpts) ([]*compute.Firewall, error) {
+func (m *MockComputeClient) ListFirewallRules(ctx context.Context, opts client.FirewallListOpts) ([]*compute.Firewall, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListFirewallRules", arg0, arg1)
+	ret := m.ctrl.Call(m, "ListFirewallRules", ctx, opts)
 	ret0, _ := ret[0].([]*compute.Firewall)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListFirewallRules indicates an expected call of ListFirewallRules.
-func (mr *MockComputeClientMockRecorder) ListFirewallRules(arg0, arg1 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) ListFirewallRules(ctx, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFirewallRules", reflect.TypeOf((*MockComputeClient)(nil).ListFirewallRules), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFirewallRules", reflect.TypeOf((*MockComputeClient)(nil).ListFirewallRules), ctx, opts)
 }
 
 // ListImages mocks base method.
-func (m *MockComputeClient) ListImages(arg0 context.Context, arg1, arg2, arg3 string) (*compute.ImageList, error) {
+func (m *MockComputeClient) ListImages(ctx context.Context, imageName, orderBy, fields string) (*compute.ImageList, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListImages", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "ListImages", ctx, imageName, orderBy, fields)
 	ret0, _ := ret[0].(*compute.ImageList)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListImages indicates an expected call of ListImages.
-func (mr *MockComputeClientMockRecorder) ListImages(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) ListImages(ctx, imageName, orderBy, fields any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListImages", reflect.TypeOf((*MockComputeClient)(nil).ListImages), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListImages", reflect.TypeOf((*MockComputeClient)(nil).ListImages), ctx, imageName, orderBy, fields)
 }
 
 // ListRoutes mocks base method.
-func (m *MockComputeClient) ListRoutes(arg0 context.Context, arg1 client.RouteListOpts) ([]*compute.Route, error) {
+func (m *MockComputeClient) ListRoutes(ctx context.Context, opts client.RouteListOpts) ([]*compute.Route, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRoutes", arg0, arg1)
+	ret := m.ctrl.Call(m, "ListRoutes", ctx, opts)
 	ret0, _ := ret[0].([]*compute.Route)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListRoutes indicates an expected call of ListRoutes.
-func (mr *MockComputeClientMockRecorder) ListRoutes(arg0, arg1 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) ListRoutes(ctx, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoutes", reflect.TypeOf((*MockComputeClient)(nil).ListRoutes), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoutes", reflect.TypeOf((*MockComputeClient)(nil).ListRoutes), ctx, opts)
 }
 
 // PatchFirewallRule mocks base method.
-func (m *MockComputeClient) PatchFirewallRule(arg0 context.Context, arg1 string, arg2 *compute.Firewall) (*compute.Firewall, error) {
+func (m *MockComputeClient) PatchFirewallRule(ctx context.Context, name string, firewall *compute.Firewall) (*compute.Firewall, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PatchFirewallRule", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "PatchFirewallRule", ctx, name, firewall)
 	ret0, _ := ret[0].(*compute.Firewall)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PatchFirewallRule indicates an expected call of PatchFirewallRule.
-func (mr *MockComputeClientMockRecorder) PatchFirewallRule(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) PatchFirewallRule(ctx, name, firewall any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchFirewallRule", reflect.TypeOf((*MockComputeClient)(nil).PatchFirewallRule), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchFirewallRule", reflect.TypeOf((*MockComputeClient)(nil).PatchFirewallRule), ctx, name, firewall)
 }
 
 // PatchNetwork mocks base method.
-func (m *MockComputeClient) PatchNetwork(arg0 context.Context, arg1 string, arg2 *compute.Network) (*compute.Network, error) {
+func (m *MockComputeClient) PatchNetwork(ctx context.Context, id string, nw *compute.Network) (*compute.Network, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PatchNetwork", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "PatchNetwork", ctx, id, nw)
 	ret0, _ := ret[0].(*compute.Network)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PatchNetwork indicates an expected call of PatchNetwork.
-func (mr *MockComputeClientMockRecorder) PatchNetwork(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) PatchNetwork(ctx, id, nw any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchNetwork", reflect.TypeOf((*MockComputeClient)(nil).PatchNetwork), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchNetwork", reflect.TypeOf((*MockComputeClient)(nil).PatchNetwork), ctx, id, nw)
 }
 
 // PatchRouter mocks base method.
-func (m *MockComputeClient) PatchRouter(arg0 context.Context, arg1, arg2 string, arg3 *compute.Router) (*compute.Router, error) {
+func (m *MockComputeClient) PatchRouter(ctx context.Context, region, id string, router *compute.Router) (*compute.Router, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PatchRouter", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "PatchRouter", ctx, region, id, router)
 	ret0, _ := ret[0].(*compute.Router)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PatchRouter indicates an expected call of PatchRouter.
-func (mr *MockComputeClientMockRecorder) PatchRouter(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) PatchRouter(ctx, region, id, router any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchRouter", reflect.TypeOf((*MockComputeClient)(nil).PatchRouter), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchRouter", reflect.TypeOf((*MockComputeClient)(nil).PatchRouter), ctx, region, id, router)
 }
 
 // PatchSubnet mocks base method.
-func (m *MockComputeClient) PatchSubnet(arg0 context.Context, arg1, arg2 string, arg3 *compute.Subnetwork) (*compute.Subnetwork, error) {
+func (m *MockComputeClient) PatchSubnet(ctx context.Context, region, id string, subnet *compute.Subnetwork) (*compute.Subnetwork, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PatchSubnet", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "PatchSubnet", ctx, region, id, subnet)
 	ret0, _ := ret[0].(*compute.Subnetwork)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PatchSubnet indicates an expected call of PatchSubnet.
-func (mr *MockComputeClientMockRecorder) PatchSubnet(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockComputeClientMockRecorder) PatchSubnet(ctx, region, id, subnet any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchSubnet", reflect.TypeOf((*MockComputeClient)(nil).PatchSubnet), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchSubnet", reflect.TypeOf((*MockComputeClient)(nil).PatchSubnet), ctx, region, id, subnet)
 }
