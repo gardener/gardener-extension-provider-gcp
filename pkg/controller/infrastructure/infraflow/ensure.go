@@ -126,6 +126,7 @@ func (fctx *FlowContext) ensureSubnet(ctx context.Context) error {
 		vpc.SelfLink,
 		fctx.config.Networks.FlowLogs,
 		fctx.config.Networks.DualStack,
+		fctx.networking.Pods,
 	)
 
 	subnet, err := fctx.computeClient.GetSubnet(ctx, region, subnetName)
@@ -168,7 +169,6 @@ func (fctx *FlowContext) ensureInternalSubnet(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	desired := targetSubnetState(
 		subnetName,
 		"gardener-managed internal subnet",
@@ -176,6 +176,7 @@ func (fctx *FlowContext) ensureInternalSubnet(ctx context.Context) error {
 		vpc.SelfLink,
 		nil,
 		fctx.config.Networks.DualStack,
+		nil,
 	)
 	if subnet == nil {
 		subnet, err = fctx.computeClient.InsertSubnet(ctx, region, desired)
@@ -220,6 +221,7 @@ func (fctx *FlowContext) ensureServicesSubnet(ctx context.Context) error {
 		vpc.SelfLink,
 		nil,
 		fctx.config.Networks.DualStack,
+		nil,
 	)
 	if subnet == nil {
 		subnet, err = fctx.computeClient.InsertSubnet(ctx, region, desired)
