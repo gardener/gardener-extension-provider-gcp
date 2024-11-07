@@ -89,23 +89,37 @@ func (fctx *FlowContext) ensureUserManagedVPC(ctx context.Context) error {
 	return nil
 }
 
-func (fctx *FlowContext) ensureSubnetIPv6CidrBlock(ctx context.Context) error {
-	if fctx.config.Networks.DualStack != nil && fctx.config.Networks.DualStack.Enabled {
-		subnet := fctx.whiteboard.GetObject(ObjectKeyNodeSubnet).(*compute.Subnetwork)
-		if subnet == nil {
-			return fmt.Errorf("failed to get the subnet")
-		}
-		ipv6CidrBlock, err := fctx.computeClient.WaitForIPv6Cidr(ctx, fctx.infra.Spec.Region, fmt.Sprintf("%d", subnet.Id))
-		if err != nil {
-			return err
-		}
-		fctx.whiteboard.Set(IdentifierSubnetIPv6CidrBlock, ipv6CidrBlock)
-		cidr, _ := getLast96Subnet(subnet.ExternalIpv6Prefix)
-		fctx.whiteboard.Set(IdentifierIPv6ServiceCIDR, cidr)
+func (fctx *FlowContext) ensureIPv6CIDRs(ctx context.Context) error {
+	if netcfg := fctx.config.Networks; netcfg.DualStack == nil || !netcfg.DualStack.Enabled {
+		return nil
 	}
+
+	nodeSubnet := fctx.whiteboard.GetObject(ObjectKeyNodeSubnet).(*compute.Subnetwork)
+	if nodeSubnet == nil {
+		return fmt.Errorf("failed to get the subnet for nodes")
+	}
+
+	nodesIPv6Range, err := fctx.computeClient.WaitForIPv6Cidr(ctx, fctx.infra.Spec.Region, fmt.Sprintf("%d", nodeSubnet.Id))
+	if err != nil {
+		return err
+	}
+	fctx.whiteboard.Set(NodesSubnetIPv6CIDR, nodesIPv6Range)
+
+	srvSubnet := fctx.whiteboard.GetObject(ObjectKeyServicesSubnet).(*compute.Subnetwork)
+	if srvSubnet == nil {
+		return fmt.Errorf("failed to get the subnet for services")
+	}
+
+	srvIPv6Range, err := fctx.computeClient.WaitForIPv6Cidr(ctx, fctx.infra.Spec.Region, fmt.Sprintf("%d", srvSubnet.Id))
+	if err != nil {
+		return err
+	}
+	fctx.whiteboard.Set(ServicesSubnetIPv6CIDR, srvIPv6Range)
+
 	return nil
 }
-func (fctx *FlowContext) ensureSubnet(ctx context.Context) error {
+
+func (fctx *FlowContext) ensureNodesSubnet(ctx context.Context) error {
 	region := fctx.infra.Spec.Region
 
 	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {

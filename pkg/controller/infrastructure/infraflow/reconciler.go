@@ -35,10 +35,10 @@ const (
 	CreatedResourcesExistKey = "resources_exist"
 	// ChildKeyIDs is the prefix key for all ids.
 	ChildKeyIDs = "ids"
-	// IdentifierSubnetIPv6CidrBlock is the IPv6 CIDR block attached to the subnet
-	IdentifierSubnetIPv6CidrBlock = "SubnetIPv6CidrBlock"
-	// IdentifierServiceCIDR is the key for the subnet cidr reservation for the service range.
-	IdentifierIPv6ServiceCIDR = "IPv6ServiceCIDR"
+	// NodesSubnetIPv6CIDR is the IPv6 CIDR block attached to the subnet
+	NodesSubnetIPv6CIDR = "nodes-subnet-ipv6-cidr"
+	// ServicesSubnetIPv6CIDR is the IPv6 CIDR block attached to the subnet
+	ServicesSubnetIPv6CIDR = "services-subnet-ipv6-cidr"
 	// KeyServiceAccountEmail is the key to store the service account object.
 	KeyServiceAccountEmail = "service-account-email"
 	// ObjectKeyVPC is the key to store the VPC object.
@@ -149,9 +149,19 @@ func (fctx *FlowContext) Reconcile(ctx context.Context) error {
 
 	status := fctx.getStatus()
 	state := fctx.getCurrentState()
-	subnetIPv6CidrBlock := fctx.whiteboard.Get(IdentifierSubnetIPv6CidrBlock)
-	serviceIPv6CIDR := fctx.whiteboard.Get(IdentifierIPv6ServiceCIDR)
-	return PatchProviderStatusAndState(ctx, fctx.runtimeClient, fctx.infra, fctx.networking, status, state, subnetIPv6CidrBlock, serviceIPv6CIDR)
+	nodesSubnetIPv6CIDR := fctx.whiteboard.Get(NodesSubnetIPv6CIDR)
+	servicesSubnetIPv6CIDR := fctx.whiteboard.Get(ServicesSubnetIPv6CIDR)
+
+	return PatchProviderStatusAndState(
+		ctx,
+		fctx.runtimeClient,
+		fctx.infra,
+		fctx.networking,
+		status,
+		state,
+		nodesSubnetIPv6CIDR,
+		servicesSubnetIPv6CIDR,
+	)
 }
 
 // Delete is used to destroy the infrastructure.
@@ -238,9 +248,19 @@ func (fctx *FlowContext) getCurrentState() *runtime.RawExtension {
 }
 
 func (fctx *FlowContext) persistState(ctx context.Context) error {
-	subnetIPv6CidrBlock := fctx.whiteboard.Get(IdentifierSubnetIPv6CidrBlock)
-	serviceIPv6CIDR := fctx.whiteboard.Get(IdentifierIPv6ServiceCIDR)
-	return PatchProviderStatusAndState(ctx, fctx.runtimeClient, fctx.infra, fctx.networking, nil, fctx.getCurrentState(), subnetIPv6CidrBlock, serviceIPv6CIDR)
+	nodesSubnetIPv6CIDR := fctx.whiteboard.Get(NodesSubnetIPv6CIDR)
+	servicesSubnetIPv6CIDR := fctx.whiteboard.Get(ServicesSubnetIPv6CIDR)
+
+	return PatchProviderStatusAndState(
+		ctx,
+		fctx.runtimeClient,
+		fctx.infra,
+		fctx.networking,
+		nil,
+		fctx.getCurrentState(),
+		nodesSubnetIPv6CIDR,
+		servicesSubnetIPv6CIDR,
+	)
 }
 
 func (fctx *FlowContext) loadWhiteBoard() {
@@ -261,16 +281,20 @@ func PatchProviderStatusAndState(
 	networking *v1beta1.Networking,
 	status *v1alpha1.InfrastructureStatus,
 	state *runtime.RawExtension,
-	subnetIPv6CIDR, serviceIPv6CIDR *string,
+	nodesSubnetIPv6CIDR *string,
+	servicesSubnetIPv6CIDR *string,
 ) error {
 	patch := client.MergeFrom(infra.DeepCopy())
+
 	if status != nil {
 		infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
 		infra.Status.EgressCIDRs = make([]string, len(status.Networks.NatIPs))
 		for i, natIP := range status.Networks.NatIPs {
 			infra.Status.EgressCIDRs[i] = fmt.Sprintf("%s/32", natIP.IP)
 		}
+
 		infra.Status.Networking = &extensionsv1alpha1.InfrastructureStatusNetworking{}
+
 		if networking != nil {
 			if networking.Nodes != nil {
 				infra.Status.Networking.Nodes = append(infra.Status.Networking.Nodes, *networking.Nodes)
@@ -282,13 +306,18 @@ func PatchProviderStatusAndState(
 				infra.Status.Networking.Services = append(infra.Status.Networking.Services, *networking.Services)
 			}
 		}
-		if subnetIPv6CIDR != nil && serviceIPv6CIDR != nil {
-			infra.Status.Networking.Nodes = append(infra.Status.Networking.Nodes, *subnetIPv6CIDR)
-			infra.Status.Networking.Pods = append(infra.Status.Networking.Pods, *subnetIPv6CIDR)
-			infra.Status.Networking.Services = append(infra.Status.Networking.Services, *serviceIPv6CIDR)
-			infra.Status.EgressCIDRs = append(infra.Status.EgressCIDRs, *subnetIPv6CIDR)
+
+		if nodesSubnetIPv6CIDR != nil {
+			infra.Status.Networking.Nodes = append(infra.Status.Networking.Nodes, *nodesSubnetIPv6CIDR)
+			infra.Status.Networking.Pods = append(infra.Status.Networking.Pods, *nodesSubnetIPv6CIDR)
+			infra.Status.EgressCIDRs = append(infra.Status.EgressCIDRs, *nodesSubnetIPv6CIDR)
+		}
+
+		if servicesSubnetIPv6CIDR != nil {
+			infra.Status.Networking.Services = append(infra.Status.Networking.Services, *servicesSubnetIPv6CIDR)
 		}
 	}
+
 	if state != nil {
 		infra.Status.State = state
 	}

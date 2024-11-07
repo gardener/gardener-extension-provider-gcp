@@ -517,7 +517,6 @@ func (c *computeClient) ListFirewallRules(ctx context.Context, opts FirewallList
 		return nil
 	}); err != nil {
 		return nil, err
-
 	}
 
 	return res, nil
@@ -557,7 +556,6 @@ func (c *computeClient) GetRegion(ctx context.Context, region string) (*compute.
 
 // WaitForIPv6Cidr waits for the ipv6 cidr block association
 func (c *computeClient) WaitForIPv6Cidr(ctx context.Context, region, subnetID string) (string, error) {
-
 	maxRetries := 30
 	waitInterval := 10 * time.Second
 	for i := 0; i < maxRetries; i++ {
@@ -574,7 +572,8 @@ func (c *computeClient) WaitForIPv6Cidr(ctx context.Context, region, subnetID st
 			}
 		}
 	}
-	return "", fmt.Errorf("no IPv6 CIDR Block was assigned to VPC")
+
+	return "", fmt.Errorf("no IPv6 CIDR block was assigned to subnet ID %q", subnetID)
 }
 
 // GetIPv6CidrForSubnet retrieves the IPv6 CIDR range for a given GCP subnet.
