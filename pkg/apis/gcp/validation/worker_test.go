@@ -6,9 +6,11 @@ package validation_test
 
 import (
 	"github.com/gardener/gardener/pkg/apis/core"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 
@@ -260,6 +262,25 @@ var _ = Describe("#ValidateWorkers", func() {
 			PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeForbidden),
 				"Field": Equal("providerConfig.gpu.count"),
+			})),
+		))
+	})
+
+	It("should fail because WorkerConfig NodeTemplate is specified with empty capacity", func() {
+		errorList := ValidateWorkerConfig(
+			&gcp.WorkerConfig{
+				NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+					Capacity: corev1.ResourceList{},
+				},
+			},
+			nil,
+		)
+
+		Expect(errorList).To(ConsistOf(
+			PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":   Equal(field.ErrorTypeRequired),
+				"Field":  Equal("providerConfig.nodeTemplate.capacity"),
+				"Detail": Equal("capacity must not be empty"),
 			})),
 		))
 	})
