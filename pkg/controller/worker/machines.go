@@ -7,6 +7,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"math"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -112,7 +113,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	}
 
 	for _, pool := range w.worker.Spec.Pools {
-		zoneLen := int32(len(pool.Zones))
+		if len(pool.Zones) > math.MaxInt32 {
+			return fmt.Errorf("pool zones is too large")
+		}
+		zoneLen := int32(len(pool.Zones)) // #nosec: G115 - We check if pool zones exceeds max_int32.
 
 		workerConfig := &apisgcp.WorkerConfig{}
 		if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
@@ -181,7 +185,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		}
 
 		for zoneIndex, zone := range pool.Zones {
-			zoneIdx := int32(zoneIndex)
+			zoneIdx := int32(zoneIndex) // #nosec: G115 - We check if pool zones exceeds max_int32.
 			machineClassSpec := map[string]interface{}{
 				"region":             w.worker.Spec.Region,
 				"zone":               zone,
