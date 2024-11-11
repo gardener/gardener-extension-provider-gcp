@@ -1,6 +1,6 @@
 module github.com/gardener/gardener-extension-provider-gcp
 
-// x.x.0 go mod notation for latest patch
+// minimum version of Go required
 go 1.23.0
 
 require (
