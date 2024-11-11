@@ -231,7 +231,7 @@ func (fctx *FlowContext) ensureServicesSubnet(ctx context.Context) error {
 	desired := targetSubnetState(
 		subnetName,
 		"gardener-managed services subnet",
-		"10.255.0.0/16",
+		*fctx.networking.Services,
 		vpc.SelfLink,
 		nil,
 		fctx.config.Networks.DualStack,
