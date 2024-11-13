@@ -7,7 +7,9 @@ package controlplane
 import (
 	"bytes"
 	"context"
+	"net"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -105,7 +107,7 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gconte
 	}
 
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "kube-apiserver"); c != nil {
-		ensureKubeAPIServerCommandLineArgs(c, k8sVersion)
+		ensureKubeAPIServerCommandLineArgs(c, k8sVersion, cluster.Shoot.Status.Networking.Services)
 	}
 
 	return nil
@@ -127,7 +129,7 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, gct
 	}
 
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "kube-controller-manager"); c != nil {
-		ensureKubeControllerManagerCommandLineArgs(c, k8sVersion)
+		ensureKubeControllerManagerCommandLineArgs(c, k8sVersion, cluster.Shoot.Status.Networking.Services)
 		ensureKubeControllerManagerVolumeMounts(c)
 	}
 
@@ -178,7 +180,7 @@ func (e *ensurer) EnsureClusterAutoscalerDeployment(ctx context.Context, gctx gc
 	return nil
 }
 
-func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
+func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, servicesIPRanges []string) {
 	if versionutils.ConstraintK8sLess127.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"CSIMigration=true", ",")
@@ -200,15 +202,12 @@ func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--disable-admission-plugins=",
 			"PersistentVolumeLabel", ",")
 	}
-	for i, v := range c.Args {
-		if strings.Contains(v, "--service-cluster-ip-range") {
-			c.Args = append(c.Args[:i], c.Args[i+1:]...)
-		}
-	}
-	c.Args = append(c.Args, "--service-cluster-ip-range=10.96.0.0/12,fd00::/108")
+
+	c.Args = extensionswebhook.EnsureNoStringWithPrefix(c.Args, "--service-cluster-ip-range=")
+	c.Args = append(c.Args, "--service-cluster-ip-range="+normalizeServicesIPRanges(servicesIPRanges))
 }
 
-func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
+func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, servicesIPRanges []string) {
 	c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--cloud-provider=", "external")
 
 	if versionutils.ConstraintK8sLess127.Check(k8sVersion) {
@@ -227,6 +226,25 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--external-cloud-volume-plugin=")
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--allocate-node-cidrs=")
 	c.Command = append(c.Command, "--allocate-node-cidrs=false")
+}
+
+// normalizeServicesIPRanges rewrites found IPv6 subnet masks to /108
+func normalizeServicesIPRanges(netRanges []string) string {
+	ranges := slices.Clone(netRanges)
+
+	for i, ipnet := range ranges {
+		_, nt, err := net.ParseCIDR(ipnet)
+		if err != nil {
+			continue
+		}
+
+		if len(nt.IP) == net.IPv6len {
+			nt.Mask = net.CIDRMask(108, net.IPv6len*8)
+			ranges[i] = nt.String()
+		}
+	}
+
+	return strings.Join(ranges, ",")
 }
 
 func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {

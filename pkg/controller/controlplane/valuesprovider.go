@@ -467,11 +467,11 @@ func (vp *valuesProvider) getCCMChartValues(
 		values["featureGates"] = cpConfig.CloudControllerManager.FeatureGates
 	}
 
-	ok, err := vp.isOverlayEnabled(cluster.Shoot.Spec.Networking)
+	overlayEnabled, err := vp.isOverlayEnabled(cluster.Shoot.Spec.Networking)
 	if err != nil {
 		return nil, err
 	}
-	values["configureCloudRoutes"] = !ok
+	values["configureCloudRoutes"] = !overlayEnabled || !isDualstackEnabled(cluster.Shoot.Spec.Networking)
 
 	return values, nil
 }
