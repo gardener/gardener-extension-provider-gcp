@@ -1,4 +1,4 @@
 apiVersion: v1
 description: A Helm chart to deploy the gardener-extension-admission-gcp application related resources
-name: application
+name: admission-gcp-application
 version: 0.1.0
