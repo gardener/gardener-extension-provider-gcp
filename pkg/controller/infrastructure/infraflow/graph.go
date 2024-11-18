@@ -38,10 +38,12 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	ensureServicesSubnet := fctx.AddTask(g, "ensure IPv6 services subnet", fctx.ensureServicesSubnet,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
+		shared.DoIf(fctx.config.Networks.DualStack != nil && fctx.config.Networks.DualStack.Enabled),
 	)
-	fctx.AddTask(g, "ensure IPv6 CIDR services", fctx.ensureIPv6CIDRs,
+	ensureIPv6Services := fctx.AddTask(g, "ensure IPv6 CIDR services", fctx.ensureIPv6CIDRs,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureNodesSubnet, ensureServicesSubnet),
+		shared.DoIf(fctx.config.Networks.DualStack != nil && fctx.config.Networks.DualStack.Enabled),
 	)
 	ensureRouter := fctx.AddTask(g, "ensure router", fctx.ensureCloudRouter,
 		shared.Timeout(defaultCreateTimeout),
@@ -53,11 +55,11 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	)
 	fctx.AddTask(g, "ensure nats", fctx.ensureCloudNAT,
 		shared.Timeout(defaultCreateTimeout),
-		shared.Dependencies(ensureRouter, ensureNodesSubnet, ensureIpAddresses))
-
+		shared.Dependencies(ensureRouter, ensureNodesSubnet, ensureIpAddresses),
+	)
 	fctx.AddTask(g, "ensure firewall", fctx.ensureFirewallRules,
 		shared.Timeout(defaultCreateTimeout),
-		shared.Dependencies(ensureVPC, ensureNodesSubnet, ensureInternalSubnet),
+		shared.Dependencies(ensureVPC, ensureNodesSubnet, ensureInternalSubnet, ensureIPv6Services),
 	)
 
 	return g
@@ -77,8 +79,16 @@ func (fctx *FlowContext) buildDeleteGraph() *flow.Graph {
 		// we do not need to clean up CloudNAT for managed CloudRouters because it will be deleted with the router deletion.
 		shared.DoIf(isUserRouter(fctx.config)),
 	)
-	ensureInternalSubnetDeleted := fctx.AddTask(g, "destroy internal subnet", fctx.ensureInternalSubnetDeleted,
+	ensureInternalSubnetDeleted := fctx.AddTask(g,
+		"destroy internal subnet",
+		fctx.ensureSubnetDeletedFactory(fctx.internalSubnetNameFromConfig(), ObjectKeyInternalSubnet),
 		shared.Timeout(defaultDeleteTimeout),
+	)
+	ensureServicesSubnetDeleted := fctx.AddTask(g,
+		"destroy services subnet",
+		fctx.ensureSubnetDeletedFactory(fctx.servicesSubnetNameFromConfig(), ObjectKeyServicesSubnet),
+		shared.Timeout(defaultDeleteTimeout),
+		shared.DoIf(fctx.config.Networks.DualStack != nil && fctx.config.Networks.DualStack.Enabled),
 	)
 	ensureCloudRouterDeleted := fctx.AddTask(g, "ensure router deleted", fctx.ensureCloudRouterDeleted,
 		shared.Timeout(defaultDeleteTimeout),
@@ -86,13 +96,23 @@ func (fctx *FlowContext) buildDeleteGraph() *flow.Graph {
 		// for user-managed CloudRouters, skip deletion.
 		shared.DoIf(!isUserRouter(fctx.config)),
 	)
-	ensureSubnetDeleted := fctx.AddTask(g, "destroy worker subnet", fctx.ensureSubnetDeleted,
+	ensureSubnetDeleted := fctx.AddTask(g,
+		"destroy worker subnet",
+		fctx.ensureSubnetDeletedFactory(fctx.subnetNameFromConfig(), ObjectKeyNodeSubnet),
 		shared.Timeout(defaultDeleteTimeout),
 		shared.Dependencies(ensureCloudRouterDeleted),
 	)
-	fctx.AddTask(g, "destroy vpc", fctx.ensureVPCDeleted,
+	fctx.AddTask(g,
+		"destroy vpc",
+		fctx.ensureVPCDeleted,
 		shared.Timeout(defaultDeleteTimeout),
-		shared.Dependencies(ensureSubnetDeleted, ensureInternalSubnetDeleted, ensureCloudRouterDeleted, ensureFirewallDeleted),
+		shared.Dependencies(
+			ensureSubnetDeleted,
+			ensureInternalSubnetDeleted,
+			ensureServicesSubnetDeleted,
+			ensureCloudRouterDeleted,
+			ensureFirewallDeleted,
+		),
 		shared.DoIf(!isUserVPC(fctx.config)),
 	)
 

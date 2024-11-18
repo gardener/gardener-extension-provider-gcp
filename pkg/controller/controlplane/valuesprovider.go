@@ -471,7 +471,11 @@ func (vp *valuesProvider) getCCMChartValues(
 	if err != nil {
 		return nil, err
 	}
-	values["configureCloudRoutes"] = !overlayEnabled || !isDualstackEnabled(cluster.Shoot.Spec.Networking)
+	values["configureCloudRoutes"] = !overlayEnabled
+
+	if isDualstackEnabled(cluster.Shoot.Spec.Networking) {
+		values["configureCloudRoutes"] = false
+	}
 
 	return values, nil
 }
