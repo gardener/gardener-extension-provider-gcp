@@ -21,8 +21,8 @@ import (
 func ValidateNetworking(networking *core.Networking, DualStack *apisgcp.DualStack, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if DualStack != nil {
-		if !DualStack.Enabled && len(networking.IPFamilies) > 1 {
+	if len(networking.IPFamilies) > 1 {
+		if DualStack == nil || DualStack != nil && !DualStack.Enabled {
 			allErrs = append(allErrs, field.Required(
 				fldPath.Child("infrastructure"),
 				fmt.Sprintf(
@@ -32,6 +32,7 @@ func ValidateNetworking(networking *core.Networking, DualStack *apisgcp.DualStac
 			))
 		}
 	}
+
 	if networking.Nodes == nil {
 		allErrs = append(allErrs, field.Required(fldPath.Child("nodes"), "a nodes CIDR must be provided for GCP shoots"))
 	}

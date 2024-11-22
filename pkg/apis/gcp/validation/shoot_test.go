@@ -24,7 +24,7 @@ var _ = Describe("Shoot validation", func() {
 				Nodes: ptr.To("1.2.3.4/5"),
 			}
 
-			errorList := ValidateNetworking(networking, networkingPath)
+			errorList := ValidateNetworking(networking, nil, networkingPath)
 
 			Expect(errorList).To(BeEmpty())
 		})
@@ -32,7 +32,7 @@ var _ = Describe("Shoot validation", func() {
 		It("should return an error because no nodes CIDR was provided", func() {
 			networking := &core.Networking{}
 
-			errorList := ValidateNetworking(networking, networkingPath)
+			errorList := ValidateNetworking(networking, nil, networkingPath)
 
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
@@ -51,7 +51,7 @@ var _ = Describe("Shoot validation", func() {
 				},
 			}
 
-			errorList := ValidateNetworking(networking, networkingPath)
+			errorList := ValidateNetworking(networking, nil, networkingPath)
 
 			Expect(errorList).To(BeEmpty())
 		})
