@@ -7,6 +7,7 @@ package validation
 import (
 	"fmt"
 
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/helper"
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
@@ -17,9 +18,20 @@ import (
 )
 
 // ValidateNetworking validates the network settings of a Shoot.
-func ValidateNetworking(networking *core.Networking, fldPath *field.Path) field.ErrorList {
+func ValidateNetworking(networking *core.Networking, DualStack *apisgcp.DualStack, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
+	if DualStack != nil {
+		if !DualStack.Enabled && len(networking.IPFamilies) > 1 {
+			allErrs = append(allErrs, field.Required(
+				fldPath.Child("infrastructure"),
+				fmt.Sprintf(
+					"DualStack must be enabled to support multiple IP families, but it is currently disabled. Configured IP families: %v",
+					networking.IPFamilies,
+				),
+			))
+		}
+	}
 	if networking.Nodes == nil {
 		allErrs = append(allErrs, field.Required(fldPath.Child("nodes"), "a nodes CIDR must be provided for GCP shoots"))
 	}
