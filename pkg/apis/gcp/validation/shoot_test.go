@@ -5,6 +5,7 @@
 package validation_test
 
 import (
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,7 +25,7 @@ var _ = Describe("Shoot validation", func() {
 				Nodes: ptr.To("1.2.3.4/5"),
 			}
 
-			errorList := ValidateNetworking(networking, networkingPath)
+			errorList := ValidateNetworking(networking, nil, networkingPath)
 
 			Expect(errorList).To(BeEmpty())
 		})
@@ -32,7 +33,7 @@ var _ = Describe("Shoot validation", func() {
 		It("should return an error because no nodes CIDR was provided", func() {
 			networking := &core.Networking{}
 
-			errorList := ValidateNetworking(networking, networkingPath)
+			errorList := ValidateNetworking(networking, nil, networkingPath)
 
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
@@ -50,8 +51,9 @@ var _ = Describe("Shoot validation", func() {
 					core.IPFamilyIPv6,
 				},
 			}
+			dualStack := &apisgcp.DualStack{Enabled: true}
 
-			errorList := ValidateNetworking(networking, networkingPath)
+			errorList := ValidateNetworking(networking, dualStack, networkingPath)
 
 			Expect(errorList).To(BeEmpty())
 		})

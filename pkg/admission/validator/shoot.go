@@ -113,7 +113,7 @@ func (s *shoot) validateContext(valContext *validationContext) field.ErrorList {
 	)
 
 	if valContext.shoot.Spec.Networking != nil {
-		allErrors = append(allErrors, gcpvalidation.ValidateNetworking(valContext.shoot.Spec.Networking, networkPath)...)
+		allErrors = append(allErrors, gcpvalidation.ValidateNetworking(valContext.shoot.Spec.Networking, valContext.infrastructureConfig.Networks.DualStack, networkPath)...)
 		allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfig(valContext.infrastructureConfig, valContext.shoot.Spec.Networking.Nodes, valContext.shoot.Spec.Networking.Pods, valContext.shoot.Spec.Networking.Services, infrastructureConfigPath)...)
 	}
 
