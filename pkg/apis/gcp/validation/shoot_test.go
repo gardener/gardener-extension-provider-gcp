@@ -5,6 +5,7 @@
 package validation_test
 
 import (
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -50,8 +51,9 @@ var _ = Describe("Shoot validation", func() {
 					core.IPFamilyIPv6,
 				},
 			}
+			dualStack := &apisgcp.DualStack{Enabled: true}
 
-			errorList := ValidateNetworking(networking, nil, networkingPath)
+			errorList := ValidateNetworking(networking, dualStack, networkingPath)
 
 			Expect(errorList).To(BeEmpty())
 		})
