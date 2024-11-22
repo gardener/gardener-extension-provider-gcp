@@ -23,10 +23,11 @@ func ValidateNetworking(networking *core.Networking, DualStack *apisgcp.DualStac
 
 	if len(networking.IPFamilies) > 1 {
 		if DualStack == nil || DualStack != nil && !DualStack.Enabled {
-			allErrs = append(allErrs, field.Required(
-				fldPath.Child("infrastructure"),
+			allErrs = append(allErrs, field.Invalid(
+				fldPath.Child("ipFamilies"),
+				networking.IPFamilies,
 				fmt.Sprintf(
-					"DualStack must be enabled to support multiple IP families, but it is currently disabled. Configured IP families: %v",
+					"To use both IPv4 and IPv6 families, DualStack must be enabled in the infrastructure. Currently, it is disabled. Configured IP families: %v",
 					networking.IPFamilies,
 				),
 			))
