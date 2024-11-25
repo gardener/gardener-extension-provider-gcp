@@ -68,5 +68,28 @@ var _ = Describe("Shoot validation", func() {
 
 			Expect(errorList).To(BeEmpty())
 		})
+
+		It("should fail without at least one zone", func() {
+			workers := []core.Worker{
+				{
+					Name: "bar",
+					Volume: &core.Volume{
+						Type:       ptr.To("some-type"),
+						VolumeSize: "40Gi",
+					},
+					Zones: []string{},
+				},
+			}
+			workers[0].Kubernetes = &core.WorkerKubernetes{Version: ptr.To("1.28.0")}
+
+			errorList := ValidateWorkers(workers, field.NewPath("workers"))
+
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("workers[0].zones"),
+				})),
+			))
+		})
 	})
 })

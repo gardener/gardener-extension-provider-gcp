@@ -6,6 +6,7 @@ package validation
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/helper"
@@ -53,6 +54,9 @@ func ValidateWorkers(workers []core.Worker, fldPath *field.Path) field.ErrorList
 			continue
 		}
 
+		if len(worker.Zones) > math.MaxInt32 {
+			allErrs = append(allErrs, field.Invalid(workerFldPath.Child("zones"), len(worker.Zones), "too many zones"))
+		}
 	}
 
 	return allErrs
