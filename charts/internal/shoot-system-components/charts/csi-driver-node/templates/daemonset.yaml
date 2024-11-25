@@ -52,6 +52,7 @@ spec:
 {{- end }}
         securityContext:
           privileged: true
+          readOnlyRootFilesystem: true
         ports:
         - name: healthz
           containerPort: 9808
@@ -88,6 +89,8 @@ spec:
         resources:
 {{ toYaml .Values.resources.nodeDriverRegistrar | indent 10 }}
 {{- end }}
+        securityContext:
+          readOnlyRootFilesystem: true
         volumeMounts:
         - name: plugin-dir
           mountPath: /csi
@@ -102,6 +105,8 @@ spec:
         resources:
 {{ toYaml .Values.resources.livenessProbe | indent 10 }}
 {{- end }}
+        securityContext:
+          readOnlyRootFilesystem: true
         volumeMounts:
         - name: plugin-dir
           mountPath: /csi
