@@ -129,7 +129,7 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, gct
 	}
 
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "kube-controller-manager"); c != nil {
-		ensureKubeControllerManagerCommandLineArgs(c, k8sVersion, cluster.Shoot.Status.Networking.Services)
+		ensureKubeControllerManagerCommandLineArgs(c, k8sVersion)
 		ensureKubeControllerManagerVolumeMounts(c)
 	}
 
@@ -207,7 +207,7 @@ func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 	c.Args = append(c.Args, "--service-cluster-ip-range="+normalizeServicesIPRanges(servicesIPRanges))
 }
 
-func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, servicesIPRanges []string) {
+func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
 	c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--cloud-provider=", "external")
 
 	if versionutils.ConstraintK8sLess127.Check(k8sVersion) {

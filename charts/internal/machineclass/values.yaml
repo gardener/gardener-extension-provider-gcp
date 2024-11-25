@@ -49,6 +49,7 @@ machineClasses:
   networkInterfaces:
   - subnetwork: my-subnet
     disableExternalIP: true
+    dualStack: false
   scheduling:
     automaticRestart: true
     onHostMaintenance: MIGRATE

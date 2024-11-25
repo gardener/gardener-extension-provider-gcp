@@ -17,7 +17,7 @@ LD_FLAGS                    := "-w $(shell bash $(GARDENER_HACK_DIR)/get-build-l
 LEADER_ELECTION             := false
 IGNORE_OPERATION_ANNOTATION := true
 PLATFORM                    := linux/amd64
-TEST_RECONCILER             := tf
+TEST_RECONCILER             := flow
 
 WEBHOOK_CONFIG_PORT	:= 8443
 WEBHOOK_CONFIG_MODE	:= url

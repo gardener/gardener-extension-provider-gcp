@@ -481,6 +481,7 @@ var _ = Describe("Machines", func() {
 							{
 								"subnetwork":        subnetName,
 								"disableExternalIP": disableExternalIP,
+								"dualStack":         false,
 							},
 						},
 						"scheduling": map[string]interface{}{
@@ -619,6 +620,7 @@ var _ = Describe("Machines", func() {
 										Name: "my-cloudrouter",
 									},
 								},
+								DualStackEnabled: false,
 								Subnets: []api.Subnet{
 									{
 										Name:    subnetName,

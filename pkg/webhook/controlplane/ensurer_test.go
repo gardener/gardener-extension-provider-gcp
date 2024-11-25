@@ -34,6 +34,8 @@ import (
 
 const namespace = "test"
 
+var serviceRange = []string{"10.0.0.0/16", "2001:0db8::/32"}
+
 func TestController(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "ControlPlane Webhook Suite")
@@ -41,9 +43,8 @@ func TestController(t *testing.T) {
 
 var _ = Describe("Ensurer", func() {
 	var (
-		ctrl *gomock.Controller
-		ctx  = context.TODO()
-
+		ctrl           *gomock.Controller
+		ctx            = context.TODO()
 		dummyContext   = gcontext.NewGardenContext(nil, nil)
 		eContextK8s126 = gcontext.NewInternalGardenContext(
 			&extensionscontroller.Cluster{
@@ -51,6 +52,11 @@ var _ = Describe("Ensurer", func() {
 					Spec: gardencorev1beta1.ShootSpec{
 						Kubernetes: gardencorev1beta1.Kubernetes{
 							Version: "1.26.0",
+						},
+					},
+					Status: gardencorev1beta1.ShootStatus{
+						Networking: &gardencorev1beta1.NetworkingStatus{
+							Services: serviceRange,
 						},
 					},
 				},
@@ -64,6 +70,11 @@ var _ = Describe("Ensurer", func() {
 							Version: "1.27.1",
 						},
 					},
+					Status: gardencorev1beta1.ShootStatus{
+						Networking: &gardencorev1beta1.NetworkingStatus{
+							Services: serviceRange,
+						},
+					},
 				},
 			},
 		)
@@ -75,6 +86,11 @@ var _ = Describe("Ensurer", func() {
 							Version: "1.28.2",
 						},
 					},
+					Status: gardencorev1beta1.ShootStatus{
+						Networking: &gardencorev1beta1.NetworkingStatus{
+							Services: serviceRange,
+						},
+					},
 				},
 			},
 		)
@@ -84,6 +100,11 @@ var _ = Describe("Ensurer", func() {
 					Spec: gardencorev1beta1.ShootSpec{
 						Kubernetes: gardencorev1beta1.Kubernetes{
 							Version: "1.31.1",
+						},
+					},
+					Status: gardencorev1beta1.ShootStatus{
+						Networking: &gardencorev1beta1.NetworkingStatus{
+							Services: serviceRange,
 						},
 					},
 				},
