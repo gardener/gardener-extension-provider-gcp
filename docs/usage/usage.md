@@ -107,7 +107,7 @@ This principal should be [granted with the following IAM roles.](https://cloud.g
 - Service Account User
 - Compute Admin
 
-As a final step create a `CredentialsBinding` referencing the GCP `WorkloadIdentity` and use it in our `Shoot` definitions.
+As a final step create a `CredentialsBinding` referencing the GCP `WorkloadIdentity` and use it in your `Shoot` definitions.
 
 ```yaml
 apiVersion: security.gardener.cloud/v1alpha1
