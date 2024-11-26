@@ -23,9 +23,7 @@ resource "google_service_account" "serviceaccount" {
 resource "google_compute_network" "network" {
   name                    = "{{ .clusterName }}"
   auto_create_subnetworks = "false"
-{{ if .networks.dualStack }}
-  routing_mode             = "GLOBAL" # Required for dual-stack networks
-{{ end }}
+
   timeouts {
     create = "5m"
     update = "5m"
@@ -39,15 +37,6 @@ resource "google_compute_subnetwork" "subnetwork-nodes" {
   ip_cidr_range = "{{ .networks.workers }}"
   network       = {{ .vpc.name }}
   region        = "{{ .google.region }}"
-{{ if .networks.dualStack }}
-  ipv6_access_type    = "EXTERNAL"  # or "INTERNAL" based on your needs
-  stack_type          = "IPV4_IPV6"  # Enable dual-stack
-  secondary_ip_range {
-      range_name    = "ipv4-pod-cidr"
-      ip_cidr_range = "192.168.0.0/16"
-  }
-{{ end }}
-
 {{- if .networks.flowLogs }}
   log_config {
     {{ if .networks.flowLogs.aggregationInterval }}aggregation_interval = "{{ .networks.flowLogs.aggregationInterval }}"{{ end }}
@@ -136,14 +125,6 @@ resource "google_compute_subnetwork" "subnetwork-internal" {
   ip_cidr_range = "{{ .networks.internal }}"
   network       = {{ .vpc.name }}
   region        = "{{ .google.region }}"
-{{ if .networks.dualStack }}
-    ipv6_access_type    = "EXTERNAL"  # or "INTERNAL"
-    stack_type          = "IPV4_IPV6"
-    secondary_ip_range {
-      range_name    = "ipv4-pod-cidr"
-      ip_cidr_range = "192.168.0.0/16"
-  }
-{{ end }}
 
   timeouts {
     create = "5m"

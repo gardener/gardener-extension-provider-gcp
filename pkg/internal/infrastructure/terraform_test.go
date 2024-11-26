@@ -74,9 +74,6 @@ var _ = Describe("Terraform", func() {
 						Name: "cloudrouter",
 					},
 				},
-				DualStack: &api.DualStack{
-					Enabled: false,
-				},
 				Internal: &internalCIDR,
 				Workers:  "10.1.0.0/16",
 			},
@@ -89,9 +86,6 @@ var _ = Describe("Terraform", func() {
 					CloudRouter: &apiv1alpha1.CloudRouter{
 						Name: "cloudrouter",
 					},
-				},
-				DualStack: &apiv1alpha1.DualStack{
-					Enabled: false,
 				},
 				Internal: &internalCIDR,
 				Workers:  "10.1.0.0/16",
@@ -132,9 +126,6 @@ var _ = Describe("Terraform", func() {
 						VPC: &api.VPC{
 							Name:        "vpc",
 							CloudRouter: &api.CloudRouter{Name: cloudRouterName},
-						},
-						DualStack: &api.DualStack{
-							Enabled: false,
 						},
 						Workers: "10.1.0.0/16",
 					},
@@ -240,10 +231,9 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"workers":   config.Networks.Workers,
-					"internal":  config.Networks.Internal,
-					"cloudNAT":  cloudNatDefaults,
-					"dualStack": config.Networks.DualStack.Enabled,
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
+					"cloudNAT": cloudNatDefaults,
 				},
 				"podCIDR": podCIDR,
 				"outputKeys": map[string]interface{}{
@@ -278,10 +268,9 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"workers":   config.Networks.Workers,
-					"internal":  config.Networks.Internal,
-					"cloudNAT":  cloudNatDefaults,
-					"dualStack": config.Networks.DualStack.Enabled,
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
+					"cloudNAT": cloudNatDefaults,
 				},
 				"podCIDR": podCIDR,
 				"outputKeys": map[string]interface{}{
@@ -320,10 +309,7 @@ var _ = Describe("Terraform", func() {
 						},
 					},
 					Internal: &internalCIDR,
-					DualStack: &api.DualStack{
-						Enabled: false,
-					},
-					Workers: "10.1.0.0/16",
+					Workers:  "10.1.0.0/16",
 				},
 			}
 
@@ -347,9 +333,8 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"workers":   config.Networks.Workers,
-					"dualStack": config.Networks.DualStack.Enabled,
-					"internal":  config.Networks.Internal,
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
 					"cloudNAT": map[string]interface{}{
 						"minPortsPerVM":                    minPortsPerVM,
 						"natIPNames":                       natIPNamesOutput,
@@ -390,9 +375,6 @@ var _ = Describe("Terraform", func() {
 							Name: "cloudrouter",
 						},
 					},
-					DualStack: &api.DualStack{
-						Enabled: false,
-					},
 					FlowLogs: &api.FlowLogs{
 						AggregationInterval: &aggregationInterval,
 						FlowSampling:        &flowSampling,
@@ -423,10 +405,9 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"workers":   config.Networks.Workers,
-					"internal":  config.Networks.Internal,
-					"dualStack": config.Networks.DualStack.Enabled,
-					"cloudNAT":  cloudNatDefaults,
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
+					"cloudNAT": cloudNatDefaults,
 					"flowLogs": map[string]interface{}{
 						"aggregationInterval": *config.Networks.FlowLogs.AggregationInterval,
 						"flowSampling":        *config.Networks.FlowLogs.FlowSampling,
@@ -464,10 +445,9 @@ var _ = Describe("Terraform", func() {
 				},
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
-					"workers":   config.Networks.Workers,
-					"internal":  config.Networks.Internal,
-					"dualStack": config.Networks.DualStack.Enabled,
-					"cloudNAT":  cloudNatDefaults,
+					"workers":  config.Networks.Workers,
+					"internal": config.Networks.Internal,
+					"cloudNAT": cloudNatDefaults,
 				},
 				"podCIDR": podCIDR,
 				"outputKeys": map[string]interface{}{
