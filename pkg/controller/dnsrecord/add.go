@@ -6,6 +6,7 @@ package dnsrecord
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -26,13 +27,18 @@ type AddOptions struct {
 	Controller controller.Options
 	// IgnoreOperationAnnotation specifies whether to ignore the operation annotation or not.
 	IgnoreOperationAnnotation bool
+
+	// TokenMetadataClient is the client used to issue requests to the local token metadata server.
+	TokenMetadataClient *http.Client
+	// TokenMetadataURL is a function that constructs the URL that should be called in order to retrieve the token contents of a secret.
+	TokenMetadataURL func(secretName, secretNamespace string) string
 }
 
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
 // The opts.Reconciler is being set with a newly instantiated actuator.
 func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddOptions) error {
 	return dnsrecord.Add(ctx, mgr, dnsrecord.AddArgs{
-		Actuator:          NewActuator(mgr, gcpclient.New()),
+		Actuator:          NewActuator(mgr, gcpclient.New(opts.TokenMetadataURL, opts.TokenMetadataClient)),
 		ControllerOptions: opts.Controller,
 		Predicates:        dnsrecord.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
 		Type:              gcp.DNSType,

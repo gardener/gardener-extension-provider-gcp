@@ -54,3 +54,13 @@ func DecodeCloudProfileConfig(decoder runtime.Decoder, config *runtime.RawExtens
 
 	return cloudProfileConfig, nil
 }
+
+// DecodeWorkloadIdentityConfig decodes the `WorkloadIdentityConfig` from the given `RawExtension`.
+func DecodeWorkloadIdentityConfig(decoder runtime.Decoder, config *runtime.RawExtension) (*gcp.WorkloadIdentityConfig, error) {
+	workloadIdentityConfig := &gcp.WorkloadIdentityConfig{}
+	if err := util.Decode(decoder, config.Raw, workloadIdentityConfig); err != nil {
+		return nil, err
+	}
+
+	return workloadIdentityConfig, nil
+}

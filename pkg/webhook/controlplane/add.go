@@ -61,7 +61,7 @@ func AddToManager(gardenerVersion *string) func(mgr manager.Manager) (*extension
 				{Obj: &extensionsv1alpha1.OperatingSystemConfig{}},
 			},
 			ObjectSelector: objectSelector,
-			Mutator: genericmutator.NewMutator(mgr, NewEnsurer(logger), oscutils.NewUnitSerializer(),
+			Mutator: genericmutator.NewMutator(mgr, NewEnsurer(mgr.GetClient(), logger), oscutils.NewUnitSerializer(),
 				kubelet.NewConfigCodec(fciCodec), fciCodec, logger),
 		})
 	}
