@@ -84,7 +84,6 @@ func (s *seedValidator) validateUpdate(_ context.Context, oldSeed, newSeed *core
 		return fmt.Errorf("error decoding old BackupBucketConfig: %w", err)
 	}
 
-	// Case 1: No Previous Immutable Configuration
 	if oldBackupBucketConfig == nil || oldBackupBucketConfig.Immutability == (gcp.ImmutableConfig{}) {
 		return s.validateCreate(newSeed)
 	}
@@ -94,18 +93,15 @@ func (s *seedValidator) validateUpdate(_ context.Context, oldSeed, newSeed *core
 		return fmt.Errorf("error decoding new BackupBucketConfig: %w", err)
 	}
 
-	// Step 1: Validate New Configurations
 	allErrs := gcpvalidation.ValidateBackupBucketConfig(newBackupBucketConfig, field.NewPath("spec").Child("backup").Child("providerConfig"))
 	if len(allErrs) > 0 {
 		return fmt.Errorf("validation failed: %w", allErrs.ToAggregate())
 	}
 
 	if !oldBackupBucketConfig.Immutability.Locked {
-		// Allow disabling immutability or other unrestricted updates.
 		return nil
 	}
 
-	// Case 3: Prevent Unlocking or Disabling Immutability When Locked
 	if newBackupBucketConfig == nil {
 		return fmt.Errorf("immutability cannot be disabled once it is locked")
 	}
@@ -113,7 +109,6 @@ func (s *seedValidator) validateUpdate(_ context.Context, oldSeed, newSeed *core
 		return fmt.Errorf("immutable retention policy lock cannot be unlocked once it is locked")
 	}
 
-	// Case 4: Prevent Retention Period Reduction When Locked
 	if newBackupBucketConfig.Immutability.RetentionPeriod.Duration < oldBackupBucketConfig.Immutability.RetentionPeriod.Duration {
 		return fmt.Errorf(
 			"reducing the retention period from %v to %v is prohibited when the immutable retention policy is locked",
@@ -122,6 +117,5 @@ func (s *seedValidator) validateUpdate(_ context.Context, oldSeed, newSeed *core
 		)
 	}
 
-	// All Validation Checks Passed
 	return nil
 }
