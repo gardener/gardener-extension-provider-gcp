@@ -18,7 +18,6 @@ spec:
   secretRef:
     name: backupprovider
     namespace: garden
-  # Sample placeholder for immutable config
   # providerConfig:
   #   apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
   #   kind: BackupBucketConfig
