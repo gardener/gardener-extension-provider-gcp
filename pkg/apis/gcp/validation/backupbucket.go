@@ -21,13 +21,13 @@ func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, fldPath *fie
 
 	// Currently, only 'bucket' type is supported. In the future, 'object' type will be supported.
 	if config.Immutability.RetentionType != "bucket" {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("immutability").Child("retentionType"), config.Immutability.RetentionType, "must be 'bucket'"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("immutability", "retentionType"), config.Immutability.RetentionType, "must be 'bucket'"))
 	}
 
 	// The minimum retention period is 24 hours as per Google Cloud Storage requirements.
 	// Reference: https://github.com/googleapis/google-cloud-go/blob/3005f5a86c18254e569b8b1782bf014aa62f33cc/storage/bucket.go#L1430-L1434
 	if config.Immutability.RetentionPeriod.Duration < 24*time.Hour {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("immutability").Child("retentionPeriod"), config.Immutability.RetentionPeriod.Duration.String(), "must be a positive duration greater than 24h"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("immutability", "retentionPeriod"), config.Immutability.RetentionPeriod.Duration.String(), "must be a positive duration greater than 24h"))
 	}
 
 	return allErrs

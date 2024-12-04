@@ -93,7 +93,7 @@ func (s *seedValidator) validateUpdate(_ context.Context, oldSeed, newSeed *core
 		return fmt.Errorf("error decoding new BackupBucketConfig: %w", err)
 	}
 
-	allErrs := gcpvalidation.ValidateBackupBucketConfig(newBackupBucketConfig, field.NewPath("spec").Child("backup").Child("providerConfig"))
+	allErrs := gcpvalidation.ValidateBackupBucketConfig(newBackupBucketConfig, field.NewPath("spec", "backup", "providerConfig"))
 	if len(allErrs) > 0 {
 		return fmt.Errorf("validation failed: %w", allErrs.ToAggregate())
 	}
