@@ -67,7 +67,7 @@ func (s *seedValidator) validateCreate(newSeed *core.Seed) error {
 		return fmt.Errorf("error decoding BackupBucketConfig: %w", err)
 	}
 
-	allErrs := gcpvalidation.ValidateBackupBucketConfig(backupBucketConfig, field.NewPath("spec").Child("backup").Child("providerConfig"))
+	allErrs := gcpvalidation.ValidateBackupBucketConfig(backupBucketConfig, field.NewPath("spec", "backup", "providerConfig"))
 	if len(allErrs) > 0 {
 		return fmt.Errorf("validation failed: %w", allErrs.ToAggregate())
 	}
@@ -100,7 +100,6 @@ func (s *seedValidator) validateUpdate(_ context.Context, oldSeed, newSeed *core
 		return fmt.Errorf("validation failed: %w", allErrs.ToAggregate())
 	}
 
-	// Case 2: If Immutability Not Previously Locked
 	if !oldBackupBucketConfig.Immutability.Locked {
 		// Allow disabling immutability or other unrestricted updates.
 		return nil
