@@ -11,9 +11,11 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
@@ -35,7 +37,12 @@ func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, bb *extensionsv
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	return util.DetermineError(storageClient.CreateBucketIfNotExists(ctx, bb.Name, bb.Spec.Region), helper.KnownCodes)
+	backupBucketConfig, err := admission.DecodeBackupBucketConfig(serializer.NewCodecFactory(a.client.Scheme(), serializer.EnableStrict).UniversalDecoder(), bb.Spec.ProviderConfig)
+	if err != nil {
+		return err
+	}
+
+	return util.DetermineError(storageClient.CreateOrUpdateBucket(ctx, bb.Name, bb.Spec.Region, backupBucketConfig), helper.KnownCodes)
 }
 
 func (a *actuator) Delete(ctx context.Context, _ logr.Logger, bb *extensionsv1alpha1.BackupBucket) error {
