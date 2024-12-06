@@ -41,6 +41,7 @@ spec:
         args:
         - --endpoint=$(CSI_ENDPOINT)
         - --run-controller-service=false
+        - --maxprocs=2 # https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver/issues/968
         - --logtostderr
         - --v=5
         env:
@@ -84,6 +85,8 @@ spec:
           value: {{ .Values.socketPath }}
         - name: DRIVER_REG_SOCK_PATH
           value: /var/lib/kubelet/plugins/{{ include "csi-driver-node.provisioner" . }}/csi.sock
+        - name: GOMAXPROCS
+          value: "2"
 {{- if .Values.resources.nodeDriverRegistrar }}
         resources:
 {{ toYaml .Values.resources.nodeDriverRegistrar | indent 10 }}
@@ -98,6 +101,9 @@ spec:
         image: {{ index .Values.images "csi-liveness-probe" }}
         args:
         - --csi-address={{ .Values.socketPath }}
+        env:
+        - name: GOMAXPROCS
+          value: "2"
 {{- if .Values.resources.livenessProbe }}
         resources:
 {{ toYaml .Values.resources.livenessProbe | indent 10 }}
