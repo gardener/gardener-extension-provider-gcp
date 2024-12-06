@@ -65,9 +65,7 @@ func (u *updater) VPC(ctx context.Context, desired, current *compute.Network) (*
 }
 
 func (u *updater) Subnet(ctx context.Context, region string, desired, current *compute.Subnetwork) (*compute.Subnetwork, error) {
-	var (
-		err error
-	)
+	var err error
 
 	// dismiss non-functional changes that may block update
 	desired.Description = ""
@@ -108,6 +106,10 @@ func (u *updater) Subnet(ctx context.Context, region string, desired, current *c
 		if desired.LogConfig == nil {
 			desired.NullFields = []string{"LogConfig"}
 		}
+	}
+
+	if desired.StackType != current.StackType {
+		modified = true
 	}
 
 	if !modified {

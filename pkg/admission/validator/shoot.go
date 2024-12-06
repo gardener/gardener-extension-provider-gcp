@@ -84,7 +84,7 @@ type validationContext struct {
 }
 
 func workersZones(workers []core.Worker) sets.Set[string] {
-	var workerZones = sets.New[string]()
+	workerZones := sets.New[string]()
 	for _, worker := range workers {
 		workerZones.Insert(worker.Zones...)
 	}
@@ -172,7 +172,6 @@ func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core
 	allErrors = append(allErrors, s.validateContext(currentValContext)...)
 
 	return allErrors.ToAggregate()
-
 }
 
 func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client.Client, shoot *core.Shoot) (*validationContext, error) {

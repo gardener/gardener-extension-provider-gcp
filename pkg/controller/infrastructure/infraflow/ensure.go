@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/utils/ptr"
 
@@ -37,9 +38,7 @@ func (fctx *FlowContext) ensureServiceAccount(ctx context.Context) error {
 }
 
 func (fctx *FlowContext) ensureVPC(ctx context.Context) error {
-	var (
-		err error
-	)
+	var err error
 
 	if fctx.config.Networks.VPC != nil {
 		return fctx.ensureUserManagedVPC(ctx)
@@ -91,10 +90,34 @@ func (fctx *FlowContext) ensureUserManagedVPC(ctx context.Context) error {
 	return nil
 }
 
-func (fctx *FlowContext) ensureSubnet(ctx context.Context) error {
-	var (
-		region = fctx.infra.Spec.Region
-	)
+func (fctx *FlowContext) ensureIPv6CIDRs(ctx context.Context) error {
+	nodeSubnet := fctx.whiteboard.GetObject(ObjectKeyNodeSubnet).(*compute.Subnetwork)
+	if nodeSubnet == nil {
+		return fmt.Errorf("failed to get the subnet for nodes")
+	}
+
+	nodesIPv6Range, err := fctx.computeClient.WaitForIPv6Cidr(ctx, fctx.infra.Spec.Region, fmt.Sprintf("%d", nodeSubnet.Id))
+	if err != nil {
+		return err
+	}
+	fctx.whiteboard.Set(NodesSubnetIPv6CIDR, nodesIPv6Range)
+
+	srvSubnet := fctx.whiteboard.GetObject(ObjectKeyServicesSubnet).(*compute.Subnetwork)
+	if srvSubnet == nil {
+		return fmt.Errorf("failed to get the subnet for services")
+	}
+
+	srvIPv6Range, err := fctx.computeClient.WaitForIPv6Cidr(ctx, fctx.infra.Spec.Region, fmt.Sprintf("%d", srvSubnet.Id))
+	if err != nil {
+		return err
+	}
+	fctx.whiteboard.Set(ServicesSubnetIPv6CIDR, srvIPv6Range)
+
+	return nil
+}
+
+func (fctx *FlowContext) ensureNodesSubnet(ctx context.Context) error {
+	region := fctx.infra.Spec.Region
 
 	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
 		return err
@@ -113,6 +136,8 @@ func (fctx *FlowContext) ensureSubnet(ctx context.Context) error {
 		cidr,
 		vpc.SelfLink,
 		fctx.config.Networks.FlowLogs,
+		!gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies),
+		fctx.networking.Pods,
 	)
 
 	subnet, err := fctx.computeClient.GetSubnet(ctx, region, subnetName)
@@ -138,12 +163,10 @@ func (fctx *FlowContext) ensureSubnet(ctx context.Context) error {
 }
 
 func (fctx *FlowContext) ensureInternalSubnet(ctx context.Context) error {
-	var (
-		region = fctx.infra.Spec.Region
-	)
+	region := fctx.infra.Spec.Region
 
 	if fctx.config.Networks.Internal == nil {
-		return fctx.ensureInternalSubnetDeleted(ctx)
+		return fctx.ensureSubnetDeletedFactory(fctx.internalSubnetNameFromConfig(), ObjectKeyInternalSubnet)(ctx)
 	}
 
 	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
@@ -157,12 +180,13 @@ func (fctx *FlowContext) ensureInternalSubnet(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	desired := targetSubnetState(
 		subnetName,
 		"gardener-managed internal subnet",
 		*fctx.config.Networks.Internal,
 		vpc.SelfLink,
+		nil,
+		!gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies),
 		nil,
 	)
 	if subnet == nil {
@@ -179,6 +203,47 @@ func (fctx *FlowContext) ensureInternalSubnet(ctx context.Context) error {
 
 	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
 	fctx.whiteboard.SetObject(ObjectKeyInternalSubnet, subnet)
+	return nil
+}
+
+func (fctx *FlowContext) ensureServicesSubnet(ctx context.Context) error {
+	region := fctx.infra.Spec.Region
+
+	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
+		return err
+	}
+	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
+
+	subnetName := fctx.servicesSubnetNameFromConfig()
+
+	subnet, err := fctx.computeClient.GetSubnet(ctx, region, subnetName)
+	if err != nil {
+		return err
+	}
+
+	desired := targetSubnetState(
+		subnetName,
+		"gardener-managed services subnet",
+		*fctx.networking.Services,
+		vpc.SelfLink,
+		nil,
+		!gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies),
+		nil,
+	)
+	if subnet == nil {
+		subnet, err = fctx.computeClient.InsertSubnet(ctx, region, desired)
+		if err != nil {
+			return err
+		}
+	} else {
+		subnet, err = fctx.updater.Subnet(ctx, fctx.infra.Spec.Region, desired, subnet)
+		if err != nil {
+			return err
+		}
+	}
+
+	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
+	fctx.whiteboard.SetObject(ObjectKeyServicesSubnet, subnet)
 	return nil
 }
 
@@ -297,11 +362,33 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 	}
 	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
 
-	cidrs := []*string{fctx.podCIDR, fctx.config.Networks.Internal, ptr.To(fctx.config.Networks.Workers), ptr.To(fctx.config.Networks.Worker)}
-	rules := []*compute.Firewall{
-		firewallRuleAllowInternal(firewallRuleAllowInternalName(fctx.clusterName), vpc.SelfLink, cidrs),
-		firewallRuleAllowHealthChecks(firewallRuleAllowHealthChecksName(fctx.clusterName), vpc.SelfLink),
+	cidrs := []*string{
+		fctx.podCIDR,
+		fctx.config.Networks.Internal,
+		ptr.To(fctx.config.Networks.Workers),
+		ptr.To(fctx.config.Networks.Worker),
 	}
+
+	rules := []*compute.Firewall{
+		firewallRuleAllowInternal(shared.FirewallRuleAllowInternalName(fctx.clusterName), vpc.SelfLink, cidrs),
+		firewallRuleAllowHealthChecks(shared.FirewallRuleAllowHealthChecksName(fctx.clusterName), vpc.SelfLink, healthCheckSourceRangesIPv4),
+	}
+
+	cidrsipv6 := []*string{}
+	if nodesipv6 := fctx.whiteboard.Get(NodesSubnetIPv6CIDR); ptr.Deref(nodesipv6, "") != "" {
+		cidrsipv6 = append(cidrsipv6, nodesipv6)
+	}
+	if servicesipv6 := fctx.whiteboard.Get(ServicesSubnetIPv6CIDR); ptr.Deref(servicesipv6, "") != "" {
+		cidrsipv6 = append(cidrsipv6, servicesipv6)
+	}
+
+	if len(cidrsipv6) > 0 {
+		rules = append(rules,
+			firewallRuleAllowInternalIPv6(shared.FirewallRuleAllowInternalNameIPv6(fctx.clusterName), vpc.SelfLink, cidrsipv6),
+			firewallRuleAllowHealthChecks(shared.FirewallRuleAllowHealthChecksNameIPv6(fctx.clusterName), vpc.SelfLink, healthCheckSourceRangesIPv6),
+		)
+	}
+
 	for _, rule := range rules {
 		gcprule, err := fctx.computeClient.GetFirewallRule(ctx, rule.Name)
 		if err != nil {
@@ -320,7 +407,7 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 	}
 
 	// delete unnecessary firewall rule.
-	return fctx.computeClient.DeleteFirewallRule(ctx, firewallRuleAllowExternalName(fctx.clusterName))
+	return fctx.computeClient.DeleteFirewallRule(ctx, shared.FirewallRuleAllowExternalName(fctx.clusterName))
 }
 
 func (fctx *FlowContext) ensureVPCDeleted(ctx context.Context) error {
@@ -334,30 +421,19 @@ func (fctx *FlowContext) ensureVPCDeleted(ctx context.Context) error {
 	return nil
 }
 
-func (fctx *FlowContext) ensureSubnetDeleted(ctx context.Context) error {
-	subnetName := fctx.subnetNameFromConfig()
+func (fctx *FlowContext) ensureSubnetDeletedFactory(subnetName string, whiteboardKey string) func(context.Context) error {
+	return func(ctx context.Context) error {
+		log := shared.LogFromContext(ctx)
 
-	err := fctx.computeClient.DeleteSubnet(ctx, fctx.infra.Spec.Region, subnetName)
-	if err != nil {
-		return err
+		log.Info("deleting", "subnet", subnetName)
+		err := fctx.computeClient.DeleteSubnet(ctx, fctx.infra.Spec.Region, subnetName)
+		if err != nil {
+			return err
+		}
+
+		fctx.whiteboard.DeleteObject(whiteboardKey)
+		return nil
 	}
-
-	fctx.whiteboard.DeleteObject(ObjectKeyNodeSubnet)
-	return nil
-}
-
-func (fctx *FlowContext) ensureInternalSubnetDeleted(ctx context.Context) error {
-	log := shared.LogFromContext(ctx)
-
-	subnetName := fctx.internalSubnetNameFromConfig()
-	log.Info("deleting internal subnet")
-	err := fctx.computeClient.DeleteSubnet(ctx, fctx.infra.Spec.Region, subnetName)
-	if err != nil {
-		return err
-	}
-
-	fctx.whiteboard.DeleteObject(ObjectKeyInternalSubnet)
-	return nil
 }
 
 func (fctx *FlowContext) ensureServiceAccountDeleted(ctx context.Context) error {
@@ -437,7 +513,7 @@ func (fctx *FlowContext) ensureFirewallRulesDeleted(ctx context.Context) error {
 	}
 
 	for _, fw := range fws {
-		log.Info(fmt.Sprintf("destroying firewall rule [name=%s]", fw.Name))
+		log.Info("destroying firewall rule", "name", fw.Name)
 		err := fctx.computeClient.DeleteFirewallRule(ctx, fw.Name)
 		if err != nil {
 			return err
@@ -468,7 +544,7 @@ func (fctx *FlowContext) ensureKubernetesRoutesDeleted(ctx context.Context) erro
 	}
 
 	for _, route := range routes {
-		log.Info(fmt.Sprintf("destroying route[name=%s]", route.Name))
+		log.Info("destroying route", "name", route.Name)
 		err := fctx.computeClient.DeleteRoute(ctx, route.Name)
 		if err != nil {
 			return err
