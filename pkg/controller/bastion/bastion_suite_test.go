@@ -9,17 +9,21 @@ import (
 	"fmt"
 	"testing"
 
+	extensionsbastion "github.com/gardener/gardener/extensions/pkg/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
+	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/api/compute/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 
 	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
@@ -148,16 +152,6 @@ var _ = Describe("Bastion", func() {
 		})
 	})
 
-	Describe("check marshalProviderStatus", func() {
-		It("should return a JSON object containing a Zone Struct", func() {
-			res, err := marshalProviderStatus("us-west1-a")
-			expectedMarshalOutput := "{\"zone\":\"us-west1-a\"}"
-
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(string(res)).To(Equal(expectedMarshalOutput))
-		})
-	})
-
 	Describe("check unMarshalProviderStatus", func() {
 		It("should update a ProviderStatusRaw Object from a Byte array", func() {
 			testInput := []byte(`{"zone":"us-west1-a"}`)
@@ -214,18 +208,96 @@ var _ = Describe("Bastion", func() {
 			Expect(patchCIDRs(cidrs)).To(Equal(value))
 		})
 	})
+
+	Describe("getProviderSpecificImage", func() {
+		var (
+			desiredVM      extensionsbastion.MachineSpec
+			providerImages []gcpapi.MachineImages
+		)
+
+		BeforeEach(func() {
+			desiredVM = extensionsbastion.MachineSpec{
+				MachineTypeName: "small_machine",
+				Architecture:    "amd64",
+				ImageBaseName:   "gardenlinux",
+				ImageVersion:    "1.2.3",
+			}
+			providerImages = createTestProviderConfig().MachineImages
+		})
+
+		It("succeed for existing image", func() {
+			machineImage, err := getProviderSpecificImage(providerImages, desiredVM)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(machineImage.Image).To(DeepEqual(providerImages[0].Versions[0].Image))
+			Expect(machineImage.Version).To(DeepEqual(providerImages[0].Versions[0].Version))
+			Expect(machineImage.Architecture).To(DeepEqual(providerImages[0].Versions[0].Architecture))
+		})
+
+		It("fail if image name does not exist", func() {
+			desiredVM.ImageBaseName = "unknown"
+			_, err := getProviderSpecificImage(providerImages, desiredVM)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("fail if image version does not exist", func() {
+			desiredVM.ImageVersion = "6.6.6"
+			_, err := getProviderSpecificImage(providerImages, desiredVM)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("fail if no image for given architecture exists", func() {
+			desiredVM.Architecture = "x86"
+			_, err := getProviderSpecificImage(providerImages, desiredVM)
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })
 
 func createShootTestStruct() *gardencorev1beta1.Shoot {
-	json := `{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1","kind": "InfrastructureConfig", "networks": {"workers": "10.250.0.0/16"}}`
 	return &gardencorev1beta1.Shoot{
 		Spec: gardencorev1beta1.ShootSpec{
 			Region: "us-west",
 			Provider: gardencorev1beta1.Provider{
-				InfrastructureConfig: &runtime.RawExtension{
-					Raw: []byte(json),
-				}}},
+				InfrastructureConfig: &runtime.RawExtension{Raw: mustEncode(gcpapi.InfrastructureConfig{
+					Networks: gcpapi.NetworkConfig{
+						Workers: "10.250.0.0/16",
+					},
+				})},
+			},
+		},
 	}
+}
+
+func createTestMachineImages() []gardencorev1beta1.MachineImage {
+	return []gardencorev1beta1.MachineImage{{
+		Name: "gardenlinux",
+		Versions: []gardencorev1beta1.MachineImageVersion{{
+			ExpirableVersion: gardencorev1beta1.ExpirableVersion{
+				Version:        "1.2.3",
+				Classification: ptr.To(gardencorev1beta1.ClassificationSupported),
+			},
+			Architectures: []string{"amd64"},
+		}},
+	}}
+}
+
+func createTestMachineTypes() []gardencorev1beta1.MachineType {
+	return []gardencorev1beta1.MachineType{{
+		CPU:          resource.MustParse("4"),
+		Name:         "machineName",
+		Architecture: ptr.To("amd64"),
+	}}
+}
+
+func createTestProviderConfig() *gcpapi.CloudProfileConfig {
+	return &gcpapi.CloudProfileConfig{MachineImages: []gcpapi.MachineImages{{
+		Name: "gardenlinux",
+		Versions: []gcpapi.MachineImageVersion{{
+			Version:      "1.2.3",
+			Image:        "/path/to/images",
+			Architecture: ptr.To("amd64"),
+		}},
+	}}}
 }
 
 func createGCPTestCluster() *extensions.Cluster {
@@ -240,6 +312,11 @@ func createGCPTestCluster() *extensions.Cluster {
 						{Name: "us-west1-a"},
 						{Name: "us-west1-b"},
 					}},
+				},
+				MachineImages: createTestMachineImages(),
+				MachineTypes:  createTestMachineTypes(),
+				ProviderConfig: &runtime.RawExtension{
+					Raw: mustEncode(createTestProviderConfig()),
 				},
 			},
 		},
@@ -283,4 +360,26 @@ func createTestOptions(opt Options) Options {
 	opt.Zone = "us-west1-a"
 	opt.BastionInstanceName = "test-bastion1"
 	return opt
+}
+
+func getNetworkName(cluster *extensions.Cluster, projectID string, clusterName string) (string, error) {
+	infrastructureConfig := &gcpapi.InfrastructureConfig{}
+	err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig)
+	if err != nil {
+		return "", err
+	}
+
+	networkName := fmt.Sprintf("projects/%s/global/networks/%s", projectID, clusterName)
+
+	if infrastructureConfig.Networks.VPC != nil {
+		networkName = fmt.Sprintf("projects/%s/global/networks/%s", projectID, infrastructureConfig.Networks.VPC.Name)
+	}
+
+	return networkName, nil
+}
+
+func mustEncode(object any) []byte {
+	data, err := json.Marshal(object)
+	Expect(err).ToNot(HaveOccurred())
+	return data
 }

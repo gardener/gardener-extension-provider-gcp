@@ -31,6 +31,7 @@ import (
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -48,11 +49,15 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
-var workersSubnetCIDR = "10.250.0.0/16"
-var userDataConst = "IyEvYmluL2Jhc2ggLWV1CmlkIGdhcmRlbmVyIHx8IHVzZXJhZGQgZ2FyZGVuZXIgLW1VCm1rZGlyIC1wIC9ob21lL2dhcmRlbmVyLy5zc2gKZWNobyAic3NoLXJzYSBBQUFBQjNOemFDMXljMkVBQUFBREFRQUJBQUFCQVFDazYyeDZrN2orc0lkWG9TN25ITzRrRmM3R0wzU0E2UmtMNEt4VmE5MUQ5RmxhcmtoRzFpeU85WGNNQzZqYnh4SzN3aWt0M3kwVTBkR2h0cFl6Vjh3YmV3Z3RLMWJBWnl1QXJMaUhqbnJnTFVTRDBQazNvWGh6RkpKN0MvRkxNY0tJZFN5bG4vMENKVkVscENIZlU5Y3dqQlVUeHdVQ2pnVXRSYjdZWHN6N1Y5dllIVkdJKzRLaURCd3JzOWtVaTc3QWMyRHQ1UzBJcit5dGN4b0p0bU5tMWgxTjNnNzdlbU8rWXhtWEo4MzFXOThoVFVTeFljTjNXRkhZejR5MWhrRDB2WHE1R1ZXUUtUQ3NzRE1wcnJtN0FjQTBCcVRsQ0xWdWl3dXVmTEJLWGhuRHZRUEQrQ2Jhbk03bUZXRXdLV0xXelZHME45Z1VVMXE1T3hhMzhvODUgbWVAbWFjIiA+IC9ob21lL2dhcmRlbmVyLy5zc2gvYXV0aG9yaXplZF9rZXlzCmNob3duIGdhcmRlbmVyOmdhcmRlbmVyIC9ob21lL2dhcmRlbmVyLy5zc2gvYXV0aG9yaXplZF9rZXlzCmVjaG8gImdhcmRlbmVyIEFMTD0oQUxMKSBOT1BBU1NXRDpBTEwiID4vZXRjL3N1ZG9lcnMuZC85OS1nYXJkZW5lci11c2VyCg=="
-var myPublicIP = ""
+const (
+	imageName         = "gardenLinux"
+	workersSubnetCIDR = "10.250.0.0/16"
+	userDataConst     = "#!/bin/bash -eu"
+)
 
 var (
+	myPublicIP = ""
+
 	serviceAccount = flag.String("service-account", "", "Service account containing credentials for the GCP API")
 	region         = flag.String("region", "", "GCP region")
 )
@@ -191,7 +196,6 @@ var _ = BeforeSuite(func() {
 			gcp.ServiceAccountJSONField: []byte(*serviceAccount),
 		},
 	}
-
 })
 
 var _ = Describe("Bastion tests", func() {
@@ -269,7 +273,6 @@ func verifyPort42IsClosed(ctx context.Context, c client.Client, bastion *extensi
 }
 
 func prepareNewNetwork(ctx context.Context, log logr.Logger, project string, computeService *compute.Service, networkName string, routerName string, subnetName string) error {
-
 	network := &compute.Network{
 		Name:                  networkName,
 		AutoCreateSubnetworks: false,
@@ -292,7 +295,7 @@ func prepareNewNetwork(ctx context.Context, log logr.Logger, project string, com
 		Name:           subnetName,
 		Region:         *region,
 		Network:        fmt.Sprintf("projects/%s/global/networks/%s", project, networkName),
-		IpCidrRange:    "10.250.0.0/16",
+		IpCidrRange:    workersSubnetCIDR,
 		GatewayAddress: "10.250.0.1",
 		EnableFlowLogs: false,
 	}
@@ -495,7 +498,20 @@ func createShoot(infrastructureConfig []byte) *gardencorev1beta1.Shoot {
 	}
 }
 
+// TODO can be improved by getting real cloudProfile from landscape
 func createCloudProfile() *gardencorev1beta1.CloudProfile {
+	profileConfig := &gcpv1alpha1.CloudProfileConfig{MachineImages: []gcpv1alpha1.MachineImages{{
+		Name: imageName,
+		Versions: []gcpv1alpha1.MachineImageVersion{{
+			Version:      "1443.9.0",
+			Image:        "projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-gcp-gardener-prod-amd64-1443-9-a9c614dc",
+			Architecture: ptr.To("amd64"),
+		}},
+	}}}
+
+	profileConfigData, err := json.Marshal(profileConfig)
+	Expect(err).NotTo(HaveOccurred())
+
 	cloudProfile := &gardencorev1beta1.CloudProfile{
 		Spec: gardencorev1beta1.CloudProfileSpec{
 			Regions: []gardencorev1beta1.Region{
@@ -504,6 +520,30 @@ func createCloudProfile() *gardencorev1beta1.CloudProfile {
 					{Name: *region + "-b"},
 					{Name: *region + "-c"},
 				}},
+			},
+			Bastion: &gardencorev1beta1.Bastion{
+				MachineImage: &gardencorev1beta1.BastionMachineImage{
+					Name: imageName,
+				},
+			},
+			MachineTypes: []gardencorev1beta1.MachineType{{
+				CPU:          resource.MustParse("1"),
+				Name:         "n1-standard-1",
+				Architecture: ptr.To("amd64"),
+			}},
+			MachineImages: []gardencorev1beta1.MachineImage{{
+				Name: imageName,
+				Versions: []gardencorev1beta1.MachineImageVersion{
+					{
+						ExpirableVersion: gardencorev1beta1.ExpirableVersion{
+							Version:        "1443.9.0",
+							Classification: ptr.To(gardencorev1beta1.ClassificationSupported),
+						},
+						Architectures: []string{"amd64", "arm64"},
+					}},
+			}},
+			ProviderConfig: &runtime.RawExtension{
+				Raw: profileConfigData,
 			},
 		},
 	}
