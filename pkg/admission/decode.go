@@ -76,10 +76,5 @@ func DecodeSeedBackupBucketConfig(decoder runtime.Decoder, backup *core.SeedBack
 		return nil, nil
 	}
 
-	backupBucketConfig := &gcp.BackupBucketConfig{}
-	if err := util.Decode(decoder, backup.ProviderConfig.Raw, backupBucketConfig); err != nil {
-		return nil, err
-	}
-
-	return backupBucketConfig, nil
+	return DecodeBackupBucketConfig(decoder, backup.ProviderConfig)
 }
