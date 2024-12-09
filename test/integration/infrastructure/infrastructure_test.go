@@ -37,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	schemev1 "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,6 +51,7 @@ import (
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
@@ -208,7 +208,7 @@ var _ = Describe("Infrastructure tests", func() {
 			namespace, err := generateNamespaceName()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
+			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService, false)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -219,47 +219,8 @@ var _ = Describe("Infrastructure tests", func() {
 		})
 
 		It("should successfully create and delete", func() {
-			namespace, err := generateNamespaceName()
-			Expect(err).NotTo(HaveOccurred())
-
-			networkName := namespace
-			cloudRouterName := networkName + "-cloud-router"
-			ipAddressNames := []string{networkName + "-manual-nat1", networkName + "-manual-nat2"}
-
-			var cleanupHandle framework.CleanupActionHandle
-			cleanupHandle = framework.AddCleanupAction(func() {
-				err := teardownNetwork(ctx, log, project, computeService, networkName, cloudRouterName)
-				Expect(err).NotTo(HaveOccurred())
-				err = teardownIPAddresses(ctx, log, project, computeService, ipAddressNames)
-				Expect(err).NotTo(HaveOccurred())
-
-				framework.RemoveCleanupAction(cleanupHandle)
-			})
-
-			err = prepareNewNetwork(ctx, log, project, computeService, networkName, cloudRouterName)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = prepareNewIPAddresses(ctx, log, project, computeService, ipAddressNames)
-			Expect(err).NotTo(HaveOccurred())
-
-			vpc := &gcpv1alpha1.VPC{
-				Name: networkName,
-				CloudRouter: &gcpv1alpha1.CloudRouter{
-					Name: cloudRouterName,
-				}}
-			var natIPNames []gcpv1alpha1.NatIPName
-			for _, ipAddressName := range ipAddressNames {
-				natIPNames = append(natIPNames, gcpv1alpha1.NatIPName{Name: ipAddressName})
-			}
-			cloudNAT := &gcpv1alpha1.CloudNAT{
-				MinPortsPerVM:               ptr.To[int32](1024),
-				MaxPortsPerVM:               ptr.To[int32](2048),
-				EnableDynamicPortAllocation: true,
-				NatIPNames:                  natIPNames,
-			}
-			providerConfig := newProviderConfig(vpc, cloudNAT)
-
-			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService)
+			namespace, providerConfig := newProviderConfigForExistingVPC()
+			err := runTest(ctx, c, namespace, providerConfig, project, computeService, iamService, false)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -359,6 +320,31 @@ var _ = Describe("Infrastructure tests", func() {
 			})
 		})
 	})
+
+	Context("with dualstack enabled", func() {
+		AfterEach(func() {
+			framework.RunCleanupActions()
+		})
+
+		It("should create VPC and subnets with dualstack enabled", func() {
+			providerConfig := newProviderConfig(nil, nil)
+
+			namespace, err := generateNamespaceName()
+			Expect(err).NotTo(HaveOccurred())
+
+			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService, true)
+			Expect(err).NotTo(HaveOccurred())
+
+			verifyDualStackSetup(ctx, project, computeService, namespace)
+		})
+
+		It("dualstack enabled with infrastructure that uses existing vpc", func() {
+			namespace, providerConfig := newProviderConfigForExistingVPC()
+			err := runTest(ctx, c, namespace, providerConfig, project, computeService, iamService, true)
+			Expect(err).NotTo(HaveOccurred())
+			verifyDualStackSetup(ctx, project, computeService, namespace)
+		})
+	})
 })
 
 func runTest(
@@ -369,6 +355,7 @@ func runTest(
 	project string,
 	computeService *computev1.Service,
 	iamService *iamv1.Service,
+	dualStack bool,
 ) error {
 	var (
 		namespace     *corev1.Namespace
@@ -414,6 +401,15 @@ func runTest(
 	}
 
 	By("create cluster")
+
+	ipFamilies := []gardencorev1beta1.IPFamily{
+		gardencorev1beta1.IPFamilyIPv4,
+	}
+
+	if dualStack {
+		ipFamilies = append(ipFamilies, gardencorev1beta1.IPFamilyIPv6)
+	}
+
 	shoot := &gardencorev1beta1.Shoot{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Shoot",
@@ -421,7 +417,8 @@ func runTest(
 		},
 		Spec: gardencorev1beta1.ShootSpec{
 			Networking: &gardencorev1beta1.Networking{
-				Pods: ptr.To(podCIDR),
+				Pods:       ptr.To(podCIDR),
+				IPFamilies: ipFamilies,
 			},
 		},
 	}
@@ -495,7 +492,7 @@ func runTest(
 	}
 
 	By("verify infrastructure creation")
-	verifyCreation(ctx, project, computeService, iamService, infra, providerConfig)
+	verifyCreation(ctx, project, computeService, iamService, infra, providerConfig, dualStack)
 
 	if *reconciler == reconcilerMigrateTF {
 		By("verifying terraform migration")
@@ -520,10 +517,37 @@ func runTest(
 		}
 
 		By("verify infrastructure creation after migration")
-		verifyCreation(ctx, project, computeService, iamService, infra, providerConfig)
+		verifyCreation(ctx, project, computeService, iamService, infra, providerConfig, dualStack)
 	}
 
 	return err
+}
+
+// verify that the subnets have IPv6 CIDR ranges, firewalls allow IPv6 traffic, etc.
+func verifyDualStackSetup(ctx context.Context, project string, computeService *computev1.Service, namespace string) {
+	subnetNodes, err := computeService.Subnetworks.Get(project, *region, namespace+"-nodes").Context(ctx).Do()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(subnetNodes.Ipv6CidrRange).ToNot(BeEmpty(), "Expected IPv6 CIDR to be set for nodes subnet")
+
+	subnetServices, err := computeService.Subnetworks.Get(project, *region, namespace+"-services").Context(ctx).Do()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(subnetServices.Ipv6CidrRange).ToNot(BeEmpty(), "Expected IPv6 CIDR to be set for services subnet")
+
+	fwRules, err := computeService.Firewalls.List(project).Context(ctx).Do()
+	Expect(err).NotTo(HaveOccurred())
+
+	firewallRules := map[string]bool{}
+	for _, fw := range fwRules.Items {
+		firewallRules[fw.Name] = true
+	}
+
+	Expect(
+		firewallRules[shared.FirewallRuleAllowHealthChecksNameIPv6(namespace)],
+	).ToNot(BeFalse(), "Missing firewall rule to allow IPv6 health check")
+
+	Expect(
+		firewallRules[shared.FirewallRuleAllowInternalNameIPv6(namespace)],
+	).ToNot(BeFalse(), "Missing firewall rule to allow IPv6 internal access")
 }
 
 func newProviderConfig(vpc *gcpv1alpha1.VPC, cloudNAT *gcpv1alpha1.CloudNAT) *gcpv1alpha1.InfrastructureConfig {
@@ -733,6 +757,7 @@ func verifyCreation(
 	iamService *iamv1.Service,
 	infra *extensionsv1alpha1.Infrastructure,
 	providerConfig *gcpv1alpha1.InfrastructureConfig,
+	dualStack bool,
 ) {
 	// service account
 	if !features.ExtensionFeatureGate.Enabled(features.DisableGardenerServiceAccountCreation) {
@@ -760,10 +785,22 @@ func verifyCreation(
 	Expect(subnetNodes.LogConfig.FlowSampling).To(Equal(float64(0.2)))
 	Expect(subnetNodes.LogConfig.Metadata).To(Equal("INCLUDE_ALL_METADATA"))
 
+	if dualStack {
+		// Ensure dual-stack subnets are created
+		Expect(err).NotTo(HaveOccurred())
+		Expect(subnetNodes.Ipv6CidrRange).To(Not(BeEmpty()), "Expected IPv6 CIDR range for dualstack setup")
+	}
+
 	subnetInternal, err := computeService.Subnetworks.Get(project, *region, infra.Namespace+"-internal").Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(subnetInternal.Network).To(Equal(network.SelfLink))
 	Expect(subnetInternal.IpCidrRange).To(Equal(internalSubnetCIDR))
+
+	if dualStack {
+		// Ensure dual-stack subnets are created
+		Expect(err).NotTo(HaveOccurred())
+		Expect(subnetInternal.Ipv6CidrRange).To(Not(BeEmpty()), "Expected IPv6 CIDR range for dualstack setup")
+	}
 
 	// router
 
@@ -798,7 +835,7 @@ func verifyCreation(
 		Expect(routerNAT.NatIps).To(HaveLen(len(providerConfig.Networks.CloudNAT.NatIPNames)))
 
 		// ip addresses
-		var ipAddresses = make(map[string]bool)
+		ipAddresses := make(map[string]bool)
 		for _, natIPName := range providerConfig.Networks.CloudNAT.NatIPNames {
 			address, err := computeService.Addresses.Get(project, *region, natIPName.Name).Context(ctx).Do()
 			Expect(err).NotTo(HaveOccurred())
@@ -923,7 +960,7 @@ func newCluster(name string) (*extensionsv1alpha1.Cluster, error) {
 		},
 		Spec: gardencorev1beta1.ShootSpec{
 			Networking: &gardencorev1beta1.Networking{
-				Pods: pointer.String(podCIDR),
+				Pods: ptr.To(podCIDR),
 			},
 		},
 	}
@@ -943,4 +980,47 @@ func newCluster(name string) (*extensionsv1alpha1.Cluster, error) {
 		},
 	}
 	return cluster, nil
+}
+
+func newProviderConfigForExistingVPC() (string, *gcpv1alpha1.InfrastructureConfig) {
+	namespace, err := generateNamespaceName()
+	Expect(err).NotTo(HaveOccurred())
+
+	networkName := namespace
+	cloudRouterName := networkName + "-cloud-router"
+	ipAddressNames := []string{networkName + "-manual-nat1", networkName + "-manual-nat2"}
+
+	var cleanupHandle framework.CleanupActionHandle
+	cleanupHandle = framework.AddCleanupAction(func() {
+		err := teardownNetwork(ctx, log, project, computeService, networkName, cloudRouterName)
+		Expect(err).NotTo(HaveOccurred())
+		err = teardownIPAddresses(ctx, log, project, computeService, ipAddressNames)
+		Expect(err).NotTo(HaveOccurred())
+
+		framework.RemoveCleanupAction(cleanupHandle)
+	})
+
+	err = prepareNewNetwork(ctx, log, project, computeService, networkName, cloudRouterName)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = prepareNewIPAddresses(ctx, log, project, computeService, ipAddressNames)
+	Expect(err).NotTo(HaveOccurred())
+
+	vpc := &gcpv1alpha1.VPC{
+		Name: networkName,
+		CloudRouter: &gcpv1alpha1.CloudRouter{
+			Name: cloudRouterName,
+		},
+	}
+	var natIPNames []gcpv1alpha1.NatIPName
+	for _, ipAddressName := range ipAddressNames {
+		natIPNames = append(natIPNames, gcpv1alpha1.NatIPName{Name: ipAddressName})
+	}
+	cloudNAT := &gcpv1alpha1.CloudNAT{
+		MinPortsPerVM:               ptr.To[int32](1024),
+		MaxPortsPerVM:               ptr.To[int32](2048),
+		EnableDynamicPortAllocation: true,
+		NatIPNames:                  natIPNames,
+	}
+	return namespace, newProviderConfig(vpc, cloudNAT)
 }

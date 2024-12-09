@@ -31,6 +31,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
@@ -92,6 +93,14 @@ func (w *workerDelegate) GenerateMachineDeployments(ctx context.Context) (worker
 		}
 	}
 	return w.machineDeployments, nil
+}
+
+func formatNodeCIDRMask(val *int32, defaultVal int) string {
+	if val != nil && *val != 0 {
+		return fmt.Sprintf("/%d", *val)
+	}
+
+	return fmt.Sprintf("/%d", defaultVal)
 }
 
 func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
@@ -182,6 +191,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		for zoneIndex, zone := range pool.Zones {
 			zoneIdx := int32(zoneIndex) // #nosec: G115 - We check if pool zones exceeds max_int32.
+			ipCidrRange := formatNodeCIDRMask(nil, 24)
+
+			if kcc := w.cluster.Shoot.Spec.Kubernetes.KubeControllerManager; kcc != nil {
+				ipCidrRange = formatNodeCIDRMask(kcc.NodeCIDRMaskSize, 24)
+			}
+
 			machineClassSpec := map[string]interface{}{
 				"region":             w.worker.Spec.Region,
 				"zone":               zone,
@@ -200,8 +215,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				"machineType": pool.MachineType,
 				"networkInterfaces": []map[string]interface{}{
 					{
-						"subnetwork":        nodesSubnet.Name,
-						"disableExternalIP": true,
+						"subnetwork":          nodesSubnet.Name,
+						"disableExternalIP":   true,
+						"stackType":           w.getStackType(),
+						"ipv6accessType":      "EXTERNAL",
+						"ipCidrRange":         ipCidrRange,
+						"subnetworkRangeName": infraflow.DefaultSecondarySubnetName,
 					},
 				},
 				"secret": map[string]interface{}{
@@ -311,11 +330,11 @@ func (w *workerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, worker
 		}
 	}
 
-	worker_volumes := slices.Clone(workerConfig.DataVolumes)
-	slices.SortFunc(worker_volumes, func(i, j apisgcp.DataVolume) int {
+	workerVolumes := slices.Clone(workerConfig.DataVolumes)
+	slices.SortFunc(workerVolumes, func(i, j apisgcp.DataVolume) int {
 		return strings.Compare(i.Name, j.Name)
 	})
-	for _, volume := range worker_volumes {
+	for _, volume := range workerVolumes {
 		additionalData = append(additionalData, volume.Name)
 		if sourceImage := volume.SourceImage; sourceImage != nil {
 			additionalData = append(additionalData, *sourceImage)
@@ -422,7 +441,7 @@ func addDiskEncryptionDetails(disk map[string]interface{}, encryption *apisgcp.D
 	if encryption == nil {
 		return
 	}
-	var encryptionMap = make(map[string]interface{})
+	encryptionMap := make(map[string]interface{})
 	if encryption.KmsKeyName != nil {
 		encryptionMap["kmsKeyName"] = *encryption.KmsKeyName
 	}

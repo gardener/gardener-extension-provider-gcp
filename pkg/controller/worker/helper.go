@@ -31,7 +31,7 @@ func (w *workerDelegate) decodeWorkerProviderStatus() (*api.WorkerStatus, error)
 }
 
 func (w *workerDelegate) updateWorkerProviderStatus(ctx context.Context, workerStatus *api.WorkerStatus) error {
-	var workerStatusV1alpha1 = &v1alpha1.WorkerStatus{
+	workerStatusV1alpha1 := &v1alpha1.WorkerStatus{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
 			Kind:       "WorkerStatus",
@@ -45,4 +45,12 @@ func (w *workerDelegate) updateWorkerProviderStatus(ctx context.Context, workerS
 	patch := k8sclient.MergeFrom(w.worker.DeepCopy())
 	w.worker.Status.ProviderStatus = &runtime.RawExtension{Object: workerStatusV1alpha1}
 	return w.client.Status().Patch(ctx, w.worker, patch)
+}
+
+func (w *workerDelegate) getStackType() string {
+	if nw := w.cluster.Shoot.Spec.Networking; nw != nil && len(nw.IPFamilies) > 1 {
+		return "IPV4_IPV6"
+	}
+
+	return "IPV4_ONLY"
 }
