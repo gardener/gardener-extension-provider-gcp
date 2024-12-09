@@ -6,7 +6,6 @@ package admission
 
 import (
 	"github.com/gardener/gardener/extensions/pkg/util"
-	"github.com/gardener/gardener/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -58,23 +57,10 @@ func DecodeCloudProfileConfig(decoder runtime.Decoder, config *runtime.RawExtens
 
 // DecodeBackupBucketConfig decodes the `BackupBucketConfig` from the given `RawExtension`.
 func DecodeBackupBucketConfig(decoder runtime.Decoder, config *runtime.RawExtension) (*gcp.BackupBucketConfig, error) {
-	if config == nil {
-		return nil, nil
-	}
-
 	backupBucketConfig := &gcp.BackupBucketConfig{}
 	if err := util.Decode(decoder, config.Raw, backupBucketConfig); err != nil {
 		return nil, err
 	}
 
 	return backupBucketConfig, nil
-}
-
-// DecodeSeedBackupBucketConfig decodes the `BackupBucketConfig` from the given `SeedBackup`.
-func DecodeSeedBackupBucketConfig(decoder runtime.Decoder, backup *core.SeedBackup) (*gcp.BackupBucketConfig, error) {
-	if backup == nil || backup.ProviderConfig == nil {
-		return nil, nil
-	}
-
-	return DecodeBackupBucketConfig(decoder, backup.ProviderConfig)
 }

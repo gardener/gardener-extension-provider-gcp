@@ -62,7 +62,7 @@ var _ = Describe("Decode", func() {
 				APIVersion: "gcp.provider.extensions.gardener.cloud/v1alpha1",
 				Kind:       "BackupBucketConfig",
 			},
-			Immutability: apisgcp.ImmutableConfig{
+			Immutability: &apisgcp.ImmutableConfig{
 				RetentionType:   "bucket",
 				RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
 				Locked:          true,
@@ -76,38 +76,5 @@ var _ = Describe("Decode", func() {
 			},
 		}, false),
 		Entry("different data in provider config", &runtime.RawExtension{Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "DifferentConfig", "someField": "someValue"}`)}, nil, true),
-	)
-
-	DescribeTable("DecodeSeedBackupBucketConfig",
-		func(backup *core.SeedBackup, want *apisgcp.BackupBucketConfig, wantErr bool) {
-			got, err := DecodeSeedBackupBucketConfig(decoder, backup)
-			if wantErr {
-				Expect(err).To(HaveOccurred())
-			} else {
-				Expect(err).NotTo(HaveOccurred())
-			}
-			Expect(equalBackupBucketConfig(got, want)).To(BeTrue())
-		},
-		Entry("nil backup", nil, nil, false),
-		Entry("nil provider config", &core.SeedBackup{ProviderConfig: nil}, nil, false),
-		Entry("valid provider config", &core.SeedBackup{ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "immutability": {"retentionType": "bucket", "retentionPeriod": "24h", "locked": true}}`)}}, &apisgcp.BackupBucketConfig{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "gcp.provider.extensions.gardener.cloud/v1alpha1",
-				Kind:       "BackupBucketConfig",
-			},
-			Immutability: apisgcp.ImmutableConfig{
-				RetentionType:   "bucket",
-				RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
-				Locked:          true,
-			},
-		}, false),
-		Entry("invalid provider config", &core.SeedBackup{ProviderConfig: &runtime.RawExtension{Raw: []byte(`invalid`)}}, nil, true),
-		Entry("missing fields in provider config", &core.SeedBackup{ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`)}}, &apisgcp.BackupBucketConfig{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "gcp.provider.extensions.gardener.cloud/v1alpha1",
-				Kind:       "BackupBucketConfig",
-			},
-		}, false),
-		Entry("different data in provider config", &core.SeedBackup{ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "DifferentConfig", "someField": "someValue"}`)}}, nil, true),
 	)
 })
