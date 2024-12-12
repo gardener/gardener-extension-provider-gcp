@@ -7,6 +7,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -265,9 +266,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				machineClassSpec["minCpuPlatform"] = *workerConfig.MinCpuPlatform
 			}
 
-			nodeTemplate := pool.NodeTemplate
+			nodeTemplate := pool.NodeTemplate.DeepCopy()
 			if workerConfig.NodeTemplate != nil {
-				nodeTemplate = workerConfig.NodeTemplate
+				// Support extended resources by copying into nodeTemplate.Capacity overriding if needed
+				maps.Copy(nodeTemplate.Capacity, workerConfig.NodeTemplate.Capacity)
 			}
 			if nodeTemplate != nil {
 				template := machinev1alpha1.NodeTemplate{
