@@ -24,6 +24,7 @@ import (
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
@@ -109,7 +110,7 @@ func (t *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 		return err
 	}
 
-	return patchProviderStatusAndState(ctx, t.client, infra, status, state)
+	return infraflow.PatchProviderStatusAndState(ctx, t.client, infra, cluster.Shoot.Spec.Networking, status, state, nil, nil)
 }
 
 // Delete deletes the infrastructure using Terraformer.
