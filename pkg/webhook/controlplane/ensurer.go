@@ -161,8 +161,7 @@ func (e *ensurer) EnsureKubeSchedulerDeployment(
 // EnsureClusterAutoscalerDeployment ensures that the cluster-autoscaler deployment conforms to the provider requirements.
 func (e *ensurer) EnsureClusterAutoscalerDeployment(ctx context.Context,
 	gctx gcontext.GardenContext,
-	newDeployment,
-	_ *appsv1.Deployment) error {
+	newDeployment, _ *appsv1.Deployment) error {
 	template := &newDeployment.Spec.Template
 	ps := &template.Spec
 
