@@ -37,11 +37,11 @@ const (
 )
 
 // Mutate mutates the given shoot object.
-func (s *shoot) Mutate(_ context.Context, new, old client.Object) error {
+func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 
-	shoot, ok := new.(*gardencorev1beta1.Shoot)
+	shoot, ok := newObj.(*gardencorev1beta1.Shoot)
 	if !ok {
-		return fmt.Errorf("wrong object type %T", new)
+		return fmt.Errorf("wrong object type %T", newObj)
 	}
 
 	// Skip if shoot is in restore or migration phase
@@ -50,10 +50,10 @@ func (s *shoot) Mutate(_ context.Context, new, old client.Object) error {
 	}
 
 	var oldShoot *gardencorev1beta1.Shoot
-	if old != nil {
-		oldShoot, ok = old.(*gardencorev1beta1.Shoot)
+	if oldObj != nil {
+		oldShoot, ok = oldObj.(*gardencorev1beta1.Shoot)
 		if !ok {
-			return fmt.Errorf("wrong object type %T", old)
+			return fmt.Errorf("wrong object type %T", oldObj)
 		}
 	}
 
