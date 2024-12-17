@@ -18,7 +18,11 @@ import (
 func (in *BackupBucketConfig) DeepCopyInto(out *BackupBucketConfig) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.Immutability = in.Immutability
+	if in.Immutability != nil {
+		in, out := &in.Immutability, &out.Immutability
+		*out = new(ImmutableConfig)
+		**out = **in
+	}
 	return
 }
 

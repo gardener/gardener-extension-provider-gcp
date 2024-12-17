@@ -16,7 +16,7 @@ type BackupBucketConfig struct {
 	metav1.TypeMeta
 
 	// Immutability defines the immutability config for the backup bucket.
-	Immutability ImmutableConfig
+	Immutability *ImmutableConfig
 }
 
 // ImmutableConfig represents the immutability configuration for a backup bucket.
