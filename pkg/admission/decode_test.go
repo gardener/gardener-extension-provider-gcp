@@ -25,19 +25,26 @@ func equalBackupBucketConfig(a, b *apisgcp.BackupBucketConfig) bool {
 	if a == nil || b == nil {
 		return false
 	}
-	return a.Immutability == b.Immutability
+
+	if a.Immutability == nil && b.Immutability == nil {
+		return true
+	}
+	if a.Immutability == nil || b.Immutability == nil {
+		return false
+	}
+
+	return a.Immutability.RetentionType == b.Immutability.RetentionType &&
+		a.Immutability.RetentionPeriod == b.Immutability.RetentionPeriod &&
+		a.Immutability.Locked == b.Immutability.Locked
 }
 
 var _ = Describe("Decode", func() {
 	var (
 		decoder runtime.Decoder
-
-		scheme *runtime.Scheme
+		scheme  *runtime.Scheme
 	)
 	BeforeEach(func() {
-
 		scheme = runtime.NewScheme()
-
 		Expect(core.AddToScheme(scheme)).To(Succeed())
 		Expect(apisgcp.AddToScheme(scheme)).To(Succeed())
 		Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
@@ -47,7 +54,6 @@ var _ = Describe("Decode", func() {
 	})
 	DescribeTable("DecodeBackupBucketConfig",
 		func(config *runtime.RawExtension, want *apisgcp.BackupBucketConfig, wantErr bool) {
-
 			got, err := DecodeBackupBucketConfig(decoder, config)
 			if wantErr {
 				Expect(err).To(HaveOccurred())
@@ -56,8 +62,7 @@ var _ = Describe("Decode", func() {
 			}
 			Expect(equalBackupBucketConfig(got, want)).To(BeTrue())
 		},
-		Entry("nil config", nil, nil, false),
-		Entry("valid config", &runtime.RawExtension{Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "immutability": {"retentionType": "bucket", "retentionPeriod": "24h", "locked": true}}`)}, &apisgcp.BackupBucketConfig{
+		Entry("valid config", &runtime.RawExtension{Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1","kind": "BackupBucketConfig", "immutability": {"retentionType": "bucket", "retentionPeriod": "24h", "locked": true}}`)}, &apisgcp.BackupBucketConfig{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "gcp.provider.extensions.gardener.cloud/v1alpha1",
 				Kind:       "BackupBucketConfig",
@@ -69,7 +74,7 @@ var _ = Describe("Decode", func() {
 			},
 		}, false),
 		Entry("invalid config", &runtime.RawExtension{Raw: []byte(`invalid`)}, nil, true),
-		Entry("missing fields", &runtime.RawExtension{Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`)}, &apisgcp.BackupBucketConfig{
+		Entry("missing fields", &runtime.RawExtension{Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1","kind": "BackupBucketConfig"}`)}, &apisgcp.BackupBucketConfig{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "gcp.provider.extensions.gardener.cloud/v1alpha1",
 				Kind:       "BackupBucketConfig",

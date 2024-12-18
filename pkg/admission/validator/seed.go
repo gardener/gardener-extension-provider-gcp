@@ -62,14 +62,20 @@ func (s *seedValidator) Validate(ctx context.Context, newObj, oldObj client.Obje
 // validateCreate validates the Seed object upon creation.
 // It checks if immutable settings are provided and validates them to ensure they meet the required criteria.
 func (s *seedValidator) validateCreate(newSeed *core.Seed) error {
-	backupBucketConfig, err := admission.DecodeSeedBackupBucketConfig(s.decoder, newSeed.Spec.Backup)
+	if newSeed.Spec.Backup == nil || newSeed.Spec.Backup.ProviderConfig == nil {
+		return nil
+	}
+
+	backupBucketConfig, err := admission.DecodeBackupBucketConfig(s.decoder, newSeed.Spec.Backup.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("error decoding BackupBucketConfig: %w", err)
 	}
 
-	allErrs := gcpvalidation.ValidateBackupBucketConfig(backupBucketConfig, field.NewPath("spec", "backup", "providerConfig"))
-	if len(allErrs) > 0 {
-		return fmt.Errorf("validation failed: %w", allErrs.ToAggregate())
+	if backupBucketConfig != nil {
+		allErrs := gcpvalidation.ValidateBackupBucketConfig(backupBucketConfig, field.NewPath("spec", "backup", "providerConfig"))
+		if len(allErrs) > 0 {
+			return fmt.Errorf("validation failed: %w", allErrs.ToAggregate())
+		}
 	}
 
 	return nil
@@ -79,32 +85,57 @@ func (s *seedValidator) validateCreate(newSeed *core.Seed) error {
 // are correctly managed. It enforces constraints such as preventing the unlocking of retention policies,
 // disabling immutability once locked, and reduction of retention periods when policies are locked.
 func (s *seedValidator) validateUpdate(_ context.Context, oldSeed, newSeed *core.Seed) error {
-	oldBackupBucketConfig, err := admission.DecodeSeedBackupBucketConfig(s.lenientDecoder, oldSeed.Spec.Backup)
-	if err != nil {
-		return fmt.Errorf("error decoding old BackupBucketConfig: %w", err)
-	}
-
-	if oldBackupBucketConfig == nil || oldBackupBucketConfig.Immutability == (gcp.ImmutableConfig{}) {
+	if oldSeed.Spec.Backup == nil || oldSeed.Spec.Backup.ProviderConfig == nil {
 		return s.validateCreate(newSeed)
 	}
 
-	newBackupBucketConfig, err := admission.DecodeSeedBackupBucketConfig(s.decoder, newSeed.Spec.Backup)
+	oldBackupBucketConfig, err := s.extractBackupBucketConfig(oldSeed)
 	if err != nil {
-		return fmt.Errorf("error decoding new BackupBucketConfig: %w", err)
+		return err
 	}
 
-	allErrs := gcpvalidation.ValidateBackupBucketConfig(newBackupBucketConfig, field.NewPath("spec", "backup", "providerConfig"))
-	if len(allErrs) > 0 {
-		return fmt.Errorf("validation failed: %w", allErrs.ToAggregate())
+	newBackupBucketConfig, err := s.extractBackupBucketConfig(newSeed)
+	if err != nil {
+		return err
 	}
 
-	if !oldBackupBucketConfig.Immutability.Locked {
+	if newBackupBucketConfig != (gcp.BackupBucketConfig{}) {
+		allErrs := gcpvalidation.ValidateBackupBucketConfig(&newBackupBucketConfig, field.NewPath("spec", "backup", "providerConfig"))
+		if len(allErrs) > 0 {
+			return fmt.Errorf("validation failed: %w", allErrs.ToAggregate())
+		}
+	}
+
+	if err := s.validateImmutabilityUpdate(oldBackupBucketConfig, newBackupBucketConfig); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// extractBackupBucketConfig extracts BackupBucketConfig from the Seed.
+func (s *seedValidator) extractBackupBucketConfig(seed *core.Seed) (gcp.BackupBucketConfig, error) {
+	if seed.Spec.Backup != nil && seed.Spec.Backup.ProviderConfig != nil {
+		config, err := admission.DecodeBackupBucketConfig(s.decoder, seed.Spec.Backup.ProviderConfig)
+		if err != nil {
+			return gcp.BackupBucketConfig{}, err
+		}
+		return *config, nil
+
+	}
+	return gcp.BackupBucketConfig{}, nil
+}
+
+// validateImmutability validates immutability constraints.
+func (s *seedValidator) validateImmutabilityUpdate(oldBackupBucketConfig, newBackupBucketConfig gcp.BackupBucketConfig) error {
+	if oldBackupBucketConfig.Immutability == nil || !oldBackupBucketConfig.Immutability.Locked {
 		return nil
 	}
 
-	if newBackupBucketConfig == nil {
+	if newBackupBucketConfig.Immutability == nil || newBackupBucketConfig.Immutability == (&gcp.ImmutableConfig{}) {
 		return fmt.Errorf("immutability cannot be disabled once it is locked")
 	}
+
 	if !newBackupBucketConfig.Immutability.Locked {
 		return fmt.Errorf("immutable retention policy lock cannot be unlocked once it is locked")
 	}
@@ -116,6 +147,5 @@ func (s *seedValidator) validateUpdate(_ context.Context, oldSeed, newSeed *core
 			newBackupBucketConfig.Immutability.RetentionPeriod.Duration,
 		)
 	}
-
 	return nil
 }
