@@ -98,7 +98,7 @@ var _ = Describe("Actuator", func() {
 
 			It("should create the bucket successfully", func() {
 				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
-				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(nil, storage.ErrBucketNotExist)
+				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(nil, storage.ErrBucketNotExist).MaxTimes(2)
 				gcpStorageClient.EXPECT().CreateBucket(ctx, gomock.Any()).Return(nil)
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).NotTo(HaveOccurred())
