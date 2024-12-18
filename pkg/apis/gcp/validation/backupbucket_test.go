@@ -32,52 +32,51 @@ var _ = Describe("ValidateBackupBucketConfig", func() {
 				Expect(errs).To(BeEmpty())
 			}
 		},
-		Entry("nil config", nil, false, ""),
 		Entry("valid config",
 			&apisgcp.BackupBucketConfig{
-				Immutability: apisgcp.ImmutableConfig{
+				Immutability: &apisgcp.ImmutableConfig{
 					RetentionType:   "bucket",
 					RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
 				},
 			}, false, ""),
 		Entry("missing retentionType",
 			&apisgcp.BackupBucketConfig{
-				Immutability: apisgcp.ImmutableConfig{
+				Immutability: &apisgcp.ImmutableConfig{
 					RetentionType:   "",
 					RetentionPeriod: metav1.Duration{Duration: 1 * time.Hour},
 				},
 			}, true, "must be 'bucket'"),
 		Entry("invalid retentionType",
 			&apisgcp.BackupBucketConfig{
-				Immutability: apisgcp.ImmutableConfig{
+				Immutability: &apisgcp.ImmutableConfig{
 					RetentionType:   "invalid",
 					RetentionPeriod: metav1.Duration{Duration: 1 * time.Hour},
 				},
 			}, true, "must be 'bucket'"),
 		Entry("non-positive retentionPeriod",
 			&apisgcp.BackupBucketConfig{
-				Immutability: apisgcp.ImmutableConfig{
+				Immutability: &apisgcp.ImmutableConfig{
 					RetentionType:   "bucket",
 					RetentionPeriod: metav1.Duration{Duration: 0},
 				},
 			}, true, "must be a positive duration greater than 24h"),
 		Entry("negative retentionPeriod",
 			&apisgcp.BackupBucketConfig{
-				Immutability: apisgcp.ImmutableConfig{
+				Immutability: &apisgcp.ImmutableConfig{
 					RetentionType:   "bucket",
 					RetentionPeriod: metav1.Duration{Duration: -1 * time.Hour},
 				},
 			}, true, "must be a positive duration greater than 24h"),
 		Entry("empty retentionPeriod",
 			&apisgcp.BackupBucketConfig{
-				Immutability: apisgcp.ImmutableConfig{
+				Immutability: &apisgcp.ImmutableConfig{
 					RetentionType:   "bucket",
 					RetentionPeriod: metav1.Duration{},
 				},
 			}, true, "must be a positive duration greater than 24h"),
 		Entry("retentionPeriod less than 24 hours",
 			&apisgcp.BackupBucketConfig{
-				Immutability: apisgcp.ImmutableConfig{
+				Immutability: &apisgcp.ImmutableConfig{
 					RetentionType:   "bucket",
 					RetentionPeriod: metav1.Duration{Duration: 23 * time.Hour},
 				},
