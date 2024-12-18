@@ -26,16 +26,7 @@ func equalBackupBucketConfig(a, b *apisgcp.BackupBucketConfig) bool {
 		return false
 	}
 
-	if a.Immutability == nil && b.Immutability == nil {
-		return true
-	}
-	if a.Immutability == nil || b.Immutability == nil {
-		return false
-	}
-
-	return a.Immutability.RetentionType == b.Immutability.RetentionType &&
-		a.Immutability.RetentionPeriod == b.Immutability.RetentionPeriod &&
-		a.Immutability.Locked == b.Immutability.Locked
+	return reflect.DeepEqual(a.Immutability, b.Immutability)
 }
 
 var _ = Describe("Decode", func() {

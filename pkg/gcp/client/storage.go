@@ -62,20 +62,17 @@ func NewStorageClientFromSecretRef(ctx context.Context, c client.Client, secretR
 // Attrs retrieves the attributes of the specified bucket.
 // It returns a pointer to storage.BucketAttrs containing the bucket's attributes, or an error if the operation fails.
 func (s *storageClient) Attrs(ctx context.Context, bucketName string) (*storage.BucketAttrs, error) {
-	bucket := s.client.Bucket(bucketName)
-	return bucket.Attrs(ctx)
+	return s.client.Bucket(bucketName).Attrs(ctx)
 }
 
 // CreateBucket creates a new bucket with the specified attributes.
 func (s *storageClient) CreateBucket(ctx context.Context, attrs *storage.BucketAttrs) error {
-	bucket := s.client.Bucket(attrs.Name)
-	return bucket.Create(ctx, s.serviceAccount.ProjectID, attrs)
+	return s.client.Bucket(attrs.Name).Create(ctx, s.serviceAccount.ProjectID, attrs)
 }
 
 // UpdateBucket updates the bucket with the specified attributes.
 func (s *storageClient) UpdateBucket(ctx context.Context, bucketName string, bucketAttrsToUpdate storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error) {
-	bucket := s.client.Bucket(bucketName)
-	return bucket.Update(ctx, bucketAttrsToUpdate)
+	return s.client.Bucket(bucketName).Update(ctx, bucketAttrsToUpdate)
 }
 
 // LockBucket locks the retention policy of the specified bucket.

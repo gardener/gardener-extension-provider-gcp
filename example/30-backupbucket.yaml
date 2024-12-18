@@ -24,3 +24,4 @@ spec:
   #   immutability:
   #     retentionType: bucket
   #     retentionPeriod: "600s"
+  #     locked: "false"
