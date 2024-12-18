@@ -49,6 +49,11 @@ machineClasses:
   networkInterfaces:
   - subnetwork: my-subnet
     disableExternalIP: true
+    # can be IPV4_ONLY or IPV4_IPV6
+    stackType: IPV4_ONLY
+    ipv6accessType: EXTERNAL
+    ipCidrRange: "/24"
+    subnetworkRangeName: "ipv4-pod-cidr"
   scheduling:
     automaticRestart: true
     onHostMaintenance: MIGRATE
