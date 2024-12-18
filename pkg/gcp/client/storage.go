@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
@@ -25,7 +24,10 @@ const (
 // StorageClient is an interface which must be implemented by GCS clients.
 type StorageClient interface {
 	// GCS wrappers
-	CreateOrUpdateBucket(ctx context.Context, bucketName, region string, config *apisgcp.BackupBucketConfig) error
+	Attrs(ctx context.Context, bucketName string) (*storage.BucketAttrs, error)
+	CreateBucket(ctx context.Context, atts *storage.BucketAttrs) error
+	UpdateBucket(ctx context.Context, bucketName string, bucketAttrsToUpdate storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error)
+	LockBucket(ctx context.Context, bucketName string) error
 	DeleteBucketIfExists(ctx context.Context, bucketName string) error
 	DeleteObjectsWithPrefix(ctx context.Context, bucketName, prefix string) error
 }
@@ -57,117 +59,28 @@ func NewStorageClientFromSecretRef(ctx context.Context, c client.Client, secretR
 	return NewStorageClient(ctx, serviceAccount)
 }
 
-// CreateOrUpdateBucket ensures that a GCS bucket with the specified name exists in the given region,
-// applying the provided configuration. If the bucket does not exist, it is created. If the bucket
-// already exists and the immutability settings differ from the desired configuration, the retention
-// policy is updated accordingly.
-//
-// The config parameter can include immutability settings, such as a retention period. If a retention
-// policy is specified and not already locked, it will be locked to prevent further changes.
-//
-// Returns an error if the bucket creation or update fails.
-func (s *storageClient) CreateOrUpdateBucket(ctx context.Context, bucketName, region string, config *apisgcp.BackupBucketConfig) error {
+// Attrs retrieves the attributes of the specified bucket.
+// It returns a pointer to storage.BucketAttrs containing the bucket's attributes, or an error if the operation fails.
+func (s *storageClient) Attrs(ctx context.Context, bucketName string) (*storage.BucketAttrs, error) {
 	bucket := s.client.Bucket(bucketName)
-	attrs, err := bucket.Attrs(ctx)
-	if err != nil {
-		if err == storage.ErrBucketNotExist {
-			return s.createBucket(ctx, bucket, region, config)
-		}
-
-		return fmt.Errorf("failed to get attributes for bucket %q: %w", bucket.BucketName(), err)
-	}
-
-	return s.updateBucketIfNeeded(ctx, bucket, attrs, config)
+	return bucket.Attrs(ctx)
 }
 
-func (s *storageClient) createBucket(ctx context.Context, bucket *storage.BucketHandle, region string, config *apisgcp.BackupBucketConfig) error {
-	var retentionPolicy *storage.RetentionPolicy
-	if config != nil {
-		retentionPolicy = &storage.RetentionPolicy{
-			RetentionPeriod: config.Immutability.RetentionPeriod.Duration,
-		}
-	}
-
-	bucketAttrs := &storage.BucketAttrs{
-		Location:        region,
-		RetentionPolicy: retentionPolicy,
-		UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
-			Enabled: true,
-		},
-		SoftDeletePolicy: &storage.SoftDeletePolicy{
-			RetentionDuration: 0,
-		},
-	}
-
-	if err := bucket.Create(ctx, s.serviceAccount.ProjectID, bucketAttrs); err != nil {
-		return fmt.Errorf("failed to create bucket %q: %w", bucket.BucketName(), err)
-	}
-
-	// Lock the retention policy if specified
-	if config != nil && config.Immutability.Locked {
-		if err := s.lockBucketRetentionPolicy(ctx, bucket); err != nil {
-			return fmt.Errorf("failed to lock retention policy for bucket %q: %w", bucket.BucketName(), err)
-		}
-	}
-
-	return nil
+// CreateBucket creates a new bucket with the specified attributes.
+func (s *storageClient) CreateBucket(ctx context.Context, attrs *storage.BucketAttrs) error {
+	bucket := s.client.Bucket(attrs.Name)
+	return bucket.Create(ctx, s.serviceAccount.ProjectID, attrs)
 }
 
-func (s *storageClient) updateBucketIfNeeded(ctx context.Context, bucket *storage.BucketHandle, attrs *storage.BucketAttrs, config *apisgcp.BackupBucketConfig) error {
-	var desiredRetentionPolicy *storage.RetentionPolicy
-	if config != nil {
-		desiredRetentionPolicy = &storage.RetentionPolicy{
-			RetentionPeriod: config.Immutability.RetentionPeriod.Duration,
-		}
-	}
-
-	// Determine if an update is required based on the desired and current retention policies.
-	isUpdateRequired := true
-	if desiredRetentionPolicy == nil && attrs.RetentionPolicy == nil {
-		isUpdateRequired = false
-	}
-
-	if desiredRetentionPolicy != nil && attrs.RetentionPolicy != nil && *desiredRetentionPolicy == *attrs.RetentionPolicy {
-		isUpdateRequired = false
-	}
-
-	// Perform the update if needed
-	if isUpdateRequired {
-		// If the desired retention policy is nil and the current retention policy is not nil,
-		// it indicates that the retention policy needs to be removed. To achieve this, set
-		// the RetentionPeriod to 0. This is required by the Google Cloud Storage API to
-		// explicitly update and remove an existing retention policy.
-		// For more details, refer to:
-		// https://github.com/googleapis/google-cloud-go/blob/main/storage/bucket.go#L1172
-		if desiredRetentionPolicy == nil && attrs.RetentionPolicy != nil {
-			desiredRetentionPolicy = &storage.RetentionPolicy{}
-		}
-		bucketAttrsToUpdate := storage.BucketAttrsToUpdate{
-			RetentionPolicy: desiredRetentionPolicy,
-		}
-		var err error
-		attrs, err = bucket.Update(ctx, bucketAttrsToUpdate)
-		if err != nil {
-			return fmt.Errorf("failed to update retention policy for bucket %q: %w", bucket.BucketName(), err)
-		}
-	}
-
-	// Lock the retention policy if specified and not already locked
-	if config != nil && config.Immutability.Locked && !attrs.RetentionPolicy.IsLocked {
-		if err := s.lockBucketRetentionPolicy(ctx, bucket); err != nil {
-			return fmt.Errorf("failed to lock retention policy for bucket %q: %w", bucket.BucketName(), err)
-		}
-	}
-
-	return nil
+// UpdateBucket updates the bucket with the specified attributes.
+func (s *storageClient) UpdateBucket(ctx context.Context, bucketName string, bucketAttrsToUpdate storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error) {
+	bucket := s.client.Bucket(bucketName)
+	return bucket.Update(ctx, bucketAttrsToUpdate)
 }
 
-// lockBucketRetentionPolicy locks the retention policy of the specified bucket.
-// It retrieves the bucket's attributes to obtain the current metageneration, which is required
-// to lock the retention policy. If the bucket's retention policy is already locked, it returns nil.
-//
-// Returns an error if retrieving the bucket attributes or locking the retention policy fails.
-func (s *storageClient) lockBucketRetentionPolicy(ctx context.Context, bucket *storage.BucketHandle) error {
+// LockBucket locks the retention policy of the specified bucket.
+func (s *storageClient) LockBucket(ctx context.Context, bucketName string) error {
+	bucket := s.client.Bucket(bucketName)
 	attrs, err := bucket.Attrs(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get attributes for bucket %q while attempting to lock retention policy: %w", bucket.BucketName(), err)
