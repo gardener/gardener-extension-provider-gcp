@@ -5,6 +5,7 @@
 package admission
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/gardener/gardener/pkg/apis/core"
