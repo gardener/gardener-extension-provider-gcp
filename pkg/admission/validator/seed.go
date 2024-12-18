@@ -96,6 +96,7 @@ func (s *seedValidator) validateUpdate(_ context.Context, oldSeed, newSeed *core
 	if err != nil {
 		return err
 	}
+
 	providerConfigPath := field.NewPath("spec", "backup", "providerConfig")
 	if newBackupBucketConfig != (gcp.BackupBucketConfig{}) {
 		allErrs := gcpvalidation.ValidateBackupBucketConfig(&newBackupBucketConfig, providerConfigPath)

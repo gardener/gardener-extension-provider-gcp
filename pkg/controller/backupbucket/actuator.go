@@ -68,7 +68,7 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, bb *extens
 			return err
 		}
 
-	} else if backupBucketConfig != nil && isUpdateRequired(attrs, backupBucketConfig) {
+	} else if isUpdateRequired(attrs, backupBucketConfig) {
 		attrs, err = updateBucket(ctx, storageClient, bb.Name, backupBucketConfig, logger)
 		if err != nil {
 			return err
@@ -151,6 +151,10 @@ func lockBucket(ctx context.Context, storageClient gcpclient.StorageClient, buck
 }
 
 func isUpdateRequired(attrs *storage.BucketAttrs, config *apisgcp.BackupBucketConfig) bool {
+	if config == nil {
+		return false
+	}
+
 	var desiredRetentionPolicy *storage.RetentionPolicy
 	if config.Immutability != nil {
 		desiredRetentionPolicy = &storage.RetentionPolicy{
