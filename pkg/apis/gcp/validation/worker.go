@@ -206,10 +206,15 @@ func validateNodeTemplate(nt *extensionsv1alpha1.NodeTemplate, fldPath *field.Pa
 		return allErrs
 	}
 
+	if len(nt.Capacity) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath.Child("capacity"), "capacity must not be empty"))
+	}
+
 	for _, capacityAttribute := range []corev1.ResourceName{"cpu", "gpu", "memory"} {
 		value, ok := nt.Capacity[capacityAttribute]
 		if !ok {
-			allErrs = append(allErrs, field.Required(fldPath.Child("capacity"), fmt.Sprintf("%s is a mandatory field", capacityAttribute)))
+			// resources such as "cpu", "gpu", "memory" need not be explicitly specified in workerConfig.NodeTemplate.
+			// Will use the workerConfig.gpu.count or worker pool's node template gpu.
 			continue
 		}
 		allErrs = append(allErrs, validateResourceQuantityValue(capacityAttribute, value, fldPath.Child("capacity").Child(string(capacityAttribute)))...)
