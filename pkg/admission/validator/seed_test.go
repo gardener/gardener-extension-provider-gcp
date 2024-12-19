@@ -52,19 +52,22 @@ var _ = Describe("Seed Validator", func() {
 	generateSeed := func(retentionType, retentionPeriod string, locked bool, isImmutableConfigured bool) *core.Seed {
 		var config *runtime.RawExtension
 		if isImmutableConfigured {
-			immutability := map[string]interface{}{
-				"retentionType":   retentionType,
-				"retentionPeriod": retentionPeriod,
+
+			immutability := make(map[string]interface{})
+			if retentionType != "" {
+				immutability["retentionType"] = retentionType
 			}
 			if retentionPeriod != "" {
+				immutability["retentionPeriod"] = retentionPeriod
 				immutability["locked"] = locked
 			}
-			configMap := map[string]interface{}{
+
+			backupBucketConfig := map[string]interface{}{
 				"apiVersion":   "gcp.provider.extensions.gardener.cloud/v1alpha1",
 				"kind":         "BackupBucketConfig",
 				"immutability": immutability,
 			}
-			raw, err := json.Marshal(configMap)
+			raw, err := json.Marshal(backupBucketConfig)
 			Expect(err).NotTo(HaveOccurred())
 			config = &runtime.RawExtension{
 				Raw: raw,
@@ -139,7 +142,7 @@ var _ = Describe("Seed Validator", func() {
 			},
 			Entry("Disabling immutable settings is not allowed if locked",
 				generateSeed("bucket", "96h", true, true),
-				generateSeed("", "", false, false),
+				generateSeed("", "", false, true),
 				"immutability cannot be disabled once it is locked",
 			),
 			Entry("Unlocking a locked retention policy is not allowed",

@@ -137,7 +137,7 @@ func (s *seedValidator) validateImmutabilityUpdate(oldConfig, newConfig *gcp.Bac
 		return allErrs
 	}
 
-	if newConfig == nil || newConfig.Immutability == nil || newConfig.Immutability == (&gcp.ImmutableConfig{}) {
+	if newConfig == nil || newConfig.Immutability == nil || *newConfig.Immutability == (gcp.ImmutableConfig{}) {
 		allErrs = append(allErrs, field.Invalid(immutabilityPath, newConfig, "immutability cannot be disabled once it is locked"))
 		return allErrs
 	}
