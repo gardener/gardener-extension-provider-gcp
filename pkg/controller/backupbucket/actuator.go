@@ -7,6 +7,7 @@ package backupbucket
 import (
 	"context"
 	"errors"
+	"reflect"
 
 	"cloud.google.com/go/storage"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"

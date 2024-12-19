@@ -25,8 +25,9 @@ import (
 // ensuring backup configuration immutability according to policy.
 func NewSeedValidator(mgr manager.Manager) extensionswebhook.Validator {
 	return &seedValidator{
-		client:  mgr.GetClient(),
-		decoder: serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
+		client:         mgr.GetClient(),
+		decoder:        serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
+		lenientDecoder: serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
 	}
 }
 
@@ -136,8 +137,8 @@ func (s *seedValidator) validateImmutabilityUpdate(oldConfig, newConfig *gcp.Bac
 		return allErrs
 	}
 
-	if newConfig.Immutability == nil || newConfig.Immutability == (&gcp.ImmutableConfig{}) {
-		allErrs = append(allErrs, field.Invalid(immutabilityPath, newConfig.Immutability, "immutability cannot be disabled once it is locked"))
+	if newConfig == nil || newConfig.Immutability == nil || newConfig.Immutability == (&gcp.ImmutableConfig{}) {
+		allErrs = append(allErrs, field.Invalid(immutabilityPath, newConfig, "immutability cannot be disabled once it is locked"))
 		return allErrs
 	}
 
