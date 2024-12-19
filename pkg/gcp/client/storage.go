@@ -6,9 +6,9 @@ package client
 
 import (
 	"context"
+	"fmt"
 
 	"cloud.google.com/go/storage"
-	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
@@ -24,7 +24,10 @@ const (
 // StorageClient is an interface which must be implemented by GCS clients.
 type StorageClient interface {
 	// GCS wrappers
-	CreateBucketIfNotExists(ctx context.Context, bucketName, region string) error
+	Attrs(ctx context.Context, bucketName string) (*storage.BucketAttrs, error)
+	CreateBucket(ctx context.Context, atts *storage.BucketAttrs) error
+	UpdateBucket(ctx context.Context, bucketName string, bucketAttrsToUpdate storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error)
+	LockBucket(ctx context.Context, bucketName string) error
 	DeleteBucketIfExists(ctx context.Context, bucketName string) error
 	DeleteObjectsWithPrefix(ctx context.Context, bucketName, prefix string) error
 }
@@ -56,21 +59,32 @@ func NewStorageClientFromSecretRef(ctx context.Context, c client.Client, secretR
 	return NewStorageClient(ctx, serviceAccount)
 }
 
-func (s *storageClient) CreateBucketIfNotExists(ctx context.Context, bucketName, region string) error {
-	if err := s.client.Bucket(bucketName).Create(ctx, s.serviceAccount.ProjectID, &storage.BucketAttrs{
-		Name:     bucketName,
-		Location: region,
-		UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
-			Enabled: true,
-		},
-		SoftDeletePolicy: &storage.SoftDeletePolicy{
-			RetentionDuration: 0,
-		},
-	}); err != nil {
-		if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == errCodeBucketAlreadyOwnedByYou {
-			return nil
-		}
-		return err
+// Attrs retrieves the attributes of the specified bucket.
+// It returns a pointer to storage.BucketAttrs containing the bucket's attributes, or an error if the operation fails.
+func (s *storageClient) Attrs(ctx context.Context, bucketName string) (*storage.BucketAttrs, error) {
+	return s.client.Bucket(bucketName).Attrs(ctx)
+}
+
+// CreateBucket creates a new bucket with the specified attributes.
+func (s *storageClient) CreateBucket(ctx context.Context, attrs *storage.BucketAttrs) error {
+	return s.client.Bucket(attrs.Name).Create(ctx, s.serviceAccount.ProjectID, attrs)
+}
+
+// UpdateBucket updates the bucket with the specified attributes.
+func (s *storageClient) UpdateBucket(ctx context.Context, bucketName string, bucketAttrsToUpdate storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error) {
+	return s.client.Bucket(bucketName).Update(ctx, bucketAttrsToUpdate)
+}
+
+// LockBucket locks the retention policy of the specified bucket.
+func (s *storageClient) LockBucket(ctx context.Context, bucketName string) error {
+	bucket := s.client.Bucket(bucketName)
+	attrs, err := bucket.Attrs(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get attributes for bucket %q while attempting to lock retention policy: %w", bucket.BucketName(), err)
+	}
+
+	if err := bucket.If(storage.BucketConditions{MetagenerationMatch: attrs.MetaGeneration}).LockRetentionPolicy(ctx); err != nil {
+		return fmt.Errorf("failed to lock retention policy for bucket %q: %w", bucket.BucketName(), err)
 	}
 	return nil
 }
