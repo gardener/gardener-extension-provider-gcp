@@ -28,8 +28,8 @@ func NewMutator() extensionswebhook.Mutator {
 }
 
 // Mutate mutates resources.
-func (m *mutator) Mutate(ctx context.Context, new, old client.Object) error {
-	newAcc, err := meta.Accessor(new)
+func (m *mutator) Mutate(ctx context.Context, newObj, oldObj client.Object) error {
+	newAcc, err := meta.Accessor(newObj)
 	if err != nil {
 		return fmt.Errorf("could not create accessor during webhook: %w", err)
 	}
@@ -38,9 +38,9 @@ func (m *mutator) Mutate(ctx context.Context, new, old client.Object) error {
 		return nil
 	}
 
-	switch x := new.(type) {
+	switch x := newObj.(type) {
 	case *corev1.Node:
-		switch y := old.(type) {
+		switch y := oldObj.(type) {
 		case *corev1.Node:
 			return m.mutateNetworkUnavailableNodeCondition(ctx, x, y, func() {
 				extensionswebhook.LogMutation(logger, x.Kind, x.Namespace, x.Name)

@@ -46,39 +46,48 @@ type ensurer struct {
 var ImageVector = imagevector.ImageVector()
 
 // EnsureMachineControllerManagerDeployment ensures that the machine-controller-manager deployment conforms to the provider requirements.
-func (e *ensurer) EnsureMachineControllerManagerDeployment(_ context.Context, _ gcontext.GardenContext, newObj, _ *appsv1.Deployment) error {
+func (e *ensurer) EnsureMachineControllerManagerDeployment(
+	_ context.Context,
+	_ gcontext.GardenContext,
+	newDeployment, _ *appsv1.Deployment) error {
 	image, err := ImageVector.FindImage(gcp.MachineControllerManagerProviderGCPImageName)
 	if err != nil {
 		return err
 	}
 
-	newObj.Spec.Template.Spec.Containers = extensionswebhook.EnsureContainerWithName(
-		newObj.Spec.Template.Spec.Containers,
-		machinecontrollermanager.ProviderSidecarContainer(newObj.Namespace, gcp.Name, image.String()),
+	newDeployment.Spec.Template.Spec.Containers = extensionswebhook.EnsureContainerWithName(
+		newDeployment.Spec.Template.Spec.Containers,
+		machinecontrollermanager.ProviderSidecarContainer(newDeployment.Namespace, gcp.Name, image.String()),
 	)
 	return nil
 }
 
 // EnsureMachineControllerManagerVPA ensures that the machine-controller-manager VPA conforms to the provider requirements.
-func (e *ensurer) EnsureMachineControllerManagerVPA(_ context.Context, _ gcontext.GardenContext, newObj, _ *vpaautoscalingv1.VerticalPodAutoscaler) error {
-	if newObj.Spec.ResourcePolicy == nil {
-		newObj.Spec.ResourcePolicy = &vpaautoscalingv1.PodResourcePolicy{}
+func (e *ensurer) EnsureMachineControllerManagerVPA(
+	_ context.Context,
+	_ gcontext.GardenContext,
+	newAutoscaler, _ *vpaautoscalingv1.VerticalPodAutoscaler) error {
+	if newAutoscaler.Spec.ResourcePolicy == nil {
+		newAutoscaler.Spec.ResourcePolicy = &vpaautoscalingv1.PodResourcePolicy{}
 	}
 
-	newObj.Spec.ResourcePolicy.ContainerPolicies = extensionswebhook.EnsureVPAContainerResourcePolicyWithName(
-		newObj.Spec.ResourcePolicy.ContainerPolicies,
+	newAutoscaler.Spec.ResourcePolicy.ContainerPolicies = extensionswebhook.EnsureVPAContainerResourcePolicyWithName(
+		newAutoscaler.Spec.ResourcePolicy.ContainerPolicies,
 		machinecontrollermanager.ProviderSidecarVPAContainerPolicy(gcp.Name),
 	)
 	return nil
 }
 
 // EnsureKubeAPIServerDeployment ensures that the kube-apiserver deployment conforms to the provider requirements.
-func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
-	template := &new.Spec.Template
+func (e *ensurer) EnsureKubeAPIServerDeployment(
+	ctx context.Context,
+	gctx gcontext.GardenContext,
+	newDeployment, _ *appsv1.Deployment) error {
+	template := &newDeployment.Spec.Template
 	ps := &template.Spec
 
 	// TODO: This label approach is deprecated and no longer needed in the future. Remove it as soon as gardener/gardener@v1.75 has been released.
-	metav1.SetMetaDataLabel(&new.Spec.Template.ObjectMeta, gutil.NetworkPolicyLabel(gcp.CSISnapshotValidationName, 443), v1beta1constants.LabelNetworkPolicyAllowed)
+	metav1.SetMetaDataLabel(&newDeployment.Spec.Template.ObjectMeta, gutil.NetworkPolicyLabel(gcp.CSISnapshotValidationName, 443), v1beta1constants.LabelNetworkPolicyAllowed)
 
 	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
@@ -98,8 +107,11 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gconte
 }
 
 // EnsureKubeControllerManagerDeployment ensures that the kube-controller-manager deployment conforms to the provider requirements.
-func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
-	template := &new.Spec.Template
+func (e *ensurer) EnsureKubeControllerManagerDeployment(
+	ctx context.Context,
+	gctx gcontext.GardenContext,
+	newDeployment, _ *appsv1.Deployment) error {
+	template := &newDeployment.Spec.Template
 	ps := &template.Spec
 
 	cluster, err := gctx.GetCluster(ctx)
@@ -123,8 +135,11 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, gct
 }
 
 // EnsureKubeSchedulerDeployment ensures that the kube-scheduler deployment conforms to the provider requirements.
-func (e *ensurer) EnsureKubeSchedulerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
-	template := &new.Spec.Template
+func (e *ensurer) EnsureKubeSchedulerDeployment(
+	ctx context.Context,
+	gctx gcontext.GardenContext,
+	newDeployment, _ *appsv1.Deployment) error {
+	template := &newDeployment.Spec.Template
 	ps := &template.Spec
 
 	cluster, err := gctx.GetCluster(ctx)
@@ -144,8 +159,10 @@ func (e *ensurer) EnsureKubeSchedulerDeployment(ctx context.Context, gctx gconte
 }
 
 // EnsureClusterAutoscalerDeployment ensures that the cluster-autoscaler deployment conforms to the provider requirements.
-func (e *ensurer) EnsureClusterAutoscalerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
-	template := &new.Spec.Template
+func (e *ensurer) EnsureClusterAutoscalerDeployment(ctx context.Context,
+	gctx gcontext.GardenContext,
+	newDeployment, _ *appsv1.Deployment) error {
+	template := &newDeployment.Spec.Template
 	ps := &template.Spec
 
 	cluster, err := gctx.GetCluster(ctx)
@@ -296,14 +313,18 @@ func ensureKubeControllerManagerVolumes(ps *corev1.PodSpec) {
 }
 
 // EnsureKubeletServiceUnitOptions ensures that the kubelet.service unit options conform to the provider requirements.
-func (e *ensurer) EnsureKubeletServiceUnitOptions(_ context.Context, _ gcontext.GardenContext, _ *semver.Version, new, _ []*unit.UnitOption) ([]*unit.UnitOption, error) {
-	if opt := extensionswebhook.UnitOptionWithSectionAndName(new, "Service", "ExecStart"); opt != nil {
+func (e *ensurer) EnsureKubeletServiceUnitOptions(
+	_ context.Context,
+	_ gcontext.GardenContext,
+	_ *semver.Version,
+	newUnitOption, _ []*unit.UnitOption) ([]*unit.UnitOption, error) {
+	if opt := extensionswebhook.UnitOptionWithSectionAndName(newUnitOption, "Service", "ExecStart"); opt != nil {
 		command := extensionswebhook.DeserializeCommandLine(opt.Value)
 		command = ensureKubeletCommandLineArgs(command)
 		opt.Value = extensionswebhook.SerializeCommandLine(command, 1, " \\\n    ")
 	}
 
-	newOption := extensionswebhook.EnsureUnitOption(new, &unit.UnitOption{
+	newOption := extensionswebhook.EnsureUnitOption(newUnitOption, &unit.UnitOption{
 		Section: "Service",
 		Name:    "ExecStartPre",
 		Value:   `/bin/sh -c 'hostnamectl set-hostname $(wget -q -O- --header "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/hostname | cut -d '.' -f 1)'`,
@@ -317,18 +338,22 @@ func ensureKubeletCommandLineArgs(command []string) []string {
 }
 
 // EnsureKubeletConfiguration ensures that the kubelet configuration conforms to the provider requirements.
-func (e *ensurer) EnsureKubeletConfiguration(_ context.Context, _ gcontext.GardenContext, kubeletVersion *semver.Version, new, _ *kubeletconfigv1beta1.KubeletConfiguration) error {
+func (e *ensurer) EnsureKubeletConfiguration(
+	_ context.Context,
+	_ gcontext.GardenContext,
+	kubeletVersion *semver.Version,
+	newKubeletConfiguration, _ *kubeletconfigv1beta1.KubeletConfiguration) error {
 	if versionutils.ConstraintK8sLess127.Check(kubeletVersion) {
-		setKubletConfigurationFeatureGate(new, "CSIMigration", true)
+		setKubletConfigurationFeatureGate(newKubeletConfiguration, "CSIMigration", true)
 	}
 	if !versionutils.ConstraintK8sGreaterEqual128.Check(kubeletVersion) {
-		setKubletConfigurationFeatureGate(new, "CSIMigrationGCE", true)
+		setKubletConfigurationFeatureGate(newKubeletConfiguration, "CSIMigrationGCE", true)
 	}
 	if versionutils.ConstraintK8sLess131.Check(kubeletVersion) {
-		setKubletConfigurationFeatureGate(new, "InTreePluginGCEUnregister", true)
+		setKubletConfigurationFeatureGate(newKubeletConfiguration, "InTreePluginGCEUnregister", true)
 	}
 
-	new.EnableControllerAttachDetach = ptr.To(true)
+	newKubeletConfiguration.EnableControllerAttachDetach = ptr.To(true)
 
 	return nil
 }
@@ -344,21 +369,21 @@ func setKubletConfigurationFeatureGate(kubeletConfiguration *kubeletconfigv1beta
 var regexFindProperty = regexp.MustCompile("net.ipv4.ip_forward[[:space:]]*=[[:space:]]*([[:alnum:]]+)")
 
 // EnsureKubernetesGeneralConfiguration ensures that the kubernetes general configuration conforms to the provider requirements.
-func (e *ensurer) EnsureKubernetesGeneralConfiguration(_ context.Context, _ gcontext.GardenContext, new, _ *string) error {
+func (e *ensurer) EnsureKubernetesGeneralConfiguration(_ context.Context, _ gcontext.GardenContext, newConf, _ *string) error {
 	// If the needed property exists, ensure the correct value
-	if regexFindProperty.MatchString(*new) {
-		res := regexFindProperty.ReplaceAll([]byte(*new), []byte("net.ipv4.ip_forward = 1"))
-		*new = string(res)
+	if regexFindProperty.MatchString(*newConf) {
+		res := regexFindProperty.ReplaceAll([]byte(*newConf), []byte("net.ipv4.ip_forward = 1"))
+		*newConf = string(res)
 		return nil
 	}
 
 	// If the property do not exist, append it in the end of the string
 	buf := bytes.Buffer{}
-	buf.WriteString(*new)
+	buf.WriteString(*newConf)
 	buf.WriteString("\n")
 	buf.WriteString("# GCE specific settings\n")
 	buf.WriteString("net.ipv4.ip_forward = 1")
 
-	*new = buf.String()
+	*newConf = buf.String()
 	return nil
 }

@@ -14,13 +14,13 @@ import (
 
 var _ = Describe("Mutator", func() {
 	DescribeTable("#mutateNginxIngressControllerConfigMap",
-		func(new *corev1.Node, old *corev1.Node) {
+		func(newNode, oldNode *corev1.Node) {
 			mutator := &mutator{}
-			err := mutator.mutateNetworkUnavailableNodeCondition(context.TODO(), new, old, func() {})
+			err := mutator.mutateNetworkUnavailableNodeCondition(context.TODO(), newNode, oldNode, func() {})
 
 			Expect(err).To(Not(HaveOccurred()))
-			if new != nil {
-				for _, c := range new.Status.Conditions {
+			if newNode != nil {
+				for _, c := range newNode.Status.Conditions {
 					if c.Type == corev1.NodeNetworkUnavailable {
 						Expect(c.Status).To(Equal(corev1.ConditionFalse))
 					}

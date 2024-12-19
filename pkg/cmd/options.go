@@ -52,7 +52,7 @@ func ControllerSwitchOptions() *controllercmd.SwitchOptions {
 func WebhookSwitchOptions() *webhookcmd.SwitchOptions {
 	return webhookcmd.NewSwitchOptions(
 		webhookcmd.Switch(extensioncontrolplanewebhook.WebhookName, controlplanewebhook.AddToManager),
-		webhookcmd.Switch(extensioncontrolplanewebhook.ExposureWebhookName, controlplaneexposurewebhook.New),
+		webhookcmd.Switch(extensioncontrolplanewebhook.SeedProviderWebhookName, controlplaneexposurewebhook.New),
 		webhookcmd.Switch(infrastructurewebhook.WebhookName, infrastructurewebhook.AddToManager),
 		webhookcmd.Switch(extensionshootwebhook.WebhookName, shootwebhook.AddToManager),
 	)
