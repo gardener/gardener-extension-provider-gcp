@@ -162,12 +162,5 @@ func isUpdateRequired(attrs *storage.BucketAttrs, config *apisgcp.BackupBucketCo
 		}
 	}
 
-	if desiredRetentionPolicy == nil && attrs.RetentionPolicy == nil {
-		return false
-	}
-
-	if desiredRetentionPolicy != nil && attrs.RetentionPolicy != nil && *desiredRetentionPolicy == *attrs.RetentionPolicy {
-		return false
-	}
-	return true
+	return !reflect.DeepEqual(desiredRetentionPolicy, attrs.RetentionPolicy)
 }
