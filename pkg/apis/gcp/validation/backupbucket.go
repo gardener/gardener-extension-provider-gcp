@@ -16,7 +16,7 @@ import (
 func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if config.Immutability != nil {
+	if config != nil && config.Immutability != nil {
 		// Currently, only 'bucket' type is supported.
 		if config.Immutability.RetentionType != "bucket" {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("immutability", "retentionType"), config.Immutability.RetentionType, "must be 'bucket'"))
