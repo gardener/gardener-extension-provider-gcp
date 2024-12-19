@@ -4,7 +4,6 @@ images:
   csi-liveness-probe: image-repository:image-tag
 
 socketPath: /csi/csi.sock
-vpaEnabled: false
 
 webhookConfig:
   url: https://service-name.service-namespace/volumesnapshot

@@ -161,9 +161,6 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
 						Version: "1.28.2",
-						VerticalPodAutoscaler: &gardencorev1beta1.VerticalPodAutoscaler{
-							Enabled: true,
-						},
 					},
 				},
 			},
@@ -345,7 +342,6 @@ var _ = Describe("ValuesProvider", func() {
 				gcp.CloudControllerManagerName: enabledTrue,
 				gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"kubernetesVersion": "1.28.2",
-					"vpaEnabled":        true,
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
