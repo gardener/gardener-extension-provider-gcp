@@ -39,7 +39,6 @@ func NewActuator(mgr manager.Manager, gcpClientFactory gcpclient.Factory) backup
 }
 
 func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, bb *extensionsv1alpha1.BackupBucket) error {
-	logger = logger.WithValues("name", bb.Name)
 	logger.Info("Starting reconciliation for BackupBucket")
 
 	storageClient, err := a.gcpClientFactory.Storage(ctx, a.client, bb.Spec.SecretRef)
