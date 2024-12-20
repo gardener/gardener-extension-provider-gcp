@@ -31,8 +31,6 @@ func NewCloudProfileValidator(mgr manager.Manager) extensionswebhook.Validator {
 	}
 }
 
-var cpProviderConfigPath = specPath.Child("providerConfig")
-
 // Validate validates the given cloud profile objects.
 func (cp *cloudProfile) Validate(_ context.Context, newObj, _ client.Object) error {
 	cloudProfile, ok := newObj.(*core.CloudProfile)
@@ -41,7 +39,7 @@ func (cp *cloudProfile) Validate(_ context.Context, newObj, _ client.Object) err
 	}
 
 	if cloudProfile.Spec.ProviderConfig == nil {
-		return field.Required(cpProviderConfigPath, "providerConfig must be set for GCP cloud profiles")
+		return field.Required(specPath.Child("providerConfig"), "providerConfig must be set for GCP cloud profiles")
 	}
 
 	cpConfig, err := admission.DecodeCloudProfileConfig(cp.decoder, cloudProfile.Spec.ProviderConfig)
@@ -49,5 +47,5 @@ func (cp *cloudProfile) Validate(_ context.Context, newObj, _ client.Object) err
 		return err
 	}
 
-	return gcpvalidation.ValidateCloudProfileConfig(cpConfig, cloudProfile.Spec.MachineImages, cpProviderConfigPath).ToAggregate()
+	return gcpvalidation.ValidateCloudProfileConfig(cpConfig, cloudProfile.Spec.MachineImages, specPath).ToAggregate()
 }

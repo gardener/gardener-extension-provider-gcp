@@ -6,6 +6,7 @@ package validation_test
 
 import (
 	"github.com/gardener/gardener/pkg/apis/core"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -37,7 +38,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 							{
 								Version:      machineImageVersion,
 								Image:        "path/to/gcp/image",
-								Architecture: ptr.To("amd64"),
+								Architecture: ptr.To(v1beta1constants.ArchitectureAMD64),
 							},
 						},
 					},
@@ -49,6 +50,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					Versions: []core.MachineImageVersion{
 						{
 							ExpirableVersion: core.ExpirableVersion{Version: machineImageVersion},
+							Architectures:    []string{v1beta1constants.ArchitectureAMD64},
 						},
 					},
 				},
@@ -88,7 +90,19 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeRequired),
-						"Field": Equal("machineImages"),
+						"Field": Equal("machineImages[1]"),
+					})),
+				))
+			})
+
+			It("should forbid missing architecture mapping", func() {
+				machineImages[0].Versions[0].Architectures = []string{"arm64"}
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, nilPath)
+
+				Expect(errorList).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeRequired),
+						"Field": Equal("machineImages[0].versions[0]"),
 					})),
 				))
 			})
@@ -102,15 +116,15 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeRequired),
-						"Field": Equal("machineImages[0].versions"),
+						"Field": Equal("machineImages[0].versions[0]"),
 					})),
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeRequired),
-						"Field": Equal("machineImages[0].versions[0].image"),
+						"Field": Equal("providerConfig.machineImages[0].versions[0].image"),
 					})),
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeNotSupported),
-						"Field": Equal("machineImages[0].versions[0].architecture"),
+						"Field": Equal("providerConfig.machineImages[0].versions[0].architecture"),
 					})),
 				))
 			})
