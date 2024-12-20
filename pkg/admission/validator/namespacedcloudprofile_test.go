@@ -190,8 +190,8 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 				"Detail":   Equal("machine image version is not defined in the NamespacedCloudProfile"),
 			})), PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":   Equal(field.ErrorTypeRequired),
-				"Field":  Equal("spec.providerConfig.machineImages[0].versions"),
-				"Detail": Equal("must provide an image mapping for version \"1.2\""),
+				"Field":  Equal("spec.providerConfig.machineImages[0].versions[0]"),
+				"Detail": Equal("machine image version image-1@1.2 and architecture: amd64 is not defined in the providerConfig"),
 			})), PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":   Equal(field.ErrorTypeForbidden),
 				"Field":  Equal("spec.providerConfig.machineImages"),
@@ -226,9 +226,13 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 
 			err := namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)
 			Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":   Equal(field.ErrorTypeForbidden),
-				"Field":  Equal("spec.providerConfig.machineImages"),
-				"Detail": Equal("machine image version image-1@1.1-fallback has an excess entry for architecture \"amd64\", which is not defined in the machineImages spec"),
+				"Type":   Equal(field.ErrorTypeRequired),
+				"Field":  Equal("spec.providerConfig.machineImages[0].versions[1]"),
+				"Detail": Equal("machine image version image-1@1.1-fallback and architecture: arm64 is not defined in the providerConfig"),
+			})), PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":   Equal(field.ErrorTypeRequired),
+				"Field":  Equal("spec.providerConfig.machineImages[0].versions[2]"),
+				"Detail": Equal("machine image version image-1@1.1-missing and architecture: arm64 is not defined in the providerConfig"),
 			})), PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":   Equal(field.ErrorTypeRequired),
 				"Field":  Equal("spec.providerConfig.machineImages"),
@@ -238,9 +242,9 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 				"Field":  Equal("spec.providerConfig.machineImages"),
 				"Detail": Equal("machine image version image-1@1.1-missing is not defined in the NamespacedCloudProfile providerConfig"),
 			})), PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":   Equal(field.ErrorTypeRequired),
-				"Field":  Equal("spec.providerConfig.machineImages[0].versions"),
-				"Detail": Equal("must provide an image mapping for version \"1.1-missing\""),
+				"Type":   Equal(field.ErrorTypeForbidden),
+				"Field":  Equal("spec.providerConfig.machineImages"),
+				"Detail": Equal("machine image version image-1@1.1-fallback has an excess entry for architecture \"amd64\", which is not defined in the machineImages spec"),
 			}))))
 		})
 
@@ -263,8 +267,8 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 			err := namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)
 			Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":   Equal(field.ErrorTypeRequired),
-				"Field":  Equal("spec.providerConfig.machineImages"),
-				"Detail": Equal("must provide an image mapping for image \"image-3\""),
+				"Field":  Equal("spec.providerConfig.machineImages[0]"),
+				"Detail": Equal("must provide an image mapping for image \"image-3\" in providerConfig"),
 			})), PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":   Equal(field.ErrorTypeRequired),
 				"Field":  Equal("spec.providerConfig.machineImages"),
