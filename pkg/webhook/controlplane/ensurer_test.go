@@ -609,6 +609,7 @@ func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, k8sVersion str
 	switch {
 	case k8sVersionAtLeast131:
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
+		Expect(c.Command).To(ContainElement("--allocate-node-cidrs=false"))
 	case k8sVersionAtLeast128:
 		Expect(c.Command).To(ContainElement("--feature-gates=InTreePluginGCEUnregister=true"))
 	case k8sVersionAtLeast127:

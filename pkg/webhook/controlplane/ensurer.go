@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"regexp"
+	"strconv"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/coreos/go-systemd/v22/unit"
@@ -202,6 +203,11 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"InTreePluginGCEUnregister=true", ",")
+	}
+	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) {
+		// allocate-node-cidrs is a boolean flag and could be enabled by name without an explicit value passed. Therefore, we delete all prefixes (without including "=" in the prefix)
+		c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--allocate-node-cidrs")
+		c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--allocate-node-cidrs=", strconv.FormatBool(false))
 	}
 
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-config=")
