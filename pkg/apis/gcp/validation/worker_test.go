@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 
@@ -281,6 +282,42 @@ var _ = Describe("#ValidateWorkers", func() {
 				"Type":   Equal(field.ErrorTypeRequired),
 				"Field":  Equal("providerConfig.nodeTemplate.capacity"),
 				"Detail": Equal("capacity must not be empty"),
+			})),
+		))
+	})
+
+	It("should not fail for WorkerConfig NodeTemplate not populated with all fields", func() {
+		errorList := ValidateWorkerConfig(
+			&gcp.WorkerConfig{
+				NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+					Capacity: corev1.ResourceList{
+						"cpu": resource.MustParse("80m"),
+					},
+				},
+			},
+			nil,
+		)
+
+		Expect(errorList).To(BeEmpty())
+	})
+
+	It("should fail for WorkerConfig NodeTemplate resource value less than zero", func() {
+		errorList := ValidateWorkerConfig(
+			&gcp.WorkerConfig{
+				NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+					Capacity: corev1.ResourceList{
+						"cpu": resource.MustParse("-80m"),
+					},
+				},
+			},
+			nil,
+		)
+
+		Expect(errorList).To(ConsistOf(
+			PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":   Equal(field.ErrorTypeInvalid),
+				"Field":  Equal("providerConfig.nodeTemplate.capacity.cpu"),
+				"Detail": Equal("cpu value must not be negative"),
 			})),
 		))
 	})
