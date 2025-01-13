@@ -23,7 +23,7 @@ import (
 
 func TestController(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Controlplane Exposure Webhook Suite")
+	RunSpecs(t, "Seedprovider Webhook Suite")
 }
 
 var _ = Describe("Ensurer", func() {
