@@ -50,16 +50,16 @@ type ensurer struct {
 
 // EnsureCloudProviderSecret ensures that cloudprovider secret
 // contains the proper credential source.
-func (e *ensurer) EnsureCloudProviderSecret(_ context.Context, _ gcontext.GardenContext, new, _ *corev1.Secret) error {
-	if new.ObjectMeta.Labels == nil || new.ObjectMeta.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] != "gcp" {
+func (e *ensurer) EnsureCloudProviderSecret(_ context.Context, _ gcontext.GardenContext, newSecret, _ *corev1.Secret) error {
+	if newSecret.ObjectMeta.Labels == nil || newSecret.ObjectMeta.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] != "gcp" {
 		return nil
 	}
 
-	if _, ok := new.Data[securityv1alpha1constants.DataKeyConfig]; !ok {
+	if _, ok := newSecret.Data[securityv1alpha1constants.DataKeyConfig]; !ok {
 		return errors.New("cloudprovider secret is missing a 'config' data key")
 	}
 	workloadIdentityConfig := &apisgcp.WorkloadIdentityConfig{}
-	if err := util.Decode(e.decoder, new.Data[securityv1alpha1constants.DataKeyConfig], workloadIdentityConfig); err != nil {
+	if err := util.Decode(e.decoder, newSecret.Data[securityv1alpha1constants.DataKeyConfig], workloadIdentityConfig); err != nil {
 		return fmt.Errorf("could not decode 'config' as WorkloadIdentityConfig: %w", err)
 	}
 
@@ -83,8 +83,8 @@ func (e *ensurer) EnsureCloudProviderSecret(_ context.Context, _ gcontext.Garden
 	if err != nil {
 		return fmt.Errorf("could not marshal new config: %w", err)
 	}
-	new.Data["credentialsConfig"] = newConfig
-	new.Data["projectID"] = []byte(workloadIdentityConfig.ProjectID)
+	newSecret.Data["credentialsConfig"] = newConfig
+	newSecret.Data["projectID"] = []byte(workloadIdentityConfig.ProjectID)
 
 	return nil
 }
