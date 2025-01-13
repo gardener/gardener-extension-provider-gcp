@@ -272,9 +272,11 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			gcpbastion.DefaultAddOptions.TokenMetadataClient = tokenMetaClient
 			gcpdnsrecord.DefaultAddOptions.TokenMetadataClient = tokenMetaClient
 			gcpinfrastructure.DefaultAddOptions.TokenMetadataClient = tokenMetaClient
+			gcpbackupbucket.DefaultAddOptions.TokenMetadataClient = tokenMetaClient
 			gcpbastion.DefaultAddOptions.TokenMetadataURL = tokenMetadataURL
 			gcpdnsrecord.DefaultAddOptions.TokenMetadataURL = tokenMetadataURL
 			gcpinfrastructure.DefaultAddOptions.TokenMetadataURL = tokenMetadataURL
+			gcpbackupbucket.DefaultAddOptions.TokenMetadataURL = tokenMetadataURL
 
 			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil)
 			if err != nil {
