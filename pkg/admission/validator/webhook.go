@@ -44,6 +44,7 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 			NewSecretBindingValidator(mgr):          {{Obj: &core.SecretBinding{}}},
 			NewCredentialsBindingValidator(mgr):     {{Obj: &security.CredentialsBinding{}}},
 			NewSeedValidator(mgr):                   {{Obj: &core.Seed{}}},
+			NewWorkloadIdentityValidator(serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder()): {{Obj: &securityv1alpha1.WorkloadIdentity{}}},
 		},
 		Target: extensionswebhook.TargetSeed,
 		ObjectSelector: &metav1.LabelSelector{
@@ -67,24 +68,5 @@ func NewSecretsWebhook(mgr manager.Manager) (*extensionswebhook.Webhook, error) 
 		ObjectSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{"provider.shoot.gardener.cloud/gcp": "true"},
 		},
-	})
-}
-
-// NewWorkloadIdentitiesWebhook creates a new validation webhook for WorkloadIdentities.
-func NewWorkloadIdentitiesWebhook(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
-	logger.Info("Setting up webhook", "name", WorkloadIdentitiesValidatorName)
-
-	return extensionswebhook.New(mgr, extensionswebhook.Args{
-		Provider: gcp.Type,
-		Name:     WorkloadIdentitiesValidatorName,
-		Path:     "/webhooks/validate/workloadidentities",
-		Validators: map[extensionswebhook.Validator][]extensionswebhook.Type{
-			NewWorkloadIdentityValidator(serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder()): {{Obj: &securityv1alpha1.WorkloadIdentity{}}},
-		},
-		Target: extensionswebhook.TargetSeed,
-		// TODO(dimityrmirchev): Uncomment this line and use the object selector once Gardener implements https://github.com/gardener/gardener/pull/10786
-		// ObjectSelector: &metav1.LabelSelector{
-		// 	MatchLabels: map[string]string{"provider.extensions.gardener.cloud/gcp": "true"},
-		// },
 	})
 }

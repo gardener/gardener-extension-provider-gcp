@@ -17,7 +17,6 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 type workloadIdentity struct {
@@ -36,12 +35,6 @@ func (wi *workloadIdentity) Validate(_ context.Context, newObj, oldObj client.Ob
 	workloadIdentity, ok := newObj.(*securityv1alpha1.WorkloadIdentity)
 	if !ok {
 		return fmt.Errorf("wrong object type %T", newObj)
-	}
-
-	// TODO(dimityrmirchev): remove once Gardener implements https://github.com/gardener/gardener/pull/10786
-	// and resources are selected with object selector
-	if workloadIdentity.Spec.TargetSystem.Type != gcp.Type {
-		return nil
 	}
 
 	if workloadIdentity.Spec.TargetSystem.ProviderConfig == nil {
