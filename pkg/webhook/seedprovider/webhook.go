@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package controlplaneexposure
+package seedprovider
 
 import (
 	druidv1alpha1 "github.com/gardener/etcd-druid/api/v1alpha1"
@@ -21,15 +21,15 @@ var (
 	DefaultAddOptions = AddOptions{}
 )
 
-// AddOptions are options to apply when adding the GCP exposure webhook to the manager.
+// AddOptions are options to apply when adding the GCP seedprovider webhook to the manager.
 type AddOptions struct {
 	// ETCDStorage is the etcd storage configuration.
 	ETCDStorage config.ETCDStorage
 }
 
-var logger = log.Log.WithName("gcp-controlplaneexposure-webhook")
+var logger = log.Log.WithName("gcp-seedprovider-webhook")
 
-// NewWithOptions a new control plane exposure webhook with the given options.
+// NewWithOptions creates a new seedprovider webhook with the given options.
 func NewWithOptions(mgr manager.Manager, opts AddOptions) (*extensionswebhook.Webhook, error) {
 	logger.Info("Adding webhook to manager")
 	return controlplane.New(mgr, controlplane.Args{
@@ -42,7 +42,7 @@ func NewWithOptions(mgr manager.Manager, opts AddOptions) (*extensionswebhook.We
 	})
 }
 
-// New creates a new control plane exposure webhook with default options.
+// New creates a new seedprovider webhook with default options.
 func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	return NewWithOptions(mgr, DefaultAddOptions)
 }
