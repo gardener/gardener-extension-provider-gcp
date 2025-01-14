@@ -23,8 +23,6 @@ const (
 	Name = "validator"
 	// SecretsValidatorName is the name of the secrets validator.
 	SecretsValidatorName = "secrets." + Name
-	// WorkloadIdentitiesValidatorName is the name of the workload identities validator.
-	WorkloadIdentitiesValidatorName = "workloadidentities." + Name
 )
 
 var logger = log.Log.WithName("gcp-validator-webhook")
