@@ -259,6 +259,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 					TLSClientConfig: &tls.Config{
 						RootCAs:      systemCertPool,
 						Certificates: []tls.Certificate{clientCert},
+						MinVersion:   tls.VersionTLS12,
 					},
 				},
 			}
@@ -315,6 +316,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 					Certificates: []tls.Certificate{serverCert},
 					ClientCAs:    caCertPool,
 					ClientAuth:   tls.RequireAndVerifyClientCert,
+					MinVersion:   tls.VersionTLS12,
 				},
 
 				ReadTimeout:  time.Second * 15,
