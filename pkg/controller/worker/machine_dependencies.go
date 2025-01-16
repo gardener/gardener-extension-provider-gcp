@@ -8,10 +8,12 @@ import (
 	"context"
 )
 
+// DeployMachineDependencies implements genericactuator.WorkerDelegate.
 func (w *WorkerDelegate) DeployMachineDependencies(_ context.Context) error {
 	return nil
 }
 
+// CleanupMachineDependencies implements genericactuator.WorkerDelegate.
 func (w *WorkerDelegate) CleanupMachineDependencies(_ context.Context) error {
 	return nil
 }

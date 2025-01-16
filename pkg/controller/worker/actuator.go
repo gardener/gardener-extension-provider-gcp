@@ -80,6 +80,7 @@ func (d *delegateFactory) WorkerDelegate(_ context.Context, worker *extensionsv1
 	)
 }
 
+// WorkerDelegate handles the reconciliation of worker resources
 type WorkerDelegate struct {
 	client  client.Client
 	decoder runtime.Decoder
