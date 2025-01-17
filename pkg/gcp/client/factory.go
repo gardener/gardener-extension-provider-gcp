@@ -43,7 +43,7 @@ type tokenRetriever struct {
 
 var _ externalaccount.SubjectTokenSupplier = &tokenRetriever{}
 
-func (t *tokenRetriever) SubjectToken(ctx context.Context, options externalaccount.SupplierOptions) (string, error) {
+func (t *tokenRetriever) SubjectToken(ctx context.Context, _ externalaccount.SupplierOptions) (string, error) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: t.secretNamespace,
