@@ -35,7 +35,7 @@ type delegateFactory struct {
 
 // NewActuator creates a new Actuator that updates the status of the handled WorkerPoolConfigs.
 func NewActuator(mgr manager.Manager, gardenCluster cluster.Cluster) worker.Actuator {
-	workerDelegate := &delegateFactory{
+	WorkerDelegate := &delegateFactory{
 		gardenReader: gardenCluster.GetAPIReader(),
 		seedClient:   mgr.GetClient(),
 		restConfig:   mgr.GetConfig(),
@@ -45,7 +45,7 @@ func NewActuator(mgr manager.Manager, gardenCluster cluster.Cluster) worker.Actu
 	return genericactuator.NewActuator(
 		mgr,
 		gardenCluster,
-		workerDelegate,
+		WorkerDelegate,
 		func(err error) []gardencorev1beta1.ErrorCode {
 			return util.DetermineErrorCodes(err, helper.KnownCodes)
 		},
@@ -80,7 +80,8 @@ func (d *delegateFactory) WorkerDelegate(_ context.Context, worker *extensionsv1
 	)
 }
 
-type workerDelegate struct {
+// WorkerDelegate handles the reconciliation of worker resources
+type WorkerDelegate struct {
 	client  client.Client
 	decoder runtime.Decoder
 	scheme  *runtime.Scheme
@@ -112,7 +113,7 @@ func NewWorkerDelegate(
 	if err != nil {
 		return nil, err
 	}
-	return &workerDelegate{
+	return &WorkerDelegate{
 		client:  client,
 		scheme:  scheme,
 		decoder: serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder(),
@@ -124,4 +125,10 @@ func NewWorkerDelegate(
 		cluster:            cluster,
 		worker:             worker,
 	}, nil
+}
+
+// GetMachineClasses returns the slice of machine classes contained inside the worker delegate.
+// Introduced for Unit-testing.
+func (w *WorkerDelegate) GetMachineClasses() []map[string]any {
+	return w.machineClasses
 }

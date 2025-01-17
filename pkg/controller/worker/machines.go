@@ -7,6 +7,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -59,22 +60,22 @@ var (
 )
 
 // MachineClassKind yields the name of the machine class kind used by GCP provider.
-func (w *workerDelegate) MachineClassKind() string {
+func (w *WorkerDelegate) MachineClassKind() string {
 	return "MachineClass"
 }
 
 // MachineClass yields a newly initialized machine class object.
-func (w *workerDelegate) MachineClass() client.Object {
+func (w *WorkerDelegate) MachineClass() client.Object {
 	return &machinev1alpha1.MachineClass{}
 }
 
 // MachineClassList yields a newly initialized MachineClassList object.
-func (w *workerDelegate) MachineClassList() client.ObjectList {
+func (w *WorkerDelegate) MachineClassList() client.ObjectList {
 	return &machinev1alpha1.MachineClassList{}
 }
 
 // DeployMachineClasses generates and creates the GCP specific machine classes.
-func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
+func (w *WorkerDelegate) DeployMachineClasses(ctx context.Context) error {
 	if w.machineClasses == nil {
 		if err := w.generateMachineConfig(ctx); err != nil {
 			return err
@@ -85,7 +86,7 @@ func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
 }
 
 // GenerateMachineDeployments generates the configuration for the desired machine deployments.
-func (w *workerDelegate) GenerateMachineDeployments(ctx context.Context) (worker.MachineDeployments, error) {
+func (w *WorkerDelegate) GenerateMachineDeployments(ctx context.Context) (worker.MachineDeployments, error) {
 	if w.machineDeployments == nil {
 		if err := w.generateMachineConfig(ctx); err != nil {
 			return nil, err
@@ -94,7 +95,7 @@ func (w *workerDelegate) GenerateMachineDeployments(ctx context.Context) (worker
 	return w.machineDeployments, nil
 }
 
-func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
+func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 	var (
 		machineDeployments = worker.MachineDeployments{}
 		machineClasses     []map[string]interface{}
@@ -265,9 +266,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				machineClassSpec["minCpuPlatform"] = *workerConfig.MinCpuPlatform
 			}
 
-			nodeTemplate := pool.NodeTemplate
+			nodeTemplate := pool.NodeTemplate.DeepCopy()
 			if workerConfig.NodeTemplate != nil {
-				nodeTemplate = workerConfig.NodeTemplate
+				// Support extended resources by copying into nodeTemplate.Capacity overriding if needed
+				maps.Copy(nodeTemplate.Capacity, workerConfig.NodeTemplate.Capacity)
 			}
 			if nodeTemplate != nil {
 				template := machinev1alpha1.NodeTemplate{
@@ -297,7 +299,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	return nil
 }
 
-func (w *workerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, workerConfig apisgcp.WorkerConfig) (string, error) {
+func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, workerConfig apisgcp.WorkerConfig) (string, error) {
 	var additionalData []string
 
 	volumes := slices.Clone(pool.DataVolumes)

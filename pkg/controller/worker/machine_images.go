@@ -17,7 +17,7 @@ import (
 
 // UpdateMachineImagesStatus updates the machine image status
 // with the used machine images for the `Worker` resource.
-func (w *workerDelegate) UpdateMachineImagesStatus(ctx context.Context) error {
+func (w *WorkerDelegate) UpdateMachineImagesStatus(ctx context.Context) error {
 	if w.machineImages == nil {
 		if err := w.generateMachineConfig(ctx); err != nil {
 			return fmt.Errorf("unable to generate the machine config: %w", err)
@@ -38,7 +38,7 @@ func (w *workerDelegate) UpdateMachineImagesStatus(ctx context.Context) error {
 	return nil
 }
 
-func (w *workerDelegate) findMachineImage(name, version string, architecture *string) (string, error) {
+func (w *WorkerDelegate) findMachineImage(name, version string, architecture *string) (string, error) {
 	machineImage, err := helper.FindImageFromCloudProfile(w.cloudProfileConfig, name, version, architecture)
 	if err == nil {
 		return machineImage, nil

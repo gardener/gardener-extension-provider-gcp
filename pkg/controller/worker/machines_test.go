@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -72,7 +73,7 @@ var _ = Describe("Machines", func() {
 		ctrl.Finish()
 	})
 
-	Context("workerDelegate", func() {
+	Context("WorkerDelegate", func() {
 		BeforeEach(func() {
 			workerDelegate, _ = NewWorkerDelegate(nil, scheme, nil, "", nil, nil)
 		})
@@ -632,7 +633,7 @@ var _ = Describe("Machines", func() {
 
 					expectedUserDataSecretRefRead()
 
-					// Test workerDelegate.DeployMachineClasses()
+					// Test WorkerDelegate.DeployMachineClasses()
 					chartApplier.EXPECT().ApplyFromEmbeddedFS(
 						ctx,
 						charts.InternalChart,
@@ -644,7 +645,7 @@ var _ = Describe("Machines", func() {
 					err := workerDelegateCloudRouter.DeployMachineClasses(ctx)
 					Expect(err).NotTo(HaveOccurred())
 
-					// Test workerDelegate.UpdateMachineDeployments()
+					// Test WorkerDelegate.UpdateMachineDeployments()
 					expectedImages := &apiv1alpha1.WorkerStatus{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
@@ -675,7 +676,7 @@ var _ = Describe("Machines", func() {
 					err = workerDelegateCloudRouter.UpdateMachineImagesStatus(ctx)
 					Expect(err).NotTo(HaveOccurred())
 
-					// Test workerDelegate.GenerateMachineDeployments()
+					// Test WorkerDelegate.GenerateMachineDeployments()
 					result, err := workerDelegateCloudRouter.GenerateMachineDeployments(ctx)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(result).To(Equal(machineDeployments))
@@ -769,6 +770,41 @@ var _ = Describe("Machines", func() {
 				Expect(resultSettings.MachineHealthTimeout).To(Equal(&testHealthTimeout))
 				Expect(resultSettings.MaxEvictRetries).To(Equal(&testMaxEvictRetries))
 				Expect(resultSettings.NodeConditions).To(Equal(&resultNodeConditions))
+			})
+
+			It("should return generate machine classes with core and extended resources in the nodeTemplate", func() {
+				ephemeralStorageQuant := resource.MustParse("30Gi")
+				dongleName := corev1.ResourceName("resources.com/dongle")
+				dongleQuant := resource.MustParse("4")
+				customResources := corev1.ResourceList{
+					corev1.ResourceEphemeralStorage: ephemeralStorageQuant,
+					dongleName:                      dongleQuant,
+				}
+				w.Spec.Pools[0].ProviderConfig = &runtime.RawExtension{
+					Raw: encode(&api.WorkerConfig{
+						NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+							Capacity: customResources,
+						},
+					}),
+				}
+
+				expectedCapacity := w.Spec.Pools[0].NodeTemplate.Capacity.DeepCopy()
+				maps.Copy(expectedCapacity, customResources)
+
+				wd, err := NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
+				Expect(err).NotTo(HaveOccurred())
+				expectedUserDataSecretRefRead()
+				_, err = wd.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				workerDelegate := wd.(*WorkerDelegate)
+				mClasses := workerDelegate.GetMachineClasses()
+				for _, mClz := range mClasses {
+					className := mClz["name"].(string)
+					if strings.Contains(className, namePool1) {
+						nt := mClz["nodeTemplate"].(machinev1alpha1.NodeTemplate)
+						Expect(nt.Capacity).To(Equal(expectedCapacity))
+					}
+				}
 			})
 
 			It("should set expected cluster-autoscaler annotations on the machine deployment", func() {
