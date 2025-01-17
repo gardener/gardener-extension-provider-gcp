@@ -165,7 +165,7 @@ var _ = Describe("CredentialsBinding validator", func() {
 						Spec: securityv1alpha1.WorkloadIdentitySpec{
 							Audiences: []string{"foo"},
 							TargetSystem: securityv1alpha1.TargetSystem{
-								Type: "azure",
+								Type: "gcp",
 								ProviderConfig: &runtime.RawExtension{
 									Raw: []byte(`
 apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
