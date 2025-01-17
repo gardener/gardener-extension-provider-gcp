@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -18,13 +19,21 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
+const (
+	keyUniverseDomain   = "universe_domain"
+	keyAudience         = "audience"
+	keyType             = "type"
+	keyTokenURL         = "token_url"
+	keySubjectTokenType = "subject_token_type"
+)
+
 var (
 	usedCredentialsConfigFields = map[string]struct{}{
-		"universe_domain":    {},
-		"type":               {},
-		"audience":           {},
-		"subject_token_type": {},
-		"token_url":          {},
+		keyUniverseDomain:   {},
+		keyType:             {},
+		keyAudience:         {},
+		keySubjectTokenType: {},
+		keyTokenURL:         {},
 	}
 )
 
@@ -63,8 +72,26 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 			}
 		}
 
-		if cfg["type"] != gcp.ExternalAccountCredentialType {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child("type"), cfg["type"], fmt.Sprintf("should equal %q", gcp.ExternalAccountCredentialType)))
+		if cfg[keyType] != gcp.ExternalAccountCredentialType {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyType), cfg[keyType], fmt.Sprintf("should equal %q", gcp.ExternalAccountCredentialType)))
+		}
+
+		if cfg[keySubjectTokenType] != "urn:ietf:params:oauth:token-type:jwt" {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keySubjectTokenType), cfg[keySubjectTokenType], fmt.Sprintf("should equal %q", "urn:ietf:params:oauth:token-type:jwt")))
+		}
+
+		retrievedURL := cfg[keyTokenURL]
+		rawURL, ok := retrievedURL.(string)
+		if !ok {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be string"))
+		}
+		tokenURL, err := url.Parse(rawURL)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be a valid URL"))
+		}
+
+		if tokenURL.Scheme != "https" {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should start with https://"))
 		}
 	}
 

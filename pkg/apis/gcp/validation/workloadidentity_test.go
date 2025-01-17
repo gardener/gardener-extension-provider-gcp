@@ -55,8 +55,8 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	"extra": "field",
 	"type": "not_external_account",
 	"audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
-	"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
-	"token_url": "https://sts.googleapis.com/v1/token",
+	"subject_token_type": "invalid",
+	"token_url": "http://insecure",
 	"credential_source": {
 		"file": "/abc/cloudprovider/xyz",
 		"abc": {
@@ -87,6 +87,18 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 				"Field":    Equal("providerConfig.projectID"),
 				"BadValue": Equal("_invalid"),
 				"Detail":   Equal("does not match the expected format"),
+			},
+			Fields{
+				"Type":     Equal(field.ErrorTypeInvalid),
+				"Field":    Equal("providerConfig.credentialsConfig.subject_token_type"),
+				"BadValue": Equal("invalid"),
+				"Detail":   Equal("should equal \"urn:ietf:params:oauth:token-type:jwt\""),
+			},
+			Fields{
+				"Type":     Equal(field.ErrorTypeInvalid),
+				"Field":    Equal("providerConfig.credentialsConfig.token_url"),
+				"BadValue": Equal("http://insecure"),
+				"Detail":   Equal("should start with https://"),
 			},
 		))
 	})
