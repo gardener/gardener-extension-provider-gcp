@@ -32,16 +32,12 @@ const (
 )
 
 type actuator struct {
-	client              client.Client
-	tokenMetadataClient *http.Client
-	tokenMetadataURL    func(secretName, secretNamespace string) string
+	client client.Client
 }
 
-func newActuator(mgr manager.Manager, tokenMetadataURL func(secretName, secretNamespace string) string, tokenMetadataClient *http.Client) bastion.Actuator {
+func newActuator(mgr manager.Manager) bastion.Actuator {
 	return &actuator{
-		client:              mgr.GetClient(),
-		tokenMetadataClient: tokenMetadataClient,
-		tokenMetadataURL:    tokenMetadataURL,
+		client: mgr.GetClient(),
 	}
 }
 

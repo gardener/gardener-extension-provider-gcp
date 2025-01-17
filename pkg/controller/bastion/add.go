@@ -6,7 +6,6 @@ package bastion
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -31,19 +30,14 @@ type AddOptions struct {
 	IgnoreOperationAnnotation bool
 	// ExtensionClass defines the extension class this extension is responsible for.
 	ExtensionClass extensionsv1alpha1.ExtensionClass
-
-	// TokenMetadataClient is the client used to issue requests to the local token metadata server.
-	TokenMetadataClient *http.Client
-	// TokenMetadataURL is a function that constructs the URL that should be called in order to retrieve the token contents of a secret.
-	TokenMetadataURL func(secretName, secretNamespace string) string
 }
 
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
 // The opts.Reconciler is being set with a newly instantiated actuator.
 func AddToManagerWithOptions(mgr manager.Manager, opts AddOptions) error {
 	return bastion.Add(mgr, bastion.AddArgs{
-		Actuator:          newActuator(mgr, opts.TokenMetadataURL, opts.TokenMetadataClient),
-		ConfigValidator:   NewConfigValidator(mgr, log.Log, gcpclient.New(opts.TokenMetadataURL, opts.TokenMetadataClient)),
+		Actuator:          newActuator(mgr),
+		ConfigValidator:   NewConfigValidator(mgr, log.Log, gcpclient.New()),
 		ControllerOptions: opts.Controller,
 		Predicates:        bastion.DefaultPredicates(opts.IgnoreOperationAnnotation),
 		Type:              gcp.Type,

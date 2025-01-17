@@ -8,9 +8,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	"golang.org/x/oauth2/google/externalaccount"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -39,7 +39,6 @@ type credentialsFormat struct {
 
 // CredentialsConfig represents a GCP credentials configuration.
 type CredentialsConfig struct {
-	// Raw is the raw representation of the GCP credentials config.
 	Raw []byte
 	// ProjectID is the project id the credentials are associated to.
 	ProjectID string
@@ -53,10 +52,18 @@ type CredentialsConfig struct {
 	// TokenFilePath is file path which stores the token used for authentication.
 	TokenFilePath string
 
-	// TokenRequestURL is the URL which will be queried to retrieve the external account's token.
-	TokenRequestURL string
-	// TokenRequestClient is the client which will be used to query the TokenRequestURL.
-	TokenRequestClient *http.Client
+	// TokenRetriever can be used to retrieve token that is going to be exchanged for a GCP access token.
+	// This can be used instead of TokenFilePath when the token should be retrieved programmatically.
+	TokenRetriever externalaccount.SubjectTokenSupplier
+	// Audience is the intended audience.
+	Audience string
+	// UniverseDomain is the universe domain.
+	UniverseDomain string
+	// TokenURL is the url used for token exchange.
+	TokenURL string
+	// SubjectTokenType is the type of the subject token.
+	// Currently only "urn:ietf:params:oauth:token-type:jwt" is supported.
+	SubjectTokenType string
 }
 
 // GetCredentialsConfigFromSecretReference retrieves the credentials config from the secret with the given secret reference.
@@ -108,44 +115,14 @@ func GetCredentialsConfigFromJSON(data []byte) (*CredentialsConfig, error) {
 	}
 
 	return &CredentialsConfig{
-		Raw:             data,
-		ProjectID:       credentialsConfig.ProjectID,
-		Email:           credentialsConfig.Email,
-		Type:            credentialsConfig.Type,
-		TokenFilePath:   credentialsConfig.CredentialSource.File,
-		TokenRequestURL: credentialsConfig.CredentialSource.URL,
+		Raw:              data,
+		ProjectID:        credentialsConfig.ProjectID,
+		Email:            credentialsConfig.Email,
+		Type:             credentialsConfig.Type,
+		TokenFilePath:    credentialsConfig.CredentialSource.File,
+		Audience:         credentialsConfig.Audience,
+		UniverseDomain:   credentialsConfig.UniverseDomain,
+		TokenURL:         credentialsConfig.TokenURL,
+		SubjectTokenType: credentialsConfig.SubjectTokenType,
 	}, nil
-}
-
-// InjectURLCredentialSource modifies the credentials configuration to include the passed URL and the http client.
-func (c *CredentialsConfig) InjectURLCredentialSource(url string, client *http.Client) (bool, error) {
-	if c.Type != ExternalAccountCredentialType {
-		return false, nil
-	}
-	var credentialsConfig credConfig
-	if err := json.Unmarshal(c.Raw, &credentialsConfig); err != nil {
-		return false, fmt.Errorf("failed to unmarshal json object: %w", err)
-	}
-
-	credentialsConfig.CredentialSource = credentialSource{
-		URL: url,
-		Format: credentialsFormat{
-			Type: "text",
-		},
-	}
-
-	if newRawConfig, err := json.Marshal(&credentialsConfig); err != nil {
-		return false, fmt.Errorf("failed to marshal object: %w", err)
-	} else {
-		newConfig := &CredentialsConfig{
-			Raw:                newRawConfig,
-			ProjectID:          c.ProjectID,
-			Email:              c.Email,
-			Type:               c.Type,
-			TokenRequestURL:    credentialsConfig.CredentialSource.URL,
-			TokenRequestClient: client,
-		}
-		*c = *newConfig
-		return true, nil
-	}
 }

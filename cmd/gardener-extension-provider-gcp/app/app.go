@@ -6,14 +6,8 @@ package app
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
 	"fmt"
-	"net"
-	"net/http"
 	"os"
-	"time"
 
 	druidv1alpha1 "github.com/gardener/etcd-druid/api/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -25,9 +19,7 @@ import (
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	gardenerhealthz "github.com/gardener/gardener/pkg/healthz"
-	"github.com/gardener/gardener/pkg/utils/secrets"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
-	"github.com/go-logr/logr"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/gardener/gardener-extension-provider-gcp/internal/handler/tokenmeta"
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	gcpcmd "github.com/gardener/gardener-extension-provider-gcp/pkg/cmd"
 	gcpbackupbucket "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupbucket"
@@ -241,44 +232,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			workerCtrlOpts.Completed().Apply(&gcpworker.DefaultAddOptions.Controller)
 			gcpworker.DefaultAddOptions.GardenCluster = gardenCluster
 
-			// Generate certificates that will be used by the token metadata server
-			// and the requesting http clients for communication. Since the communication is
-			// contained to this process the certificates will not be persisted anywhere and will be kept in memory.
-			ca, serverCert, clientCert, err := generateTokenMetaServerCerts()
-			if err != nil {
-				return fmt.Errorf("failed generating certificates for the token metadata server: %w", err)
-			}
-
-			systemCertPool, err := x509.SystemCertPool()
-			if err != nil {
-				return fmt.Errorf("could not retrieve the system certificate pool: %w", err)
-			}
-			systemCertPool.AppendCertsFromPEM(ca.CertificatePEM)
-			tokenMetaClient := &http.Client{
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{
-						RootCAs:      systemCertPool,
-						Certificates: []tls.Certificate{clientCert},
-						MinVersion:   tls.VersionTLS12,
-					},
-				},
-			}
-			// Inject the token metadata client and base URL to dependants that will require
-			// to communicate with the token metadata server.
-			tokenMetadataServerAddr := net.JoinHostPort("127.0.0.1", "50607")
-			tokenMetadataServerBaseURL := "https://" + tokenMetadataServerAddr
-			tokenMetadataURL := func(secretName, secretNamespace string) string {
-				return tokenMetadataServerBaseURL + "/namespaces/" + secretNamespace + "/secrets/" + secretName + "/token"
-			}
-			gcpbastion.DefaultAddOptions.TokenMetadataClient = tokenMetaClient
-			gcpdnsrecord.DefaultAddOptions.TokenMetadataClient = tokenMetaClient
-			gcpinfrastructure.DefaultAddOptions.TokenMetadataClient = tokenMetaClient
-			gcpbackupbucket.DefaultAddOptions.TokenMetadataClient = tokenMetaClient
-			gcpbastion.DefaultAddOptions.TokenMetadataURL = tokenMetadataURL
-			gcpdnsrecord.DefaultAddOptions.TokenMetadataURL = tokenMetadataURL
-			gcpinfrastructure.DefaultAddOptions.TokenMetadataURL = tokenMetadataURL
-			gcpbackupbucket.DefaultAddOptions.TokenMetadataURL = tokenMetadataURL
-
 			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil)
 			if err != nil {
 				return fmt.Errorf("could not add webhooks to manager: %w", err)
@@ -302,49 +255,11 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 				return fmt.Errorf("could not add ready check for webhook server to manager: %w", err)
 			}
 
-			mux := http.NewServeMux()
-			tokenHandler := tokenmeta.New(mgr.GetClient(), mgr.GetLogger().WithName("token-meta-handler"))
-			tokenHandler.RegisterRoutes(mux)
-
-			caCertPool := x509.NewCertPool()
-			caCertPool.AppendCertsFromPEM(ca.CertificatePEM)
-			server := &http.Server{
-				Addr: tokenMetadataServerAddr,
-
-				Handler: mux,
-				TLSConfig: &tls.Config{
-					Certificates: []tls.Certificate{serverCert},
-					ClientCAs:    caCertPool,
-					ClientAuth:   tls.RequireAndVerifyClientCert,
-					MinVersion:   tls.VersionTLS12,
-				},
-
-				ReadTimeout:  time.Second * 15,
-				WriteTimeout: time.Second * 15,
+			if err := mgr.Start(ctx); err != nil {
+				return fmt.Errorf("error running manager: %w", err)
 			}
 
-			srvCh := make(chan error)
-			serverCtx, cancelSrv := context.WithCancel(ctx)
-
-			mgrCh := make(chan error)
-			mgrCtx, cancelMgr := context.WithCancel(ctx)
-
-			go func() {
-				defer cancelSrv()
-				mgrCh <- fmt.Errorf("error running manager: %w", mgr.Start(mgrCtx))
-			}()
-
-			go func() {
-				defer cancelMgr()
-				srvCh <- runServer(serverCtx, log, server)
-			}()
-
-			select {
-			case err := <-mgrCh:
-				return errors.Join(err, <-srvCh)
-			case err := <-srvCh:
-				return errors.Join(err, <-mgrCh)
-			}
+			return nil
 		},
 	}
 
@@ -352,95 +267,4 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 	aggOption.AddFlags(cmd.Flags())
 
 	return cmd
-}
-
-// generateTokenMetaServerCerts generates and returns certificates for the token metadata server
-// in the following order: CertificateAuthority, ServerCertificate, ClientCertificate
-func generateTokenMetaServerCerts() (*secrets.Certificate, tls.Certificate, tls.Certificate, error) {
-	oneYear := time.Hour * 24 * 365
-	caConfig := secrets.CertificateSecretConfig{
-		Name:       "workload-identity-token-metadata-server-ca",
-		CommonName: "workload-identity-token-metadata-server-ca",
-		CertType:   secrets.CACert,
-
-		Validity: &oneYear,
-	}
-
-	ca, err := caConfig.GenerateCertificate()
-	if err != nil {
-		return nil, tls.Certificate{}, tls.Certificate{}, err
-	}
-
-	serverCertConfig := secrets.CertificateSecretConfig{
-		Name:       "workload-identity-token-metadata-server",
-		CommonName: "workload-identity-token-metadata-server",
-		CertType:   secrets.ServerCert,
-
-		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1)},
-
-		SigningCA:                         ca,
-		Validity:                          &oneYear,
-		IncludeCACertificateInServerChain: true,
-	}
-
-	serverCert, err := serverCertConfig.GenerateCertificate()
-	if err != nil {
-		return nil, tls.Certificate{}, tls.Certificate{}, err
-	}
-
-	tlsServerCert, err := tls.X509KeyPair(serverCert.CertificatePEM, serverCert.PrivateKeyPEM)
-	if err != nil {
-		return nil, tls.Certificate{}, tls.Certificate{}, err
-	}
-
-	clientCertConfig := secrets.CertificateSecretConfig{
-		Name:       "workload-identity-token-metadata-server-client",
-		CommonName: "workload-identity-token-metadata-server-client",
-		CertType:   secrets.ClientCert,
-
-		SigningCA: ca,
-		Validity:  &oneYear,
-	}
-
-	clientCert, err := clientCertConfig.GenerateCertificate()
-	if err != nil {
-		return nil, tls.Certificate{}, tls.Certificate{}, err
-	}
-
-	tlsClientCert, err := tls.X509KeyPair(clientCert.CertificatePEM, clientCert.PrivateKeyPEM)
-	if err != nil {
-		return nil, tls.Certificate{}, tls.Certificate{}, err
-	}
-
-	return ca, tlsServerCert, tlsClientCert, nil
-}
-
-// runServer starts the token metadata server. It returns if the context is canceled or the server cannot start initially.
-func runServer(ctx context.Context, log logr.Logger, srv *http.Server) error {
-	log = log.WithName("token-meta-server")
-	errCh := make(chan error)
-	go func(errCh chan<- error) {
-		log.Info("Starts listening", "address", srv.Addr)
-		defer close(errCh)
-		if err := srv.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errCh <- fmt.Errorf("failed serving content: %w", err)
-		} else {
-			log.Info("Server stopped listening")
-		}
-	}(errCh)
-
-	select {
-	case err := <-errCh:
-		return err
-	case <-ctx.Done():
-		log.Info("Shutting down")
-		cancelCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
-		err := srv.Shutdown(cancelCtx)
-		if err != nil {
-			return fmt.Errorf("token metadata server failed graceful shutdown: %w", err)
-		}
-		log.Info("Shutdown successful")
-		return nil
-	}
 }

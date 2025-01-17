@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
@@ -102,20 +101,12 @@ type computeClient struct {
 // Delete operations will ignore errors when the respective resource can not be found, meaning that the Delete operations will never return HTTP 404 errors.
 // Update operations will ignore errors when the update operation is a no-op, meaning that Update operations will ignore HTTP 304 errors.
 func NewComputeClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (ComputeClient, error) {
-	var tokenExchangeCtx context.Context
-	if credentialsConfig.TokenRequestClient != nil {
-		tokenExchangeCtx = context.WithValue(ctx, oauth2.HTTPClient, credentialsConfig.TokenRequestClient)
-	} else {
-		tokenExchangeCtx = ctx
-	}
-	creds, err := google.CredentialsFromJSONWithParams(tokenExchangeCtx, credentialsConfig.Raw, google.CredentialsParams{
-		Scopes: []string{compute.ComputeScope},
-	})
+	tokenSource, err := tokenSource(ctx, credentialsConfig, []string{compute.ComputeScope})
 	if err != nil {
 		return nil, err
 	}
 
-	httpClient := oauth2.NewClient(ctx, creds.TokenSource)
+	httpClient := oauth2.NewClient(ctx, tokenSource)
 	service, err := compute.NewService(ctx, option.WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, err

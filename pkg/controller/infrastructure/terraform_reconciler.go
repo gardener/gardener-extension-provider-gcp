@@ -8,7 +8,6 @@ package infrastructure
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -39,20 +38,15 @@ type TerraformReconciler struct {
 	restConfig                 *rest.Config
 	log                        logr.Logger
 	disableProjectedTokenMount bool
-
-	tokenMetadataClient *http.Client
-	tokenMetadataURL    func(secretName, secretNamespace string) string
 }
 
 // NewTerraformReconciler returns a new instance of TerraformReconciler.
-func NewTerraformReconciler(client k8sClient.Client, restConfig *rest.Config, log logr.Logger, disableProjectedTokenMount bool, tokenMetadataURL func(secretName, secretNamespace string) string, tokenMetadataClient *http.Client) *TerraformReconciler {
+func NewTerraformReconciler(client k8sClient.Client, restConfig *rest.Config, log logr.Logger, disableProjectedTokenMount bool) *TerraformReconciler {
 	return &TerraformReconciler{
 		client:                     client,
 		restConfig:                 restConfig,
 		log:                        log,
 		disableProjectedTokenMount: disableProjectedTokenMount,
-		tokenMetadataURL:           tokenMetadataURL,
-		tokenMetadataClient:        tokenMetadataClient,
 	}
 }
 
@@ -157,7 +151,7 @@ func (t *TerraformReconciler) delete(ctx context.Context, infra *extensionsv1alp
 		return err
 	}
 
-	gcpClient, err := gcpclient.New(t.tokenMetadataURL, t.tokenMetadataClient).Compute(ctx, t.client, infra.Spec.SecretRef)
+	gcpClient, err := gcpclient.New().Compute(ctx, t.client, infra.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}

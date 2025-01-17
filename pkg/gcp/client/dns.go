@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	googledns "google.golang.org/api/dns/v1"
 	"google.golang.org/api/option"
 
@@ -31,19 +30,12 @@ type dnsClient struct {
 
 // NewDNSClient returns a client for GCP's CloudDNS service.
 func NewDNSClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (DNSClient, error) {
-	var tokenExchangeCtx context.Context
-	if credentialsConfig.TokenRequestClient != nil {
-		tokenExchangeCtx = context.WithValue(ctx, oauth2.HTTPClient, credentialsConfig.TokenRequestClient)
-	} else {
-		tokenExchangeCtx = ctx
-	}
-	credentials, err := google.CredentialsFromJSONWithParams(tokenExchangeCtx, credentialsConfig.Raw, google.CredentialsParams{
-		Scopes: []string{googledns.NdevClouddnsReadwriteScope},
-	})
+	tokenSource, err := tokenSource(ctx, credentialsConfig, []string{googledns.NdevClouddnsReadwriteScope})
 	if err != nil {
 		return nil, err
 	}
-	client := oauth2.NewClient(ctx, credentials.TokenSource)
+
+	client := oauth2.NewClient(ctx, tokenSource)
 	service, err := googledns.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		return nil, err
@@ -51,7 +43,7 @@ func NewDNSClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig)
 
 	return &dnsClient{
 		service:   service,
-		projectID: credentials.ProjectID,
+		projectID: credentialsConfig.ProjectID,
 	}, nil
 }
 

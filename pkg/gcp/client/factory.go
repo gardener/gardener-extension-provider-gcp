@@ -6,9 +6,14 @@ package client
 
 import (
 	"context"
-	"net/http"
+	"errors"
 
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/google/externalaccount"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -30,17 +35,44 @@ type Factory interface {
 	IAM(context.Context, client.Client, corev1.SecretReference) (IAMClient, error)
 }
 
+type tokenRetriever struct {
+	c               client.Client
+	secretName      string
+	secretNamespace string
+}
+
+var _ externalaccount.SubjectTokenSupplier = &tokenRetriever{}
+
+func (t *tokenRetriever) SubjectToken(ctx context.Context, options externalaccount.SupplierOptions) (string, error) {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: t.secretNamespace,
+			Name:      t.secretName,
+		},
+	}
+
+	if err := t.c.Get(ctx, client.ObjectKeyFromObject(secret), secret); err != nil {
+		return "", err
+	}
+
+	if secret.Labels[securityv1alpha1constants.LabelPurpose] != securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+		return "", errors.New("secret is not with purpose " + securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor)
+	}
+
+	token, ok := secret.Data[securityv1alpha1constants.DataKeyToken]
+	if !ok {
+		return "", errors.New("secret does not contain a token")
+	}
+
+	return string(token), nil
+}
+
 type factory struct {
-	tokenMetadataClient *http.Client
-	tokenMetadataURL    func(secretName, secretNamespace string) string
 }
 
 // New returns a new instance of Factory.
-func New(tokenMetadataURL func(secretName, secretNamespace string) string, tokenMetadataClient *http.Client) Factory {
-	return &factory{
-		tokenMetadataURL:    tokenMetadataURL,
-		tokenMetadataClient: tokenMetadataClient,
-	}
+func New() Factory {
+	return &factory{}
 }
 
 // DNS returns a GCP cloud DNS service client.
@@ -49,12 +81,15 @@ func (f factory) DNS(ctx context.Context, c client.Client, sr corev1.SecretRefer
 	if err != nil {
 		return nil, err
 	}
-	if f.tokenMetadataClient != nil {
-		_, err := credentialsConfig.InjectURLCredentialSource(f.tokenMetadataURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
-		if err != nil {
-			return nil, err
+
+	if credentialsConfig.Type == gcp.ExternalAccountCredentialType {
+		credentialsConfig.TokenRetriever = &tokenRetriever{
+			c:               c,
+			secretName:      sr.Name,
+			secretNamespace: sr.Namespace,
 		}
 	}
+
 	return NewDNSClient(ctx, credentialsConfig)
 }
 
@@ -64,12 +99,15 @@ func (f factory) Storage(ctx context.Context, c client.Client, sr corev1.SecretR
 	if err != nil {
 		return nil, err
 	}
-	if f.tokenMetadataClient != nil {
-		_, err := credentialsConfig.InjectURLCredentialSource(f.tokenMetadataURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
-		if err != nil {
-			return nil, err
+
+	if credentialsConfig.Type == gcp.ExternalAccountCredentialType {
+		credentialsConfig.TokenRetriever = &tokenRetriever{
+			c:               c,
+			secretName:      sr.Name,
+			secretNamespace: sr.Namespace,
 		}
 	}
+
 	return NewStorageClient(ctx, credentialsConfig)
 }
 
@@ -79,12 +117,15 @@ func (f factory) Compute(ctx context.Context, c client.Client, sr corev1.SecretR
 	if err != nil {
 		return nil, err
 	}
-	if f.tokenMetadataClient != nil {
-		_, err := credentialsConfig.InjectURLCredentialSource(f.tokenMetadataURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
-		if err != nil {
-			return nil, err
+
+	if credentialsConfig.Type == gcp.ExternalAccountCredentialType {
+		credentialsConfig.TokenRetriever = &tokenRetriever{
+			c:               c,
+			secretName:      sr.Name,
+			secretNamespace: sr.Namespace,
 		}
 	}
+
 	return NewComputeClient(ctx, credentialsConfig)
 }
 
@@ -94,11 +135,43 @@ func (f factory) IAM(ctx context.Context, c client.Client, sr corev1.SecretRefer
 	if err != nil {
 		return nil, err
 	}
-	if f.tokenMetadataClient != nil {
-		_, err := credentialsConfig.InjectURLCredentialSource(f.tokenMetadataURL(sr.Name, sr.Namespace), f.tokenMetadataClient)
+
+	if credentialsConfig.Type == gcp.ExternalAccountCredentialType {
+		credentialsConfig.TokenRetriever = &tokenRetriever{
+			c:               c,
+			secretName:      sr.Name,
+			secretNamespace: sr.Namespace,
+		}
+	}
+
+	return NewIAMClient(ctx, credentialsConfig)
+}
+
+func tokenSource(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) (oauth2.TokenSource, error) {
+	if credentialsConfig.TokenRetriever != nil && credentialsConfig.Type == gcp.ExternalAccountCredentialType {
+		conf := externalaccount.Config{
+			Audience:             credentialsConfig.Audience,
+			SubjectTokenType:     credentialsConfig.SubjectTokenType,
+			TokenURL:             credentialsConfig.TokenURL,
+			Scopes:               scopes,
+			SubjectTokenSupplier: credentialsConfig.TokenRetriever,
+			UniverseDomain:       credentialsConfig.UniverseDomain,
+		}
+
+		ts, err := externalaccount.NewTokenSource(ctx, conf)
 		if err != nil {
 			return nil, err
 		}
+
+		return ts, nil
 	}
-	return NewIAMClient(ctx, credentialsConfig)
+
+	credentials, err := google.CredentialsFromJSONWithParams(ctx, credentialsConfig.Raw, google.CredentialsParams{
+		Scopes: scopes,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return credentials.TokenSource, nil
 }

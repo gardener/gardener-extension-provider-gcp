@@ -33,7 +33,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		Name:      v1beta1constants.SecretNameCloudProvider,
 	}
 
-	gcpClient, err := gcpclient.New(a.tokenMetadataURL, a.tokenMetadataClient).Compute(ctx, a.client, secretReference)
+	gcpClient, err := gcpclient.New().Compute(ctx, a.client, secretReference)
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("failed to create GCP client: %w", err), helper.KnownCodes)
 	}
