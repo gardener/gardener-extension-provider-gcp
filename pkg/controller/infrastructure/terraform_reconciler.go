@@ -26,6 +26,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
@@ -73,12 +74,13 @@ func (t *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 	log := t.log
 
 	log.Info("reconcile infrastructure using terraform reconciler")
-	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount)
+	credentialsConfig, err := infrastructure.GetCredentialsConfigFromInfrastructure(ctx, t.client, infra)
 	if err != nil {
 		return err
 	}
 
-	serviceAccount, err := infrastructure.GetServiceAccountFromInfrastructure(ctx, t.client, infra)
+	useWorkloadIdentity := credentialsConfig.Type == gcp.ExternalAccountCredentialType && len(credentialsConfig.TokenFilePath) > 0
+	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount, useWorkloadIdentity)
 	if err != nil {
 		return err
 	}
@@ -93,7 +95,7 @@ func (t *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 		return err
 	}
 
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, serviceAccount, config, cluster.Shoot.Spec.Networking.Pods, createSA)
+	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, credentialsConfig, config, cluster.Shoot.Spec.Networking.Pods, createSA)
 	if err != nil {
 		return err
 	}
@@ -120,7 +122,13 @@ func (t *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 func (t *TerraformReconciler) delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, _ *extensions.Cluster) error {
 	log := t.log
 
-	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount)
+	credentialsConfig, err := infrastructure.GetCredentialsConfigFromInfrastructure(ctx, t.client, infra)
+	if err != nil {
+		return err
+	}
+
+	useWorkloadIdentity := credentialsConfig.Type == gcp.ExternalAccountCredentialType && len(credentialsConfig.TokenFilePath) > 0
+	tf, err := internal.NewTerraformerWithAuth(log, t.restConfig, infrastructure.TerraformerPurpose, infra, t.disableProjectedTokenMount, useWorkloadIdentity)
 	if err != nil {
 		return err
 	}

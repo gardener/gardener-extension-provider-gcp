@@ -187,7 +187,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(c).NotTo(BeNil())
 
-	sa, err := gcp.GetServiceAccountFromJSON([]byte(*serviceAccount))
+	sa, err := gcp.GetCredentialsConfigFromJSON([]byte(*serviceAccount))
 	project = sa.ProjectID
 	Expect(err).NotTo(HaveOccurred())
 	computeService, err = computev1.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(computev1.CloudPlatformScope))

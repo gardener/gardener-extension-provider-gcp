@@ -58,18 +58,16 @@ type PersistStateFunc func(ctx context.Context, state *runtime.RawExtension) err
 
 // FlowContext is capable of reconciling and deleting the infrastructure for a shoot.
 type FlowContext struct {
-	bfg *shared.BasicFlowContext
-
-	infra          *extensionsv1alpha1.Infrastructure
-	config         *gcp.InfrastructureConfig
-	state          *gcp.InfrastructureState
-	updater        gcpclient.Updater
-	serviceAccount *gcpinternal.ServiceAccount
-	clusterName    string
-	whiteboard     shared.Whiteboard
-	podCIDR        *string
-	persistFn      PersistStateFunc
-	log            logr.Logger
+	infra             *extensionsv1alpha1.Infrastructure
+	config            *gcp.InfrastructureConfig
+	state             *gcp.InfrastructureState
+	updater           gcpclient.Updater
+	credentialsConfig *gcpinternal.CredentialsConfig
+	clusterName       string
+	whiteboard        shared.Whiteboard
+	podCIDR           *string
+	persistFn         PersistStateFunc
+	log               logr.Logger
 
 	computeClient gcpclient.ComputeClient
 	iamClient     gcpclient.IAMClient
@@ -81,13 +79,13 @@ type Opts struct {
 	// Log is the logger using during the reconciliation.
 	Log logr.Logger
 	// Infra
-	Infra          *extensionsv1alpha1.Infrastructure
-	State          *gcp.InfrastructureState
-	Cluster        *controller.Cluster
-	ServiceAccount *gcpinternal.ServiceAccount
-	Factory        gcpclient.Factory
-	Client         client.Client
-	PersistFunc    PersistStateFunc
+	Infra             *extensionsv1alpha1.Infrastructure
+	State             *gcp.InfrastructureState
+	Cluster           *controller.Cluster
+	CredentialsConfig *gcpinternal.CredentialsConfig
+	Factory           gcpclient.Factory
+	Client            client.Client
+	PersistFunc       PersistStateFunc
 }
 
 // NewFlowContext returns a new FlowContext.
@@ -109,16 +107,16 @@ func NewFlowContext(ctx context.Context, opts Opts) (*FlowContext, error) {
 	}
 
 	fr := &FlowContext{
-		whiteboard:     wb,
-		infra:          opts.Infra,
-		serviceAccount: opts.ServiceAccount,
-		config:         config,
-		state:          opts.State,
-		updater:        DefaultUpdaterFunc(opts.Log, com),
-		clusterName:    opts.Cluster.ObjectMeta.Name,
-		podCIDR:        opts.Cluster.Shoot.Spec.Networking.Pods,
-		persistFn:      opts.PersistFunc,
-		log:            opts.Log,
+		whiteboard:        wb,
+		infra:             opts.Infra,
+		credentialsConfig: opts.CredentialsConfig,
+		config:            config,
+		state:             opts.State,
+		updater:           DefaultUpdaterFunc(opts.Log, com),
+		clusterName:       opts.Cluster.ObjectMeta.Name,
+		podCIDR:           opts.Cluster.Shoot.Spec.Networking.Pods,
+		persistFn:         opts.PersistFunc,
+		log:               opts.Log,
 
 		computeClient: com,
 		iamClient:     iam,

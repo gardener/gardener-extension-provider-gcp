@@ -23,7 +23,7 @@ import (
 )
 
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	serviceAccount, err := getServiceAccount(ctx, a.client, bastion)
+	credentialsConfig, err := getCredentialsConfig(ctx, a.client, bastion)
 	if err != nil {
 		return fmt.Errorf("failed to get service account: %w", err)
 	}
@@ -43,7 +43,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		return err
 	}
 
-	opt, err := DetermineOptions(bastion, cluster, serviceAccount.ProjectID, infrastructureStatus.Networks.VPC.Name, subnet)
+	opt, err := DetermineOptions(bastion, cluster, credentialsConfig.ProjectID, infrastructureStatus.Networks.VPC.Name, subnet)
 	if err != nil {
 		return fmt.Errorf("failed to determine Options: %w", err)
 	}
