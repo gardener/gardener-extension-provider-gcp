@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -31,20 +30,15 @@ type FlowReconciler struct {
 	restConfig                 *rest.Config
 	log                        logr.Logger
 	disableProjectedTokenMount bool
-
-	tokenMetadataClient *http.Client
-	tokenMetadataURL    func(secretName, secretNamespace string) string
 }
 
 // NewFlowReconciler creates a new flow reconciler.
-func NewFlowReconciler(client client.Client, restConfig *rest.Config, log logr.Logger, projToken bool, tokenMetadataURL func(secretName, secretNamespace string) string, tokenMetadataClient *http.Client) (Reconciler, error) {
+func NewFlowReconciler(client client.Client, restConfig *rest.Config, log logr.Logger, projToken bool) (Reconciler, error) {
 	return &FlowReconciler{
 		client:                     client,
 		restConfig:                 restConfig,
 		log:                        log,
 		disableProjectedTokenMount: projToken,
-		tokenMetadataURL:           tokenMetadataURL,
-		tokenMetadataClient:        tokenMetadataClient,
 	}, nil
 }
 
@@ -87,7 +81,7 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		State:             infraState,
 		Cluster:           cluster,
 		CredentialsConfig: credentialsConfig,
-		Factory:           gcpclient.New(f.tokenMetadataURL, f.tokenMetadataClient),
+		Factory:           gcpclient.New(),
 		Client:            f.client,
 		PersistFunc: func(ctx context.Context, state *runtime.RawExtension) error {
 			return patchProviderStatusAndState(ctx, f.client, infra, nil, state)
@@ -120,7 +114,7 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 	if err != nil {
 		return err
 	}
-	gc := gcpclient.New(f.tokenMetadataURL, f.tokenMetadataClient)
+	gc := gcpclient.New()
 	fctx, err := infraflow.NewFlowContext(ctx, infraflow.Opts{
 		Log:               f.log,
 		Infra:             infra,
