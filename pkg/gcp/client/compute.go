@@ -387,6 +387,9 @@ func (c *computeClient) ListRoutes(ctx context.Context, opts RouteListOpts) ([]*
 	var res []*compute.Route
 
 	rtCall := c.service.Routes.List(c.projectID).Context(ctx)
+	if len(opts.Filter) > 0 {
+		rtCall = rtCall.Filter(opts.Filter)
+	}
 	if err := rtCall.Pages(ctx, func(list *compute.RouteList) error {
 		for _, item := range list.Items {
 			if item == nil {
