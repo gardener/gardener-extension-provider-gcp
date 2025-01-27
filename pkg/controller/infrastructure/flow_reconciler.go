@@ -12,7 +12,6 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -83,24 +82,13 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		ServiceAccount: serviceAccount,
 		Factory:        gcpclient.New(),
 		Client:         f.client,
-		PersistFunc: func(ctx context.Context, state *runtime.RawExtension) error {
-			return patchProviderStatusAndState(ctx, f.client, infra, nil, state)
-		},
+		Networking:     cluster.Shoot.Spec.Networking,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create flow context: %v", err)
 	}
 
-	status, currentState, err := fctx.Reconcile(ctx)
-	if err != nil {
-		// if there is an error we only patch the currentState
-		if innerErr := patchProviderStatusAndState(ctx, f.client, infra, nil, currentState); innerErr != nil {
-			f.log.Error(innerErr, "failed to persist currentState after failed reconciliation", "original error", err)
-		}
-		return err
-	}
-
-	return patchProviderStatusAndState(ctx, f.client, infra, status, currentState)
+	return fctx.Reconcile(ctx)
 }
 
 // Delete deletes the infrastructure resource using the flow reconciler.
@@ -123,6 +111,7 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 		Factory:        gc,
 		Client:         f.client,
 		State:          infraState,
+		Networking:     cluster.Shoot.Spec.Networking,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create flow context: %v", err)
@@ -166,11 +155,9 @@ func (f *FlowReconciler) infrastructureStateFromRaw(infra *extensionsv1alpha1.In
 }
 
 func (f *FlowReconciler) migrateFromTerraform(ctx context.Context, infra *extensionsv1alpha1.Infrastructure) (*gcp.InfrastructureState, error) {
-	var (
-		state = &gcp.InfrastructureState{
-			Data: map[string]string{},
-		}
-	)
+	state := &gcp.InfrastructureState{
+		Data: map[string]string{},
+	}
 	// we want to prevent allowing the deletion of infrastructure if there may be still resources in the cloudprovider. We will initialize the data
 	// with a specific "marker" so that the deletion
 	tf, err := internal.NewTerraformer(f.log, f.restConfig, infrainternal.TerraformerPurpose, infra, f.disableProjectedTokenMount)

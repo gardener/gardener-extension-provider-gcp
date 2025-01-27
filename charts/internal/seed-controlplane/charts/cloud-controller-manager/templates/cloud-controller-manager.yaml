@@ -39,13 +39,15 @@ spec:
         imagePullPolicy: IfNotPresent
         {{- if semverCompare ">= 1.31" .Values.kubernetesVersion }}
         command: ["/cloud-controller-manager"]
-        {{- end}}
+        {{- end }}
         args:
         - --allocate-node-cidrs=true
         - --cloud-provider=gce
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
         - --cluster-cidr={{ .Values.podNetwork }}
+        - --service-cluster-ip-range={{ .Values.serviceNetwork }}
         - --cluster-name={{ .Values.clusterName }}
+        - --cidr-allocator-type={{ .Values.allocatorType }}
         - --concurrent-service-syncs=10
         - --configure-cloud-routes={{ .Values.configureCloudRoutes }}
         {{- include "cloud-controller-manager.featureGates" . | trimSuffix "," | indent 8 }}

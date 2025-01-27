@@ -6,17 +6,12 @@ package infrastructure
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 )
 
 type actuator struct {
@@ -43,32 +38,4 @@ func CleanupTerraformerResources(ctx context.Context, tf terraformer.Terraformer
 		return err
 	}
 	return tf.RemoveTerraformerFinalizerFromConfig(ctx)
-}
-
-func patchProviderStatusAndState(
-	ctx context.Context,
-	runtimeClient client.Client,
-	infra *extensionsv1alpha1.Infrastructure,
-	status *v1alpha1.InfrastructureStatus,
-	state *runtime.RawExtension,
-) error {
-	patch := client.MergeFrom(infra.DeepCopy())
-	if status != nil {
-		infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
-		infra.Status.EgressCIDRs = make([]string, len(status.Networks.NatIPs))
-		for i, natIP := range status.Networks.NatIPs {
-			infra.Status.EgressCIDRs[i] = fmt.Sprintf("%s/32", natIP.IP)
-		}
-	}
-	if state != nil {
-		infra.Status.State = state
-	}
-
-	if data, err := patch.Data(infra); err != nil {
-		return fmt.Errorf("failed getting patch data for infra %s: %w", infra.Name, err)
-	} else if string(data) == `{}` {
-		return nil
-	}
-
-	return runtimeClient.Status().Patch(ctx, infra, patch)
 }

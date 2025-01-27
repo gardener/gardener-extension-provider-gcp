@@ -18,6 +18,8 @@ const (
 	DefaultFlowSampling = 0.5
 	// DefaultMetadata is the default value for the Flow Logs metadata.
 	DefaultMetadata = "EXCLUDE_ALL_METADATA"
+	// DefaultSecondarySubnetName is the default name of the secondary ipv4 subnet that will be used in dualstack shoot
+	DefaultSecondarySubnetName = "ipv4-pod-cidr"
 )
 
 // GetObject returns the object and attempts to cast it to the specified type.
@@ -58,6 +60,10 @@ func (fctx *FlowContext) internalSubnetNameFromConfig() string {
 	return fmt.Sprintf("%s-internal", fctx.clusterName)
 }
 
+func (fctx *FlowContext) servicesSubnetNameFromConfig() string {
+	return fmt.Sprintf("%s-services", fctx.clusterName)
+}
+
 func (fctx *FlowContext) cloudRouterNameFromConfig() string {
 	routerName := fmt.Sprintf("%s-cloud-router", fctx.clusterName)
 	if fctx.config.Networks.VPC != nil && fctx.config.Networks.VPC.CloudRouter != nil {
@@ -68,18 +74,6 @@ func (fctx *FlowContext) cloudRouterNameFromConfig() string {
 
 func (fctx *FlowContext) cloudNatNameFromConfig() string {
 	return fmt.Sprintf("%s-cloud-nat", fctx.clusterName)
-}
-
-func firewallRuleAllowInternalName(base string) string {
-	return fmt.Sprintf("%s-allow-internal-access", base)
-}
-
-func firewallRuleAllowExternalName(base string) string {
-	return fmt.Sprintf("%s-allow-external-access", base)
-}
-
-func firewallRuleAllowHealthChecksName(base string) string {
-	return fmt.Sprintf("%s-allow-health-checks", base)
 }
 
 func targetNetwork(name string) *compute.Network {
@@ -93,7 +87,7 @@ func targetNetwork(name string) *compute.Network {
 	}
 }
 
-func targetSubnetState(name, description, cidr, networkName string, flowLogs *gcp.FlowLogs) *compute.Subnetwork {
+func targetSubnetState(name, description, cidr, networkName string, flowLogs *gcp.FlowLogs, dualStack bool, secondaryRange *string) *compute.Subnetwork {
 	subnet := &compute.Subnetwork{
 		Description:           description,
 		PrivateIpGoogleAccess: false,
@@ -102,6 +96,20 @@ func targetSubnetState(name, description, cidr, networkName string, flowLogs *gc
 		Network:               networkName,
 		EnableFlowLogs:        false,
 		LogConfig:             nil,
+	}
+
+	if dualStack {
+		subnet.Ipv6AccessType = "EXTERNAL"
+		subnet.StackType = "IPV4_IPV6"
+
+		if secondaryRange != nil {
+			subnet.SecondaryIpRanges = []*compute.SubnetworkSecondaryRange{
+				{
+					IpCidrRange: *secondaryRange,
+					RangeName:   DefaultSecondarySubnetName,
+				},
+			}
+		}
 	}
 
 	if flowLogs != nil {
@@ -211,6 +219,11 @@ func targetNATState(name, subnetURL string, natConfig *gcp.CloudNAT, natIps []*c
 	return nat
 }
 
+const (
+	ipProtocolICMPv4 = "icmp"
+	ipProtocolICMPv6 = "58" // we have use the number as GCP doesn't recognize any variants of the name for ICMPv6
+)
+
 func firewallRuleAllowInternal(name, network string, cidrs []*string) *compute.Firewall {
 	firewall := &compute.Firewall{
 		Name:      name,
@@ -219,7 +232,7 @@ func firewallRuleAllowInternal(name, network string, cidrs []*string) *compute.F
 		Priority:  1000,
 		Allowed: []*compute.FirewallAllowed{
 			{
-				IPProtocol: "icmp",
+				IPProtocol: ipProtocolICMPv4,
 			},
 			{
 				IPProtocol: "ipip",
@@ -245,36 +258,63 @@ func firewallRuleAllowInternal(name, network string, cidrs []*string) *compute.F
 	return firewall
 }
 
-func firewallRuleAllowExternal(name, network string) *compute.Firewall {
-	return &compute.Firewall{
-		Allowed: []*compute.FirewallAllowed{
-			{
-				IPProtocol: "tcp",
-				Ports:      []string{"443"},
-			},
-		},
-		SourceRanges:    []string{"0.0.0.0/0"},
-		Direction:       "INGRESS",
-		Name:            name,
-		Network:         network,
-		Priority:        1000,
-		ForceSendFields: []string{"Disabled"},
-		NullFields:      []string{"Denied", "DestinationRanges", "SourceServiceAccounts", "SourceTags", "TargetTags", "TargetServiceAccounts"},
-	}
-}
-
-func firewallRuleAllowHealthChecks(name, network string) *compute.Firewall {
-	return &compute.Firewall{
+func firewallRuleAllowInternalIPv6(name, network string, cidrs []*string) *compute.Firewall {
+	firewall := &compute.Firewall{
 		Name:      name,
 		Network:   network,
 		Direction: "INGRESS",
 		Priority:  1000,
-		SourceRanges: []string{
-			"35.191.0.0/16",
-			"209.85.204.0/22",
-			"209.85.152.0/22",
-			"130.211.0.0/22",
+		Allowed: []*compute.FirewallAllowed{
+			{
+				IPProtocol: ipProtocolICMPv6,
+			},
+			{
+				IPProtocol: "ipip",
+			},
+			{
+				IPProtocol: "tcp",
+				Ports:      []string{"1-65535"},
+			},
+			{
+				IPProtocol: "udp",
+				Ports:      []string{"1-65535"},
+			},
 		},
+		ForceSendFields: []string{"Disabled"},
+		NullFields:      []string{"Denied", "DestinationRanges", "SourceServiceAccounts", "SourceTags", "TargetTags", "TargetServiceAccounts"},
+	}
+	for _, cidr := range cidrs {
+		if cidr != nil && len(*cidr) > 0 {
+			firewall.SourceRanges = append(firewall.SourceRanges, *cidr)
+		}
+	}
+
+	return firewall
+}
+
+// Following ranges documented at https://cloud.google.com/load-balancing/docs/health-check-concepts#ip-ranges
+var (
+	healthCheckSourceRangesIPv4 = []string{
+		"35.191.0.0/16",
+		"209.85.204.0/22",
+		"209.85.152.0/22",
+		"130.211.0.0/22",
+	}
+
+	healthCheckSourceRangesIPv6 = []string{
+		"2600:2d00:1:b029::/64",
+		"2600:2d00:1:1::/64",
+		"2600:1901:8001::/48",
+	}
+)
+
+func firewallRuleAllowHealthChecks(name, network string, cidrs []string) *compute.Firewall {
+	return &compute.Firewall{
+		Name:         name,
+		Network:      network,
+		Direction:    "INGRESS",
+		Priority:     1000,
+		SourceRanges: cidrs,
 		Allowed: []*compute.FirewallAllowed{
 			{
 				IPProtocol: "udp",

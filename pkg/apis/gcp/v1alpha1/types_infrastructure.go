@@ -64,6 +64,9 @@ type NetworkStatus struct {
 	// NatIPs is a list of all user provided external premium ips which can be used by the nat gateway
 	// +optional
 	NatIPs []NatIP `json:"natIPs,omitempty"`
+
+	// DualStackEnabled indicates whether dual-stack is enabled in the infrastructure.
+	DualStackEnabled bool `json:"dualStackEnabled"`
 }
 
 // SubnetPurpose is a purpose of a subnet.
@@ -74,6 +77,8 @@ const (
 	PurposeNodes SubnetPurpose = "nodes"
 	// PurposeInternal is a SubnetPurpose for internal use.
 	PurposeInternal SubnetPurpose = "internal"
+	// PurposeServices is a SubnetPurpose for services.
+	PurposeServices SubnetPurpose = "services"
 )
 
 // Subnet is a subnet that was created.

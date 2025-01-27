@@ -157,7 +157,11 @@ var _ = Describe("ValuesProvider", func() {
 						},
 					},
 					Networking: &gardencorev1beta1.Networking{
-						Pods: &cidr,
+						IPFamilies: []gardencorev1beta1.IPFamily{
+							gardencorev1beta1.IPFamilyIPv4,
+						},
+						Pods:     &cidr,
+						Services: &cidr,
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
 						Version: "1.28.2",
@@ -189,9 +193,10 @@ var _ = Describe("ValuesProvider", func() {
 
 	Describe("#GetControlPlaneChartValues", func() {
 		ccmChartValues := utils.MergeMaps(enabledTrue, map[string]interface{}{
-			"replicas":    1,
-			"clusterName": namespace,
-			"podNetwork":  cidr,
+			"replicas":       1,
+			"clusterName":    namespace,
+			"podNetwork":     cidr,
+			"serviceNetwork": cidr,
 			"podAnnotations": map[string]interface{}{
 				"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
 				"checksum/configmap-" + internal.CloudProviderConfigName:      "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
@@ -241,6 +246,7 @@ var _ = Describe("ValuesProvider", func() {
 				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 					"gep19Monitoring":   false,
+					"allocatorType":     "RangeAllocator",
 				}),
 				gcp.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas":  1,
@@ -260,6 +266,10 @@ var _ = Describe("ValuesProvider", func() {
 						"topologyAwareRoutingEnabled": false,
 					},
 				}),
+				gcp.IngressGCEName: map[string]interface{}{
+					"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking),
+					"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, false, 1),
+				},
 			}))
 		})
 
@@ -275,6 +285,7 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values[gcp.CloudControllerManagerName]).To(Equal(utils.MergeMaps(ccmChartValues, map[string]interface{}{
 				"kubernetesVersion":    cluster.Shoot.Spec.Kubernetes.Version,
 				"configureCloudRoutes": true,
+				"allocatorType":        "RangeAllocator",
 				"gep19Monitoring":      false,
 			})))
 		})
@@ -347,6 +358,9 @@ var _ = Describe("ValuesProvider", func() {
 						"caBundle": "",
 					},
 				}),
+				"default-http-backend": map[string]interface{}{
+					"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
+				},
 			}))
 		})
 	})
