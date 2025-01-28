@@ -178,7 +178,7 @@ var _ = BeforeSuite(func() {
 	flag.Parse()
 	validateFlags()
 
-	sa, err := gcp.GetServiceAccountFromJSON([]byte(*serviceAccount))
+	sa, err := gcp.GetCredentialsConfigFromJSON([]byte(*serviceAccount))
 	project = sa.ProjectID
 	Expect(err).NotTo(HaveOccurred())
 	computeService, err = compute.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(compute.CloudPlatformScope))

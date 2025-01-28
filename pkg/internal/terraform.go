@@ -5,8 +5,6 @@
 package internal
 
 import (
-	"bytes"
-	"encoding/json"
 	"time"
 
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
@@ -24,19 +22,6 @@ const (
 	// TerraformVarServiceAccount is the name of the terraform service account environment variable.
 	TerraformVarServiceAccount = "TF_VAR_SERVICEACCOUNT"
 )
-
-// TerraformerVariablesEnvironmentFromServiceAccount computes the Terraformer variables environment from the
-// given ServiceAccount.
-func TerraformerVariablesEnvironmentFromServiceAccount(account *gcp.ServiceAccount) (map[string]string, error) {
-	var buf bytes.Buffer
-	if err := json.Compact(&buf, account.Raw); err != nil {
-		return nil, err
-	}
-
-	return map[string]string{
-		TerraformVarServiceAccount: buf.String(),
-	}, nil
-}
 
 // NewTerraformer initializes a new Terraformer.
 func NewTerraformer(
@@ -70,6 +55,7 @@ func NewTerraformerWithAuth(
 	purpose string,
 	infra *extensionsv1alpha1.Infrastructure,
 	disableProjectedTokenMount bool,
+	useWorkloadIdentity bool,
 ) (
 	terraformer.Terraformer,
 	error,
@@ -79,18 +65,22 @@ func NewTerraformerWithAuth(
 		return nil, err
 	}
 
-	return SetTerraformerEnvVars(tf, infra.Spec.SecretRef)
+	secretKey := gcp.ServiceAccountJSONField
+	if useWorkloadIdentity {
+		secretKey = gcp.CredentialsConfigField
+	}
+	return SetTerraformerEnvVars(tf, infra.Spec.SecretRef, secretKey)
 }
 
 // SetTerraformerEnvVars sets the environment variables based on the given secret reference.
-func SetTerraformerEnvVars(tf terraformer.Terraformer, secretRef corev1.SecretReference) (terraformer.Terraformer, error) {
+func SetTerraformerEnvVars(tf terraformer.Terraformer, secretRef corev1.SecretReference, secretKey string) (terraformer.Terraformer, error) {
 	return tf.SetEnvVars(corev1.EnvVar{
 		Name: TerraformVarServiceAccount,
 		ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
 				Name: secretRef.Name,
 			},
-			Key: gcp.ServiceAccountJSONField,
+			Key: secretKey,
 		}},
 	}), nil
 }

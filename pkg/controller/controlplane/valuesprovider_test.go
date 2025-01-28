@@ -239,8 +239,9 @@ var _ = Describe("ValuesProvider", func() {
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-					"gep19Monitoring":   false,
+					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
+					"gep19Monitoring":     false,
+					"useWorkloadIdentity": false,
 				}),
 				gcp.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas":  1,
@@ -259,6 +260,7 @@ var _ = Describe("ValuesProvider", func() {
 						},
 						"topologyAwareRoutingEnabled": false,
 					},
+					"useWorkloadIdentity": false,
 				}),
 			}))
 		})
@@ -276,6 +278,7 @@ var _ = Describe("ValuesProvider", func() {
 				"kubernetesVersion":    cluster.Shoot.Spec.Kubernetes.Version,
 				"configureCloudRoutes": true,
 				"gep19Monitoring":      false,
+				"useWorkloadIdentity":  false,
 			})))
 		})
 
