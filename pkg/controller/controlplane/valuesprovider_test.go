@@ -279,6 +279,24 @@ var _ = Describe("ValuesProvider", func() {
 			})))
 		})
 
+		It("should return correct control plane chart values for clusters with custom node-cidr-mask-size", func() {
+			shootWithNodeCMS := cluster.Shoot.DeepCopy()
+			shootWithNodeCMS.Spec.Networking.IPFamilies = []gardencorev1beta1.IPFamily{
+				gardencorev1beta1.IPFamilyIPv4,
+			}
+			shootWithNodeCMS.Spec.Kubernetes.KubeControllerManager = &gardencorev1beta1.KubeControllerManagerConfig{
+				NodeCIDRMaskSize: ptr.To(int32(22)),
+			}
+			cluster.Shoot = shootWithNodeCMS
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values[gcp.CloudControllerManagerName]).To(Equal(utils.MergeMaps(ccmChartValues, map[string]interface{}{
+				"kubernetesVersion":    cluster.Shoot.Spec.Kubernetes.Version,
+				"nodeCIDRMaskSizeIPv4": int32(22),
+				"gep19Monitoring":      false,
+			})))
+		})
+
 		DescribeTable("topologyAwareRoutingEnabled value",
 			func(seedSettings *gardencorev1beta1.SeedSettings, shootControlPlane *gardencorev1beta1.ControlPlane, expected bool) {
 				cluster.Seed = &gardencorev1beta1.Seed{
