@@ -439,6 +439,12 @@ func (vp *valuesProvider) getCCMChartValues(
 	}
 	values["configureCloudRoutes"] = !ok
 
+	if cluster.Shoot.Spec.Kubernetes.KubeControllerManager != nil && cluster.Shoot.Spec.Kubernetes.KubeControllerManager.NodeCIDRMaskSize != nil {
+		if len(cluster.Shoot.Spec.Networking.IPFamilies) == 1 && cluster.Shoot.Spec.Networking.IPFamilies[0] == v1beta1.IPFamilyIPv4 {
+			values["nodeCIDRMaskSizeIPv4"] = *cluster.Shoot.Spec.Kubernetes.KubeControllerManager.NodeCIDRMaskSize
+		}
+	}
+
 	return values, nil
 }
 
@@ -500,7 +506,6 @@ func getCSIControllerChartValues(
 				},
 			}
 		}
-
 	}
 
 	return values, nil
