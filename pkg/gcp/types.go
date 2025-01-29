@@ -32,8 +32,6 @@ const (
 	CSINodeDriverRegistrarImageName = "csi-node-driver-registrar"
 	// CSILivenessProbeImageName is the name of the csi-liveness-probe image.
 	CSILivenessProbeImageName = "csi-liveness-probe"
-	// CSISnapshotValidationWebhookImageName is the name of the csi-snapshot-validation-webhook image.
-	CSISnapshotValidationWebhookImageName = "csi-snapshot-validation-webhook"
 	// MachineControllerManagerProviderGCPImageName is the name of the MachineController GCP image.
 	MachineControllerManagerProviderGCPImageName = "machine-controller-manager-provider-gcp"
 
@@ -67,8 +65,6 @@ const (
 	CSINodeDriverRegistrarName = "csi-node-driver-registrar"
 	// CSILivenessProbeName is a constant for the name of the csi-liveness-probe component.
 	CSILivenessProbeName = "csi-liveness-probe"
-	// CSISnapshotValidationName is the constant for the name of the csi-snapshot-validation-webhook component.
-	CSISnapshotValidationName = "csi-snapshot-validation"
 
 	// GlobalAnnotationKeyUseFlow marks how the infrastructure should be reconciled. When this is used reconciliation with flow
 	// will take place. Otherwrise, Terraformer will be used.

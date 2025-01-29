@@ -593,7 +593,6 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, k8sVersion string) {
 		Expect(c.Command).NotTo(test.ContainElementWithPrefixContaining("--enable-admission-plugins=", "PersistentVolumeLabel", ","))
 		Expect(c.Command).To(test.ContainElementWithPrefixContaining("--disable-admission-plugins=", "PersistentVolumeLabel", ","))
 	}
-	Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue("networking.resources.gardener.cloud/to-csi-snapshot-validation-tcp-443", "allowed"))
 }
 
 func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, k8sVersion string) {

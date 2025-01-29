@@ -136,7 +136,7 @@ images:
 - name: csi-driver
   sourceRepository: github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
   repository: registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver
-  tag: "v1.15.1"
+  tag: "v1.15.4"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -150,7 +150,7 @@ images:
 - name: csi-provisioner
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: registry.k8s.io/sig-storage/csi-provisioner
-  tag: "v5.1.0"
+  tag: "v5.2.0"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -164,7 +164,7 @@ images:
 - name: csi-attacher
   sourceRepository: github.com/kubernetes-csi/external-attacher
   repository: registry.k8s.io/sig-storage/csi-attacher
-  tag: "v4.7.0"
+  tag: "v4.8.0"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -178,7 +178,7 @@ images:
 - name: csi-resizer
   sourceRepository: github.com/kubernetes-csi/external-resizer
   repository: registry.k8s.io/sig-storage/csi-resizer
-  tag: "v1.12.0"
+  tag: "v1.13.1"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -192,20 +192,7 @@ images:
 - name: csi-snapshotter
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/csi-snapshotter
-  tag: "v8.1.0"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'private'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'low'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: csi-snapshot-validation-webhook
-  sourceRepository: github.com/kubernetes-csi/external-snapshotter
-  repository: registry.k8s.io/sig-storage/snapshot-validation-webhook
-  tag: "v8.1.0"
+  tag: "v8.2.0"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -219,7 +206,7 @@ images:
 - name: csi-snapshot-controller
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/snapshot-controller
-  tag: "v8.1.0"
+  tag: "v8.2.0"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -233,7 +220,7 @@ images:
 - name: csi-node-driver-registrar
   sourceRepository: github.com/kubernetes-csi/node-driver-registrar
   repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-  tag: "v2.12.0"
+  tag: "v2.13.0"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -247,7 +234,7 @@ images:
 - name: csi-liveness-probe
   sourceRepository: github.com/kubernetes-csi/livenessprobe
   repository: registry.k8s.io/sig-storage/livenessprobe
-  tag: "v2.14.0"
+  tag: "v2.15.0"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
