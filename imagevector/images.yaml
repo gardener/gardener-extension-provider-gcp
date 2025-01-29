@@ -12,6 +12,7 @@ images:
       confidentiality_requirement: 'high'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
@@ -26,6 +27,7 @@ images:
       confidentiality_requirement: 'high'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
@@ -40,6 +42,7 @@ images:
       confidentiality_requirement: 'high'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
@@ -54,6 +57,7 @@ images:
       confidentiality_requirement: 'high'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
@@ -68,6 +72,7 @@ images:
       confidentiality_requirement: 'high'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
@@ -82,6 +87,7 @@ images:
       confidentiality_requirement: 'high'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
@@ -96,6 +102,7 @@ images:
       confidentiality_requirement: 'high'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
@@ -139,6 +146,7 @@ images:
       confidentiality_requirement: 'high'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: csi-provisioner
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: registry.k8s.io/sig-storage/csi-provisioner
@@ -152,6 +160,7 @@ images:
       confidentiality_requirement: 'low'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: csi-attacher
   sourceRepository: github.com/kubernetes-csi/external-attacher
   repository: registry.k8s.io/sig-storage/csi-attacher
@@ -165,6 +174,7 @@ images:
       confidentiality_requirement: 'low'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: csi-resizer
   sourceRepository: github.com/kubernetes-csi/external-resizer
   repository: registry.k8s.io/sig-storage/csi-resizer
@@ -178,6 +188,7 @@ images:
       confidentiality_requirement: 'low'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: csi-snapshotter
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/csi-snapshotter
@@ -204,6 +215,7 @@ images:
       confidentiality_requirement: 'low'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: csi-snapshot-controller
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/snapshot-controller
@@ -217,6 +229,7 @@ images:
       confidentiality_requirement: 'low'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: csi-node-driver-registrar
   sourceRepository: github.com/kubernetes-csi/node-driver-registrar
   repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
@@ -230,6 +243,7 @@ images:
       confidentiality_requirement: 'low'
       integrity_requirement: 'high'
       availability_requirement: 'low'
+
 - name: csi-liveness-probe
   sourceRepository: github.com/kubernetes-csi/livenessprobe
   repository: registry.k8s.io/sig-storage/livenessprobe
