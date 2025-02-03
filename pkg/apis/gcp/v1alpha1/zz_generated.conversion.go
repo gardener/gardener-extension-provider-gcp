@@ -844,6 +844,7 @@ func autoConvert_v1alpha1_NetworkStatus_To_gcp_NetworkStatus(in *NetworkStatus, 
 	}
 	out.Subnets = *(*[]gcp.Subnet)(unsafe.Pointer(&in.Subnets))
 	out.NatIPs = *(*[]gcp.NatIP)(unsafe.Pointer(&in.NatIPs))
+	out.DualStackEnabled = in.DualStackEnabled
 	return nil
 }
 
@@ -858,6 +859,7 @@ func autoConvert_gcp_NetworkStatus_To_v1alpha1_NetworkStatus(in *gcp.NetworkStat
 	}
 	out.Subnets = *(*[]Subnet)(unsafe.Pointer(&in.Subnets))
 	out.NatIPs = *(*[]NatIP)(unsafe.Pointer(&in.NatIPs))
+	out.DualStackEnabled = in.DualStackEnabled
 	return nil
 }
 

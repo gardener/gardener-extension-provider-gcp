@@ -480,8 +480,12 @@ var _ = Describe("Machines", func() {
 						"minCpuPlatform": minCpuPlatform,
 						"networkInterfaces": []map[string]interface{}{
 							{
-								"subnetwork":        subnetName,
-								"disableExternalIP": disableExternalIP,
+								"subnetwork":          subnetName,
+								"disableExternalIP":   disableExternalIP,
+								"stackType":           "IPV4_ONLY",
+								"ipv6accessType":      "EXTERNAL",
+								"ipCidrRange":         "/24",
+								"subnetworkRangeName": "ipv4-pod-cidr",
 							},
 						},
 						"scheduling": map[string]interface{}{
@@ -620,6 +624,7 @@ var _ = Describe("Machines", func() {
 										Name: "my-cloudrouter",
 									},
 								},
+								DualStackEnabled: false,
 								Subnets: []api.Subnet{
 									{
 										Name:    subnetName,
