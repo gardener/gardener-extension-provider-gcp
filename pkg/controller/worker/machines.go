@@ -98,11 +98,7 @@ func (w *WorkerDelegate) GenerateMachineDeployments(ctx context.Context) (worker
 }
 
 func formatNodeCIDRMask(val *int32, defaultVal int) string {
-	if val != nil && *val != 0 {
-		return fmt.Sprintf("/%d", *val)
-	}
-
-	return fmt.Sprintf("/%d", defaultVal)
+	return fmt.Sprintf("/%d", ptr.Deref(val, int32(defaultVal)))
 }
 
 func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
@@ -217,12 +213,8 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 				"machineType": pool.MachineType,
 				"networkInterfaces": []map[string]interface{}{
 					{
-						"subnetwork":          nodesSubnet.Name,
-						"disableExternalIP":   true,
-						"stackType":           w.getStackType(),
-						"ipv6accessType":      "EXTERNAL",
-						"ipCidrRange":         ipCidrRange,
-						"subnetworkRangeName": infraflow.DefaultSecondarySubnetName,
+						"subnetwork":        nodesSubnet.Name,
+						"disableExternalIP": true,
 					},
 				},
 				"secret": map[string]interface{}{
@@ -238,6 +230,19 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 					fmt.Sprintf("kubernetes-io-cluster-%s", w.worker.Namespace),
 					"kubernetes-io-role-node",
 				},
+			}
+
+			if nw := w.cluster.Shoot.Spec.Networking; nw != nil && !gardencorev1beta1.IsIPv4SingleStack(nw.IPFamilies) {
+				machineClassSpec["networkInterfaces"] = []map[string]interface{}{
+					{
+						"subnetwork":          nodesSubnet.Name,
+						"disableExternalIP":   true,
+						"stackType":           w.getStackType(),
+						"ipv6accessType":      "EXTERNAL",
+						"ipCidrRange":         ipCidrRange,
+						"subnetworkRangeName": infraflow.DefaultSecondarySubnetName,
+					},
+				}
 			}
 
 			var (

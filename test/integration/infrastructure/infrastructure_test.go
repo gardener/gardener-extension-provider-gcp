@@ -51,7 +51,7 @@ import (
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/features"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
@@ -542,11 +542,11 @@ func verifyDualStackSetup(ctx context.Context, project string, computeService *c
 	}
 
 	Expect(
-		firewallRules[shared.FirewallRuleAllowHealthChecksNameIPv6(namespace)],
+		firewallRules[infraflow.FirewallRuleAllowHealthChecksNameIPv6(namespace)],
 	).ToNot(BeFalse(), "Missing firewall rule to allow IPv6 health check")
 
 	Expect(
-		firewallRules[shared.FirewallRuleAllowInternalNameIPv6(namespace)],
+		firewallRules[infraflow.FirewallRuleAllowInternalNameIPv6(namespace)],
 	).ToNot(BeFalse(), "Missing firewall rule to allow IPv6 internal access")
 }
 

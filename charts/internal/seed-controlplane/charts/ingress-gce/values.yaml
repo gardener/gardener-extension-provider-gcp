@@ -8,11 +8,5 @@ resources:
     cpu: 100m
     memory: 75Mi
 
-vpa:
-  resourcePolicy:
-    maxAllowed:
-      cpu: 1
-      memory: 2G
-
 podAnnotations: {}
 podLabels: {}

@@ -1303,13 +1303,13 @@ VPC
 </tr>
 <tr>
 <td>
-<code>dualStackEnabled</code></br>
+<code>ipfamilies</code></br>
 <em>
-bool
+[]github.com/gardener/gardener/pkg/apis/core/v1beta1.IPFamily
 </em>
 </td>
 <td>
-<p>DualStackEnabled indicates whether dual-stack is enabled in the infrastructure.</p>
+<p>IPFamilies is the list of the used ip families.</p>
 </td>
 </tr>
 </tbody>

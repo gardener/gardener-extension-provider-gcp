@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	corev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -65,8 +66,8 @@ type NetworkStatus struct {
 	// +optional
 	NatIPs []NatIP `json:"natIPs,omitempty"`
 
-	// DualStackEnabled indicates whether dual-stack is enabled in the infrastructure.
-	DualStackEnabled bool `json:"dualStackEnabled"`
+	// IPFamilies is the list of the used ip families.
+	IPFamilies []corev1beta1.IPFamily `json:"ipfamilies,omitempty"`
 }
 
 // SubnetPurpose is a purpose of a subnet.

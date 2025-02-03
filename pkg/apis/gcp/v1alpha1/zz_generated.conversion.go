@@ -13,6 +13,7 @@ import (
 	unsafe "unsafe"
 
 	gcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -844,7 +845,7 @@ func autoConvert_v1alpha1_NetworkStatus_To_gcp_NetworkStatus(in *NetworkStatus, 
 	}
 	out.Subnets = *(*[]gcp.Subnet)(unsafe.Pointer(&in.Subnets))
 	out.NatIPs = *(*[]gcp.NatIP)(unsafe.Pointer(&in.NatIPs))
-	out.DualStackEnabled = in.DualStackEnabled
+	out.IPFamilies = *(*[]v1beta1.IPFamily)(unsafe.Pointer(&in.IPFamilies))
 	return nil
 }
 
@@ -859,7 +860,7 @@ func autoConvert_gcp_NetworkStatus_To_v1alpha1_NetworkStatus(in *gcp.NetworkStat
 	}
 	out.Subnets = *(*[]Subnet)(unsafe.Pointer(&in.Subnets))
 	out.NatIPs = *(*[]NatIP)(unsafe.Pointer(&in.NatIPs))
-	out.DualStackEnabled = in.DualStackEnabled
+	out.IPFamilies = *(*[]v1beta1.IPFamily)(unsafe.Pointer(&in.IPFamilies))
 	return nil
 }
 

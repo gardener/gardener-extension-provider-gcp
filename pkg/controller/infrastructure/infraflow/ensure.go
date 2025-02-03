@@ -423,8 +423,8 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 	}
 
 	rules := []*compute.Firewall{
-		firewallRuleAllowInternal(shared.FirewallRuleAllowInternalName(fctx.clusterName), vpc.SelfLink, cidrs),
-		firewallRuleAllowHealthChecks(shared.FirewallRuleAllowHealthChecksName(fctx.clusterName), vpc.SelfLink, healthCheckSourceRangesIPv4),
+		firewallRuleAllowInternal(FirewallRuleAllowInternalName(fctx.clusterName), vpc.SelfLink, cidrs),
+		firewallRuleAllowHealthChecks(FirewallRuleAllowHealthChecksName(fctx.clusterName), vpc.SelfLink, healthCheckSourceRangesIPv4),
 	}
 
 	cidrsIPv6 := []*string{}
@@ -437,8 +437,8 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 
 	if len(cidrsIPv6) > 0 {
 		rules = append(rules,
-			firewallRuleAllowInternalIPv6(shared.FirewallRuleAllowInternalNameIPv6(fctx.clusterName), vpc.SelfLink, cidrsIPv6),
-			firewallRuleAllowHealthChecks(shared.FirewallRuleAllowHealthChecksNameIPv6(fctx.clusterName), vpc.SelfLink, healthCheckSourceRangesIPv6),
+			firewallRuleAllowInternalIPv6(FirewallRuleAllowInternalNameIPv6(fctx.clusterName), vpc.SelfLink, cidrsIPv6),
+			firewallRuleAllowHealthChecks(FirewallRuleAllowHealthChecksNameIPv6(fctx.clusterName), vpc.SelfLink, healthCheckSourceRangesIPv6),
 		)
 	}
 
@@ -460,7 +460,7 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 	}
 
 	// delete unnecessary firewall rule.
-	return fctx.computeClient.DeleteFirewallRule(ctx, shared.FirewallRuleAllowExternalName(fctx.clusterName))
+	return fctx.computeClient.DeleteFirewallRule(ctx, FirewallRuleAllowExternalName(fctx.clusterName))
 }
 
 func (fctx *FlowContext) ensureVPCDeleted(ctx context.Context) error {

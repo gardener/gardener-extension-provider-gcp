@@ -9,7 +9,6 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/go-logr/logr"
@@ -183,10 +182,10 @@ func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 	status := &v1alpha1.InfrastructureStatus{
 		TypeMeta: infrastructure.StatusTypeMeta,
 		Networks: v1alpha1.NetworkStatus{
-			VPC:              v1alpha1.VPC{},
-			Subnets:          []v1alpha1.Subnet{},
-			NatIPs:           []v1alpha1.NatIP{},
-			DualStackEnabled: !gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies), // Default value for DualStackEnabled
+			VPC:        v1alpha1.VPC{},
+			Subnets:    []v1alpha1.Subnet{},
+			NatIPs:     []v1alpha1.NatIP{},
+			IPFamilies: fctx.networking.IPFamilies,
 		},
 	}
 
@@ -332,7 +331,10 @@ func PatchProviderStatusAndState(
 	return runtimeClient.Status().Patch(ctx, infra, patch)
 }
 
-// getFirstSubnet extracts first /bits subnet from ipnet
+// getFirstSubnet extracts the first subnet of a specified size from a given CIDR block
+// This is used to extract the /108 subnet from the /64 block as the /64 block is too large for --service-cluster-ip-range in cloud controller manager and kube-apiserver
+// Remark: This is a workaround until the cloud controller manager and kube-apiserver supports /64 blocks
+// or GCP supports Subnet CIDR reservations
 func getFirstSubnet(cidr string, ones int) string {
 	_, ipnet, err := net.ParseCIDR(cidr)
 	if err != nil {

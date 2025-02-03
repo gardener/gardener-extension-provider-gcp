@@ -5,6 +5,7 @@
 package gcp
 
 import (
+	corev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -60,8 +61,8 @@ type NetworkStatus struct {
 	// NatIPs is a list of all user provided external premium ips which can be used by the nat gateway
 	NatIPs []NatIP
 
-	// DualStackEnabled indicates whether dual-stack is enabled in the infrastructure.
-	DualStackEnabled bool
+	// IPFamilies is the list of the used ip families.
+	IPFamilies []corev1beta1.IPFamily
 }
 
 // SubnetPurpose is a purpose of a subnet.
