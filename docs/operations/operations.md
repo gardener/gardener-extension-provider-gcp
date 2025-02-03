@@ -92,7 +92,7 @@ The location/region where the backups will be stored defaults to the region of t
 The region of the backup can be different from where the seed cluster is running.
 However, usually it makes sense to pick the same region for the backup bucket as used for the Seed cluster.
 
-Please find below an example `Seed` manifest (partly) that configures backups using Google Cloud Storage buckets. 
+Please find below an example `Seed` manifest (partly) that configures backups using Google Cloud Storage buckets.
 
 ```yaml
 ---
@@ -116,6 +116,23 @@ An example of the referenced secret containing the credentials for the GCP Cloud
 
 #### Permissions for GCP Cloud Storage
 
-Please make sure the service account associated with the provided credentials has the following IAM roles. 
+Please make sure the service account associated with the provided credentials has the following IAM roles.
 - [Storage Admin](https://cloud.google.com/storage/docs/access-control/iam-roles)
 
+### In-place vs Rolling-updates of Shoot Workers
+
+Changes to the `Shoot` worker-pools are applied in-place where possible. In case this is not possible a rolling update of the workers will be performed to apply the new configuration, as outlined in [the Gardener documentation](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#in-place-vs-rolling-updates). The exact fields that trigger this behaviour depend on whether the feature gate `NewWorkerPoolHash` is enabled. If it is not enabled, only the fields mentioned in the [Gardener doc](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#rolling-update-triggers) are used.
+If the feature gate _is_ enabled, instead of the complete provider config only the following fields are used:
+
+- `.spec.provider.workers[].dataVolumes[].name`
+- `.spec.provider.workers[].dataVolumes[].size`
+- `.spec.provider.workers[].dataVolumes[].type`
+- `.spec.provider.workers[].dataVolumes[].encrypted`
+- `.spec.provider.workers[].providerConfig.volume.encryption`
+- `.spec.provider.workers[].providerConfig.volume.localSsdInterface`
+- `.spec.provider.workers[].providerConfig.dataVolumes[].name`
+- `.spec.provider.workers[].providerConfig.dataVolumes[].sourceImage`
+- `.spec.provider.workers[].providerConfig.dataVolumes[].provisionedIops`
+- `.spec.provider.workers[].providerConfig.minCpuPlatform`
+- `.spec.provider.workers[].providerConfig.gpu`
+- `.spec.provider.workers[].providerConfig.serviceAccount`
