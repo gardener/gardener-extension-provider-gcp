@@ -71,6 +71,8 @@ spec:
           {{- else }}
           value: /srv/cloudprovider/credentialsConfig
           {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
         livenessProbe:
           httpGet:
             path: /healthz

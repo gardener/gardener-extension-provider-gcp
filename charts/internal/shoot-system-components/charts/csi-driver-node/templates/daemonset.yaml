@@ -93,6 +93,7 @@ spec:
 {{ toYaml .Values.resources.nodeDriverRegistrar | indent 10 }}
 {{- end }}
         securityContext:
+          allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
         volumeMounts:
         - name: plugin-dir
@@ -112,6 +113,7 @@ spec:
 {{ toYaml .Values.resources.livenessProbe | indent 10 }}
 {{- end }}
         securityContext:
+          allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
         volumeMounts:
         - name: plugin-dir
