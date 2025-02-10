@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/storage"
-	"golang.org/x/oauth2"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
@@ -40,12 +39,11 @@ type storageClient struct {
 
 // NewStorageClient creates a new storage client from the given credentials configuration.
 func NewStorageClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (StorageClient, error) {
-	tokenSource, err := tokenSource(ctx, credentialsConfig, []string{storage.ScopeFullControl})
+	httpClient, err := httpClient(ctx, credentialsConfig, []string{storage.ScopeFullControl})
 	if err != nil {
 		return nil, err
 	}
 
-	httpClient := oauth2.NewClient(ctx, tokenSource)
 	client, err := storage.NewClient(ctx, option.WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, err

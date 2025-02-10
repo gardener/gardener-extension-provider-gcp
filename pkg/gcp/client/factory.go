@@ -6,14 +6,12 @@ package client
 
 import (
 	"context"
-	"errors"
+	"net/http"
 
-	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/google/externalaccount"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -35,38 +33,6 @@ type Factory interface {
 	IAM(context.Context, client.Client, corev1.SecretReference) (IAMClient, error)
 }
 
-type tokenRetriever struct {
-	c               client.Client
-	secretName      string
-	secretNamespace string
-}
-
-var _ externalaccount.SubjectTokenSupplier = &tokenRetriever{}
-
-func (t *tokenRetriever) SubjectToken(ctx context.Context, _ externalaccount.SupplierOptions) (string, error) {
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: t.secretNamespace,
-			Name:      t.secretName,
-		},
-	}
-
-	if err := t.c.Get(ctx, client.ObjectKeyFromObject(secret), secret); err != nil {
-		return "", err
-	}
-
-	if secret.Labels[securityv1alpha1constants.LabelPurpose] != securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
-		return "", errors.New("secret is not with purpose " + securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor)
-	}
-
-	token, ok := secret.Data[securityv1alpha1constants.DataKeyToken]
-	if !ok {
-		return "", errors.New("secret does not contain a token")
-	}
-
-	return string(token), nil
-}
-
 type factory struct {
 }
 
@@ -82,14 +48,6 @@ func (f factory) DNS(ctx context.Context, c client.Client, sr corev1.SecretRefer
 		return nil, err
 	}
 
-	if credentialsConfig.Type == gcp.ExternalAccountCredentialType {
-		credentialsConfig.TokenRetriever = &tokenRetriever{
-			c:               c,
-			secretName:      sr.Name,
-			secretNamespace: sr.Namespace,
-		}
-	}
-
 	return NewDNSClient(ctx, credentialsConfig)
 }
 
@@ -98,14 +56,6 @@ func (f factory) Storage(ctx context.Context, c client.Client, sr corev1.SecretR
 	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, c, sr)
 	if err != nil {
 		return nil, err
-	}
-
-	if credentialsConfig.Type == gcp.ExternalAccountCredentialType {
-		credentialsConfig.TokenRetriever = &tokenRetriever{
-			c:               c,
-			secretName:      sr.Name,
-			secretNamespace: sr.Namespace,
-		}
 	}
 
 	return NewStorageClient(ctx, credentialsConfig)
@@ -118,14 +68,6 @@ func (f factory) Compute(ctx context.Context, c client.Client, sr corev1.SecretR
 		return nil, err
 	}
 
-	if credentialsConfig.Type == gcp.ExternalAccountCredentialType {
-		credentialsConfig.TokenRetriever = &tokenRetriever{
-			c:               c,
-			secretName:      sr.Name,
-			secretNamespace: sr.Namespace,
-		}
-	}
-
 	return NewComputeClient(ctx, credentialsConfig)
 }
 
@@ -136,18 +78,10 @@ func (f factory) IAM(ctx context.Context, c client.Client, sr corev1.SecretRefer
 		return nil, err
 	}
 
-	if credentialsConfig.Type == gcp.ExternalAccountCredentialType {
-		credentialsConfig.TokenRetriever = &tokenRetriever{
-			c:               c,
-			secretName:      sr.Name,
-			secretNamespace: sr.Namespace,
-		}
-	}
-
 	return NewIAMClient(ctx, credentialsConfig)
 }
 
-func tokenSource(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) (oauth2.TokenSource, error) {
+func httpClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) (*http.Client, error) {
 	if credentialsConfig.TokenRetriever != nil && credentialsConfig.Type == gcp.ExternalAccountCredentialType {
 		conf := externalaccount.Config{
 			Audience:             credentialsConfig.Audience,
@@ -163,7 +97,7 @@ func tokenSource(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, 
 			return nil, err
 		}
 
-		return ts, nil
+		return oauth2.NewClient(ctx, ts), nil
 	}
 
 	credentials, err := google.CredentialsFromJSONWithParams(ctx, credentialsConfig.Raw, google.CredentialsParams{
@@ -173,5 +107,5 @@ func tokenSource(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, 
 		return nil, err
 	}
 
-	return credentials.TokenSource, nil
+	return oauth2.NewClient(ctx, credentials.TokenSource), nil
 }

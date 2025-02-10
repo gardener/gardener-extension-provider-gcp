@@ -70,7 +70,7 @@ var _ = Describe("Service Account", func() {
 				ServiceAccountJSONField: credentialsConfigData,
 			}}
 
-			actual, err := GetCredentialsConfigFromSecret(secret)
+			actual, err := getCredentialsConfigFromSecret(secret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual.Raw).To(Equal(credentialsConfigData))
 		})
@@ -81,7 +81,7 @@ var _ = Describe("Service Account", func() {
 				"credentialsConfig": data,
 			}}
 
-			actual, err := GetCredentialsConfigFromSecret(secret)
+			actual, err := getCredentialsConfigFromSecret(secret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(&CredentialsConfig{
 				Raw:              data,

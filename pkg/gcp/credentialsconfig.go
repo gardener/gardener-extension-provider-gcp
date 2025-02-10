@@ -7,11 +7,14 @@ package gcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"golang.org/x/oauth2/google/externalaccount"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -73,11 +76,24 @@ func GetCredentialsConfigFromSecretReference(ctx context.Context, c client.Clien
 		return nil, err
 	}
 
-	return GetCredentialsConfigFromSecret(secret)
+	credentialsConfig, err := getCredentialsConfigFromSecret(secret)
+	if err != nil {
+		return nil, err
+	}
+
+	if credentialsConfig.Type == ExternalAccountCredentialType {
+		credentialsConfig.TokenRetriever = &tokenRetriever{
+			c:               c,
+			secretName:      secretRef.Name,
+			secretNamespace: secretRef.Namespace,
+		}
+	}
+
+	return credentialsConfig, nil
 }
 
-// GetCredentialsConfigFromSecret retrieves the credentials config from the secret.
-func GetCredentialsConfigFromSecret(secret *corev1.Secret) (*CredentialsConfig, error) {
+// getCredentialsConfigFromSecret retrieves the credentials config from the secret.
+func getCredentialsConfigFromSecret(secret *corev1.Secret) (*CredentialsConfig, error) {
 	if data, ok := secret.Data[ServiceAccountJSONField]; ok {
 		credentialsConfig, err := GetCredentialsConfigFromJSON(data)
 		if err != nil {
@@ -125,4 +141,36 @@ func GetCredentialsConfigFromJSON(data []byte) (*CredentialsConfig, error) {
 		TokenURL:         credentialsConfig.TokenURL,
 		SubjectTokenType: credentialsConfig.SubjectTokenType,
 	}, nil
+}
+
+type tokenRetriever struct {
+	c               client.Client
+	secretName      string
+	secretNamespace string
+}
+
+var _ externalaccount.SubjectTokenSupplier = &tokenRetriever{}
+
+func (t *tokenRetriever) SubjectToken(ctx context.Context, _ externalaccount.SupplierOptions) (string, error) {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: t.secretNamespace,
+			Name:      t.secretName,
+		},
+	}
+
+	if err := t.c.Get(ctx, client.ObjectKeyFromObject(secret), secret); err != nil {
+		return "", err
+	}
+
+	if secret.Labels[securityv1alpha1constants.LabelPurpose] != securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+		return "", errors.New("secret is not with purpose " + securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor)
+	}
+
+	token, ok := secret.Data[securityv1alpha1constants.DataKeyToken]
+	if !ok {
+		return "", errors.New("secret does not contain a token")
+	}
+
+	return string(token), nil
 }

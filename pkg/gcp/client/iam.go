@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"regexp"
 
-	"golang.org/x/oauth2"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
 
@@ -35,13 +34,12 @@ type iamClient struct {
 
 // NewIAMClient returns a new IAM client.
 func NewIAMClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (IAMClient, error) {
-	tokenSource, err := tokenSource(ctx, credentialsConfig, []string{iam.CloudPlatformScope})
+	httpClient, err := httpClient(ctx, credentialsConfig, []string{iam.CloudPlatformScope})
 	if err != nil {
 		return nil, err
 	}
 
-	client := oauth2.NewClient(ctx, tokenSource)
-	service, err := iam.NewService(ctx, option.WithHTTPClient(client))
+	service, err := iam.NewService(ctx, option.WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, err
 	}
