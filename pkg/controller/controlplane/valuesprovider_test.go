@@ -289,6 +289,7 @@ var _ = Describe("ValuesProvider", func() {
 				"kubernetesVersion":    cluster.Shoot.Spec.Kubernetes.Version,
 				"nodeCIDRMaskSizeIPv4": int32(22),
 				"gep19Monitoring":      false,
+				"useWorkloadIdentity":  false,
 			})))
 		})
 
