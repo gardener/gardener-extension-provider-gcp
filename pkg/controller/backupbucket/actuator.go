@@ -7,7 +7,7 @@ package backupbucket
 import (
 	"context"
 	"errors"
-	"reflect"
+	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
@@ -126,9 +126,13 @@ func createBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb
 
 func updateBucket(ctx context.Context, storageClient gcpclient.StorageClient, bucketName string, config *apisgcp.BackupBucketConfig, logger logr.Logger) (*storage.BucketAttrs, error) {
 	logger.Info("Updating bucket attributes", "name", bucketName)
+	var updateRetentionPeriodDuration time.Duration
+	if config != nil && config.Immutability != nil {
+		updateRetentionPeriodDuration = config.Immutability.RetentionPeriod.Duration
+	}
 	updateAttrs := storage.BucketAttrsToUpdate{
 		RetentionPolicy: &storage.RetentionPolicy{
-			RetentionPeriod: config.Immutability.RetentionPeriod.Duration,
+			RetentionPeriod: updateRetentionPeriodDuration,
 		},
 	}
 	attrs, err := storageClient.UpdateBucket(ctx, bucketName, updateAttrs)
@@ -151,16 +155,12 @@ func lockBucket(ctx context.Context, storageClient gcpclient.StorageClient, buck
 }
 
 func isUpdateRequired(attrs *storage.BucketAttrs, config *apisgcp.BackupBucketConfig) bool {
-	if config == nil {
-		return false
+	var currentRetentionPeriodDuration, desiredRetentionPeriodDuration time.Duration
+	if attrs != nil && attrs.RetentionPolicy != nil {
+		currentRetentionPeriodDuration = attrs.RetentionPolicy.RetentionPeriod
 	}
-
-	var desiredRetentionPolicy *storage.RetentionPolicy
-	if config.Immutability != nil {
-		desiredRetentionPolicy = &storage.RetentionPolicy{
-			RetentionPeriod: config.Immutability.RetentionPeriod.Duration,
-		}
+	if config != nil && config.Immutability != nil {
+		desiredRetentionPeriodDuration = config.Immutability.RetentionPeriod.Duration
 	}
-
-	return !reflect.DeepEqual(desiredRetentionPolicy, attrs.RetentionPolicy)
+	return desiredRetentionPeriodDuration != currentRetentionPeriodDuration
 }
