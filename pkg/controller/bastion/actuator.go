@@ -70,8 +70,8 @@ func getDisk(ctx context.Context, client gcpclient.ComputeClient, opt *Options) 
 	return disk, gcpclient.IgnoreNotFoundError(err)
 }
 
-func getServiceAccount(ctx context.Context, c client.Client, bastion *v1alpha1.Bastion) (*gcp.ServiceAccount, error) {
-	return gcp.GetServiceAccountFromSecretReference(ctx, c, corev1.SecretReference{Namespace: bastion.Namespace, Name: constants.SecretNameCloudProvider})
+func getCredentialsConfig(ctx context.Context, c client.Client, bastion *v1alpha1.Bastion) (*gcp.CredentialsConfig, error) {
+	return gcp.GetCredentialsConfigFromSecretReference(ctx, c, corev1.SecretReference{Namespace: bastion.Namespace, Name: constants.SecretNameCloudProvider})
 }
 
 func getWorkersCIDR(cluster *controller.Cluster) (string, error) {
