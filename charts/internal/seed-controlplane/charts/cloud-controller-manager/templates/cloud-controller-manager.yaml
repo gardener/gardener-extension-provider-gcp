@@ -41,6 +41,11 @@ spec:
         command: ["/cloud-controller-manager"]
         {{- end }}
         args:
+        {{- if semverCompare ">= 1.31" .Values.kubernetesVersion }}
+        {{- if .Values.nodeCIDRMaskSizeIPv4 }}
+        - --node-cidr-mask-size-ipv4={{ .Values.nodeCIDRMaskSizeIPv4 }}
+        {{- end}}
+        {{- end}}
         - --allocate-node-cidrs=true
         - --cloud-provider=gce
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
@@ -63,7 +68,11 @@ spec:
         - --v=2
         env:
         - name: GOOGLE_APPLICATION_CREDENTIALS
-          value: /srv/cloudprovider/serviceaccount.json
+          {{- if .Values.useWorkloadIdentity }}
+          value: /var/run/secrets/gardener.cloud/workload-identity/credentialsConfig
+          {{- else }}
+          value: /srv/cloudprovider/credentialsConfig
+          {{- end }}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -92,8 +101,15 @@ spec:
           mountPath: /var/lib/cloud-controller-manager-server
         - name: cloud-provider-config
           mountPath: /etc/kubernetes/cloudprovider
+        {{- if .Values.useWorkloadIdentity }}
+        - name: cloudprovider
+          mountPath: /var/run/secrets/gardener.cloud/workload-identity
+          readOnly: true
+        {{- else }}
         - name: cloudprovider
           mountPath: /srv/cloudprovider
+          readOnly: true
+        {{- end }}
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
@@ -122,5 +138,19 @@ spec:
         configMap:
           name: cloud-provider-config
       - name: cloudprovider
-        secret:
-          secretName: cloudprovider
+        projected:
+          defaultMode: 420
+          sources:
+          - secret:
+              items:
+                {{- if .Values.useWorkloadIdentity }}
+                - key: credentialsConfig
+                  path: credentialsConfig
+                - key: token
+                  path: token
+                {{- else }}
+                - key: serviceaccount.json
+                  path: credentialsConfig
+                {{- end }}
+              name: cloudprovider
+              optional: false

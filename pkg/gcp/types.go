@@ -36,16 +36,18 @@ const (
 	CSINodeDriverRegistrarImageName = "csi-node-driver-registrar"
 	// CSILivenessProbeImageName is the name of the csi-liveness-probe image.
 	CSILivenessProbeImageName = "csi-liveness-probe"
-	// CSISnapshotValidationWebhookImageName is the name of the csi-snapshot-validation-webhook image.
-	CSISnapshotValidationWebhookImageName = "csi-snapshot-validation-webhook"
 	// MachineControllerManagerProviderGCPImageName is the name of the MachineController GCP image.
 	MachineControllerManagerProviderGCPImageName = "machine-controller-manager-provider-gcp"
 
 	// ServiceAccountJSONField is the field in a secret where the service account JSON is stored at.
 	ServiceAccountJSONField = "serviceaccount.json"
+	// CredentialsConfigField is the field in a secret where the credentials config JSON is stored at.
+	CredentialsConfigField = "credentialsConfig"
 
 	// ServiceAccountCredentialType is the type of the credentials contained in the serviceaccount.json file.
 	ServiceAccountCredentialType = "service_account"
+	// ExternalAccountCredentialType is the type of the credentials contained in the credentialsConfig file.
+	ExternalAccountCredentialType = "external_account"
 
 	// CloudControllerManagerName is a constant for the name of the CloudController deployed by the worker controller.
 	CloudControllerManagerName = "cloud-controller-manager"
@@ -73,8 +75,6 @@ const (
 	CSINodeDriverRegistrarName = "csi-node-driver-registrar"
 	// CSILivenessProbeName is a constant for the name of the csi-liveness-probe component.
 	CSILivenessProbeName = "csi-liveness-probe"
-	// CSISnapshotValidationName is the constant for the name of the csi-snapshot-validation-webhook component.
-	CSISnapshotValidationName = "csi-snapshot-validation"
 
 	// GlobalAnnotationKeyUseFlow marks how the infrastructure should be reconciled. When this is used reconciliation with flow
 	// will take place. Otherwrise, Terraformer will be used.
@@ -89,6 +89,9 @@ const (
 	SeedAnnotationUseFlowValueNew = "new"
 	// AnnotationEnableVolumeAttributesClass is the annotation to use on shoots to enable VolumeAttributesClasses
 	AnnotationEnableVolumeAttributesClass = "gcp.provider.extensions.gardener.cloud/enable-volume-attributes-class"
+
+	// WorkloadIdentityMountPath is the path where the workload identity token and GCP config file are usually mounted.
+	WorkloadIdentityMountPath = "/var/run/secrets/gardener.cloud/workload-identity"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by GCP.

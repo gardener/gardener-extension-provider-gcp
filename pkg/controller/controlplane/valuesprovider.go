@@ -15,9 +15,9 @@ import (
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/chart"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
@@ -26,7 +26,6 @@ import (
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -51,7 +50,6 @@ const (
 	caNameControlPlane                   = "ca-" + gcp.Name + "-controlplane"
 	cloudControllerManagerDeploymentName = "cloud-controller-manager"
 	cloudControllerManagerServerName     = "cloud-controller-manager-server"
-	csiSnapshotValidationServerName      = gcp.CSISnapshotValidationName + "-server"
 )
 
 func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfigWithOptions {
@@ -74,18 +72,6 @@ func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfig
 			},
 			Options: []secretsmanager.GenerateOption{secretsmanager.SignedByCA(caNameControlPlane)},
 		},
-		{
-			Config: &secretutils.CertificateSecretConfig{
-				Name:                        csiSnapshotValidationServerName,
-				CommonName:                  gcp.UsernamePrefix + gcp.CSISnapshotValidationName,
-				DNSNames:                    kutil.DNSNamesForService(gcp.CSISnapshotValidationName, namespace),
-				CertType:                    secretutils.ServerCert,
-				SkipPublishingCACertificate: true,
-			},
-			// use current CA for signing server cert to prevent mismatches when dropping the old CA from the webhook
-			// config in phase Completing
-			Options: []secretsmanager.GenerateOption{secretsmanager.SignedByCA(caNameControlPlane, secretsmanager.UseCurrentCA)},
-		},
 	}
 }
 
@@ -97,7 +83,6 @@ func shootAccessSecretsFunc(namespace string) []*gutil.AccessSecret {
 		gutil.NewShootAccessSecret(gcp.CSISnapshotterName, namespace),
 		gutil.NewShootAccessSecret(gcp.CSIResizerName, namespace),
 		gutil.NewShootAccessSecret(gcp.CSISnapshotControllerName, namespace),
-		gutil.NewShootAccessSecret(gcp.CSISnapshotValidationName, namespace),
 	}
 }
 
@@ -138,7 +123,6 @@ var (
 					gcp.CSIResizerImageName,
 					gcp.CSILivenessProbeImageName,
 					gcp.CSISnapshotControllerImageName,
-					gcp.CSISnapshotValidationWebhookImageName,
 				},
 				Objects: []*chart.Object{
 					// csi-driver-controller
@@ -148,9 +132,6 @@ var (
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotControllerName},
 					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: gcp.CSISnapshotControllerName + "-vpa"},
-					// csi-snapshot-validation-webhook
-					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotValidationName},
-					{Type: &corev1.Service{}, Name: gcp.CSISnapshotValidationName},
 				},
 			},
 			{
@@ -220,10 +201,6 @@ var (
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
 					{Type: &rbacv1.Role{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
 					{Type: &rbacv1.RoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
-					// csi-snapshot-validation-webhook
-					{Type: &admissionregistrationv1.ValidatingWebhookConfiguration{}, Name: gcp.CSISnapshotValidationName},
-					{Type: &rbacv1.ClusterRole{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotValidationName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSISnapshotValidationName},
 				},
 			},
 			{
@@ -302,14 +279,13 @@ func (vp *valuesProvider) GetConfigChartValues(
 		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 	}
 
-	// Get service account
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, vp.client, cp.Spec.SecretRef)
+	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, vp.client, cp.Spec.SecretRef)
 	if err != nil {
-		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
+		return nil, fmt.Errorf("could not get credentials config from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
 
 	// Get config chart values
-	return getConfigChartValues(cpConfig, infraStatus, cp, serviceAccount, isDualstackEnabled(cluster.Shoot.Spec.Networking))
+	return getConfigChartValues(cpConfig, infraStatus, cp, credentialsConfig, isDualstackEnabled(cluster.Shoot.Spec.Networking))
 }
 
 // GetControlPlaneChartValues returns the values for the control plane chart applied by the generic actuator.
@@ -331,8 +307,8 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		}
 	}
 
-	// Get service account
-	serviceAccount, err := gcp.GetServiceAccountFromSecretReference(ctx, vp.client, cp.Spec.SecretRef)
+	// Get credentials configuration
+	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, vp.client, cp.Spec.SecretRef)
 	if err != nil {
 		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
@@ -350,18 +326,27 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		}
 	}
 
-	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, serviceAccount, checksums, scaledDown, gep19Monitoring)
+	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown, gep19Monitoring)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
 func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	_ context.Context,
-	cp *extensionsv1alpha1.ControlPlane,
+	_ *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
-	secretsReader secretsmanager.Reader,
+	_ secretsmanager.Reader,
 	_ map[string]string,
-) (map[string]interface{}, error) {
-	return getControlPlaneShootChartValues(cluster, cp, secretsReader)
+) (
+	map[string]interface{},
+	error,
+) {
+	return map[string]interface{}{
+		gcp.CloudControllerManagerName: map[string]interface{}{"enabled": true},
+		gcp.CSINodeName: map[string]interface{}{
+			"enabled":           true,
+			"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
+		},
+	}, nil
 }
 
 // getConfigChartValues collects and returns the configuration chart values.
@@ -369,7 +354,7 @@ func getConfigChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	infraStatus *apisgcp.InfrastructureStatus,
 	cp *extensionsv1alpha1.ControlPlane,
-	serviceAccount *gcp.ServiceAccount,
+	credentialsConfig *gcp.CredentialsConfig,
 	dualStack bool,
 ) (map[string]interface{}, error) {
 	// Determine network names
@@ -377,12 +362,16 @@ func getConfigChartValues(
 
 	// Collect config chart values
 	return map[string]interface{}{
-		"projectID":      serviceAccount.ProjectID,
+		"projectID":      credentialsConfig.ProjectID,
 		"networkName":    networkName,
 		"subNetworkName": subNetworkName,
 		"zone":           cpConfig.Zone,
 		"nodeTags":       cp.Namespace,
 	}, nil
+}
+
+func shouldUseWorkloadIdentity(credentialsConfig *gcp.CredentialsConfig) bool {
+	return credentialsConfig.Type == gcp.ExternalAccountCredentialType && len(credentialsConfig.TokenFilePath) > 0
 }
 
 // getControlPlaneChartValues collects and returns the control plane chart values.
@@ -391,7 +380,7 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 	secretsReader secretsmanager.Reader,
-	serviceAccount *gcp.ServiceAccount,
+	credentialsConfig *gcp.CredentialsConfig,
 	checksums map[string]string,
 	scaledDown bool,
 	gep19Monitoring bool,
@@ -399,12 +388,12 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring)
+	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring, shouldUseWorkloadIdentity(credentialsConfig))
 	if err != nil {
 		return nil, err
 	}
 
-	csi, err := getCSIControllerChartValues(cpConfig, cp, cluster, secretsReader, serviceAccount, checksums, scaledDown)
+	csi, err := getCSIControllerChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
 	if err != nil {
 		return nil, err
 	}
@@ -439,6 +428,7 @@ func (vp *valuesProvider) getCCMChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 	gep19Monitoring bool,
+	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
 	if !found {
@@ -464,7 +454,8 @@ func (vp *valuesProvider) getCCMChartValues(
 		"secrets": map[string]interface{}{
 			"server": serverSecret.Name,
 		},
-		"gep19Monitoring": gep19Monitoring,
+		"gep19Monitoring":     gep19Monitoring,
+		"useWorkloadIdentity": useWorkloadIdentity,
 	}
 
 	if cpConfig.CloudControllerManager != nil {
@@ -482,6 +473,12 @@ func (vp *valuesProvider) getCCMChartValues(
 		values["allocatorType"] = "CloudAllocator"
 	}
 
+	if cluster.Shoot.Spec.Kubernetes.KubeControllerManager != nil && cluster.Shoot.Spec.Kubernetes.KubeControllerManager.NodeCIDRMaskSize != nil {
+		if len(cluster.Shoot.Spec.Networking.IPFamilies) == 1 && cluster.Shoot.Spec.Networking.IPFamilies[0] == v1beta1.IPFamilyIPv4 {
+			values["nodeCIDRMaskSizeIPv4"] = *cluster.Shoot.Spec.Kubernetes.KubeControllerManager.NodeCIDRMaskSize
+		}
+	}
+
 	return values, nil
 }
 
@@ -490,20 +487,16 @@ func getCSIControllerChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	_ *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
-	secretsReader secretsmanager.Reader,
-	serviceAccount *gcp.ServiceAccount,
+	_ secretsmanager.Reader,
+	credentialsConfig *gcp.CredentialsConfig,
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
-	serverSecret, found := secretsReader.Get(csiSnapshotValidationServerName)
-	if !found {
-		return nil, fmt.Errorf("secret %q not found", csiSnapshotValidationServerName)
-	}
 
 	values := map[string]interface{}{
 		"enabled":   true,
 		"replicas":  extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-		"projectID": serviceAccount.ProjectID,
+		"projectID": credentialsConfig.ProjectID,
 		"zone":      cpConfig.Zone,
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
@@ -511,13 +504,7 @@ func getCSIControllerChartValues(
 		"csiSnapshotController": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		},
-		"csiSnapshotValidationWebhook": map[string]interface{}{
-			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-			"secrets": map[string]interface{}{
-				"server": serverSecret.Name,
-			},
-			"topologyAwareRoutingEnabled": gardencorev1beta1helper.IsTopologyAwareRoutingForShootControlPlaneEnabled(cluster.Seed, cluster.Shoot),
-		},
+		"useWorkloadIdentity": shouldUseWorkloadIdentity(credentialsConfig),
 	}
 
 	k8sVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
@@ -543,38 +530,9 @@ func getCSIControllerChartValues(
 				},
 			}
 		}
-
 	}
 
 	return values, nil
-}
-
-// getControlPlaneShootChartValues collects and returns the control plane shoot chart values.
-func getControlPlaneShootChartValues(
-	cluster *extensionscontroller.Cluster,
-	cp *extensionsv1alpha1.ControlPlane,
-	secretsReader secretsmanager.Reader,
-) (map[string]interface{}, error) {
-	kubernetesVersion := cluster.Shoot.Spec.Kubernetes.Version
-	caSecret, found := secretsReader.Get(caNameControlPlane)
-	if !found {
-		return nil, fmt.Errorf("secret %q not found", caNameControlPlane)
-	}
-
-	return map[string]interface{}{
-		gcp.CloudControllerManagerName: map[string]interface{}{"enabled": true},
-		gcp.CSINodeName: map[string]interface{}{
-			"enabled":           true,
-			"kubernetesVersion": kubernetesVersion,
-			"webhookConfig": map[string]interface{}{
-				"url":      "https://" + gcp.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-				"caBundle": string(caSecret.Data[secretutils.DataKeyCertificateBundle]),
-			},
-		},
-		"default-http-backend": map[string]interface{}{
-			"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
-		},
-	}, nil
 }
 
 // getStorageClassChartValues collects and returns the shoot storage-class chart values.

@@ -22,3 +22,8 @@ configureCloudRoutes: true
 
 # TODO(rfranzke): Remove this field after August 2024.
 gep19Monitoring: false
+
+# IPAM configuration
+nodeCIDRMaskSizeIPv4:
+
+useWorkloadIdentity: false

@@ -22,7 +22,7 @@ func ValidateCloudProviderSecret(secret *corev1.Secret) error {
 		return fmt.Errorf("missing %q field in secret", gcp.ServiceAccountJSONField)
 	}
 
-	sa, err := gcp.GetServiceAccountFromJSON(serviceAccountJSON)
+	sa, err := gcp.GetCredentialsConfigFromJSON(serviceAccountJSON)
 	if err != nil {
 		return fmt.Errorf("could not get service account from %q field: %w", gcp.ServiceAccountJSONField, err)
 	}

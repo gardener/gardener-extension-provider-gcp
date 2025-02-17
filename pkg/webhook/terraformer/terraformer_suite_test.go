@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package internal_test
+package terraformer_test
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestInternal(t *testing.T) {
+func TestTerraformer(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Internal Suite")
+	RunSpecs(t, "Terraformer Webhook Suite")
 }

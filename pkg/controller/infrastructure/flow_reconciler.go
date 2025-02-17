@@ -69,20 +69,20 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		}
 	}
 
-	serviceAccount, err := gcpinternal.GetServiceAccountFromSecretReference(ctx, f.client, infra.Spec.SecretRef)
+	credentialsConfig, err := gcpinternal.GetCredentialsConfigFromSecretReference(ctx, f.client, infra.Spec.SecretRef)
 	if err != nil {
 		return err
 	}
 
 	fctx, err := infraflow.NewFlowContext(ctx, infraflow.Opts{
-		Log:            f.log,
-		Infra:          infra,
-		State:          infraState,
-		Cluster:        cluster,
-		ServiceAccount: serviceAccount,
-		Factory:        gcpclient.New(),
-		Client:         f.client,
-		Networking:     cluster.Shoot.Spec.Networking,
+		Log:               f.log,
+		Infra:             infra,
+		State:             infraState,
+		Cluster:           cluster,
+		CredentialsConfig: credentialsConfig,
+		Factory:           gcpclient.New(),
+		Client:            f.client,
+		Networking:        cluster.Shoot.Spec.Networking,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create flow context: %v", err)
@@ -98,20 +98,20 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 		return err
 	}
 
-	serviceAccount, err := gcpinternal.GetServiceAccountFromSecretReference(ctx, f.client, infra.Spec.SecretRef)
+	credentialsConfig, err := gcpinternal.GetCredentialsConfigFromSecretReference(ctx, f.client, infra.Spec.SecretRef)
 	if err != nil {
 		return err
 	}
 	gc := gcpclient.New()
 	fctx, err := infraflow.NewFlowContext(ctx, infraflow.Opts{
-		Log:            f.log,
-		Infra:          infra,
-		Cluster:        cluster,
-		ServiceAccount: serviceAccount,
-		Factory:        gc,
-		Client:         f.client,
-		State:          infraState,
-		Networking:     cluster.Shoot.Spec.Networking,
+		Log:               f.log,
+		Infra:             infra,
+		Cluster:           cluster,
+		CredentialsConfig: credentialsConfig,
+		Factory:           gc,
+		Client:            f.client,
+		State:             infraState,
+		Networking:        cluster.Shoot.Spec.Networking,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create flow context: %v", err)

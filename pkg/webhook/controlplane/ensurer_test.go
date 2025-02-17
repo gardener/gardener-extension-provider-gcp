@@ -30,6 +30,8 @@ import (
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const namespace = "test"
@@ -43,8 +45,10 @@ func TestController(t *testing.T) {
 
 var _ = Describe("Ensurer", func() {
 	var (
-		ctrl           *gomock.Controller
-		ctx            = context.TODO()
+		ctrl       *gomock.Controller
+		ctx        = context.TODO()
+		fakeClient client.Client
+
 		dummyContext   = gcontext.NewGardenContext(nil, nil)
 		eContextK8s126 = gcontext.NewInternalGardenContext(
 			&extensionscontroller.Cluster{
@@ -114,6 +118,7 @@ var _ = Describe("Ensurer", func() {
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
+		fakeClient = fakeclient.NewClientBuilder().Build()
 	})
 
 	AfterEach(func() {
@@ -142,7 +147,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(fakeClient, logger)
 		})
 
 		It("should add missing elements to kube-apiserver deployment (k8s < 1.27)", func() {
@@ -232,7 +237,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(fakeClient, logger)
 		})
 
 		It("should add missing elements to kube-controller-manager deployment (k8s < 1.27)", func() {
@@ -327,7 +332,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(fakeClient, logger)
 		})
 
 		It("should add missing elements to kube-scheduler deployment (k8s < 1.27)", func() {
@@ -381,7 +386,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(fakeClient, logger)
 		})
 
 		It("should add missing elements to cluster-autoscaler deployment (k8s < 1.17)", func() {
@@ -421,7 +426,7 @@ var _ = Describe("Ensurer", func() {
 		)
 
 		BeforeEach(func() {
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(fakeClient, logger)
 			oldUnitOptions = []*unit.UnitOption{
 				{
 					Section: "Service",
@@ -462,7 +467,7 @@ var _ = Describe("Ensurer", func() {
 		)
 
 		BeforeEach(func() {
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(fakeClient, logger)
 			oldKubeletConfig = &kubeletconfigv1beta1.KubeletConfiguration{
 				FeatureGates: map[string]bool{
 					"Foo": true,
@@ -501,7 +506,7 @@ var _ = Describe("Ensurer", func() {
 		var ensurer genericmutator.Ensurer
 
 		BeforeEach(func() {
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(fakeClient, logger)
 		})
 
 		It("should modify existing elements of kubernetes general configuration", func() {
@@ -543,23 +548,68 @@ var _ = Describe("Ensurer", func() {
 		var (
 			deployment *appsv1.Deployment
 			ensurer    genericmutator.Ensurer
+			secret     *corev1.Secret
 		)
 
 		BeforeEach(func() {
 			deployment = &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Namespace: "foo"}}
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(fakeClient, logger)
 			DeferCleanup(testutils.WithVar(&ImageVector, imagevectorutils.ImageVector{{
 				Name:       "machine-controller-manager-provider-gcp",
 				Repository: ptr.To("foo"),
 				Tag:        ptr.To("bar"),
 			}}))
+			secret = &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cloudprovider",
+					Namespace: "foo",
+				},
+			}
 		})
 
 		It("should inject the sidecar container", func() {
+			Expect(fakeClient.Create(ctx, secret)).To(Succeed())
 			Expect(deployment.Spec.Template.Spec.Containers).To(BeEmpty())
 			Expect(ensurer.EnsureMachineControllerManagerDeployment(context.TODO(), nil, deployment, nil)).To(BeNil())
 			expectedContainer := machinecontrollermanager.ProviderSidecarContainer(deployment.Namespace, "provider-gcp", "foo:bar")
 			Expect(deployment.Spec.Template.Spec.Containers).To(ConsistOf(expectedContainer))
+		})
+
+		It("should inject the sidecar container with workload identity mount", func() {
+			secret.Labels = map[string]string{
+				"security.gardener.cloud/purpose": "workload-identity-token-requestor",
+			}
+			Expect(fakeClient.Create(ctx, secret)).To(Succeed())
+			Expect(deployment.Spec.Template.Spec.Containers).To(BeEmpty())
+			Expect(ensurer.EnsureMachineControllerManagerDeployment(context.TODO(), nil, deployment, nil)).To(BeNil())
+			expectedContainer := machinecontrollermanager.ProviderSidecarContainer(deployment.Namespace, "provider-gcp", "foo:bar")
+			expectedContainer.VolumeMounts = append(expectedContainer.VolumeMounts, corev1.VolumeMount{
+				Name:      "workload-identity",
+				MountPath: "/var/run/secrets/gardener.cloud/workload-identity",
+			})
+			Expect(deployment.Spec.Template.Spec.Containers).To(ConsistOf(expectedContainer))
+			Expect(deployment.Spec.Template.Spec.Volumes).To(ContainElement(corev1.Volume{
+				Name: "workload-identity",
+				VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{
+							{
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: v1beta1constants.SecretNameCloudProvider,
+									},
+									Items: []corev1.KeyToPath{
+										{
+											Key:  "token",
+											Path: "token",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}))
 		})
 	})
 
@@ -570,7 +620,7 @@ var _ = Describe("Ensurer", func() {
 		)
 
 		BeforeEach(func() {
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(fakeClient, logger)
 			vpa = &vpaautoscalingv1.VerticalPodAutoscaler{}
 		})
 
@@ -614,7 +664,6 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, k8sVersion string) {
 		Expect(c.Command).NotTo(test.ContainElementWithPrefixContaining("--enable-admission-plugins=", "PersistentVolumeLabel", ","))
 		Expect(c.Command).To(test.ContainElementWithPrefixContaining("--disable-admission-plugins=", "PersistentVolumeLabel", ","))
 	}
-	Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue("networking.resources.gardener.cloud/to-csi-snapshot-validation-tcp-443", "allowed"))
 }
 
 func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, k8sVersion string) {

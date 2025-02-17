@@ -52,7 +52,7 @@ var StatusTypeMeta = metav1.TypeMeta{
 // ComputeTerraformerTemplateValues computes the values for the GCP Terraformer chart.
 func ComputeTerraformerTemplateValues(
 	infra *extensionsv1alpha1.Infrastructure,
-	account *gcp.ServiceAccount,
+	account *gcp.CredentialsConfig,
 	config *api.InfrastructureConfig,
 	podCIDR *string,
 	createSA bool,
@@ -199,7 +199,7 @@ func ComputeTerraformerTemplateValues(
 // RenderTerraformerTemplate renders the gcp-infra chart with the given values.
 func RenderTerraformerTemplate(
 	infra *extensionsv1alpha1.Infrastructure,
-	account *gcp.ServiceAccount,
+	account *gcp.CredentialsConfig,
 	config *api.InfrastructureConfig,
 	podCIDR *string,
 	createSA bool,
