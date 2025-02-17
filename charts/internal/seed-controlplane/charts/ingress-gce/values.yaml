@@ -10,3 +10,5 @@ resources:
 
 podAnnotations: {}
 podLabels: {}
+
+useWorkloadIdentity: false

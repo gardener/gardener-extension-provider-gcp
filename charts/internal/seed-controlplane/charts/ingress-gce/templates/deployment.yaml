@@ -54,7 +54,11 @@ spec:
             - --v=2
           env:
             - name: GOOGLE_APPLICATION_CREDENTIALS
-              value: /srv/cloudprovider/serviceaccount.json
+              {{- if .Values.useWorkloadIdentity }}
+              value: /var/run/secrets/gardener.cloud/workload-identity/credentialsConfig
+              {{- else }}
+              value: /srv/cloudprovider/credentialsConfig
+              {{- end }}
           livenessProbe:
             httpGet:
               path: /healthz
@@ -75,8 +79,15 @@ spec:
           volumeMounts:
             - name: cloud-provider-config
               mountPath: /etc/kubernetes/cloudprovider
+            {{- if .Values.useWorkloadIdentity }}
+            - name: cloudprovider
+              mountPath: /var/run/secrets/gardener.cloud/workload-identity
+              readOnly: true
+            {{- else }}
             - name: cloudprovider
               mountPath: /srv/cloudprovider
+              readOnly: true
+            {{- end }}
             - name: kubeconfig
               mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
               readOnly: true
@@ -89,8 +100,22 @@ spec:
           configMap:
             name: cloud-provider-config
         - name: cloudprovider
-          secret:
-            secretName: cloudprovider
+          projected:
+            defaultMode: 420
+            sources:
+            - secret:
+                items:
+                  {{- if .Values.useWorkloadIdentity }}
+                  - key: credentialsConfig
+                    path: credentialsConfig
+                  - key: token
+                    path: token
+                  {{- else }}
+                  - key: serviceaccount.json
+                    path: credentialsConfig
+                  {{- end }}
+                name: cloudprovider
+                optional: false
         - name: kubeconfig
           projected:
             defaultMode: 420
