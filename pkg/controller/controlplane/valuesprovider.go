@@ -346,6 +346,9 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 			"enabled":           true,
 			"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 		},
+		"default-http-backend": map[string]interface{}{
+			"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
+		},
 	}, nil
 }
 

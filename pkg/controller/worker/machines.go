@@ -98,7 +98,7 @@ func (w *WorkerDelegate) GenerateMachineDeployments(ctx context.Context) (worker
 }
 
 func formatNodeCIDRMask(val *int32, defaultVal int) string {
-	return fmt.Sprintf("/%d", ptr.Deref(val, int32(defaultVal)))
+	return fmt.Sprintf("/%d", ptr.Deref(val, int32(defaultVal))) // #nosec: G115 -- netmask is limited in size
 }
 
 func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {

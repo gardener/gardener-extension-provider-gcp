@@ -299,6 +299,7 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values[gcp.CloudControllerManagerName]).To(Equal(utils.MergeMaps(ccmChartValues, map[string]interface{}{
 				"kubernetesVersion":    cluster.Shoot.Spec.Kubernetes.Version,
 				"nodeCIDRMaskSizeIPv4": int32(22),
+				"allocatorType":        "RangeAllocator",
 				"gep19Monitoring":      false,
 				"useWorkloadIdentity":  false,
 			})))
@@ -359,6 +360,7 @@ var _ = Describe("ValuesProvider", func() {
 				gcp.CloudControllerManagerName: enabledTrue,
 				gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"kubernetesVersion": "1.28.2",
+					"enabled":           true,
 				}),
 				"default-http-backend": map[string]interface{}{
 					"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
