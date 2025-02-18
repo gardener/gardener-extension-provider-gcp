@@ -1,2 +1,4 @@
 volumesnapshots:
   enabled: true
+gkenetworkingapi:
+  enabled: true

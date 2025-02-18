@@ -235,6 +235,13 @@ var (
 					{Type: &apiextensionsv1.CustomResourceDefinition{}, Name: "volumesnapshots.snapshot.storage.k8s.io"},
 				},
 			},
+			{
+				Name: "gkenetworkingapi",
+				Objects: []*chart.Object{
+					{Type: &apiextensionsv1.CustomResourceDefinition{}, Name: "networks.networking.gke.io"},
+					{Type: &apiextensionsv1.CustomResourceDefinition{}, Name: "gkenetworkparamsets.networking.gke.io"},
+				},
+			},
 		},
 	}
 
