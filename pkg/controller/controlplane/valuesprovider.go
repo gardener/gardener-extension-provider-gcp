@@ -93,6 +93,7 @@ var (
 		Path:       filepath.Join(charts.InternalChartsPath, "cloud-provider-config"),
 		Objects: []*chart.Object{
 			{Type: &corev1.ConfigMap{}, Name: internal.CloudProviderConfigName},
+			{Type: &corev1.ConfigMap{}, Name: internal.CloudProviderConfigIngressGCEName},
 		},
 	}
 
@@ -263,7 +264,7 @@ type valuesProvider struct {
 func (vp *valuesProvider) GetConfigChartValues(
 	ctx context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
-	cluster *extensionscontroller.Cluster,
+	_ *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
 	// Decode providerConfig
 	cpConfig := &apisgcp.ControlPlaneConfig{}
@@ -285,7 +286,7 @@ func (vp *valuesProvider) GetConfigChartValues(
 	}
 
 	// Get config chart values
-	return getConfigChartValues(cpConfig, infraStatus, cp, credentialsConfig, isDualstackEnabled(cluster.Shoot.Spec.Networking))
+	return getConfigChartValues(cpConfig, infraStatus, cp, credentialsConfig)
 }
 
 // GetControlPlaneChartValues returns the values for the control plane chart applied by the generic actuator.
@@ -358,18 +359,18 @@ func getConfigChartValues(
 	infraStatus *apisgcp.InfrastructureStatus,
 	cp *extensionsv1alpha1.ControlPlane,
 	credentialsConfig *gcp.CredentialsConfig,
-	dualStack bool,
 ) (map[string]interface{}, error) {
 	// Determine network names
-	networkName, subNetworkName := getNetworkNames(infraStatus, cp, dualStack)
+	networkName, subNetworkName, subNetworkNameNodes := getNetworkNames(infraStatus, cp)
 
 	// Collect config chart values
 	return map[string]interface{}{
-		"projectID":      credentialsConfig.ProjectID,
-		"networkName":    networkName,
-		"subNetworkName": subNetworkName,
-		"zone":           cpConfig.Zone,
-		"nodeTags":       cp.Namespace,
+		"projectID":           credentialsConfig.ProjectID,
+		"networkName":         networkName,
+		"subNetworkName":      subNetworkName,
+		"subNetworkNameNodes": subNetworkNameNodes,
+		"zone":                cpConfig.Zone,
+		"nodeTags":            cp.Namespace,
 	}, nil
 }
 
@@ -570,25 +571,23 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 func getNetworkNames(
 	infraStatus *apisgcp.InfrastructureStatus,
 	cp *extensionsv1alpha1.ControlPlane,
-	dualstack bool,
-) (string, string) {
+) (string, string, string) {
 	networkName := infraStatus.Networks.VPC.Name
 	if networkName == "" {
 		networkName = cp.Namespace
 	}
 
-	subnetPurpose := apisgcp.PurposeInternal
-	if dualstack {
-		subnetPurpose = apisgcp.PurposeNodes
-	}
-
-	subNetworkName := ""
-	subnet, _ := apihelper.FindSubnetForPurpose(infraStatus.Networks.Subnets, subnetPurpose)
+	subNetworkName, subNetworkNameNodes := "", ""
+	subnet, _ := apihelper.FindSubnetForPurpose(infraStatus.Networks.Subnets, apisgcp.PurposeInternal)
 	if subnet != nil {
 		subNetworkName = subnet.Name
 	}
+	subnet, _ = apihelper.FindSubnetForPurpose(infraStatus.Networks.Subnets, apisgcp.PurposeNodes)
+	if subnet != nil {
+		subNetworkNameNodes = subnet.Name
+	}
 
-	return networkName, subNetworkName
+	return networkName, subNetworkName, subNetworkNameNodes
 }
 
 func (vp *valuesProvider) isOverlayEnabled(network *gardencorev1beta1.Networking) (bool, error) {

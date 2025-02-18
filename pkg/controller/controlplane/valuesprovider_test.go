@@ -90,6 +90,10 @@ var _ = Describe("ValuesProvider", func() {
 									Name:    "subnet-acbd1234",
 									Purpose: apisgcp.PurposeInternal,
 								},
+								{
+									Name:    "subnet-nodes1234",
+									Purpose: apisgcp.PurposeNodes,
+								},
 							},
 						},
 					}),
@@ -182,11 +186,12 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetConfigChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"projectID":      projectID,
-				"networkName":    "vpc-1234",
-				"subNetworkName": "subnet-acbd1234",
-				"zone":           zone,
-				"nodeTags":       namespace,
+				"projectID":           projectID,
+				"networkName":         "vpc-1234",
+				"subNetworkName":      "subnet-acbd1234",
+				"subNetworkNameNodes": "subnet-nodes1234",
+				"zone":                zone,
+				"nodeTags":            namespace,
 			}))
 		})
 	})

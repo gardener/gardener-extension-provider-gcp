@@ -48,7 +48,8 @@ spec:
             - --enable-l4netlb-dual-stack=true
             # services of Type:LoadBalancer with Internal annotation `cloud.google.com/l4-rbs: enabled`
             # will be processed by this controller
-            - --run-l4-controller=true
+            # it is disabled to let ccm provision internal ipv4 loadbalancers
+            - --run-l4-controller=false
             - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
             - --leader-elect=true
             - --v=2
@@ -77,7 +78,7 @@ spec:
 {{ toYaml . | indent 12 }}
           {{- end }}
           volumeMounts:
-            - name: cloud-provider-config
+            - name: cloud-provider-config-ingress-gce
               mountPath: /etc/kubernetes/cloudprovider
             {{- if .Values.useWorkloadIdentity }}
             - name: cloudprovider
@@ -96,9 +97,9 @@ spec:
       schedulerName: default-scheduler
       terminationGracePeriodSeconds: 30
       volumes:
-        - name: cloud-provider-config
+        - name: cloud-provider-config-ingress-gce
           configMap:
-            name: cloud-provider-config
+            name: cloud-provider-config-ingress-gce
         - name: cloudprovider
           projected:
             defaultMode: 420
