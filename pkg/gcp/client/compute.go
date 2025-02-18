@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
@@ -57,7 +59,8 @@ type ComputeClient interface {
 	DeleteSubnet(ctx context.Context, region, id string) error
 	// ExpandSubnet expands the subnet to the target CIDR.
 	ExpandSubnet(ctx context.Context, region, id, cidr string) (*compute.Subnetwork, error)
-
+	// WaitForIPv6Cidr waits for the ipv6 cidr block association
+	WaitForIPv6Cidr(ctx context.Context, region string, subnetID string) (string, error)
 	// InsertRouter creates a router with the given specification.
 	InsertRouter(ctx context.Context, region string, router *compute.Router) (*compute.Router, error)
 	// GetRouter returns the Router specified by id.
@@ -501,7 +504,6 @@ func (c *computeClient) ListFirewallRules(ctx context.Context, opts FirewallList
 		return nil
 	}); err != nil {
 		return nil, err
-
 	}
 
 	return res, nil
@@ -537,4 +539,24 @@ func (c *computeClient) ListImages(ctx context.Context, imageName, orderBy, fiel
 // GetRegion returns the Region specified.
 func (c *computeClient) GetRegion(ctx context.Context, region string) (*compute.Region, error) {
 	return c.service.Regions.Get(c.projectID, region).Context(ctx).Do()
+}
+
+// WaitForIPv6Cidr waits for the ipv6 cidr block association
+func (c *computeClient) WaitForIPv6Cidr(ctx context.Context, region, subnetID string) (string, error) {
+	var ipv6CidrBlock string
+
+	waiterr := wait.PollUntilContextTimeout(ctx, 2*time.Second, 30*time.Second, false, func(ctx context.Context) (bool, error) {
+		subnet, err := c.GetSubnet(ctx, region, subnetID)
+		if err != nil {
+			return true, err
+		}
+
+		ipv6CidrBlock = subnet.ExternalIpv6Prefix
+		return subnet.ExternalIpv6Prefix != "", nil
+	})
+	if waiterr != nil {
+		return "", fmt.Errorf("no IPv6 CIDR block was assigned to subnet %q: %v", subnetID, waiterr)
+	}
+
+	return ipv6CidrBlock, nil
 }

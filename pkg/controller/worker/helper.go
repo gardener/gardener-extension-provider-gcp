@@ -46,3 +46,11 @@ func (w *WorkerDelegate) updateWorkerProviderStatus(ctx context.Context, workerS
 	w.worker.Status.ProviderStatus = &runtime.RawExtension{Object: workerStatusV1alpha1}
 	return w.client.Status().Patch(ctx, w.worker, patch)
 }
+
+func (w *WorkerDelegate) getStackType() string {
+	if nw := w.cluster.Shoot.Spec.Networking; nw != nil && len(nw.IPFamilies) > 1 {
+		return "IPV4_IPV6"
+	}
+
+	return "IPV4_ONLY"
+}

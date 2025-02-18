@@ -639,6 +639,21 @@ func (mr *MockComputeClientMockRecorder) PatchSubnet(ctx, region, id, subnet any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchSubnet", reflect.TypeOf((*MockComputeClient)(nil).PatchSubnet), ctx, region, id, subnet)
 }
 
+// WaitForIPv6Cidr mocks base method.
+func (m *MockComputeClient) WaitForIPv6Cidr(ctx context.Context, region, subnetID string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WaitForIPv6Cidr", ctx, region, subnetID)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// WaitForIPv6Cidr indicates an expected call of WaitForIPv6Cidr.
+func (mr *MockComputeClientMockRecorder) WaitForIPv6Cidr(ctx, region, subnetID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitForIPv6Cidr", reflect.TypeOf((*MockComputeClient)(nil).WaitForIPv6Cidr), ctx, region, subnetID)
+}
+
 // MockStorageClient is a mock of StorageClient interface.
 type MockStorageClient struct {
 	ctrl     *gomock.Controller

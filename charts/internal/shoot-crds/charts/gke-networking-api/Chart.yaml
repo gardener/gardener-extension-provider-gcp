@@ -1,0 +1,4 @@
+apiVersion: v1
+description: A Helm chart for gke networking api CRDs.
+name: gkenetworkingapi
+version: 0.1.0

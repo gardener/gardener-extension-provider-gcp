@@ -1,0 +1,14 @@
+replicas: 1
+
+images:
+  ingress-gce: image-repository:image-tag
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 75Mi
+
+podAnnotations: {}
+podLabels: {}
+
+useWorkloadIdentity: false

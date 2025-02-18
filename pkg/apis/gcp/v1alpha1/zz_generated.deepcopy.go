@@ -10,6 +10,7 @@
 package v1alpha1
 
 import (
+	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -577,6 +578,11 @@ func (in *NetworkStatus) DeepCopyInto(out *NetworkStatus) {
 	if in.NatIPs != nil {
 		in, out := &in.NatIPs, &out.NatIPs
 		*out = make([]NatIP, len(*in))
+		copy(*out, *in)
+	}
+	if in.IPFamilies != nil {
+		in, out := &in.IPFamilies, &out.IPFamilies
+		*out = make([]v1beta1.IPFamily, len(*in))
 		copy(*out, *in)
 	}
 	return

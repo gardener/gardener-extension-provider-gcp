@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	corev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -64,6 +65,9 @@ type NetworkStatus struct {
 	// NatIPs is a list of all user provided external premium ips which can be used by the nat gateway
 	// +optional
 	NatIPs []NatIP `json:"natIPs,omitempty"`
+
+	// IPFamilies is the list of the used ip families.
+	IPFamilies []corev1beta1.IPFamily `json:"ipfamilies,omitempty"`
 }
 
 // SubnetPurpose is a purpose of a subnet.
@@ -74,6 +78,8 @@ const (
 	PurposeNodes SubnetPurpose = "nodes"
 	// PurposeInternal is a SubnetPurpose for internal use.
 	PurposeInternal SubnetPurpose = "internal"
+	// PurposeServices is a SubnetPurpose for services.
+	PurposeServices SubnetPurpose = "services"
 )
 
 // Subnet is a subnet that was created.

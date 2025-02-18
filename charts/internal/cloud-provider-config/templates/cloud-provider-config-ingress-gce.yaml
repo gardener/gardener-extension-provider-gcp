@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloud-provider-config-ingress-gce
+  namespace: {{ .Release.Namespace }}
+data:
+  cloudprovider.conf: |
+    [Global]
+    project-id="{{ .Values.projectID }}"
+    network-name="{{ .Values.networkName }}"
+    {{- if .Values.subNetworkNameNodes }}
+    subnetwork-name="{{ .Values.subNetworkNameNodes }}"
+    {{- end }}
+    multizone=true
+    local-zone="{{ .Values.zone }}"
+    token-url=nil
+    node-tags="{{ .Values.nodeTags }}"
