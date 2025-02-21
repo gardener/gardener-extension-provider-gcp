@@ -57,6 +57,7 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	"audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
 	"subject_token_type": "invalid",
 	"token_url": "http://insecure",
+	"service_account_impersonation_url": "http://insecure",
 	"credential_source": {
 		"file": "/abc/cloudprovider/xyz",
 		"abc": {
@@ -80,7 +81,7 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 			Fields{
 				"Type":   Equal(field.ErrorTypeForbidden),
 				"Field":  Equal("providerConfig.credentialsConfig"),
-				"Detail": Equal("contains extra fields, required fields are: audience, subject_token_type, token_url, type, universe_domain"),
+				"Detail": Equal("contains extra fields, allowed fields are: audience, service_account_impersonation_url, subject_token_type, token_url, type, universe_domain"),
 			},
 			Fields{
 				"Type":     Equal(field.ErrorTypeInvalid),
@@ -97,6 +98,12 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 			Fields{
 				"Type":     Equal(field.ErrorTypeInvalid),
 				"Field":    Equal("providerConfig.credentialsConfig.token_url"),
+				"BadValue": Equal("http://insecure"),
+				"Detail":   Equal("should start with https://"),
+			},
+			Fields{
+				"Type":     Equal(field.ErrorTypeInvalid),
+				"Field":    Equal("providerConfig.credentialsConfig.service_account_impersonation_url"),
 				"BadValue": Equal("http://insecure"),
 				"Detail":   Equal("should start with https://"),
 			},
