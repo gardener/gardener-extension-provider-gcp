@@ -81,7 +81,7 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 			Fields{
 				"Type":   Equal(field.ErrorTypeForbidden),
 				"Field":  Equal("providerConfig.credentialsConfig"),
-				"Detail": Equal("contains extra fields, allowed fields are: audience, service_account_impersonation_url, subject_token_type, token_url, type, universe_domain"),
+				"Detail": Equal("contains extra fields, allowed fields are: audience, subject_token_type, token_url, type, universe_domain, service_account_impersonation_url"),
 			},
 			Fields{
 				"Type":     Equal(field.ErrorTypeInvalid),

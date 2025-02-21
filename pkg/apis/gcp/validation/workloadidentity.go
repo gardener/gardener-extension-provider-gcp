@@ -35,14 +35,7 @@ var (
 		keyType,
 		keyUniverseDomain,
 	}
-	allowedFields = []string{ // Sorted alphabetically
-		keyAudience,
-		keyServiceAccountImpersonationURL,
-		keySubjectTokenType,
-		keyTokenURL,
-		keyType,
-		keyUniverseDomain,
-	}
+	allowedFields = append(requiredConfigFields, keyServiceAccountImpersonationURL)
 )
 
 // ValidateWorkloadIdentityConfig checks whether the given workload identity configuration contains expected fields and values.
