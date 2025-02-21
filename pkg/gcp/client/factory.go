@@ -84,12 +84,13 @@ func (f factory) IAM(ctx context.Context, c client.Client, sr corev1.SecretRefer
 func httpClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) (*http.Client, error) {
 	if credentialsConfig.TokenRetriever != nil && credentialsConfig.Type == gcp.ExternalAccountCredentialType {
 		conf := externalaccount.Config{
-			Audience:             credentialsConfig.Audience,
-			SubjectTokenType:     credentialsConfig.SubjectTokenType,
-			TokenURL:             credentialsConfig.TokenURL,
-			Scopes:               scopes,
-			SubjectTokenSupplier: credentialsConfig.TokenRetriever,
-			UniverseDomain:       credentialsConfig.UniverseDomain,
+			Audience:                       credentialsConfig.Audience,
+			SubjectTokenType:               credentialsConfig.SubjectTokenType,
+			TokenURL:                       credentialsConfig.TokenURL,
+			Scopes:                         scopes,
+			SubjectTokenSupplier:           credentialsConfig.TokenRetriever,
+			UniverseDomain:                 credentialsConfig.UniverseDomain,
+			ServiceAccountImpersonationURL: credentialsConfig.ServiceAccountImpersonationURL,
 		}
 
 		ts, err := externalaccount.NewTokenSource(ctx, conf)

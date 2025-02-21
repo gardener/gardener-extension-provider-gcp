@@ -23,11 +23,12 @@ type credConfig struct {
 	Email     string `json:"client_email"`
 	Type      string `json:"type"`
 
-	Audience         string           `json:"audience"`
-	CredentialSource credentialSource `json:"credential_source"`
-	UniverseDomain   string           `json:"universe_domain"`
-	TokenURL         string           `json:"token_url"`
-	SubjectTokenType string           `json:"subject_token_type"`
+	Audience                       string           `json:"audience"`
+	CredentialSource               credentialSource `json:"credential_source"`
+	UniverseDomain                 string           `json:"universe_domain"`
+	TokenURL                       string           `json:"token_url"`
+	SubjectTokenType               string           `json:"subject_token_type"`
+	ServiceAccountImpersonationURL string           `json:"service_account_impersonation_url"`
 }
 
 type credentialSource struct {
@@ -67,6 +68,10 @@ type CredentialsConfig struct {
 	// SubjectTokenType is the type of the subject token.
 	// Currently only "urn:ietf:params:oauth:token-type:jwt" is supported.
 	SubjectTokenType string
+	// ServiceAccountImpersonationURL is the URL used for service account impersonation.
+	// This is used when the federated identity does not directly access GCP resources,
+	// but acts on behalf of a service account.
+	ServiceAccountImpersonationURL string
 }
 
 // GetCredentialsConfigFromSecretReference retrieves the credentials config from the secret with the given secret reference.
@@ -131,15 +136,16 @@ func GetCredentialsConfigFromJSON(data []byte) (*CredentialsConfig, error) {
 	}
 
 	return &CredentialsConfig{
-		Raw:              data,
-		ProjectID:        credentialsConfig.ProjectID,
-		Email:            credentialsConfig.Email,
-		Type:             credentialsConfig.Type,
-		TokenFilePath:    credentialsConfig.CredentialSource.File,
-		Audience:         credentialsConfig.Audience,
-		UniverseDomain:   credentialsConfig.UniverseDomain,
-		TokenURL:         credentialsConfig.TokenURL,
-		SubjectTokenType: credentialsConfig.SubjectTokenType,
+		Raw:                            data,
+		ProjectID:                      credentialsConfig.ProjectID,
+		Email:                          credentialsConfig.Email,
+		Type:                           credentialsConfig.Type,
+		TokenFilePath:                  credentialsConfig.CredentialSource.File,
+		Audience:                       credentialsConfig.Audience,
+		UniverseDomain:                 credentialsConfig.UniverseDomain,
+		TokenURL:                       credentialsConfig.TokenURL,
+		SubjectTokenType:               credentialsConfig.SubjectTokenType,
+		ServiceAccountImpersonationURL: credentialsConfig.ServiceAccountImpersonationURL,
 	}, nil
 }
 

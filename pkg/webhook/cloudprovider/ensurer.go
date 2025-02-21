@@ -27,11 +27,12 @@ import (
 
 var (
 	usedCredentialsConfigFields = map[string]struct{}{
-		"universe_domain":    {},
-		"type":               {},
-		"audience":           {},
-		"subject_token_type": {},
-		"token_url":          {},
+		"universe_domain":                   {},
+		"type":                              {},
+		"audience":                          {},
+		"subject_token_type":                {},
+		"token_url":                         {},
+		"service_account_impersonation_url": {},
 	}
 )
 

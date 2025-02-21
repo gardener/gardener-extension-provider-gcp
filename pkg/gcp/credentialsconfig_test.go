@@ -76,7 +76,7 @@ var _ = Describe("Service Account", func() {
 		})
 
 		It("should read the credentials config data from the secret credentials config field", func() {
-			data := []byte(`{"audience":"//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider","credential_source":{"file":"/var/run/secrets/gardener.cloud/workload-identity/token","format":{"type":"text"}},"subject_token_type":"urn:ietf:params:oauth:token-type:jwt","token_url":"https://sts.googleapis.com/v1/token","type":"external_account","universe_domain":"googleapis.com"}`)
+			data := []byte(`{"audience":"//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider","credential_source":{"file":"/var/run/secrets/gardener.cloud/workload-identity/token","format":{"type":"text"}},"subject_token_type":"urn:ietf:params:oauth:token-type:jwt","token_url":"https://sts.googleapis.com/v1/token","type":"external_account","universe_domain":"googleapis.com","service_account_impersonation_url":"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/SERVICE_ACCOUNT_EMAIL:generateAccessToken"}`)
 			secret := &corev1.Secret{Data: map[string][]byte{
 				"credentialsConfig": data,
 			}}
@@ -84,13 +84,14 @@ var _ = Describe("Service Account", func() {
 			actual, err := getCredentialsConfigFromSecret(secret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(&CredentialsConfig{
-				Raw:              data,
-				Type:             "external_account",
-				TokenFilePath:    "/var/run/secrets/gardener.cloud/workload-identity/token",
-				Audience:         "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
-				UniverseDomain:   "googleapis.com",
-				SubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
-				TokenURL:         "https://sts.googleapis.com/v1/token",
+				Raw:                            data,
+				Type:                           "external_account",
+				TokenFilePath:                  "/var/run/secrets/gardener.cloud/workload-identity/token",
+				Audience:                       "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
+				UniverseDomain:                 "googleapis.com",
+				SubjectTokenType:               "urn:ietf:params:oauth:token-type:jwt",
+				TokenURL:                       "https://sts.googleapis.com/v1/token",
+				ServiceAccountImpersonationURL: "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/SERVICE_ACCOUNT_EMAIL:generateAccessToken",
 			}))
 		})
 	})
