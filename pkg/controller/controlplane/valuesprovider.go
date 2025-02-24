@@ -291,6 +291,11 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, fmt.Errorf("failed deleting legacy csi-driver-controller-observability-config ConfigMap: %w", err)
 	}
 
+	// TODO(AndreasBurger): rm in future release.
+	if err := cleanupSeedLegacyCSISnapshotValidation(ctx, vp.client, cp.Namespace); err != nil {
+		return nil, err
+	}
+
 	// TODO(rfranzke): Delete this after August 2024.
 	gep19Monitoring := vp.client.Get(ctx, k8sclient.ObjectKey{Name: "prometheus-shoot", Namespace: cp.Namespace}, &appsv1.StatefulSet{}) == nil
 	if gep19Monitoring {
@@ -556,4 +561,27 @@ func (vp *valuesProvider) isOverlayEnabled(network *v1beta1.Networking) (bool, e
 		return overlay["enabled"].(bool), nil
 	}
 	return true, nil
+}
+
+func cleanupSeedLegacyCSISnapshotValidation(
+	ctx context.Context,
+	client k8sclient.Client,
+	namespace string,
+) error {
+	if err := kutil.DeleteObject(
+		ctx,
+		client,
+		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: gcp.CSISnapshotValidationName, Namespace: namespace}},
+	); err != nil {
+		return fmt.Errorf("failed to delete legacy csi snapshot validation deployment: %w", err)
+	}
+	if err := kutil.DeleteObject(
+		ctx,
+		client,
+		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: gcp.CSISnapshotValidationName, Namespace: namespace}},
+	); err != nil {
+		return fmt.Errorf("failed to delete legacy csi snapshot validation service: %w", err)
+	}
+
+	return nil
 }
