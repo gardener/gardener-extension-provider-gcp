@@ -86,6 +86,10 @@ const (
 
 	// WorkloadIdentityMountPath is the path where the workload identity token and GCP config file are usually mounted.
 	WorkloadIdentityMountPath = "/var/run/secrets/gardener.cloud/workload-identity"
+
+	// CSISnapshotValidationName is the constant for the name of the csi-snapshot-validation-webhook component.
+	// TODO(AndreasBurger): Clean up once SnapshotValidation is removed everywhere
+	CSISnapshotValidationName = "csi-snapshot-validation"
 )
 
 var (
