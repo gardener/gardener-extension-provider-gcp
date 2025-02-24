@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	healthcheckconfig "github.com/gardener/gardener/extensions/pkg/apis/config"
+	apisconfigv1alpha1 "github.com/gardener/gardener/extensions/pkg/apis/config/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck/general"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck/worker"
@@ -31,9 +31,9 @@ var (
 	defaultSyncPeriod = time.Second * 30
 	// DefaultAddOptions are the default DefaultAddArgs for AddToManager.
 	DefaultAddOptions = healthcheck.DefaultAddArgs{
-		HealthCheckConfig: healthcheckconfig.HealthCheckConfig{
+		HealthCheckConfig: apisconfigv1alpha1.HealthCheckConfig{
 			SyncPeriod: metav1.Duration{Duration: defaultSyncPeriod},
-			ShootRESTOptions: &healthcheckconfig.RESTOptions{
+			ShootRESTOptions: &apisconfigv1alpha1.RESTOptions{
 				QPS:   ptr.To[float32](100),
 				Burst: ptr.To(130),
 			},
@@ -42,9 +42,8 @@ var (
 )
 
 // RegisterHealthChecks registers health checks for each extension resource
-func RegisterHealthChecks(ctx context.Context, mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
+func RegisterHealthChecks(_ context.Context, mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
 	if err := healthcheck.DefaultRegistration(
-		ctx,
 		gcp.Type,
 		extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.ControlPlaneResource),
 		func() client.ObjectList { return &extensionsv1alpha1.ControlPlaneList{} },
@@ -72,7 +71,6 @@ func RegisterHealthChecks(ctx context.Context, mgr manager.Manager, opts healthc
 	}
 
 	return healthcheck.DefaultRegistration(
-		ctx,
 		gcp.Type,
 		extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.WorkerResource),
 		func() client.ObjectList { return &extensionsv1alpha1.WorkerList{} },
