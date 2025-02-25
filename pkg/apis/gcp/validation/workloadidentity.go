@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"maps"
 	"net/url"
-	"slices"
 	"strings"
 
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
@@ -20,21 +19,23 @@ import (
 )
 
 const (
-	keyUniverseDomain   = "universe_domain"
-	keyAudience         = "audience"
-	keyType             = "type"
-	keyTokenURL         = "token_url"
-	keySubjectTokenType = "subject_token_type"
+	keyAudience                       = "audience"
+	keyServiceAccountImpersonationURL = "service_account_impersonation_url"
+	keySubjectTokenType               = "subject_token_type"
+	keyTokenURL                       = "token_url"
+	keyType                           = "type"
+	keyUniverseDomain                 = "universe_domain"
 )
 
 var (
-	usedCredentialsConfigFields = map[string]struct{}{
-		keyUniverseDomain:   {},
-		keyType:             {},
-		keyAudience:         {},
-		keySubjectTokenType: {},
-		keyTokenURL:         {},
+	requiredConfigFields = []string{ // Sorted alphabetically
+		keyAudience,
+		keySubjectTokenType,
+		keyTokenURL,
+		keyType,
+		keyUniverseDomain,
 	}
+	allowedFields = append(requiredConfigFields, keyServiceAccountImpersonationURL)
 )
 
 // ValidateWorkloadIdentityConfig checks whether the given workload identity configuration contains expected fields and values.
@@ -57,16 +58,14 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 		delete(cfg, "credential_source")
 
 		cloned := maps.Clone(cfg)
-		for f := range usedCredentialsConfigFields {
+		for _, f := range allowedFields {
 			delete(cloned, f)
 		}
 		if len(cloned) != 0 {
-			requiredFields := slices.Collect(maps.Keys(usedCredentialsConfigFields))
-			slices.Sort(requiredFields)
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig"), "contains extra fields, required fields are: "+strings.Join(requiredFields, ", ")))
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig"), "contains extra fields, allowed fields are: "+strings.Join(allowedFields, ", ")))
 		}
 
-		for f := range usedCredentialsConfigFields {
+		for _, f := range requiredConfigFields {
 			if _, ok := cfg[f]; !ok {
 				allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig"), fmt.Sprintf("missing required field: %q", f)))
 			}
@@ -80,18 +79,45 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keySubjectTokenType), cfg[keySubjectTokenType], fmt.Sprintf("should equal %q", "urn:ietf:params:oauth:token-type:jwt")))
 		}
 
-		retrievedURL := cfg[keyTokenURL]
-		rawURL, ok := retrievedURL.(string)
+		retrievedTokenURL := cfg[keyTokenURL]
+		rawTokenURL, ok := retrievedTokenURL.(string)
 		if !ok {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be string"))
 		}
-		tokenURL, err := url.Parse(rawURL)
+		tokenURL, err := url.Parse(rawTokenURL)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be a valid URL"))
 		}
 
 		if tokenURL.Scheme != "https" {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should start with https://"))
+		}
+
+		if retrievedURL, ok := cfg[keyServiceAccountImpersonationURL]; ok {
+			rawURL, ok := retrievedURL.(string)
+			if !ok {
+				allErrs = append(allErrs, field.Invalid(
+					fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
+					cfg[keyServiceAccountImpersonationURL],
+					"should be string"),
+				)
+			}
+			serviceAccountImpersonationURL, err := url.Parse(rawURL)
+			if err != nil {
+				allErrs = append(allErrs, field.Invalid(
+					fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
+					cfg[keyServiceAccountImpersonationURL],
+					"should be a valid URL"),
+				)
+			}
+
+			if serviceAccountImpersonationURL.Scheme != "https" {
+				allErrs = append(allErrs, field.Invalid(
+					fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
+					cfg[keyServiceAccountImpersonationURL],
+					"should start with https://"),
+				)
+			}
 		}
 	}
 

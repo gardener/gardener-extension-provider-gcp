@@ -64,8 +64,20 @@ Now that the Workload Identity Federation is configured the user should download
 
 ![Attribute Mapping](images/attribute_mapping.png)
 
-As a second step a resource of type `WorkloadIdentity` should be created in the Garden cluster and configured with the information from the already downloaded credential configuration file.
-This identity will be used by infrastructure components to authenticate against GCP APIs.
+Users should now create a Service Account that is going to be impersonated by the federated identity.
+Make sure to [enable the Google Identity and Access Management (IAM) API](https://cloud.google.com/service-usage/docs/enable-disable).
+[Create a Service Account](https://cloud.google.com/iam/docs/creating-managing-service-accounts) that shall be used for the Shoot cluster.
+[Grant at least the following IAM roles](https://cloud.google.com/iam/docs/granting-changing-revoking-access) to the Service Account.
+- Service Account Token Creator
+- Service Account User
+- Compute Admin
+
+As a next step a resource of type `WorkloadIdentity` should be created in the Garden cluster and configured with the information from the already downloaded credential configuration file.
+This identity will be used to impersonate the Service Account in order to call GCP APIs.
+
+Mind that the `service_account_impersonation_url` is probably not present in the downloaded credential configuration file.
+You can use the example template or download a new credential configuration file once we grant the permission to the federated identity to impersonate the Service Account.
+
 A sample of such resource is shown below:
 
 ```yaml
@@ -90,22 +102,21 @@ spec:
         type: "external_account"
         audience: "//iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_name>/providers/<provider_name>"
         subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
+        service_account_impersonation_url: "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/<service_account_email>:generateAccessToken"
         token_url: "https://sts.googleapis.com/v1/token"
 ```
 
-Now users should give permissions to the `WorkloadIdentity` to perform operations in the GCP project.
-In order to construct the principal that will require to be given permissions retrieve the subject of the created `WorkloadIdentity`.
+Now users should give permissions to the `WorkloadIdentity` to impersonate the Service Account.
+In order to construct the principal that will be used for impersonation retrieve the subject of the created `WorkloadIdentity`.
 ```bash
 SUBJECT=$(kubectl -n garden-myproj get workloadidentity gcp -o=jsonpath='{.status.sub}')
 echo "principal://iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_name>/subject/$SUBJECT"
 ```
 The principal template is also shown in the Google Console Workload Identity Pool UI.
 
-This principal should be [granted with the following IAM roles.](https://cloud.google.com/iam/docs/granting-changing-revoking-access)
-- Service Account Admin
-- Service Account Token Creator
-- Service Account User
-- Compute Admin
+Users should give this principal the Role `Workload Identity User` so that it can impersonate the Service Account.
+One can do this through the Service Account `Permissions` tab, through the Google Console Workload Identity Pool UI or by using the [gcloud cli](https://cloud.google.com/iam/docs/workload-identity-federation-with-kubernetes#use-service-account-impersonation).
+
 
 As a final step create a `CredentialsBinding` referencing the GCP `WorkloadIdentity` and use it in your `Shoot` definitions.
 
@@ -123,6 +134,15 @@ credentialsRef:
 provider:
   type: gcp
 ```
+
+> [!WARNING]
+> One can omit the creation of Service Account and directly grant access to the federated identity's principal, skipping the Service Account impersonation.
+> This although recommended, will not always work because federated identities do not fall under the [`allAuthenticatedUsers`](https://cloud.google.com/iam/docs/principals-overview#all-authenticated-users) category and cannot access machine images that are not made available to [`allUsers`](https://cloud.google.com/iam/docs/principals-overview#all-users).
+> This means that machine images should be made available to `allUsers` or permissions should be explicitly given to the federated identity in order for this to work.
+>
+> GCP imposes some restrictions on which images can be accessible to `allUsers`. 
+> As of now, [Gardenlinux](https://github.com/gardenlinux/gardenlinux) images are not published in a way that they can be accessed by `allUsers`.
+> See the following issue for more details https://github.com/gardenlinux/glci/issues/148.
 
 ## `InfrastructureConfig`
 
