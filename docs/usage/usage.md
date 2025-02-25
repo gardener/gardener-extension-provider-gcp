@@ -68,7 +68,6 @@ Users should now create a Service Account that is going to be impersonated by th
 Make sure to [enable the Google Identity and Access Management (IAM) API](https://cloud.google.com/service-usage/docs/enable-disable).
 [Create a Service Account](https://cloud.google.com/iam/docs/creating-managing-service-accounts) that shall be used for the Shoot cluster.
 [Grant at least the following IAM roles](https://cloud.google.com/iam/docs/granting-changing-revoking-access) to the Service Account.
-- Service Account Admin
 - Service Account Token Creator
 - Service Account User
 - Compute Admin
