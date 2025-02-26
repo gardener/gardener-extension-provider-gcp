@@ -308,6 +308,9 @@ func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, worker
 	})
 	for _, volume := range volumes {
 		additionalData = append(additionalData, volume.Name, volume.Size)
+		if volume.Type != nil {
+			additionalData = append(additionalData, *volume.Type)
+		}
 		if encrypted := volume.Encrypted; encrypted != nil && *encrypted {
 			additionalData = append(additionalData, strconv.FormatBool(*encrypted))
 		}
