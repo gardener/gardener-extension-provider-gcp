@@ -232,7 +232,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 				},
 			}
 
-			if nw := w.cluster.Shoot.Spec.Networking; nw != nil && !gardencorev1beta1.IsIPv4SingleStack(nw.IPFamilies) {
+			if !gardencorev1beta1.IsIPv4SingleStack(infrastructureStatus.Networks.IPFamilies) {
 				machineClassSpec["networkInterfaces"] = []map[string]interface{}{
 					{
 						"subnetwork":          nodesSubnet.Name,

@@ -703,6 +703,20 @@ var _ = Describe("Machines", func() {
 
 			It("should succeed with dual-stack cluster", func() {
 				cluster.Shoot.Spec.Networking.IPFamilies = []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4, gardencorev1beta1.IPFamilyIPv6}
+				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
+					Raw: encode(&api.InfrastructureStatus{
+						ServiceAccountEmail: serviceAccountEmail,
+						Networks: api.NetworkStatus{
+							Subnets: []api.Subnet{
+								{
+									Name:    subnetName,
+									Purpose: api.PurposeNodes,
+								},
+							},
+							IPFamilies: []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4, gardencorev1beta1.IPFamilyIPv6},
+						},
+					}),
+				}
 				wd, err := NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 				Expect(err).NotTo(HaveOccurred())
 				expectedUserDataSecretRefRead()
