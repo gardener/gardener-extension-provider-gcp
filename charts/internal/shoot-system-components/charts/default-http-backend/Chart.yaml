@@ -1,0 +1,4 @@
+apiVersion: v1
+description: Helm chart for default-http-backend
+name: default-http-backend
+version: 0.1.0

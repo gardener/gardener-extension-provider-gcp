@@ -17,6 +17,7 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	extensionsv1alpha1helper "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1/helper"
@@ -32,6 +33,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapihelper "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
@@ -93,6 +95,10 @@ func (w *WorkerDelegate) GenerateMachineDeployments(ctx context.Context) (worker
 		}
 	}
 	return w.machineDeployments, nil
+}
+
+func formatNodeCIDRMask(val *int32, defaultVal int) string {
+	return fmt.Sprintf("/%d", ptr.Deref(val, int32(defaultVal))) // #nosec: G115 -- netmask is limited in size
 }
 
 func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
@@ -183,6 +189,12 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		for zoneIndex, zone := range pool.Zones {
 			zoneIdx := int32(zoneIndex) // #nosec: G115 - We check if pool zones exceeds max_int32.
+			ipCidrRange := formatNodeCIDRMask(nil, 24)
+
+			if kcc := w.cluster.Shoot.Spec.Kubernetes.KubeControllerManager; kcc != nil {
+				ipCidrRange = formatNodeCIDRMask(kcc.NodeCIDRMaskSize, 24)
+			}
+
 			machineClassSpec := map[string]interface{}{
 				"region":             w.worker.Spec.Region,
 				"zone":               zone,
@@ -218,6 +230,19 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 					fmt.Sprintf("kubernetes-io-cluster-%s", w.worker.Namespace),
 					"kubernetes-io-role-node",
 				},
+			}
+
+			if !gardencorev1beta1.IsIPv4SingleStack(infrastructureStatus.Networks.IPFamilies) {
+				machineClassSpec["networkInterfaces"] = []map[string]interface{}{
+					{
+						"subnetwork":          nodesSubnet.Name,
+						"disableExternalIP":   true,
+						"stackType":           w.getStackType(),
+						"ipv6accessType":      "EXTERNAL",
+						"ipCidrRange":         ipCidrRange,
+						"subnetworkRangeName": infraflow.DefaultSecondarySubnetName,
+					},
+				}
 			}
 
 			var (
@@ -316,11 +341,11 @@ func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, worker
 		}
 	}
 
-	worker_volumes := slices.Clone(workerConfig.DataVolumes)
-	slices.SortFunc(worker_volumes, func(i, j apisgcp.DataVolume) int {
+	workerVolumes := slices.Clone(workerConfig.DataVolumes)
+	slices.SortFunc(workerVolumes, func(i, j apisgcp.DataVolume) int {
 		return strings.Compare(i.Name, j.Name)
 	})
-	for _, volume := range worker_volumes {
+	for _, volume := range workerVolumes {
 		additionalData = append(additionalData, volume.Name)
 		if sourceImage := volume.SourceImage; sourceImage != nil {
 			additionalData = append(additionalData, *sourceImage)
@@ -362,6 +387,10 @@ func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, worker
 		if localSSDInterface := volume.LocalSSDInterface; localSSDInterface != nil {
 			additionalData = append(additionalData, *localSSDInterface)
 		}
+	}
+
+	if nw := w.cluster.Shoot.Spec.Networking; nw != nil && !gardencorev1beta1.IsIPv4SingleStack(nw.IPFamilies) {
+		additionalData = append(additionalData, "dualstack=enabled")
 	}
 
 	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalData)
@@ -427,7 +456,7 @@ func addDiskEncryptionDetails(disk map[string]interface{}, encryption *apisgcp.D
 	if encryption == nil {
 		return
 	}
-	var encryptionMap = make(map[string]interface{})
+	encryptionMap := make(map[string]interface{})
 	if encryption.KmsKeyName != nil {
 		encryptionMap["kmsKeyName"] = *encryption.KmsKeyName
 	}

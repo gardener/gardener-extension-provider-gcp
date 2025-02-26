@@ -16,6 +16,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/chart"
@@ -92,6 +93,7 @@ var (
 		Path:       filepath.Join(charts.InternalChartsPath, "cloud-provider-config"),
 		Objects: []*chart.Object{
 			{Type: &corev1.ConfigMap{}, Name: internal.CloudProviderConfigName},
+			{Type: &corev1.ConfigMap{}, Name: internal.CloudProviderConfigIngressGCEName},
 		},
 	}
 
@@ -131,6 +133,17 @@ var (
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotControllerName},
 					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: gcp.CSISnapshotControllerName + "-vpa"},
+				},
+			},
+			{
+				Name: gcp.IngressGCEName,
+				Images: []string{
+					gcp.IngressGCEImageName,
+				},
+				Objects: []*chart.Object{
+					{Type: &appsv1.Deployment{}, Name: gcp.IngressGCEName},
+					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: gcp.IngressGCEName + "-vpa"},
+					{Type: &corev1.ServiceAccount{}, Name: "glbc"},
 				},
 			},
 		},
@@ -191,6 +204,21 @@ var (
 					{Type: &rbacv1.RoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
 				},
 			},
+			{
+				Name: "default-http-backend",
+				Images: []string{
+					gcp.DefaultHTTPBackendImageName,
+				},
+				Objects: []*chart.Object{
+					{Type: &appsv1.Deployment{}, Name: "l7-default-backend"},
+					{Type: &corev1.Service{}, Name: "default-http-backend"},
+					{Type: &corev1.ServiceAccount{}, Name: "glbc"},
+					{Type: &rbacv1.Role{}, Name: "system:controller:glbc"},
+					{Type: &rbacv1.RoleBinding{}, Name: "system:controller:glbc"},
+					{Type: &rbacv1.ClusterRole{}, Name: "system:controller:glbc"},
+					{Type: &rbacv1.ClusterRoleBinding{}, Name: "system:controller:glbc"},
+				},
+			},
 		},
 	}
 
@@ -205,6 +233,13 @@ var (
 					{Type: &apiextensionsv1.CustomResourceDefinition{}, Name: "volumesnapshotclasses.snapshot.storage.k8s.io"},
 					{Type: &apiextensionsv1.CustomResourceDefinition{}, Name: "volumesnapshotcontents.snapshot.storage.k8s.io"},
 					{Type: &apiextensionsv1.CustomResourceDefinition{}, Name: "volumesnapshots.snapshot.storage.k8s.io"},
+				},
+			},
+			{
+				Name: "gkenetworkingapi",
+				Objects: []*chart.Object{
+					{Type: &apiextensionsv1.CustomResourceDefinition{}, Name: "networks.networking.gke.io"},
+					{Type: &apiextensionsv1.CustomResourceDefinition{}, Name: "gkenetworkparamsets.networking.gke.io"},
 				},
 			},
 		},
@@ -324,6 +359,9 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 			"enabled":           true,
 			"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 		},
+		"default-http-backend": map[string]interface{}{
+			"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
+		},
 	}, nil
 }
 
@@ -335,15 +373,16 @@ func getConfigChartValues(
 	credentialsConfig *gcp.CredentialsConfig,
 ) (map[string]interface{}, error) {
 	// Determine network names
-	networkName, subNetworkName := getNetworkNames(infraStatus, cp)
+	networkName, subNetworkName, subNetworkNameNodes := getNetworkNames(infraStatus, cp)
 
 	// Collect config chart values
 	return map[string]interface{}{
-		"projectID":      credentialsConfig.ProjectID,
-		"networkName":    networkName,
-		"subNetworkName": subNetworkName,
-		"zone":           cpConfig.Zone,
-		"nodeTags":       cp.Namespace,
+		"projectID":           credentialsConfig.ProjectID,
+		"networkName":         networkName,
+		"subNetworkName":      subNetworkName,
+		"subNetworkNameNodes": subNetworkNameNodes,
+		"zone":                cpConfig.Zone,
+		"nodeTags":            cp.Namespace,
 	}, nil
 }
 
@@ -381,7 +420,19 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 		},
 		gcp.CloudControllerManagerName: ccm,
 		gcp.CSIControllerName:          csi,
+		gcp.IngressGCEName: map[string]interface{}{
+			"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking),
+			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
+		},
 	}, nil
+}
+
+func isDualstackEnabled(networking *gardencorev1beta1.Networking) bool {
+	if networking != nil {
+		return !gardencorev1beta1.IsIPv4SingleStack(networking.IPFamilies)
+	}
+
+	return false
 }
 
 // getCCMChartValues collects and returns the CCM chart values.
@@ -406,6 +457,8 @@ func (vp *valuesProvider) getCCMChartValues(
 		"clusterName":       cp.Namespace,
 		"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 		"podNetwork":        strings.Join(extensionscontroller.GetPodNetwork(cluster), ","),
+		"allocatorType":     "RangeAllocator",
+		"serviceNetwork":    strings.Join(extensionscontroller.GetServiceNetwork(cluster), ","),
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
 			"checksum/configmap-" + internal.CloudProviderConfigName:      checksums[internal.CloudProviderConfigName],
@@ -425,11 +478,16 @@ func (vp *valuesProvider) getCCMChartValues(
 		values["featureGates"] = cpConfig.CloudControllerManager.FeatureGates
 	}
 
-	ok, err := vp.isOverlayEnabled(cluster.Shoot.Spec.Networking)
+	overlayEnabled, err := vp.isOverlayEnabled(cluster.Shoot.Spec.Networking)
 	if err != nil {
 		return nil, err
 	}
-	values["configureCloudRoutes"] = !ok
+	values["configureCloudRoutes"] = !overlayEnabled
+
+	if isDualstackEnabled(cluster.Shoot.Spec.Networking) {
+		values["configureCloudRoutes"] = false
+		values["allocatorType"] = "CloudAllocator"
+	}
 
 	if cluster.Shoot.Spec.Kubernetes.KubeControllerManager != nil && cluster.Shoot.Spec.Kubernetes.KubeControllerManager.NodeCIDRMaskSize != nil {
 		if len(cluster.Shoot.Spec.Networking.IPFamilies) == 1 && cluster.Shoot.Spec.Networking.IPFamilies[0] == v1beta1.IPFamilyIPv4 {
@@ -525,22 +583,26 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 func getNetworkNames(
 	infraStatus *apisgcp.InfrastructureStatus,
 	cp *extensionsv1alpha1.ControlPlane,
-) (string, string) {
+) (string, string, string) {
 	networkName := infraStatus.Networks.VPC.Name
 	if networkName == "" {
 		networkName = cp.Namespace
 	}
 
-	subNetworkName := ""
+	subNetworkName, subNetworkNameNodes := "", ""
 	subnet, _ := apihelper.FindSubnetForPurpose(infraStatus.Networks.Subnets, apisgcp.PurposeInternal)
 	if subnet != nil {
 		subNetworkName = subnet.Name
 	}
+	subnet, _ = apihelper.FindSubnetForPurpose(infraStatus.Networks.Subnets, apisgcp.PurposeNodes)
+	if subnet != nil {
+		subNetworkNameNodes = subnet.Name
+	}
 
-	return networkName, subNetworkName
+	return networkName, subNetworkName, subNetworkNameNodes
 }
 
-func (vp *valuesProvider) isOverlayEnabled(network *v1beta1.Networking) (bool, error) {
+func (vp *valuesProvider) isOverlayEnabled(network *gardencorev1beta1.Networking) (bool, error) {
 	if network == nil || network.ProviderConfig == nil {
 		return true, nil
 	}
