@@ -48,7 +48,7 @@ When provisioning a DualStack cluster, the GCP provider creates distinct subnets
 
 ### 2. **Service Subnet**
 
-- This subnet is dedicated to IPv6 services. it is created due to GCP's limitation of not supporting IPv6 reservation for services.
+- This subnet is dedicated to IPv6 services. It is created due to GCP's limitation of not supporting IPv6 reservation for services.
 
 ---
 
@@ -92,16 +92,11 @@ To create a DualStack cluster, rely on the `spec.networking.ipFamilies` field to
 apiVersion: core.gardener.cloud/v1beta1
 kind: Shoot
 metadata:
-  annotations:
-    provider.extensions.gardener.cloud/use-flow: "true"
-    confirmation.gardener.cloud/deletion: "true"
-  name: gcp-shoot-1
+ annotations:
+   provider.extensions.gardener.cloud/use-flow: "true"
+  ...
 spec:
-  cloudProfileName: gcp
-  region: europe-north1
-  secretBindingName: infra-credentials
-  kubernetes:
-    version: 1.31.2
+  ...
   provider:
     type: gcp
     infrastructureConfig:
@@ -109,44 +104,14 @@ spec:
       kind: InfrastructureConfig
       networks:
         workers: 10.250.0.0/16
-    controlPlaneConfig:
-      apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
-      kind: ControlPlaneConfig
-      zone: europe-north1-a
-    workers:
-    - name: worker-med
-      machine:
-        type: n1-standard-4
-      minimum: 2
-      maximum: 2
-      zones:
-        - europe-north1-a
-        - europe-north1-b
-      volume:
-        size: 50Gi
-        type: pd-standard
+  ...
   networking:
+    type: ...
     ipFamilies:
     - IPv4
     - IPv6
-    type: calico
-    services: 10.253.0.0/16
     nodes: 10.250.0.0/16
-    pods: 10.255.0.0/16
-    providerConfig:
-      apiVersion: calico.networking.extensions.gardener.cloud/v1alpha1
-      kind: NetworkConfig
-      overlay:
-        enabled: false
-  maintenance:
-    autoUpdate:
-      kubernetesVersion: true
-      machineImageVersion: true
-  addons:
-    kubernetesDashboard:
-      enabled: true
-    nginxIngress:
-      enabled: true
+  ...
 ```
 
 ### Explanation
@@ -155,36 +120,15 @@ spec:
 
 ---
 
-## Migrating a SingleStack Cluster to DualStack
+## Migration of IPv4-only Shoot Clusters to Dual-Stack
 
-To migrate an existing IPv4-only shoot cluster to DualStack, follow these steps:
+Eventually, migration should be as easy as changing the `.spec.networking.ipFamilies` field in the `Shoot` resource from `IPv4` to `IPv4, IPv6`.
+However, as of now, this is not supported.
 
-1. **Ensure InfraFlow was Used**:
-   - The existing IPv4 cluster must have been created using the InfraFlow Controller. Migration is not supported for clusters created with the Terraform reconciler.
-
-2. **Edit the Shoot Specification**:
-   - Update the `spec.networking.ipFamilies` field to include both `IPv4` and `IPv6`.
-   - Add the annotation `gardener.cloud/operation: "maintain"` to the shoot object to trigger reconciliation across the necessary controllers.
-
-3. **Wait for Reconciliation**:
-   - The shoot cluster must be fully reconciled before the migration is complete. Ensure that the cluster is 100% reconciled before proceeding.
-
-4. **Migration Process**:
-   - The migration process involves the following steps:
-     - Scale down the GCP Cloud Controller Manager (CCM).
-     - Clean up existing routes.
-     - Update the subnets:
-       - Add secondary ranges.
-       - Change stack type and IPv6 access type.
-     - Add the service subnet for IPv6.
-     - **Update and add IPv6 firewall rules** after creating the subnets.
-     - Deploy the Ingress-GCE component.
-     - Update managed resources in the control plane (e.g., CCM, kube-apiserver, kube-controller-manager).
-     - Generate new machine classes and machine deployments.
-     - Roll out the worker nodes and create new machines with both IPv4 and IPv6 interfaces.
-
-5. **Verify the Migration**:
-   - Once the migration is complete, verify that all resources, including pods, services, and worker nodes, are correctly configured with DualStack support.
+It is worth recognizing that the migration from an IPv4-only shoot cluster to a dual-stack shoot cluster involves rolling of the nodes/workload as well.
+Nodes will not get a new IPv6 address assigned automatically.
+The same is true for pods as well.
+Once the migration is supported, the detailed caveats will be documented here.
 
 ---
 
@@ -203,6 +147,7 @@ cloud.google.com/l4-rbs: enabled
 - For internal IPv4 LoadBalancers, you can use:
   - `"networking.gke.io/load-balancer-type=Internal"`
   - `"cloud.google.com/load-balancer-type=internal"` (deprecated).
+  They are created by cloud-controller-manger and get an an IPv4 address from the internal subnet.
 
 ### Example Configuration
 Here is an example of a DualStack LoadBalancer service configuration:
@@ -249,8 +194,7 @@ spec:
 - The annotation `provider.extensions.gardener.cloud/use-flow: "true"` is mandatory for enabling DualStack.
 - Dedicated subnets for nodes and services are created to manage IPv4 and IPv6 ranges.
 - Components like **Ingress-GCE** and the **Cloud Allocator** ensure proper functionality and Load Balancer creation.
-- Migrating a SingleStack cluster to DualStack requires editing the shoot specification and waiting for complete reconciliation.
-- Existing IPv4 clusters must have been created with InfraFlow to be eligible for migration.
+- Existing IPv4 clusters must have been created with InfraFlow or been migrated to it to be eligible for dual-stack migration once available.
 
 DualStack support in Gardener GCP extension represents a significant advancement in networking capabilities, catering to modern cloud-native requirements.
 
