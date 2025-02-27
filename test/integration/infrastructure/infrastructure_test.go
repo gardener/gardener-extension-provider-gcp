@@ -322,13 +322,12 @@ var _ = Describe("Infrastructure tests", func() {
 	})
 
 	Context("with dualstack enabled", func() {
-
 		AfterEach(func() {
 			framework.RunCleanupActions()
 		})
 
 		It("should create VPC and subnets with dualstack enabled", func() {
-			if *reconciler == reconcilerUseTF {
+			if *reconciler != reconcilerUseFlow {
 				Skip("dualstack support is not implemented for terraform")
 			}
 			providerConfig := newProviderConfig(nil, nil)
@@ -343,7 +342,7 @@ var _ = Describe("Infrastructure tests", func() {
 		})
 
 		It("dualstack enabled with infrastructure that uses existing vpc", func() {
-			if *reconciler == reconcilerUseTF {
+			if *reconciler != reconcilerUseFlow {
 				Skip("dualstack support is not implemented for terraform")
 			}
 			namespace, providerConfig := newProviderConfigForExistingVPC()
