@@ -416,7 +416,7 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
 
 	cidrs := []*string{
-		fctx.podCIDR,
+		fctx.networking.Pods,
 		fctx.config.Networks.Internal,
 		ptr.To(fctx.config.Networks.Workers),
 		ptr.To(fctx.config.Networks.Worker),

@@ -339,7 +339,6 @@ var _ = Describe("Infrastructure tests", func() {
 			err = runTest(ctx, c, namespace, providerConfig, project, computeService, iamService, true)
 			Expect(err).NotTo(HaveOccurred())
 
-			verifyDualStackSetup(ctx, project, computeService, namespace)
 		})
 
 		It("dualstack enabled with infrastructure that uses existing vpc", func() {
@@ -349,7 +348,6 @@ var _ = Describe("Infrastructure tests", func() {
 			namespace, providerConfig := newProviderConfigForExistingVPC()
 			err := runTest(ctx, c, namespace, providerConfig, project, computeService, iamService, true)
 			Expect(err).NotTo(HaveOccurred())
-			verifyDualStackSetup(ctx, project, computeService, namespace)
 		})
 	})
 })
@@ -535,11 +533,11 @@ func runTest(
 func verifyDualStackSetup(ctx context.Context, project string, computeService *computev1.Service, namespace string) {
 	subnetNodes, err := computeService.Subnetworks.Get(project, *region, namespace+"-nodes").Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
-	Expect(subnetNodes.Ipv6CidrRange).ToNot(BeEmpty(), "Expected IPv6 CIDR to be set for nodes subnet")
+	Expect(subnetNodes.ExternalIpv6Prefix).ToNot(BeEmpty(), "Expected IPv6 CIDR to be set for nodes subnet")
 
 	subnetServices, err := computeService.Subnetworks.Get(project, *region, namespace+"-services").Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
-	Expect(subnetServices.Ipv6CidrRange).ToNot(BeEmpty(), "Expected IPv6 CIDR to be set for services subnet")
+	Expect(subnetServices.ExternalIpv6Prefix).ToNot(BeEmpty(), "Expected IPv6 CIDR to be set for services subnet")
 
 	fwRules, err := computeService.Firewalls.List(project).Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
@@ -797,25 +795,12 @@ func verifyCreation(
 	Expect(subnetNodes.LogConfig.FlowSampling).To(Equal(float64(0.2)))
 	Expect(subnetNodes.LogConfig.Metadata).To(Equal("INCLUDE_ALL_METADATA"))
 
-	if dualStack {
-		// Ensure dual-stack subnets are created
-		Expect(err).NotTo(HaveOccurred())
-		Expect(subnetNodes.Ipv6CidrRange).To(Not(BeEmpty()), "Expected IPv6 CIDR range for dualstack setup")
-	}
-
 	subnetInternal, err := computeService.Subnetworks.Get(project, *region, infra.Namespace+"-internal").Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(subnetInternal.Network).To(Equal(network.SelfLink))
 	Expect(subnetInternal.IpCidrRange).To(Equal(internalSubnetCIDR))
 
-	if dualStack {
-		// Ensure dual-stack subnets are created
-		Expect(err).NotTo(HaveOccurred())
-		Expect(subnetInternal.Ipv6CidrRange).To(Not(BeEmpty()), "Expected IPv6 CIDR range for dualstack setup")
-	}
-
 	// router
-
 	router, err := computeService.Routers.Get(project, *region, infra.Namespace+"-cloud-router").Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(router.Network).To(Equal(network.SelfLink))
@@ -910,6 +895,9 @@ func verifyCreation(
 			Ports:      []string{"30000-32767"},
 		},
 	}))
+	if dualStack {
+		verifyDualStackSetup(ctx, project, computeService, infra.Namespace)
+	}
 }
 
 func verifyDeletion(

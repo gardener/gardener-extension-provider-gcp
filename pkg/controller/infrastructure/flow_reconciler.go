@@ -82,7 +82,6 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		CredentialsConfig: credentialsConfig,
 		Factory:           gcpclient.New(),
 		Client:            f.client,
-		Networking:        cluster.Shoot.Spec.Networking,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create flow context: %v", err)
@@ -111,7 +110,6 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 		Factory:           gc,
 		Client:            f.client,
 		State:             infraState,
-		Networking:        cluster.Shoot.Spec.Networking,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create flow context: %v", err)

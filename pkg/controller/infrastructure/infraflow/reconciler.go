@@ -75,7 +75,6 @@ type FlowContext struct {
 	runtimeClient     client.Client
 	networking        *v1beta1.Networking
 	whiteboard        shared.Whiteboard
-	podCIDR           *string
 	log               logr.Logger
 
 	computeClient gcpclient.ComputeClient
@@ -88,10 +87,9 @@ type Opts struct {
 	// Log is the logger using during the reconciliation.
 	Log logr.Logger
 	// Infra
-	Infra      *extensionsv1alpha1.Infrastructure
-	State      *gcp.InfrastructureState
-	Cluster    *controller.Cluster
-	Networking *v1beta1.Networking
+	Infra   *extensionsv1alpha1.Infrastructure
+	State   *gcp.InfrastructureState
+	Cluster *controller.Cluster
 
 	CredentialsConfig *gcpinternal.CredentialsConfig
 	Factory           gcpclient.Factory
@@ -125,10 +123,9 @@ func NewFlowContext(ctx context.Context, opts Opts) (*FlowContext, error) {
 		updater:           DefaultUpdaterFunc(opts.Log, com),
 		clusterName:       opts.Cluster.ObjectMeta.Name,
 		runtimeClient:     opts.Client,
-		podCIDR:           opts.Cluster.Shoot.Spec.Networking.Pods,
 		technicalID:       opts.Cluster.Shoot.Status.TechnicalID,
 		log:               opts.Log,
-		networking:        opts.Networking,
+		networking:        opts.Cluster.Shoot.Spec.Networking,
 		computeClient:     com,
 		iamClient:         iam,
 	}
