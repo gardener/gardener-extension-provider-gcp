@@ -62,6 +62,7 @@ const (
 	workersSubnetCIDR  = "10.250.0.0/19"
 	internalSubnetCIDR = "10.250.112.0/22"
 	podCIDR            = "100.96.0.0/11"
+	subnetCIDR         = "100.128.0.0/11"
 
 	reconcilerUseTF     string = "tf"
 	reconcilerMigrateTF string = "migrate"
@@ -424,6 +425,7 @@ func runTest(
 		Spec: gardencorev1beta1.ShootSpec{
 			Networking: &gardencorev1beta1.Networking{
 				Pods:       ptr.To(podCIDR),
+				Services:   ptr.To(subnetCIDR),
 				IPFamilies: ipFamilies,
 			},
 		},
