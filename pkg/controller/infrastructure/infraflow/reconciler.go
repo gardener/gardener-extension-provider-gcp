@@ -147,7 +147,7 @@ func (fctx *FlowContext) Reconcile(ctx context.Context) error {
 	if err != nil {
 		err = flow.Causes(err)
 		fctx.log.Error(err, "flow reconciliation failed")
-		return errors.Join(flow.Causes(err), fctx.persistState(ctx))
+		return errors.Join(err, fctx.persistState(ctx))
 	}
 
 	status := fctx.getStatus()

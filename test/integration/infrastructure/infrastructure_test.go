@@ -780,10 +780,14 @@ func verifyCreation(
 	network, err := computeService.Networks.Get(project, infra.Namespace).Do()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(network.AutoCreateSubnetworks).To(BeFalse())
-	Expect(network.Subnetworks).To(HaveLen(2))
+	if dualStack {
+		// dual stack shoots also have the services subnet.
+		Expect(network.Subnetworks).To(HaveLen(3))
+	} else {
+		Expect(network.Subnetworks).To(HaveLen(2))
+	}
 
 	// subnets
-
 	subnetNodes, err := computeService.Subnetworks.Get(project, *region, infra.Namespace+"-nodes").Context(ctx).Do()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(subnetNodes.Network).To(Equal(network.SelfLink))
