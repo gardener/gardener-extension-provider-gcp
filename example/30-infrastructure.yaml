@@ -55,6 +55,8 @@ spec:
     #   name: my-vpc
     #   cloudRouter:
     #     name: my-cloudrouter
+      dualStack: 
+        enabled: true
       workers: 10.242.0.0/19
     # internal: 10.243.0.0/19
     # cloudNAT:

@@ -1357,6 +1357,17 @@ VPC
 <p>NatIPs is a list of all user provided external premium ips which can be used by the nat gateway</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>ipfamilies</code></br>
+<em>
+[]github.com/gardener/gardener/pkg/apis/core/v1beta1.IPFamily
+</em>
+</td>
+<td>
+<p>IPFamilies is the list of the used ip families.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.ServiceAccount">ServiceAccount

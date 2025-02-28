@@ -17,7 +17,7 @@ import (
 
 var _ = Describe("Shoot validation", func() {
 	Describe("#ValidateNetworking", func() {
-		var networkingPath = field.NewPath("spec", "networking")
+		networkingPath := field.NewPath("spec", "networking")
 
 		It("should return no error because nodes CIDR was provided", func() {
 			networking := &core.Networking{
@@ -40,6 +40,20 @@ var _ = Describe("Shoot validation", func() {
 					"Field": Equal("spec.networking.nodes"),
 				})),
 			))
+		})
+
+		It("should pass dual-stack", func() {
+			networking := &core.Networking{
+				Nodes: ptr.To("1.2.3.4/5"),
+				IPFamilies: []core.IPFamily{
+					core.IPFamilyIPv4,
+					core.IPFamilyIPv6,
+				},
+			}
+
+			errorList := ValidateNetworking(networking, networkingPath)
+
+			Expect(errorList).To(BeEmpty())
 		})
 	})
 	Describe("#ValidateWorkers", func() {

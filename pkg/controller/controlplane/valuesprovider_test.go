@@ -90,6 +90,10 @@ var _ = Describe("ValuesProvider", func() {
 									Name:    "subnet-acbd1234",
 									Purpose: apisgcp.PurposeInternal,
 								},
+								{
+									Name:    "subnet-nodes1234",
+									Purpose: apisgcp.PurposeNodes,
+								},
 							},
 						},
 					}),
@@ -157,7 +161,11 @@ var _ = Describe("ValuesProvider", func() {
 						},
 					},
 					Networking: &gardencorev1beta1.Networking{
-						Pods: &cidr,
+						IPFamilies: []gardencorev1beta1.IPFamily{
+							gardencorev1beta1.IPFamilyIPv4,
+						},
+						Pods:     &cidr,
+						Services: &cidr,
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
 						Version: "1.28.2",
@@ -178,20 +186,22 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetConfigChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"projectID":      projectID,
-				"networkName":    "vpc-1234",
-				"subNetworkName": "subnet-acbd1234",
-				"zone":           zone,
-				"nodeTags":       namespace,
+				"projectID":           projectID,
+				"networkName":         "vpc-1234",
+				"subNetworkName":      "subnet-acbd1234",
+				"subNetworkNameNodes": "subnet-nodes1234",
+				"zone":                zone,
+				"nodeTags":            namespace,
 			}))
 		})
 	})
 
 	Describe("#GetControlPlaneChartValues", func() {
 		ccmChartValues := utils.MergeMaps(enabledTrue, map[string]interface{}{
-			"replicas":    1,
-			"clusterName": namespace,
-			"podNetwork":  cidr,
+			"replicas":       1,
+			"clusterName":    namespace,
+			"podNetwork":     cidr,
+			"serviceNetwork": cidr,
 			"podAnnotations": map[string]interface{}{
 				"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
 				"checksum/configmap-" + internal.CloudProviderConfigName:      "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
@@ -242,6 +252,7 @@ var _ = Describe("ValuesProvider", func() {
 				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
 					"gep19Monitoring":     false,
+					"allocatorType":       "RangeAllocator",
 					"useWorkloadIdentity": false,
 				}),
 				gcp.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
@@ -256,6 +267,10 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					"useWorkloadIdentity": false,
 				}),
+				gcp.IngressGCEName: map[string]interface{}{
+					"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking),
+					"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, false, 1),
+				},
 			}))
 		})
 
@@ -271,6 +286,7 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values[gcp.CloudControllerManagerName]).To(Equal(utils.MergeMaps(ccmChartValues, map[string]interface{}{
 				"kubernetesVersion":    cluster.Shoot.Spec.Kubernetes.Version,
 				"configureCloudRoutes": true,
+				"allocatorType":        "RangeAllocator",
 				"gep19Monitoring":      false,
 				"useWorkloadIdentity":  false,
 			})))
@@ -290,6 +306,7 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values[gcp.CloudControllerManagerName]).To(Equal(utils.MergeMaps(ccmChartValues, map[string]interface{}{
 				"kubernetesVersion":    cluster.Shoot.Spec.Kubernetes.Version,
 				"nodeCIDRMaskSizeIPv4": int32(22),
+				"allocatorType":        "RangeAllocator",
 				"gep19Monitoring":      false,
 				"useWorkloadIdentity":  false,
 			})))
@@ -350,7 +367,11 @@ var _ = Describe("ValuesProvider", func() {
 				gcp.CloudControllerManagerName: enabledTrue,
 				gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"kubernetesVersion": "1.28.2",
+					"enabled":           true,
 				}),
+				"default-http-backend": map[string]interface{}{
+					"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
+				},
 			}))
 		})
 	})

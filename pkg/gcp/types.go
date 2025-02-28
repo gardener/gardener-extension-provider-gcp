@@ -14,6 +14,10 @@ const (
 
 	// CloudControllerManagerImageName is the name of the cloud-controller-manager image.
 	CloudControllerManagerImageName = "cloud-controller-manager"
+	// IngressGCEImageName is the name of the ingress-gce image.
+	IngressGCEImageName = "ingress-gce"
+	// DefaultHTTPBackendImageName is the name of the default-http-backend image.
+	DefaultHTTPBackendImageName = "default-http-backend"
 	// CSIDriverImageName is the name of the csi-driver image.
 	CSIDriverImageName = "csi-driver"
 	// CSIProvisionerImageName is the name of the csi-provisioner image.
@@ -47,6 +51,8 @@ const (
 
 	// CloudControllerManagerName is a constant for the name of the CloudController deployed by the worker controller.
 	CloudControllerManagerName = "cloud-controller-manager"
+	// IngressGCEName is a constant for the name of the ingress-gce deployment in the seed.
+	IngressGCEName = "ingress-gce"
 	// CSIControllerName is a constant for the name of the CSI controller deployment in the seed.
 	CSIControllerName = "csi-driver-controller"
 	// CSIControllerConfigName is a constant for the name of the CSI controller config in the seed.
@@ -92,7 +98,5 @@ const (
 	CSISnapshotValidationName = "csi-snapshot-validation"
 )
 
-var (
-	// UsernamePrefix is a constant for the username prefix of components deployed by GCP.
-	UsernamePrefix = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
-)
+// UsernamePrefix is a constant for the username prefix of components deployed by GCP.
+var UsernamePrefix = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"

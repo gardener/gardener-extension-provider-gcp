@@ -244,6 +244,7 @@ var _ = Describe("Machines", func() {
 							Kubernetes: gardencorev1beta1.Kubernetes{
 								Version: shootVersion,
 							},
+							Networking: &gardencorev1beta1.Networking{IPFamilies: []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4}},
 						},
 					},
 				}
@@ -681,6 +682,58 @@ var _ = Describe("Machines", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(result).To(Equal(machineDeployments))
 				})
+			})
+
+			It("should succeed with ipv4 cluster", func() {
+				cluster.Shoot.Spec.Networking.IPFamilies = []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4}
+				wd, err := NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
+				Expect(err).NotTo(HaveOccurred())
+				expectedUserDataSecretRefRead()
+				_, err = wd.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				workerDelegate := wd.(*WorkerDelegate)
+				mClasses := workerDelegate.GetMachineClasses()
+				for _, mClz := range mClasses {
+					Expect(mClz["networkInterfaces"]).To(Equal([]map[string]interface{}{{
+						"subnetwork":        subnetName,
+						"disableExternalIP": true,
+					}}))
+				}
+			})
+
+			It("should succeed with dual-stack cluster", func() {
+				cluster.Shoot.Spec.Networking.IPFamilies = []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4, gardencorev1beta1.IPFamilyIPv6}
+				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
+					Raw: encode(&api.InfrastructureStatus{
+						ServiceAccountEmail: serviceAccountEmail,
+						Networks: api.NetworkStatus{
+							Subnets: []api.Subnet{
+								{
+									Name:    subnetName,
+									Purpose: api.PurposeNodes,
+								},
+							},
+							IPFamilies: []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4, gardencorev1beta1.IPFamilyIPv6},
+						},
+					}),
+				}
+				wd, err := NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
+				Expect(err).NotTo(HaveOccurred())
+				expectedUserDataSecretRefRead()
+				_, err = wd.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				workerDelegate := wd.(*WorkerDelegate)
+				mClasses := workerDelegate.GetMachineClasses()
+				for _, mClz := range mClasses {
+					Expect(mClz["networkInterfaces"]).To(Equal([]map[string]interface{}{{
+						"subnetwork":          subnetName,
+						"disableExternalIP":   true,
+						"stackType":           "IPV4_IPV6",
+						"ipv6accessType":      "EXTERNAL",
+						"ipCidrRange":         "/24",
+						"subnetworkRangeName": "ipv4-pod-cidr",
+					}}))
+				}
 			})
 
 			It("should fail because the version is invalid", func() {
