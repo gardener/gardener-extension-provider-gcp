@@ -259,15 +259,16 @@ images:
       integrity_requirement: 'high'
       availability_requirement: 'low'
 - name: default-http-backend
-  sourceRepository: github.com/kubernetes/ingress-gce
+  sourceRepository: github.com/gardener/ingress-default-backend
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/ingress-default-backend
-  tag: "0.20.0"
+  tag: "0.22.0"
   labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'end-user'
-      confidentiality_requirement: 'low'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
+    - name: 'gardener.cloud/cve-categorisation'
+      value:
+        network_exposure: 'private'
+        authentication_enforced: false
+        user_interaction: 'end-user'
+        confidentiality_requirement: 'none'
+        integrity_requirement: 'none'
+        availability_requirement: 'none'
+        comment: Show static page when no path is found
