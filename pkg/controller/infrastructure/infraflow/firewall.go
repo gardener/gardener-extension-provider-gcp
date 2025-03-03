@@ -17,6 +17,7 @@ func FirewallRuleAllowInternalNameIPv6(base string) string {
 }
 
 // FirewallRuleAllowExternalName generate the name for firewall rule to allow external access
+// TODO: remove in future release
 func FirewallRuleAllowExternalName(base string) string {
 	return fmt.Sprintf("%s-allow-external-access", base)
 }

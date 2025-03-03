@@ -10,6 +10,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	ctclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -554,10 +555,9 @@ func (fctx *FlowContext) ensureFirewallRulesDeleted(ctx context.Context) error {
 						return true
 					}
 				}
-			} else if strings.HasPrefix(f.Name, fctx.clusterName) {
+			} else if sets.New(FirewallRuleAllowInternalName(fctx.clusterName), FirewallRuleAllowHealthChecksName(fctx.clusterName)).Has(f.Name) {
 				return true
 			}
-
 			return false
 		},
 	})
