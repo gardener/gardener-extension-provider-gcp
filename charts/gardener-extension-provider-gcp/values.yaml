@@ -84,15 +84,15 @@ gardener:
   version: ""
   gardenlet:
     featureGates: {}
-  seed:
-    provider: gcp
-    spec:
-      settings:
-        topologyAwareRouting:
-          enabled: true
-  runtimeCluster:
-    enabled: false
-  # priorityClassName: gardener-garden-system-200
+# seed:
+#   provider: gcp
+#   spec:
+#     settings:
+#       topologyAwareRouting:
+#         enabled: true
+# runtimeCluster:
+#   enabled: false
+#   priorityClassName: gardener-garden-system-200
 
 usablePorts:
 - 8080  # metrics
