@@ -555,7 +555,12 @@ func (fctx *FlowContext) ensureFirewallRulesDeleted(ctx context.Context) error {
 						return true
 					}
 				}
-			} else if sets.New(FirewallRuleAllowInternalName(fctx.clusterName), FirewallRuleAllowHealthChecksName(fctx.clusterName)).Has(f.Name) {
+			} else if sets.New(
+				FirewallRuleAllowInternalName(fctx.clusterName),
+				FirewallRuleAllowInternalNameIPv6(fctx.clusterName),
+				FirewallRuleAllowHealthChecksNameIPv6(fctx.clusterName),
+				FirewallRuleAllowHealthChecksName(fctx.clusterName),
+			).Has(f.Name) {
 				return true
 			}
 			return false
