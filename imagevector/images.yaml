@@ -259,7 +259,7 @@ images:
       integrity_requirement: 'high'
       availability_requirement: 'low'
 - name: default-http-backend
-  sourceRepository: https://github.com/kubernetes/ingress-gce
+  sourceRepository: github.com/kubernetes/ingress-gce
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/ingress-default-backend
   tag: "0.20.0"
   labels:
