@@ -389,10 +389,6 @@ func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, worker
 		}
 	}
 
-	if nw := w.cluster.Shoot.Spec.Networking; nw != nil && !gardencorev1beta1.IsIPv4SingleStack(nw.IPFamilies) {
-		additionalData = append(additionalData, "dualstack=enabled")
-	}
-
 	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalData)
 }
 
