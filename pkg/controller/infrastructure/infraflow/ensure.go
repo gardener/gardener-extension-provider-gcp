@@ -560,6 +560,7 @@ func (fctx *FlowContext) ensureFirewallRulesDeleted(ctx context.Context) error {
 				FirewallRuleAllowInternalNameIPv6(fctx.clusterName),
 				FirewallRuleAllowHealthChecksNameIPv6(fctx.clusterName),
 				FirewallRuleAllowHealthChecksName(fctx.clusterName),
+				FirewallRuleAllowExternalName(fctx.clusterName),
 			).Has(f.Name) {
 				return true
 			}
