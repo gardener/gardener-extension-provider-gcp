@@ -87,6 +87,11 @@ func (u *updater) Subnet(ctx context.Context, region string, desired, current *c
 		}
 	}
 
+	// Ensure LogConfig is set correctly based on EnableFlowLogs
+	if !desired.EnableFlowLogs {
+		desired.LogConfig = nil
+	}
+
 	// Only one field at a time can be modified in the request
 	// so we queue updates
 	conditions := []struct {
@@ -119,10 +124,9 @@ func (u *updater) Subnet(ctx context.Context, region string, desired, current *c
 			condition: desired.LogConfig != current.LogConfig,
 			subnet: func() *compute.Subnetwork {
 				sn := &compute.Subnetwork{
-					LogConfig:       current.LogConfig,
-					ForceSendFields: []string{"LogConfig"},
+					LogConfig: desired.LogConfig,
 				}
-				if current.LogConfig == nil {
+				if desired.LogConfig == nil {
 					sn.NullFields = []string{"LogConfig"}
 				}
 
