@@ -42,6 +42,7 @@ spec:
         {{- end }}
         args:
         {{- if semverCompare ">= 1.31" .Values.kubernetesVersion }}
+          - --service-cluster-ip-range={{ .Values.serviceNetwork }}
         {{- if .Values.nodeCIDRMaskSizeIPv4 }}
         - --node-cidr-mask-size-ipv4={{ .Values.nodeCIDRMaskSizeIPv4 }}
         {{- end}}
@@ -50,7 +51,6 @@ spec:
         - --cloud-provider=gce
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
         - --cluster-cidr={{ .Values.podNetwork }}
-        - --service-cluster-ip-range={{ .Values.serviceNetwork }}
         - --cluster-name={{ .Values.clusterName }}
         - --cidr-allocator-type={{ .Values.allocatorType }}
         - --concurrent-service-syncs=10
