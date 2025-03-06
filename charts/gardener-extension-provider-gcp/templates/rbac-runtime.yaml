@@ -32,7 +32,6 @@ rules:
   - patch
   - update
   - delete
-  - deletecollection
 - apiGroups:
   - coordination.k8s.io
   resources:
