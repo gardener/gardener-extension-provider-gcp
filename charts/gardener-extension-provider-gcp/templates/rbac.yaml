@@ -43,7 +43,6 @@ rules:
   - patch
   - update
   - delete
-  - deletecollection
 - apiGroups:
   - coordination.k8s.io
   resources:
@@ -132,7 +131,6 @@ rules:
   - patch
   - update
   - delete
-  - deletecollection
 - apiGroups:
   - policy
   resources:
