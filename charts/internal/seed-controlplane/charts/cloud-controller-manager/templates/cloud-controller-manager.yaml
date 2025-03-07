@@ -42,7 +42,7 @@ spec:
         {{- end }}
         args:
         {{- if semverCompare ">= 1.31" .Values.kubernetesVersion }}
-          - --service-cluster-ip-range={{ .Values.serviceNetwork }}
+        - --service-cluster-ip-range={{ .Values.serviceNetwork }}
         {{- if .Values.nodeCIDRMaskSizeIPv4 }}
         - --node-cidr-mask-size-ipv4={{ .Values.nodeCIDRMaskSizeIPv4 }}
         {{- end}}
