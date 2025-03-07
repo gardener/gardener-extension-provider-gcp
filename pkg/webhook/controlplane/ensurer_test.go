@@ -682,10 +682,13 @@ func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, k8sVersion str
 		Expect(c.Command).To(ContainElement("--allocate-node-cidrs=false"))
 	case k8sVersionAtLeast128:
 		Expect(c.Command).To(ContainElement("--feature-gates=InTreePluginGCEUnregister=true"))
+		Expect(c.Command).To(ContainElement("--allocate-node-cidrs=true"))
 	case k8sVersionAtLeast127:
 		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigrationGCE=true,InTreePluginGCEUnregister=true"))
+		Expect(c.Command).To(ContainElement("--allocate-node-cidrs=true"))
 	default: // < 1.27
 		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationGCE=true,InTreePluginGCEUnregister=true"))
+		Expect(c.Command).To(ContainElement("--allocate-node-cidrs=true"))
 	}
 
 	Expect(c.Command).To(ContainElement("--cloud-provider=external"))
