@@ -5,6 +5,9 @@
 package validator
 
 import (
+	"regexp"
+	"slices"
+
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/security"
@@ -15,8 +18,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/config"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
+
+var (
+	// DefaultAddOptions are the default AddOptions for configuring the validator.
+	DefaultAddOptions = AddOptions{}
+)
+
+// AddOptions are options to apply when adding the GCP admission webhook to the manager.
+type AddOptions struct {
+	// WorkloadIdentity is the workload identity validation configuration.
+	WorkloadIdentity config.WorkloadIdentity
+}
 
 const (
 	// Name is a name for a validation webhook.
@@ -31,6 +46,21 @@ var logger = log.Log.WithName("gcp-validator-webhook")
 func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	logger.Info("Setting up webhook", "name", Name)
 
+	var (
+		allowedTokenURLs                             = slices.Clone(DefaultAddOptions.WorkloadIdentity.AllowedTokenURLs)
+		allowedServiceAccountImpersonationURLRegExps = make([]*regexp.Regexp, 0, len(DefaultAddOptions.WorkloadIdentity.AllowedServiceAccountImpersonationURLRegExps))
+	)
+
+	for _, regExp := range DefaultAddOptions.WorkloadIdentity.AllowedServiceAccountImpersonationURLRegExps {
+		compiled, err := regexp.Compile(regExp)
+		if err != nil {
+			return nil, err
+		}
+		allowedServiceAccountImpersonationURLRegExps = append(allowedServiceAccountImpersonationURLRegExps, compiled)
+	}
+
+	logger.Info("Initializing workload identity validator config", "allowed_token_urls", allowedTokenURLs, "allowed_service_account_impersonation_url_regexps", allowedServiceAccountImpersonationURLRegExps)
+
 	return extensionswebhook.New(mgr, extensionswebhook.Args{
 		Provider: gcp.Type,
 		Name:     Name,
@@ -40,9 +70,17 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 			NewCloudProfileValidator(mgr):           {{Obj: &core.CloudProfile{}}},
 			NewNamespacedCloudProfileValidator(mgr): {{Obj: &core.NamespacedCloudProfile{}}},
 			NewSecretBindingValidator(mgr):          {{Obj: &core.SecretBinding{}}},
-			NewCredentialsBindingValidator(mgr):     {{Obj: &security.CredentialsBinding{}}},
-			NewSeedValidator(mgr):                   {{Obj: &core.Seed{}}},
-			NewWorkloadIdentityValidator(serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder()): {{Obj: &securityv1alpha1.WorkloadIdentity{}}},
+			NewCredentialsBindingValidator(
+				mgr,
+				allowedTokenURLs,
+				allowedServiceAccountImpersonationURLRegExps,
+			): {{Obj: &security.CredentialsBinding{}}},
+			NewSeedValidator(mgr): {{Obj: &core.Seed{}}},
+			NewWorkloadIdentityValidator(
+				serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
+				allowedTokenURLs,
+				allowedServiceAccountImpersonationURLRegExps,
+			): {{Obj: &securityv1alpha1.WorkloadIdentity{}}},
 		},
 		Target: extensionswebhook.TargetSeed,
 		ObjectSelector: &metav1.LabelSelector{

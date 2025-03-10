@@ -103,7 +103,7 @@ var _ = Describe("SecretBinding validator", func() {
 				})
 
 			err := secretBindingValidator.Validate(ctx, secretBinding, nil)
-			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: could not get service account from \"serviceaccount.json\" field: failed to unmarshal json object: unexpected end of JSON input"))
+			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: failed to unmarshal 'serviceaccount.json' field: unexpected end of JSON input"))
 		})
 
 		It("should return nil when the corresponding Secret is valid", func() {

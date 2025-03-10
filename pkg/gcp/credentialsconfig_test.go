@@ -52,15 +52,26 @@ var _ = Describe("Service Account", func() {
 		})
 
 		It("should error if the project ID is empty", func() {
-			_, err := GetCredentialsConfigFromJSON([]byte(`{"project_id": ""`))
+			_, err := GetCredentialsConfigFromJSON([]byte(`{"type": "service_account","project_id": ""}`))
 
 			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("no project id specified"))
 		})
 
 		It("should error on malformed json", func() {
 			_, err := GetCredentialsConfigFromJSON([]byte(`{"project_id": ""`))
 
 			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unexpected end of JSON input"))
+		})
+	})
+
+	Describe("#ExtractCredentialType", func() {
+		It("should correctly extract the credential type", func() {
+			sa, err := GetCredentialsConfigFromJSON([]byte(`{"type": "service_account","project_id": "foobar"}`))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sa.Type).To(Equal("service_account"))
+			Expect(sa.ProjectID).To(Equal("foobar"))
 		})
 	})
 

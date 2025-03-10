@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/security"
@@ -24,15 +25,19 @@ import (
 )
 
 type credentialsBinding struct {
-	apiReader client.Reader
-	decoder   runtime.Decoder
+	apiReader                                    client.Reader
+	decoder                                      runtime.Decoder
+	allowedTokenURLs                             []string
+	allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp
 }
 
 // NewCredentialsBindingValidator returns a new instance of a credentials binding validator.
-func NewCredentialsBindingValidator(mgr manager.Manager) extensionswebhook.Validator {
+func NewCredentialsBindingValidator(mgr manager.Manager, allowedTokenURLs []string, allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp) extensionswebhook.Validator {
 	return &credentialsBinding{
-		apiReader: mgr.GetAPIReader(),
-		decoder:   serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
+		apiReader:        mgr.GetAPIReader(),
+		decoder:          serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
+		allowedTokenURLs: allowedTokenURLs,
+		allowedServiceAccountImpersonationURLRegExps: allowedServiceAccountImpersonationURLRegExps,
 	}
 }
 
@@ -83,7 +88,7 @@ func (cb *credentialsBinding) Validate(ctx context.Context, newObj, oldObj clien
 		}
 
 		fieldPath := field.NewPath("spec", "targetSystem", "providerConfig")
-		if errList := gcpvalidation.ValidateWorkloadIdentityConfig(config, fieldPath); len(errList) > 0 {
+		if errList := gcpvalidation.ValidateWorkloadIdentityConfig(config, fieldPath, cb.allowedTokenURLs, cb.allowedServiceAccountImpersonationURLRegExps); len(errList) > 0 {
 			return fmt.Errorf("referenced workload identity %s is not valid: %w", credentialsKey, errList.ToAggregate())
 		}
 		return nil

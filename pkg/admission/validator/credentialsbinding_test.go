@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -64,7 +65,11 @@ var _ = Describe("CredentialsBinding validator", func() {
 
 			mgr.EXPECT().GetScheme().Return(scheme)
 
-			credentialsBindingValidator = validator.NewCredentialsBindingValidator(mgr)
+			credentialsBindingValidator = validator.NewCredentialsBindingValidator(
+				mgr,
+				[]string{"https://sts.googleapis.com/v1/token", "https://sts.googleapis.com/v1/token/new"},
+				[]*regexp.Regexp{regexp.MustCompile(`^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$`)},
+			)
 
 			credentialsBindingSecret = &security.CredentialsBinding{
 				CredentialsRef: corev1.ObjectReference{
@@ -136,7 +141,7 @@ var _ = Describe("CredentialsBinding validator", func() {
 				})
 
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingSecret, nil)
-			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: could not get service account from \"serviceaccount.json\" field: failed to unmarshal json object: unexpected end of JSON input"))
+			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: failed to unmarshal 'serviceaccount.json' field: unexpected end of JSON input"))
 		})
 
 		It("should succeed when the corresponding Secret is valid", func() {
@@ -176,7 +181,7 @@ credentialsConfig:
   type: "external_account"
   audience: "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
   subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
-  token_url: "https://gardener.cloud/new-url"
+  token_url: "https://sts.googleapis.com/v1/token/new"
 `),
 								},
 							},
@@ -249,7 +254,6 @@ apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
 kind: WorkloadIdentityConfig
 projectID: "foo-"
 credentialsConfig:
-  extra: "field"
   type: "not_external_account"
   audience: "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
   subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
@@ -269,6 +273,38 @@ credentialsConfig:
 
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingWorkloadIdentity, nil)
 			Expect(err.Error()).To(ContainSubstring("referenced workload identity garden-dev/my-provider-account is not valid"))
+		})
+
+		It("should succeed when the corresponding WorkloadIdentity is valid", func() {
+			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&securityv1alpha1.WorkloadIdentity{})).
+				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *securityv1alpha1.WorkloadIdentity, _ ...client.GetOption) error {
+					workloadIdentity := &securityv1alpha1.WorkloadIdentity{
+						Spec: securityv1alpha1.WorkloadIdentitySpec{
+							Audiences: []string{"foo"},
+							TargetSystem: securityv1alpha1.TargetSystem{
+								Type: "gcp",
+								ProviderConfig: &runtime.RawExtension{
+									Raw: []byte(`
+apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+kind: WorkloadIdentityConfig
+projectID: "foo-valid"
+credentialsConfig:
+  universe_domain: "googleapis.com"
+  type: "external_account"
+  audience: "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
+  subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
+  token_url: "https://sts.googleapis.com/v1/token/forbidden"
+`),
+								},
+							},
+						},
+					}
+					*obj = *workloadIdentity
+					return nil
+				})
+
+			err := credentialsBindingValidator.Validate(ctx, credentialsBindingWorkloadIdentity, nil)
+			Expect(err.Error()).To(ContainSubstring(`spec.targetSystem.providerConfig.credentialsConfig.token_url: Invalid value: "https://sts.googleapis.com/v1/token/forbidden": should be one of the allowed URLs: https://sts.googleapis.com/v1/token, https://sts.googleapis.com/v1/token/new`))
 		})
 	})
 })

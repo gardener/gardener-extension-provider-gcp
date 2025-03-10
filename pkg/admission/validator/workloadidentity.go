@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
@@ -20,13 +21,17 @@ import (
 )
 
 type workloadIdentity struct {
-	decoder runtime.Decoder
+	decoder                                      runtime.Decoder
+	allowedTokenURLs                             []string
+	allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp
 }
 
 // NewWorkloadIdentityValidator returns a new instance of a WorkloadIdentity validator.
-func NewWorkloadIdentityValidator(decoder runtime.Decoder) extensionswebhook.Validator {
+func NewWorkloadIdentityValidator(decoder runtime.Decoder, allowedTokenURLs []string, allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp) extensionswebhook.Validator {
 	return &workloadIdentity{
-		decoder: decoder,
+		decoder:          decoder,
+		allowedTokenURLs: allowedTokenURLs,
+		allowedServiceAccountImpersonationURLRegExps: allowedServiceAccountImpersonationURLRegExps,
 	}
 }
 
@@ -57,14 +62,14 @@ func (wi *workloadIdentity) Validate(_ context.Context, newObj, oldObj client.Ob
 		if err != nil {
 			return fmt.Errorf("cannot decode the old target system's configuration: %w", err)
 		}
-		errList := gcpvalidation.ValidateWorkloadIdentityConfigUpdate(oldConfig, newConfig, fieldPath)
+		errList := gcpvalidation.ValidateWorkloadIdentityConfigUpdate(oldConfig, newConfig, fieldPath, wi.allowedTokenURLs, wi.allowedServiceAccountImpersonationURLRegExps)
 		if len(errList) > 0 {
 			return fmt.Errorf("validation of target system's configuration failed: %w", errList.ToAggregate())
 		}
 		return nil
 	}
 
-	errList := gcpvalidation.ValidateWorkloadIdentityConfig(newConfig, fieldPath)
+	errList := gcpvalidation.ValidateWorkloadIdentityConfig(newConfig, fieldPath, wi.allowedTokenURLs, wi.allowedServiceAccountImpersonationURLRegExps)
 	if len(errList) > 0 {
 		return fmt.Errorf("validation of target system's configuration failed: %w", errList.ToAggregate())
 	}

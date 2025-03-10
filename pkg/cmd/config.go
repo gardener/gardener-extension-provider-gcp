@@ -71,6 +71,11 @@ func (c *Config) ApplyETCDBackup(etcdBackup *config.ETCDBackup) {
 	*etcdBackup = c.Config.ETCD.Backup
 }
 
+// ApplyWorkloadIdentity sets the given workload identity configuration to that of this Config.
+func (c *Config) ApplyWorkloadIdentity(workloadIdentity *config.WorkloadIdentity) {
+	*workloadIdentity = c.Config.WorkloadIdentity
+}
+
 // Options initializes empty config.ControllerConfiguration, applies the set values and returns it.
 func (c *Config) Options() config.ControllerConfiguration {
 	var cfg config.ControllerConfiguration

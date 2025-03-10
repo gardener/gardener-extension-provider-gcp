@@ -59,6 +59,16 @@ spec:
         {{- end }}
         - --health-bind-address=:{{ .Values.healthPort }}
         - --leader-election-id={{ include "leaderelectionid" . }}
+        {{- if .Values.workloadIdentity.allowedTokenURLs }}
+        {{- range .Values.workloadIdentity.allowedTokenURLs }}
+        - --wi-allowed-token-url={{ . }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.workloadIdentity.allowedServiceAccountImpersonationURLRegExps }}
+        {{- range .Values.workloadIdentity.allowedServiceAccountImpersonationURLRegExps }}
+        - --wi-allowed-service-account-impersonation-url-regexp={{ . }}
+        {{- end }}
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
         livenessProbe:

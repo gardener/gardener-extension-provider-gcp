@@ -37,3 +37,9 @@ gardener:
 #     namespace: garden
   runtimeCluster: {}
 #   priorityClassName: gardener-garden-system-400
+
+workloadIdentity:
+  allowedTokenURLs: []
+    # - https://sts.googleapis.com/v1/token
+  allowedServiceAccountImpersonationURLRegExps: []
+    # - ^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$

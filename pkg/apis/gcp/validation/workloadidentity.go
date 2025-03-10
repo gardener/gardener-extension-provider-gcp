@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"maps"
 	"net/url"
+	"regexp"
+	"slices"
 	"strings"
 
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
@@ -28,18 +30,18 @@ const (
 )
 
 var (
-	requiredConfigFields = []string{ // Sorted alphabetically
+	workloadIdentityRequiredConfigFields = []string{ // Sorted alphabetically
 		keyAudience,
 		keySubjectTokenType,
 		keyTokenURL,
 		keyType,
 		keyUniverseDomain,
 	}
-	allowedFields = append(requiredConfigFields, keyServiceAccountImpersonationURL)
+	workloadIdentityAllowedFields = append(workloadIdentityRequiredConfigFields, keyServiceAccountImpersonationURL)
 )
 
 // ValidateWorkloadIdentityConfig checks whether the given workload identity configuration contains expected fields and values.
-func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
+func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldPath *field.Path, allowedTokenURLs []string, allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if !projectIDRegexp.MatchString(config.ProjectID) {
@@ -54,18 +56,15 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 	if err := json.Unmarshal(config.CredentialsConfig.Raw, &cfg); err != nil {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig"), config.CredentialsConfig.Raw, "has invalid format"))
 	} else {
-		// we do not care about this field since it will be overwritten anyways
-		delete(cfg, "credential_source")
-
 		cloned := maps.Clone(cfg)
-		for _, f := range allowedFields {
+		for _, f := range workloadIdentityAllowedFields {
 			delete(cloned, f)
 		}
 		if len(cloned) != 0 {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig"), "contains extra fields, allowed fields are: "+strings.Join(allowedFields, ", ")))
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig"), "contains extra fields, allowed fields are: "+strings.Join(workloadIdentityAllowedFields, ", ")))
 		}
 
-		for _, f := range requiredConfigFields {
+		for _, f := range workloadIdentityRequiredConfigFields {
 			if _, ok := cfg[f]; !ok {
 				allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig"), fmt.Sprintf("missing required field: %q", f)))
 			}
@@ -84,6 +83,11 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 		if !ok {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be string"))
 		}
+
+		if !slices.Contains(allowedTokenURLs, rawTokenURL) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be one of the allowed URLs: "+strings.Join(allowedTokenURLs, ", ")))
+		}
+
 		tokenURL, err := url.Parse(rawTokenURL)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be a valid URL"))
@@ -102,11 +106,28 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 					"should be string"),
 				)
 			}
+
+			allowed := slices.ContainsFunc(allowedServiceAccountImpersonationURLRegExps, func(allowedRegexp *regexp.Regexp) bool {
+				return allowedRegexp.MatchString(rawURL)
+			})
+
+			if !allowed {
+				regexpStrings := []string{}
+				for _, r := range allowedServiceAccountImpersonationURLRegExps {
+					regexpStrings = append(regexpStrings, r.String())
+				}
+				allErrs = append(allErrs, field.Invalid(
+					fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
+					rawURL,
+					"should match one of the allowed regular expressions: "+strings.Join(regexpStrings, ", ")),
+				)
+			}
+
 			serviceAccountImpersonationURL, err := url.Parse(rawURL)
 			if err != nil {
 				allErrs = append(allErrs, field.Invalid(
 					fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
-					cfg[keyServiceAccountImpersonationURL],
+					rawURL,
 					"should be a valid URL"),
 				)
 			}
@@ -114,7 +135,7 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 			if serviceAccountImpersonationURL.Scheme != "https" {
 				allErrs = append(allErrs, field.Invalid(
 					fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
-					cfg[keyServiceAccountImpersonationURL],
+					rawURL,
 					"should start with https://"),
 				)
 			}
@@ -125,10 +146,10 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 }
 
 // ValidateWorkloadIdentityConfigUpdate validates updates on WorkloadIdentityConfig object.
-func ValidateWorkloadIdentityConfigUpdate(oldConfig, newConfig *apisgcp.WorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
+func ValidateWorkloadIdentityConfigUpdate(oldConfig, newConfig *apisgcp.WorkloadIdentityConfig, fldPath *field.Path, allowedTokenURLs []string, allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.ProjectID, oldConfig.ProjectID, fldPath.Child("projectID"))...)
-	allErrs = append(allErrs, ValidateWorkloadIdentityConfig(newConfig, fldPath)...)
+	allErrs = append(allErrs, ValidateWorkloadIdentityConfig(newConfig, fldPath, allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)...)
 
 	return allErrs
 }

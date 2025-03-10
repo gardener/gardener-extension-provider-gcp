@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	admissioncmd "github.com/gardener/gardener-extension-provider-gcp/pkg/admission/cmd"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/validator"
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	providergcp "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
@@ -66,9 +67,12 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 			webhookSwitches,
 		)
 
+		admissionOpts = &admissioncmd.ConfigOptions{}
+
 		aggOption = controllercmd.NewOptionAggregator(
 			restOpts,
 			mgrOpts,
+			admissionOpts,
 			webhookOptions,
 		)
 	)
@@ -94,6 +98,9 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 			}, restOpts.Completed().Config)
 
 			managerOptions := mgrOpts.Completed().Options()
+
+			admissionConfig := admissionOpts.Completed()
+			admissionConfig.ApplyWorkloadIdentity(&validator.DefaultAddOptions.WorkloadIdentity)
 
 			// Operators can enable the source cluster option via SOURCE_CLUSTER environment variable.
 			// In-cluster config will be used if no SOURCE_KUBECONFIG is specified.
