@@ -307,7 +307,13 @@ func PatchProviderStatusAndState(
 		if nodesSubnetIPv6CIDR != nil {
 			infra.Status.Networking.Nodes = append(infra.Status.Networking.Nodes, *nodesSubnetIPv6CIDR)
 			infra.Status.Networking.Pods = append(infra.Status.Networking.Pods, *nodesSubnetIPv6CIDR)
-			infra.Status.EgressCIDRs = append(infra.Status.EgressCIDRs, *nodesSubnetIPv6CIDR)
+			// Only add the IPv6 egress CIDR if we already have static IPv4 egress CIDRs.
+			// While the IPv6 egress CIDR is always known for dual-stack clusters the IPv4 NAT IPs may be dynamic.
+			// We try to be consistent and avoid the case where the IPv6 egress CIDR is present but the IPv4 NAT IPs are not.
+			// Therefore, we do not add the IPv6 egress CIDR if the IPv4 NAT IPs are not present.
+			if len(infra.Status.EgressCIDRs) > 0 {
+				infra.Status.EgressCIDRs = append(infra.Status.EgressCIDRs, *nodesSubnetIPv6CIDR)
+			}
 		}
 
 		if servicesSubnetIPv6CIDR != nil {
