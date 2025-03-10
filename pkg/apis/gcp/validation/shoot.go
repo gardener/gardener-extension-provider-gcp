@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/helper"
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
+	versionutils "github.com/gardener/gardener/pkg/utils/version"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -18,7 +20,7 @@ import (
 )
 
 // ValidateNetworking validates the network settings of a Shoot.
-func ValidateNetworking(networking *core.Networking, fldPath *field.Path) field.ErrorList {
+func ValidateNetworking(networking *core.Networking, fldPath *field.Path, k8sVersion *semver.Version) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if networking.Nodes == nil {
@@ -27,6 +29,10 @@ func ValidateNetworking(networking *core.Networking, fldPath *field.Path) field.
 
 	if core.IsIPv6SingleStack(networking.IPFamilies) {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("ipFamilies"), networking.IPFamilies, "IPv6 single-stack networking is not supported"))
+	}
+
+	if len(networking.IPFamilies) > 1 && versionutils.ConstraintK8sLess131.Check(k8sVersion) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("ipFamilies"), networking.IPFamilies, "dual-stack is not supported for Kubernetes versions < 1.31"))
 	}
 
 	return allErrs
