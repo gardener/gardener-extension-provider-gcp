@@ -7,7 +7,7 @@ package backupbucket
 import (
 	"context"
 	"errors"
-	"time"
+	"reflect"
 
 	"cloud.google.com/go/storage"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
@@ -67,8 +67,7 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, bb *extens
 		if err != nil {
 			return err
 		}
-
-	} else if isUpdateRequired(attrs, backupBucketConfig) {
+	} else if isUpdateRequired(attrs, backupBucketConfig, logger) {
 		attrs, err = updateBucket(ctx, storageClient, bb.Name, backupBucketConfig, logger)
 		if err != nil {
 			return err
@@ -108,6 +107,23 @@ func createBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb
 		SoftDeletePolicy: &storage.SoftDeletePolicy{
 			RetentionDuration: 0,
 		},
+		Lifecycle: storage.Lifecycle{
+			Rules: []storage.LifecycleRule{
+				{
+					Action: storage.LifecycleAction{
+						Type: storage.DeleteAction,
+					},
+
+					Condition: storage.LifecycleCondition{
+						// DaysSinceCustomTime is the days elapsed since the CustomTime date of the object.
+						// This condition can only be satisfied if CustomTime has been set.
+						// Note: Using `0` as the value will be ignored by the library and not sent to the API.
+						// That's why it is set to 1 day.
+						DaysSinceCustomTime: 1,
+					},
+				},
+			},
+		},
 	}
 
 	if config != nil && config.Immutability != nil {
@@ -126,15 +142,30 @@ func createBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb
 
 func updateBucket(ctx context.Context, storageClient gcpclient.StorageClient, bucketName string, config *apisgcp.BackupBucketConfig, logger logr.Logger) (*storage.BucketAttrs, error) {
 	logger.Info("Updating bucket attributes", "name", bucketName)
-	var updateRetentionPeriodDuration time.Duration
-	if config != nil && config.Immutability != nil {
-		updateRetentionPeriodDuration = config.Immutability.RetentionPeriod.Duration
-	}
 	updateAttrs := storage.BucketAttrsToUpdate{
-		RetentionPolicy: &storage.RetentionPolicy{
-			RetentionPeriod: updateRetentionPeriodDuration,
+		Lifecycle: &storage.Lifecycle{
+			Rules: []storage.LifecycleRule{
+				{
+					Action: storage.LifecycleAction{
+						Type: storage.DeleteAction,
+					},
+					Condition: storage.LifecycleCondition{
+						// DaysSinceCustomTime is the days elapsed since the CustomTime date of the object.
+						// This condition can only be satisfied if CustomTime has been set.
+						// Note: Using `0` as the value will be ignored by the library and not sent to the API.
+						// That's why it is set to 1 day.
+						DaysSinceCustomTime: 1,
+					},
+				},
+			},
 		},
+		RetentionPolicy: &storage.RetentionPolicy{},
 	}
+
+	if config != nil && config.Immutability != nil {
+		updateAttrs.RetentionPolicy.RetentionPeriod = config.Immutability.RetentionPeriod.Duration
+	}
+
 	attrs, err := storageClient.UpdateBucket(ctx, bucketName, updateAttrs)
 	if err != nil {
 		logger.Error(err, "Failed to update bucket", "name", bucketName)
@@ -143,7 +174,6 @@ func updateBucket(ctx context.Context, storageClient gcpclient.StorageClient, bu
 	logger.Info("Bucket updated successfully", "name", bucketName)
 	return attrs, nil
 }
-
 func lockBucket(ctx context.Context, storageClient gcpclient.StorageClient, bucketName string, logger logr.Logger) error {
 	logger.Info("Locking bucket", "name", bucketName)
 	if err := storageClient.LockBucket(ctx, bucketName); err != nil {
@@ -154,13 +184,41 @@ func lockBucket(ctx context.Context, storageClient gcpclient.StorageClient, buck
 	return nil
 }
 
-func isUpdateRequired(attrs *storage.BucketAttrs, config *apisgcp.BackupBucketConfig) bool {
-	var currentRetentionPeriodDuration, desiredRetentionPeriodDuration time.Duration
-	if attrs != nil && attrs.RetentionPolicy != nil {
-		currentRetentionPeriodDuration = attrs.RetentionPolicy.RetentionPeriod
+// isUpdateRequired determines if the bucket attributes need an update based on the desired config.
+func isUpdateRequired(attrs *storage.BucketAttrs, config *apisgcp.BackupBucketConfig, logger logr.Logger) bool {
+	desiredLifecycle := storage.Lifecycle{
+		Rules: []storage.LifecycleRule{
+			{
+				Action: storage.LifecycleAction{
+					Type: storage.DeleteAction,
+				},
+				Condition: storage.LifecycleCondition{
+					DaysSinceCustomTime: 1,
+				},
+			},
+		},
 	}
-	if config != nil && config.Immutability != nil {
-		desiredRetentionPeriodDuration = config.Immutability.RetentionPeriod.Duration
+
+	lifecycleNeedsUpdate := !reflect.DeepEqual(desiredLifecycle, attrs.Lifecycle)
+	// Determine if the retention policy needs an update
+	var retentionPolicyNeedsUpdate bool
+	if config == nil || config.Immutability == nil {
+		// If config or immutability is nil, remove any existing retention policy
+		retentionPolicyNeedsUpdate = attrs.RetentionPolicy != nil
+	} else {
+		desiredRetentionPeriod := config.Immutability.RetentionPeriod.Duration
+		if attrs.RetentionPolicy == nil {
+			retentionPolicyNeedsUpdate = true
+		} else {
+			retentionPolicyNeedsUpdate = attrs.RetentionPolicy.RetentionPeriod != desiredRetentionPeriod
+		}
 	}
-	return desiredRetentionPeriodDuration != currentRetentionPeriodDuration
+
+	updateRequired := lifecycleNeedsUpdate || retentionPolicyNeedsUpdate
+	logger.Info("Determined update requirement for bucket",
+		"lifecycleNeedsUpdate", lifecycleNeedsUpdate,
+		"retentionPolicyNeedsUpdate", retentionPolicyNeedsUpdate,
+		"updateRequired", updateRequired)
+
+	return updateRequired
 }

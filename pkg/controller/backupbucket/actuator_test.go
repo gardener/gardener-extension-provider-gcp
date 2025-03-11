@@ -45,6 +45,18 @@ var _ = Describe("Actuator", func() {
 		bucketName            = "test-bucket"
 		region                = "europe-west1"
 		immutabilityRetention = 24 * time.Hour
+		desiredLifecycle      = storage.Lifecycle{
+			Rules: []storage.LifecycleRule{
+				{
+					Action: storage.LifecycleAction{
+						Type: storage.DeleteAction,
+					},
+					Condition: storage.LifecycleCondition{
+						DaysSinceCustomTime: 1,
+					},
+				},
+			},
+		}
 	)
 
 	BeforeEach(func() {
@@ -96,7 +108,7 @@ var _ = Describe("Actuator", func() {
 				}
 			})
 
-			It("should create the bucket successfully", func() {
+			It("should create the bucket", func() {
 				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
 				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(nil, storage.ErrBucketNotExist).MaxTimes(2)
 				gcpStorageClient.EXPECT().CreateBucket(ctx, gomock.Any()).Return(nil)
@@ -126,15 +138,13 @@ var _ = Describe("Actuator", func() {
 						Region:    region,
 					},
 				}
-
 				backupBucket.Spec.ProviderConfig = &runtime.RawExtension{
 					Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1","kind": "BackupBucketConfig","immutability":{"retentionType":"bucket","retentionPeriod":"24h"}}`),
 				}
 			})
 
-			It("should do nothing if the bucket doesn't need an update", func() {
+			It("should not make any changes if the bucket has the correct lifecycle and retention policies", func() {
 				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
-
 				existingAttrs := &storage.BucketAttrs{
 					Location: region,
 					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
@@ -146,6 +156,7 @@ var _ = Describe("Actuator", func() {
 					RetentionPolicy: &storage.RetentionPolicy{
 						RetentionPeriod: immutabilityRetention,
 					},
+					Lifecycle: desiredLifecycle,
 				}
 				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(existingAttrs, nil)
 
@@ -153,20 +164,9 @@ var _ = Describe("Actuator", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("should update the bucket if retention policy differs", func() {
+			It("should update the bucket if the lifecycle policy is different", func() {
 				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
-
 				existingAttrs := &storage.BucketAttrs{
-					Location: region,
-					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
-						Enabled: true,
-					},
-					SoftDeletePolicy: &storage.SoftDeletePolicy{
-						RetentionDuration: 0,
-					},
-				}
-				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(existingAttrs, nil)
-				gcpStorageClient.EXPECT().UpdateBucket(ctx, bucketName, gomock.Any()).Return(&storage.BucketAttrs{
 					Location: region,
 					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
 						Enabled: true,
@@ -177,7 +177,92 @@ var _ = Describe("Actuator", func() {
 					RetentionPolicy: &storage.RetentionPolicy{
 						RetentionPeriod: immutabilityRetention,
 					},
-				}, nil)
+					Lifecycle: storage.Lifecycle{}, // Incorrect lifecycle
+				}
+				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(existingAttrs, nil)
+				gcpStorageClient.EXPECT().UpdateBucket(ctx, bucketName, gomock.Any()).DoAndReturn(func(_ context.Context, _ string, updateAttrs storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error) {
+					Expect(updateAttrs.Lifecycle).To(Equal(&desiredLifecycle))
+					return &storage.BucketAttrs{
+						Location:         region,
+						Lifecycle:        desiredLifecycle,
+						RetentionPolicy:  existingAttrs.RetentionPolicy,
+						SoftDeletePolicy: existingAttrs.SoftDeletePolicy,
+						UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+							Enabled: true,
+						},
+					}, nil
+				})
+
+				err := a.Reconcile(ctx, logger, backupBucket)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should update the bucket if the retention policy is different", func() {
+				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				existingAttrs := &storage.BucketAttrs{
+					Location: region,
+					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+						Enabled: true,
+					},
+					SoftDeletePolicy: &storage.SoftDeletePolicy{
+						RetentionDuration: 0,
+					},
+					RetentionPolicy: &storage.RetentionPolicy{
+						RetentionPeriod: immutabilityRetention + 1*time.Hour, // Different retention
+					},
+					Lifecycle: desiredLifecycle,
+				}
+				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(existingAttrs, nil)
+				gcpStorageClient.EXPECT().UpdateBucket(ctx, bucketName, gomock.Any()).DoAndReturn(func(_ context.Context, _ string, updateAttrs storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error) {
+					Expect(updateAttrs.RetentionPolicy).To(Equal(&storage.RetentionPolicy{
+						RetentionPeriod: immutabilityRetention,
+					}))
+					return &storage.BucketAttrs{
+						Location:         region,
+						Lifecycle:        desiredLifecycle,
+						RetentionPolicy:  &storage.RetentionPolicy{RetentionPeriod: immutabilityRetention},
+						SoftDeletePolicy: existingAttrs.SoftDeletePolicy,
+						UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+							Enabled: true,
+						},
+					}, nil
+				})
+
+				err := a.Reconcile(ctx, logger, backupBucket)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should update the bucket if both lifecycle and retention policies are different", func() {
+				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				existingAttrs := &storage.BucketAttrs{
+					Location: region,
+					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+						Enabled: true,
+					},
+					SoftDeletePolicy: &storage.SoftDeletePolicy{
+						RetentionDuration: 0,
+					},
+					RetentionPolicy: &storage.RetentionPolicy{
+						RetentionPeriod: immutabilityRetention + 1*time.Hour, // Different retention
+					},
+					Lifecycle: storage.Lifecycle{}, // Incorrect lifecycle
+				}
+				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(existingAttrs, nil)
+				gcpStorageClient.EXPECT().UpdateBucket(ctx, bucketName, gomock.Any()).DoAndReturn(func(_ context.Context, _ string, updateAttrs storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error) {
+					Expect(updateAttrs.Lifecycle).To(Equal(&desiredLifecycle))
+					Expect(updateAttrs.RetentionPolicy).To(Equal(&storage.RetentionPolicy{
+						RetentionPeriod: immutabilityRetention,
+					}))
+					return &storage.BucketAttrs{
+						Location:         region,
+						Lifecycle:        desiredLifecycle,
+						RetentionPolicy:  &storage.RetentionPolicy{RetentionPeriod: immutabilityRetention},
+						SoftDeletePolicy: existingAttrs.SoftDeletePolicy,
+						UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+							Enabled: true,
+						},
+					}, nil
+				})
 
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).NotTo(HaveOccurred())
@@ -185,17 +270,98 @@ var _ = Describe("Actuator", func() {
 
 			It("should return an error if updating the bucket fails", func() {
 				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
-
 				existingAttrs := &storage.BucketAttrs{
+					Location: region,
+					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+						Enabled: true,
+					},
+					SoftDeletePolicy: &storage.SoftDeletePolicy{
+						RetentionDuration: 0,
+					},
 					RetentionPolicy: &storage.RetentionPolicy{
 						RetentionPeriod: immutabilityRetention + 1*time.Hour,
 					},
+					Lifecycle: storage.Lifecycle{},
 				}
 				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(existingAttrs, nil)
 				gcpStorageClient.EXPECT().UpdateBucket(ctx, bucketName, gomock.Any()).Return(nil, fmt.Errorf("update error"))
 
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).To(HaveOccurred())
+			})
+
+			It("should update the bucket to remove retention policy if ProviderConfig is nil", func() {
+
+				backupBucket.Spec.ProviderConfig = nil
+
+				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				existingAttrs := &storage.BucketAttrs{
+					Location: region,
+					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+						Enabled: true,
+					},
+					SoftDeletePolicy: &storage.SoftDeletePolicy{
+						RetentionDuration: 0,
+					},
+					RetentionPolicy: &storage.RetentionPolicy{
+						RetentionPeriod: immutabilityRetention,
+					},
+					Lifecycle: desiredLifecycle,
+				}
+				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(existingAttrs, nil)
+				gcpStorageClient.EXPECT().UpdateBucket(ctx, bucketName, gomock.Any()).DoAndReturn(func(_ context.Context, _ string, updateAttrs storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error) {
+					Expect(updateAttrs.RetentionPolicy).Should(BeEquivalentTo(&storage.RetentionPolicy{}))
+					return &storage.BucketAttrs{
+						Location:         region,
+						Lifecycle:        desiredLifecycle,
+						RetentionPolicy:  &storage.RetentionPolicy{},
+						SoftDeletePolicy: existingAttrs.SoftDeletePolicy,
+						UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+							Enabled: true,
+						},
+					}, nil
+				})
+
+				err := a.Reconcile(ctx, logger, backupBucket)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should update the bucket to remove retention policy when BackupBucketConfig does not include immutability settings", func() {
+
+				backupBucket.Spec.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1","kind": "BackupBucketConfig"}`),
+				}
+
+				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				existingAttrs := &storage.BucketAttrs{
+					Location: region,
+					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+						Enabled: true,
+					},
+					SoftDeletePolicy: &storage.SoftDeletePolicy{
+						RetentionDuration: 0,
+					},
+					RetentionPolicy: &storage.RetentionPolicy{
+						RetentionPeriod: immutabilityRetention,
+					},
+					Lifecycle: desiredLifecycle,
+				}
+				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(existingAttrs, nil)
+				gcpStorageClient.EXPECT().UpdateBucket(ctx, bucketName, gomock.Any()).DoAndReturn(func(_ context.Context, _ string, updateAttrs storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error) {
+					Expect(updateAttrs.RetentionPolicy).Should(BeEquivalentTo(&storage.RetentionPolicy{}))
+					return &storage.BucketAttrs{
+						Location:         region,
+						Lifecycle:        desiredLifecycle,
+						RetentionPolicy:  &storage.RetentionPolicy{},
+						SoftDeletePolicy: existingAttrs.SoftDeletePolicy,
+						UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+							Enabled: true,
+						},
+					}, nil
+				})
+
+				err := a.Reconcile(ctx, logger, backupBucket)
+				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 
@@ -211,7 +377,6 @@ var _ = Describe("Actuator", func() {
 						Region:    region,
 					},
 				}
-
 				backupBucket.Spec.ProviderConfig = &runtime.RawExtension{
 					Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1","kind": "BackupBucketConfig","immutability":{"retentionType":"bucket","retentionPeriod":"24h","locked":true}}`),
 				}
@@ -227,8 +392,8 @@ var _ = Describe("Actuator", func() {
 					},
 					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{Enabled: true},
 					SoftDeletePolicy:         &storage.SoftDeletePolicy{RetentionDuration: 0},
+					Lifecycle:                desiredLifecycle,
 				}
-
 				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(existingAttrs, nil)
 				gcpStorageClient.EXPECT().LockBucket(ctx, bucketName).Return(nil)
 
@@ -246,8 +411,8 @@ var _ = Describe("Actuator", func() {
 					},
 					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{Enabled: true},
 					SoftDeletePolicy:         &storage.SoftDeletePolicy{RetentionDuration: 0},
+					Lifecycle:                desiredLifecycle,
 				}
-
 				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(existingAttrs, nil)
 				gcpStorageClient.EXPECT().LockBucket(ctx, bucketName).Return(fmt.Errorf("lock error"))
 
@@ -268,7 +433,9 @@ var _ = Describe("Actuator", func() {
 						Region:    region,
 					},
 				}
-				backupBucket.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1","kind": "BackupBucketConfig","immutability": { "retentionPeriod": "abc" }`)}
+				backupBucket.Spec.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1","kind": "BackupBucketConfig","immutability": { "retentionPeriod": "abc" }}`),
+				}
 			})
 
 			It("should return an error if decoding fails", func() {
@@ -290,7 +457,9 @@ var _ = Describe("Actuator", func() {
 						Region:    region,
 					},
 				}
-				backupBucket.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1","kind": "BackupBucketConfig","immutability":{"retentionPeriod":"24h"}}`)}
+				backupBucket.Spec.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1","kind": "BackupBucketConfig","immutability":{"retentionPeriod":"24h"}}`),
+				}
 			})
 
 			It("should return an error if storage client creation fails", func() {
