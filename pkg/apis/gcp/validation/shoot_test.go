@@ -5,6 +5,7 @@
 package validation_test
 
 import (
+	"github.com/Masterminds/semver/v3"
 	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,7 +25,7 @@ var _ = Describe("Shoot validation", func() {
 				Nodes: ptr.To("1.2.3.4/5"),
 			}
 
-			errorList := ValidateNetworking(networking, networkingPath)
+			errorList := ValidateNetworking(networking, networkingPath, nil)
 
 			Expect(errorList).To(BeEmpty())
 		})
@@ -32,7 +33,7 @@ var _ = Describe("Shoot validation", func() {
 		It("should return an error because no nodes CIDR was provided", func() {
 			networking := &core.Networking{}
 
-			errorList := ValidateNetworking(networking, networkingPath)
+			errorList := ValidateNetworking(networking, networkingPath, nil)
 
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
@@ -42,18 +43,45 @@ var _ = Describe("Shoot validation", func() {
 			))
 		})
 
-		It("should pass dual-stack", func() {
-			networking := &core.Networking{
-				Nodes: ptr.To("1.2.3.4/5"),
-				IPFamilies: []core.IPFamily{
-					core.IPFamilyIPv4,
-					core.IPFamilyIPv6,
-				},
-			}
+		Describe("dual-stack", func() {
+			var (
+				networking              *core.Networking
+				validDualStackVersion   *semver.Version
+				invalidDualStackVersion *semver.Version
+			)
 
-			errorList := ValidateNetworking(networking, networkingPath)
+			BeforeEach(func() {
+				networking = &core.Networking{
+					Nodes: ptr.To("1.2.3.4/5"),
+					IPFamilies: []core.IPFamily{
+						core.IPFamilyIPv4,
+						core.IPFamilyIPv6,
+					},
+				}
 
-			Expect(errorList).To(BeEmpty())
+				var err error
+				validDualStackVersion, err = semver.NewVersion("1.31.7")
+				Expect(err).To(Succeed())
+				invalidDualStackVersion, err = semver.NewVersion("1.30.12")
+				Expect(err).To(Succeed())
+			})
+
+			It("should return an error for dual-stack because kubernetes release is too old", func() {
+				errorList := ValidateNetworking(networking, networkingPath, invalidDualStackVersion)
+
+				Expect(errorList).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeInvalid),
+						"Field": Equal("spec.networking.ipFamilies"),
+					})),
+				))
+			})
+
+			It("should pass dual-stack", func() {
+				errorList := ValidateNetworking(networking, networkingPath, validDualStackVersion)
+
+				Expect(errorList).To(BeEmpty())
+			})
 		})
 	})
 	Describe("#ValidateWorkers", func() {
