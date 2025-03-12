@@ -134,8 +134,7 @@ func (s *storageClient) DeleteObjectsWithPrefix(ctx context.Context, bucketName,
 					if !attr.CustomTime.IsZero() {
 						return nil
 					}
-					_, err := bucketHandle.Object(attr.Name).Update(ctx, storage.ObjectAttrsToUpdate{CustomTime: time.Now().UTC()})
-					if err != nil {
+					if _, err := bucketHandle.Object(attr.Name).Update(ctx, storage.ObjectAttrsToUpdate{CustomTime: time.Now().UTC()}); err != nil {
 						if err == storage.ErrObjectNotExist {
 							return nil
 						}
