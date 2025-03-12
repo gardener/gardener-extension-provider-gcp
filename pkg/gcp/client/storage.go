@@ -10,7 +10,6 @@ import (
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -37,14 +36,14 @@ type storageClient struct {
 	projectID string
 }
 
-// NewStorageClient creates a new storage client from the given credentials configuration.
+// NewStorageClient creates a new storage client from the given credential's configuration.
 func NewStorageClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (StorageClient, error) {
-	httpClient, err := httpClient(ctx, credentialsConfig, []string{storage.ScopeFullControl})
+	conn, err := clientOptions(ctx, credentialsConfig, []string{storage.ScopeFullControl})
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := storage.NewClient(ctx, option.WithHTTPClient(httpClient))
+	client, err := storage.NewClient(ctx, conn)
 	if err != nil {
 		return nil, err
 	}

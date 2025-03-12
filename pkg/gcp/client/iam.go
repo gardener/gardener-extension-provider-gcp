@@ -10,7 +10,6 @@ import (
 	"regexp"
 
 	"google.golang.org/api/iam/v1"
-	"google.golang.org/api/option"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
@@ -34,12 +33,12 @@ type iamClient struct {
 
 // NewIAMClient returns a new IAM client.
 func NewIAMClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (IAMClient, error) {
-	httpClient, err := httpClient(ctx, credentialsConfig, []string{iam.CloudPlatformScope})
+	conn, err := clientOptions(ctx, credentialsConfig, []string{iam.CloudPlatformScope})
 	if err != nil {
 		return nil, err
 	}
 
-	service, err := iam.NewService(ctx, option.WithHTTPClient(httpClient))
+	service, err := iam.NewService(ctx, conn)
 	if err != nil {
 		return nil, err
 	}

@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	googledns "google.golang.org/api/dns/v1"
-	"google.golang.org/api/option"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
@@ -29,12 +28,12 @@ type dnsClient struct {
 
 // NewDNSClient returns a client for GCP's CloudDNS service.
 func NewDNSClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (DNSClient, error) {
-	httpClient, err := httpClient(ctx, credentialsConfig, []string{googledns.NdevClouddnsReadwriteScope})
+	conn, err := clientOptions(ctx, credentialsConfig, []string{googledns.NdevClouddnsReadwriteScope})
 	if err != nil {
 		return nil, err
 	}
 
-	service, err := googledns.NewService(ctx, option.WithHTTPClient(httpClient))
+	service, err := googledns.NewService(ctx, conn)
 	if err != nil {
 		return nil, err
 	}
