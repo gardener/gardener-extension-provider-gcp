@@ -40,6 +40,20 @@ func IgnoreErrorCodes(err error, codes ...int) error {
 	return err
 }
 
+// IsRetentionPolicyNotMetError checks if the provided error is a Google API error with the reason "retentionPolicyNotMet".
+// It returns true if the error is of type *googleapi.Error and contains an error with the specified reason,
+// indicating that the retention policy has not been met. Otherwise, it returns false.
+func IsRetentionPolicyNotMetError(err error) bool {
+	if gErr, ok := err.(*googleapi.Error); ok {
+		for _, e := range gErr.Errors {
+			if e.Reason == "retentionPolicyNotMet" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // IgnoreNotFoundError returns nil if the error is a NotFound error. Otherwise, it returns the original error.
 func IgnoreNotFoundError(err error) error {
 	return IgnoreErrorCodes(err, http.StatusNotFound)

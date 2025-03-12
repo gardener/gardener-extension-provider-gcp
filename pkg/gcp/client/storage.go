@@ -7,18 +7,16 @@ package client
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"cloud.google.com/go/storage"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
-)
-
-const (
-	errCodeBucketAlreadyOwnedByYou = 409
 )
 
 // StorageClient is an interface which must be implemented by GCS clients.
@@ -99,19 +97,61 @@ func (s *storageClient) DeleteBucketIfExists(ctx context.Context, bucketName str
 	return IgnoreNotFoundError(err)
 }
 
+// DeleteObjectsWithPrefix deletes objects in the specified bucket with the given prefix.
+// For objects not under retention, deletion occurs immediately. For immutable objects
+// protected by retention policies, it sets CustomTime to the current time if not already
+// set, enabling the bucket's lifecycle policy to delete them later when retention expires
+// and lifecycle conditions are met.
 func (s *storageClient) DeleteObjectsWithPrefix(ctx context.Context, bucketName, prefix string) error {
 	bucketHandle := s.client.Bucket(bucketName)
+	var objects []*storage.ObjectAttrs
 	itr := bucketHandle.Objects(ctx, &storage.Query{Prefix: prefix})
 	for {
 		attr, err := itr.Next()
 		if err != nil {
 			if err == iterator.Done {
-				return nil
+				break
 			}
-			return err
+			return fmt.Errorf("failed to list objects in bucket %s with prefix %s: %w", bucketName, prefix, err)
 		}
-		if err := bucketHandle.Object(attr.Name).Delete(ctx); err != nil && err != storage.ErrObjectNotExist {
-			return err
-		}
+		objects = append(objects, attr)
 	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(10)
+
+	for _, attr := range objects {
+		attr := attr
+		g.Go(func() error {
+			if err := bucketHandle.Object(attr.Name).Delete(ctx); err != nil {
+				if err == storage.ErrObjectNotExist {
+					return nil // Ignore if object doesn't exist
+				}
+				// Handle immutable objects
+				// This will allow the object to be deleted, lifecycle policy of the bucket will take care of the rest.
+				if IsRetentionPolicyNotMetError(err) {
+					// Skip if CustomTime is already set
+					if !attr.CustomTime.IsZero() {
+						return nil
+					}
+					if _, err := bucketHandle.Object(attr.Name).Update(ctx, storage.ObjectAttrsToUpdate{CustomTime: time.Now().UTC()}); err != nil {
+						if err == storage.ErrObjectNotExist {
+							return nil
+						}
+						return fmt.Errorf("failed to set custom time for object %s in bucket %s: %w", attr.Name, bucketName, err)
+					}
+					return nil
+				}
+				return fmt.Errorf("failed to delete object %s in bucket %s: %w", attr.Name, bucketName, err)
+			}
+			return nil
+		})
+	}
+
+	// Wait for all goroutines to complete and collect any errors
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("errors occurred while deleting objects with prefix %s in bucket %s: %w", prefix, bucketName, err)
+	}
+
+	return nil
 }
