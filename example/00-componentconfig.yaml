@@ -16,3 +16,7 @@ etcd:
 #  syncPeriod: 30s
 featureGates:
   DisableGardenerServiceAccountCreation: true
+
+debugging:
+  enableProfiling: false
+  enableContentionProfiling: false

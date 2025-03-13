@@ -37,6 +37,11 @@ func (in *ControllerConfiguration) DeepCopyInto(out *ControllerConfiguration) {
 			(*out)[key] = val
 		}
 	}
+	if in.Debugging != nil {
+		in, out := &in.Debugging, &out.Debugging
+		*out = new(v1alpha1.DebuggingConfiguration)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

@@ -80,6 +80,9 @@ config:
       volumeBindingMode: WaitForFirstConsumer
   featureGates:
     DisableGardenerServiceAccountCreation: true
+# debugging:
+#   enableProfiling: false
+#   enableContentionProfiling: false
 gardener:
   version: ""
   gardenlet:

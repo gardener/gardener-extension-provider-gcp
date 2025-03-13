@@ -98,6 +98,20 @@ or disable alpha/experimental features.
 Default: nil</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>debugging</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/component-base/config/v1alpha1#DebuggingConfiguration">
+Kubernetes v1alpha1.DebuggingConfiguration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Debugging holds configuration for profiling related features.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="	gcp.provider.extensions.config.gardener.cloud/v1alpha1.ETCD">ETCD
