@@ -11,6 +11,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/google/externalaccount"
+	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -80,25 +81,34 @@ func (f factory) IAM(ctx context.Context, c client.Client, sr corev1.SecretRefer
 
 	return NewIAMClient(ctx, credentialsConfig)
 }
-
 func httpClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) (*http.Client, error) {
-	if credentialsConfig.TokenRetriever != nil && credentialsConfig.Type == gcp.ExternalAccountCredentialType {
-		conf := externalaccount.Config{
-			Audience:                       credentialsConfig.Audience,
-			SubjectTokenType:               credentialsConfig.SubjectTokenType,
-			TokenURL:                       credentialsConfig.TokenURL,
-			Scopes:                         scopes,
-			SubjectTokenSupplier:           credentialsConfig.TokenRetriever,
-			UniverseDomain:                 credentialsConfig.UniverseDomain,
-			ServiceAccountImpersonationURL: credentialsConfig.ServiceAccountImpersonationURL,
-		}
+	conf := externalaccount.Config{
+		Audience:                       credentialsConfig.Audience,
+		SubjectTokenType:               credentialsConfig.SubjectTokenType,
+		TokenURL:                       credentialsConfig.TokenURL,
+		Scopes:                         scopes,
+		SubjectTokenSupplier:           credentialsConfig.TokenRetriever,
+		UniverseDomain:                 credentialsConfig.UniverseDomain,
+		ServiceAccountImpersonationURL: credentialsConfig.ServiceAccountImpersonationURL,
+	}
 
-		ts, err := externalaccount.NewTokenSource(ctx, conf)
+	ts, err := externalaccount.NewTokenSource(ctx, conf)
+	if err != nil {
+		return nil, err
+	}
+
+	return oauth2.NewClient(ctx, ts), nil
+
+}
+
+func clientOptions(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) (option.ClientOption, error) {
+	if credentialsConfig.TokenRetriever != nil && credentialsConfig.Type == gcp.ExternalAccountCredentialType {
+		http, err := httpClient(ctx, credentialsConfig, scopes)
 		if err != nil {
 			return nil, err
 		}
 
-		return oauth2.NewClient(ctx, ts), nil
+		return option.WithHTTPClient(http), nil
 	}
 
 	credentials, err := google.CredentialsFromJSONWithParams(ctx, credentialsConfig.Raw, google.CredentialsParams{
@@ -108,5 +118,6 @@ func httpClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, s
 		return nil, err
 	}
 
-	return oauth2.NewClient(ctx, credentials.TokenSource), nil
+	return option.WithCredentials(credentials), nil
+
 }
