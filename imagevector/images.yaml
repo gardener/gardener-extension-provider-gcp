@@ -108,7 +108,7 @@ images:
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
   # TODO(AndreasBurger,kon-angelo): Update to v31.x.y image of the cloud-controller-manager when it is available.
   tag: "v30.0.0"
-  targetVersion: ">= 1.31"
+  targetVersion: "1.31.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
