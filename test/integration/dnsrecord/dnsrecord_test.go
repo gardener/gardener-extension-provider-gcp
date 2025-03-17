@@ -44,16 +44,12 @@ import (
 
 var (
 	serviceAccount = flag.String("service-account", "", "Service account containing credentials for the GCP API")
-	region         = flag.String("region", "", "GCP region")
 	logLevel       = flag.String("logLevel", "", "Log level (debug, info, error)")
 )
 
 func validateFlags() {
 	if len(*serviceAccount) == 0 {
 		panic("--service-account flag is not specified")
-	}
-	if len(*region) == 0 {
-		panic("--region flag is not specified")
 	}
 	if len(*logLevel) == 0 {
 		logLevel = ptr.To(logger.DebugLevel)
