@@ -77,9 +77,23 @@ images:
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
   # TODO(AndreasBurger,kon-angelo): Update to v31.x.y image of the cloud-controller-manager when it is available.
-  # TODO(LucaBernstein,AndreasBurger,kon-angelo): Add entry for v32.x.y image of the cloud-controller-manager when it's available.
   tag: "v30.0.0"
-  targetVersion: ">= 1.31"
+  targetVersion: "1.31.x"
+  labels:
+  - name: 'gardener.cloud/cve-categorisation'
+    value:
+      network_exposure: 'protected'
+      authentication_enforced: false
+      user_interaction: 'gardener-operator'
+      confidentiality_requirement: 'high'
+      integrity_requirement: 'high'
+      availability_requirement: 'low'
+
+- name: cloud-controller-manager
+  sourceRepository: github.com/kubernetes/cloud-provider-gcp
+  repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
+  tag: "v32.2.2"
+  targetVersion: ">= 1.32"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
