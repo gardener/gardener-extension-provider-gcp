@@ -43,6 +43,42 @@ var _ = Describe("Shoot validation", func() {
 			))
 		})
 
+		Describe("#ValidateNetworkingUpdate", func() {
+			var networkingPath = field.NewPath("spec", "networking")
+
+			It("should return no error because ipFamilies update was valid", func() {
+				oldNetworking := &core.Networking{
+					IPFamilies: []core.IPFamily{core.IPFamilyIPv4},
+				}
+				newNetworking := &core.Networking{
+					IPFamilies: []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6},
+				}
+
+				errorList := ValidateNetworkingConfigUpdate(oldNetworking, newNetworking, networkingPath)
+
+				Expect(errorList).To(BeEmpty())
+			})
+
+			It("should return error because ipFamilies update was not valid", func() {
+				oldNetworking := &core.Networking{
+					IPFamilies: []core.IPFamily{core.IPFamilyIPv4},
+				}
+				newNetworking := &core.Networking{
+					IPFamilies: []core.IPFamily{core.IPFamilyIPv6},
+				}
+
+				errorList := ValidateNetworkingConfigUpdate(oldNetworking, newNetworking, networkingPath)
+
+				Expect(errorList).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeInvalid),
+						"Field": Equal("spec.networking.ipFamilies"),
+					})),
+				))
+			})
+
+		})
+
 		Describe("dual-stack", func() {
 			var (
 				networking              *core.Networking

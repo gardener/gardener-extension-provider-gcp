@@ -647,6 +647,7 @@ func Convert_gcp_InfrastructureConfig_To_v1alpha1_InfrastructureConfig(in *gcp.I
 
 func autoConvert_v1alpha1_InfrastructureState_To_gcp_InfrastructureState(in *InfrastructureState, out *gcp.InfrastructureState, s conversion.Scope) error {
 	out.Data = *(*map[string]string)(unsafe.Pointer(&in.Data))
+	out.Routes = *(*[]gcp.Route)(unsafe.Pointer(&in.Routes))
 	return nil
 }
 
@@ -657,6 +658,7 @@ func Convert_v1alpha1_InfrastructureState_To_gcp_InfrastructureState(in *Infrast
 
 func autoConvert_gcp_InfrastructureState_To_v1alpha1_InfrastructureState(in *gcp.InfrastructureState, out *InfrastructureState, s conversion.Scope) error {
 	out.Data = *(*map[string]string)(unsafe.Pointer(&in.Data))
+	out.Routes = *(*[]gcp.Route)(unsafe.Pointer(&in.Routes))
 	return nil
 }
 

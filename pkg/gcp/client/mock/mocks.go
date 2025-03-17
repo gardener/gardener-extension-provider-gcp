@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	storage "cloud.google.com/go/storage"
+	gcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	client "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	gomock "go.uber.org/mock/gomock"
 	compute "google.golang.org/api/compute/v1"
@@ -442,6 +443,20 @@ func (m *MockComputeClient) GetSubnet(ctx context.Context, region, id string) (*
 func (mr *MockComputeClientMockRecorder) GetSubnet(ctx, region, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubnet", reflect.TypeOf((*MockComputeClient)(nil).GetSubnet), ctx, region, id)
+}
+
+// InsertAliasIPRoute mocks base method.
+func (m *MockComputeClient) InsertAliasIPRoute(ctx context.Context, route gcp.Route, defaultSecondarySubnetName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertAliasIPRoute", ctx, route, defaultSecondarySubnetName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InsertAliasIPRoute indicates an expected call of InsertAliasIPRoute.
+func (mr *MockComputeClientMockRecorder) InsertAliasIPRoute(ctx, route, defaultSecondarySubnetName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertAliasIPRoute", reflect.TypeOf((*MockComputeClient)(nil).InsertAliasIPRoute), ctx, route, defaultSecondarySubnetName)
 }
 
 // InsertDisk mocks base method.

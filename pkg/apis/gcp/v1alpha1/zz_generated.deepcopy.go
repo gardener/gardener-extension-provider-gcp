@@ -10,6 +10,7 @@
 package v1alpha1
 
 import (
+	gcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -385,6 +386,11 @@ func (in *InfrastructureState) DeepCopyInto(out *InfrastructureState) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.Routes != nil {
+		in, out := &in.Routes, &out.Routes
+		*out = make([]gcp.Route, len(*in))
+		copy(*out, *in)
 	}
 	return
 }

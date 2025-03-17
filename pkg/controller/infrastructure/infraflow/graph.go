@@ -31,11 +31,15 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	ensureDualStackKubernetesRoutesCleanup := fctx.AddTask(g, "ensure kubernetes routes cleanup", fctx.ensureKubernetesRoutesCleanup,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
-		shared.DoIf(!gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies)),
+		shared.DoIf(isToDualStackMigration(fctx.shoot)),
 	)
 	ensureNodesSubnet := fctx.AddTask(g, "ensure worker subnet", fctx.ensureNodesSubnet,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC, ensureDualStackKubernetesRoutesCleanup),
+	)
+	fctx.AddTask(g, "ensure alias ip ranges", fctx.ensureAliasIpRanges,
+		shared.Timeout(defaultCreateTimeout),
+		shared.Dependencies(ensureVPC, ensureDualStackKubernetesRoutesCleanup, ensureNodesSubnet),
 	)
 	ensureInternalSubnet := fctx.AddTask(g, "ensure internal subnet", fctx.ensureInternalSubnet,
 		shared.Timeout(defaultCreateTimeout),

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/go-logr/logr"
@@ -74,6 +75,7 @@ type FlowContext struct {
 	networking        *v1beta1.Networking
 	whiteboard        shared.Whiteboard
 	log               logr.Logger
+	shoot             *gardencorev1beta1.Shoot
 
 	computeClient gcpclient.ComputeClient
 	iamClient     gcpclient.IAMClient
@@ -123,6 +125,7 @@ func NewFlowContext(ctx context.Context, opts Opts) (*FlowContext, error) {
 		runtimeClient:     opts.Client,
 		technicalID:       opts.Cluster.Shoot.Status.TechnicalID,
 		log:               opts.Log,
+		shoot:             opts.Cluster.Shoot,
 		networking:        opts.Cluster.Shoot.Spec.Networking,
 		computeClient:     com,
 		iamClient:         iam,
@@ -233,7 +236,8 @@ func (fctx *FlowContext) getCurrentState() *runtime.RawExtension {
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
 			Kind:       "InfrastructureState",
 		},
-		Data: fctx.whiteboard.ExportAsFlatMap(),
+		Data:   fctx.whiteboard.ExportAsFlatMap(),
+		Routes: fctx.state.Routes,
 	}
 
 	return &runtime.RawExtension{

@@ -15,6 +15,7 @@ import (
 	"k8s.io/utils/ptr"
 	ctclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
@@ -163,12 +164,31 @@ func (fctx *FlowContext) ensureKubernetesRoutesCleanup(ctx context.Context) erro
 		return err
 	}
 
-	if err = infrastructure.DeleteRoutes(ctx, fctx.computeClient, cloudRoutes); err != nil {
-		// scale CCM back to originalScale in case if there are errors from DeleteRoutes() call
-		_ = scaleCCMto(originalScale)
-	}
+	for _, route := range cloudRoutes {
+		instanceName, zone, err := extractInstanceAndZone(route.NextHopInstance)
+		if err != nil {
+			return err
+		}
 
-	return err
+		fctx.state.Routes = append(fctx.state.Routes, apisgcp.Route{InstanceName: instanceName, DestinationCIDR: route.DestRange, Zone: zone})
+		// Delete the route
+		if err := fctx.computeClient.DeleteRoute(ctx, route.Name); err != nil {
+			// scale CCM back to originalScale in case if there are errors from DeleteRoutes() call
+			_ = scaleCCMto(originalScale)
+			// if route couldn't be remove last route from stack
+			fctx.state.Routes = fctx.state.Routes[:len(fctx.state.Routes)-1]
+			err = fctx.persistState(ctx)
+			if err != nil {
+				fctx.log.Error(err, "failed to persist state")
+			}
+			return err
+		}
+	}
+	err = fctx.persistState(ctx)
+	if err != nil {
+		fctx.log.Error(err, "failed to persist state")
+	}
+	return nil
 }
 
 func (fctx *FlowContext) ensureNodesSubnet(ctx context.Context) error {
@@ -608,6 +628,37 @@ func (fctx *FlowContext) ensureKubernetesRoutesDeleted(ctx context.Context) erro
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (fctx *FlowContext) ensureAliasIpRanges(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
+
+	for i, route := range fctx.state.Routes {
+		// if machine is already gone procceed with next route
+		if err := fctx.computeClient.InsertAliasIPRoute(ctx, route, DefaultSecondarySubnetName); err != nil && !strings.Contains(err.Error(), "notFound") {
+			log.Info("Failed to add alias IP", "route", route.DestinationCIDR, "instance", route.InstanceName, "error", err)
+			perr := fctx.persistState(ctx)
+			if perr != nil {
+				fctx.log.Error(perr, "failed to persist state")
+			}
+			return err
+		} else {
+			log.Info("Successfully added alias IP", "route", route.DestinationCIDR, "instance", route.InstanceName)
+			if i >= 0 && i < len(fctx.state.Routes) {
+				if i < len(fctx.state.Routes)-1 {
+					fctx.state.Routes = append(fctx.state.Routes[:i], fctx.state.Routes[i+1:]...)
+				} else {
+					fctx.state.Routes = fctx.state.Routes[:i]
+				}
+			}
+		}
+	}
+	err := fctx.persistState(ctx)
+	if err != nil {
+		fctx.log.Error(err, "failed to persist state")
 	}
 
 	return nil
