@@ -76,17 +76,6 @@ const (
 	// CSILivenessProbeName is a constant for the name of the csi-liveness-probe component.
 	CSILivenessProbeName = "csi-liveness-probe"
 
-	// GlobalAnnotationKeyUseFlow marks how the infrastructure should be reconciled. When this is used reconciliation with flow
-	// will take place. Otherwrise, Terraformer will be used.
-	GlobalAnnotationKeyUseFlow = "provider.extensions.gardener.cloud/use-flow"
-	// AnnotationKeyUseFlow marks how the infrastructure should be reconciled. When this is used reconciliation with flow
-	// will take place. Otherwrise, Terraformer will be used.
-	AnnotationKeyUseFlow = "gcp." + GlobalAnnotationKeyUseFlow
-	// SeedAnnotationKeyUseFlow is the label for seeds to enable flow reconciliation for all of its shoots if value is `true`
-	// or for new shoots only with value `new`
-	SeedAnnotationKeyUseFlow = AnnotationKeyUseFlow
-	// SeedAnnotationUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
-	SeedAnnotationUseFlowValueNew = "new"
 	// AnnotationEnableVolumeAttributesClass is the annotation to use on shoots to enable VolumeAttributesClasses
 	AnnotationEnableVolumeAttributesClass = "gcp.provider.extensions.gardener.cloud/enable-volume-attributes-class"
 
