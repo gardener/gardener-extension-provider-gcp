@@ -1,18 +1,15 @@
-// SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Gardener contributors
+// SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and Gardener contributors
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package infrastructure
+package infraflow
 
 import (
 	"context"
 	"strings"
 
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"google.golang.org/api/compute/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
@@ -91,33 +88,4 @@ func DeleteRoutes(ctx context.Context, client gcpclient.ComputeClient, routes []
 		}
 	}
 	return nil
-}
-
-// CleanupKubernetesFirewalls lists all Kubernetes firewall rules and then deletes them one after another.
-//
-// If a deletion fails, this method returns immediately with the encountered error.
-func CleanupKubernetesFirewalls(ctx context.Context, client gcpclient.ComputeClient, network, shootSeedNamespace string) error {
-	firewallRules, err := ListKubernetesFirewalls(ctx, client, network, shootSeedNamespace)
-	if err != nil {
-		return err
-	}
-
-	return DeleteFirewalls(ctx, client, firewallRules)
-}
-
-// CleanupKubernetesRoutes lists all Kubernetes route rules and then deletes them one after another.
-//
-// If a deletion fails, this method returns immediately with the encountered error.
-func CleanupKubernetesRoutes(ctx context.Context, client gcpclient.ComputeClient, network, shootSeedNamespace string) error {
-	routes, err := ListKubernetesRoutes(ctx, client, network, shootSeedNamespace)
-	if err != nil {
-		return err
-	}
-
-	return DeleteRoutes(ctx, client, routes)
-}
-
-// GetCredentialsConfigFromInfrastructure retrieves the credentials configuration from the Secret referenced in the given Infrastructure.
-func GetCredentialsConfigFromInfrastructure(ctx context.Context, c client.Client, config *extensionsv1alpha1.Infrastructure) (*gcp.CredentialsConfig, error) {
-	return gcp.GetCredentialsConfigFromSecretReference(ctx, c, config.Spec.SecretRef)
 }

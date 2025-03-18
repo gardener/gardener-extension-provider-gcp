@@ -13,13 +13,17 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
-	infrainternal "github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
 )
 
 // Migrate implements infrastructure.Actuator.
-func (a *actuator) Migrate(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, _ *controller.Cluster) error {
-	tf, err := internal.NewTerraformer(log, a.restConfig, infrainternal.TerraformerPurpose, infra, a.disableProjectedTokenMount)
+func (a *actuator) Migrate(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
+	// todo: remove this in a future release. For now to support migration from terraform a little longer, we will
+	//  reconcile (and thus migrate to flow), before the CP migration. That way we only have one scenario to support for the migration.
+	if err := a.reconcile(ctx, log, infra, cluster); err != nil {
+		return util.DetermineError(err, helper.KnownCodes)
+	}
+
+	tf, err := NewTerraformer(log, a.restConfig, "infra", infra, a.disableProjectedTokenMount)
 	if err != nil {
 		return err
 	}

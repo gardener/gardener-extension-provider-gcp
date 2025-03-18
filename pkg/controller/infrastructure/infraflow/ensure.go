@@ -20,7 +20,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
 )
 
 func (fctx *FlowContext) ensureServiceAccount(ctx context.Context) error {
@@ -132,7 +131,7 @@ func (fctx *FlowContext) ensureKubernetesRoutesCleanupForDualStackMigration(ctx 
 
 	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
 
-	cloudRoutes, err := infrastructure.ListKubernetesRoutes(ctx, fctx.computeClient, vpc.Name, fctx.clusterName)
+	cloudRoutes, err := ListKubernetesRoutes(ctx, fctx.computeClient, vpc.Name, fctx.clusterName)
 	if err != nil {
 		return err
 	}
@@ -619,7 +618,7 @@ func (fctx *FlowContext) ensureFirewallRulesDeleted(ctx context.Context) error {
 	fws, err := fctx.computeClient.ListFirewallRules(ctx, client.FirewallListOpts{
 		Filter: fmt.Sprintf(`network eq ".*(%s).*"`, vpcName),
 		ClientFilter: func(f *compute.Firewall) bool {
-			if strings.HasPrefix(f.Name, infrastructure.KubernetesFirewallNamePrefix) {
+			if strings.HasPrefix(f.Name, KubernetesFirewallNamePrefix) {
 				for _, targetTag := range f.TargetTags {
 					if targetTag == fctx.clusterName {
 						return true
@@ -659,7 +658,7 @@ func (fctx *FlowContext) ensureKubernetesRoutesDeleted(ctx context.Context) erro
 	routes, err := fctx.computeClient.ListRoutes(ctx, client.RouteListOpts{
 		Filter: fmt.Sprintf(`network eq ".*(%s).*"`, vpcName),
 		ClientFilter: func(route *compute.Route) bool {
-			if strings.HasPrefix(route.Name, infrastructure.ShootPrefix) && strings.HasSuffix(route.Network, vpcName) {
+			if strings.HasPrefix(route.Name, ShootPrefix) && strings.HasSuffix(route.Network, vpcName) {
 				urlParts := strings.Split(route.NextHopInstance, "/")
 				if strings.HasPrefix(urlParts[len(urlParts)-1], fctx.clusterName) {
 					return true
