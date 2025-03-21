@@ -258,7 +258,7 @@ images:
       confidentiality_requirement: 'low'
       integrity_requirement: 'high'
       availability_requirement: 'low'
-- name: default-http-backend
+- name: ingress-default-backend
   sourceRepository: github.com/gardener/ingress-default-backend
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/ingress-default-backend
   tag: "0.22.0"
