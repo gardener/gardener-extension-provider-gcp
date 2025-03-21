@@ -24,7 +24,7 @@ spec:
           # Any image is permissible as long as:
           # 1. It serves a 404 page at /
           # 2. It serves 200 on a /healthz endpoint
-          image: {{ index .Values.images "default-http-backend" }}
+          image: {{ index .Values.images "ingress-default-backend" }}
           livenessProbe:
             httpGet:
               path: /healthy
