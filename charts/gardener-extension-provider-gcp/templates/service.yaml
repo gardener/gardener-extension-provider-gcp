@@ -12,7 +12,7 @@ metadata:
 {{-  if .Values.ignoreResources }}
     resources.gardener.cloud/ignore: "true"
 {{- end }}
-{{- if eq (include "topologyAwareRouting.enabled" .) "true" }}
+{{- if (include "topologyAwareRouting.enabled" .) }}
     service.kubernetes.io/topology-mode: "auto"
 {{- end }}
     # TODO: This label approach is deprecated and no longer needed in the future. Remove them as soon as gardener/gardener@v1.75 has been released.
@@ -20,7 +20,7 @@ metadata:
     networking.resources.gardener.cloud/from-policy-allowed-ports: '[{"port":{{ tpl .Values.metricsPort . }},"protocol":"TCP"}]'
   labels:
 {{ include "labels" . | indent 4 }}
-{{- if eq (include "topologyAwareRouting.enabled" .) "true" }}
+{{- if (include "topologyAwareRouting.enabled" .) }}
     endpoint-slice-hints.resources.gardener.cloud/consider: "true"
 {{- end }}
 spec:
