@@ -37,7 +37,7 @@ spec:
       - name: gcp-cloud-controller-manager
         image: {{ index .Values.images "cloud-controller-manager" }}
         imagePullPolicy: IfNotPresent
-        {{- if semverCompare ">= 1.31" .Values.kubernetesVersion }}
+        {{- if semverCompare "~ 1.31.x-0" .Values.kubernetesVersion }}
         command: ["/cloud-controller-manager"]
         {{- end }}
         args:
