@@ -27,11 +27,9 @@ apps/v1
 {{- end -}}
 
 {{- define "topologyAwareRouting.enabled" -}}
-  {{- if .Values.gardener.seed }}
-{{- .Values.gardener.seed.spec.settings.topologyAwareRouting.enabled }}
-  {{- else -}}
-false
-  {{- end }}
+{{- if and .Values.gardener.seed .Values.gardener.seed.spec.settings.topologyAwareRouting.enabled }}
+true
+{{- end -}}
 {{- end -}}
 
 {{- define "seed.provider" -}}
@@ -43,9 +41,7 @@ false
 {{- end -}}
 
 {{- define "runtimeCluster.enabled" -}}
-  {{- if .Values.gardener.runtimeCluster }}
-{{- .Values.gardener.runtimeCluster.enabled }}
-  {{- else -}}
-false
-  {{- end }}
+{{- if and .Values.gardener.runtimeCluster .Values.gardener.runtimeCluster.enabled }}
+true
+{{- end }}
 {{- end -}}
