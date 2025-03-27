@@ -1,41 +1,22 @@
-# DualStack Support for Gardener GCP Extension
+# Dual-stack Support for Gardener GCP Extension
 
-This document provides an overview of DualStack support for the Gardener GCP extension, detailing its functionality, requirements, and implementation specifics. The document also clarifies the differences between provisioning methods and the unique components required for DualStack clusters.
-
----
+This document provides an overview of dual-stack support for the Gardener GCP extension.
+Furthermore it clarifies which components are utilized, how the infrastructure is setup and how a dual-stack cluster can be provisioned.
 
 ## Overview
 
-DualStack support allows Gardener GCP shoot clusters to leverage both IPv4 and IPv6 addresses. It is supported exclusively when using the **InfraFlow Controller**. The legacy Terraform reconciler does not support DualStack provisioning.
+Gardener allows to create dual-stack shoot clusters on GCP. In this mode, both IPv4 and IPv6 are supported within the shoot cluster.
+This significantly expands the available address space, enables seamless communication across both IPv4 and IPv6 environments and ensures compliance with modern networking standards.
 
-### Key Features
+### Key Components for Dual-Stack Support
 
-- **DualStack Subnets**: Separate subnets are created for nodes and services, with explicit IPv4 and IPv6 ranges.
-- **Ingress-GCE Component**: Responsible for creating IPv6 Load Balancers.
+- **Dual-stack Subnets**: Separate subnets are created for nodes and services, with explicit IPv4 and external IPv6 ranges.
+- **Ingress-GCE Component**: Responsible for creating dual-stack (IPv4,IPv6) Load Balancers.
 - **Cloud Allocator for IPAM**: Manages the assignment of IPv4 and IPv6 ranges to nodes and pods.
 
----
+## Subnet Configuration for dual-stack
 
-## Provisioning Options
-
-### 1. Terraform Reconciler
-
-- Legacy approach.
-- Does **not support DualStack provisioning**.
-
-### 2. InfraFlow Controller
-
-- Supports DualStack clusters.
-- Requires the annotation `provider.extensions.gardener.cloud/use-flow: "true"` to be added to the shoot object.
-- This annotation is **mandatory** for:
-  - Creating a new DualStack shoot.
-  - Migrating an existing IPv4-only shoot to DualStack.
-
----
-
-## Subnet Configuration for DualStack
-
-When provisioning a DualStack cluster, the GCP provider creates distinct subnets:
+When provisioning a dual-stack cluster, the GCP provider creates distinct subnets:
 
 ### 1. **Node Subnet**
 
@@ -48,21 +29,20 @@ When provisioning a DualStack cluster, the GCP provider creates distinct subnets
 
 ### 2. **Service Subnet**
 
-- This subnet is dedicated to IPv6 services. It is created due to GCP's limitation of not supporting IPv6 reservation for services.
+- This subnet is dedicated to IPv6 services. It is created due to GCP's limitation of not supporting IPv6 range reservations.
 
----
+### 3. **Internal Subnet (optional)**
 
-## Additional Components
+- This subnet is dedicated for internal load balancer. Currently, only internal IPv4 loadbalancer are supported. They are provisioned by the Cloud Controller Manager (CCM).
 
-### 1. **Ingress-GCE**
+## **Ingress-GCE**
 
-- The ingress-gce is a mandatory component for DualStack clusters. It is responsible for creating IPv6 Load Balancers. This is necessary because the GCP Cloud Controller Manager (CCM) does not support IPv6 Load Balancer creation.
+- The ingress-gce is a mandatory component for dual-stack clusters. It is responsible for creating dual-stack (IPv4,IPv6) Load Balancers. This is necessary because the GCP Cloud Controller Manager does not support provisioning IPv6 Load Balancer.
 
----
 
 ## Cloud Allocator (IPAM)
 
-The Cloud Allocator is part of the GCP Cloud Controller Manager (CCM) and plays a critical role in managing IPAM (IP Address Management) for DualStack clusters. 
+The Cloud Allocator is part of the GCP Cloud Controller Manager and plays a critical role in managing IPAM (IP Address Management) for dual-stack clusters. 
 
 ### Responsibilities
 
@@ -73,27 +53,24 @@ The Cloud Allocator is part of the GCP Cloud Controller Manager (CCM) and plays 
 
 ### Operational Details
 
-- The Cloud Allocator uses a `/119` prefix from the external IPv6 range assigned to each VM.
+- The Cloud Allocator assigns a `/112` pod cidr range/subrange from the `/96` cidr range assigned to each VM.
 - This ensures efficient utilization of IPv6 address space while maintaining compatibility with Kubernetes networking requirements.
 
 #### Why Use a Secondary IPv4 Range for Pods?
 The secondary IPv4 range is essential for:
 - Enabling the Cloud Allocator to function correctly in assigning IP ranges.
-- Supporting both IPv4 and IPv6 pods in DualStack clusters.
+- Supporting both IPv4 and IPv6 pods in dual-stack clusters.
 - Aligning with GCP CCM’s requirement to separate pod IP ranges within the node subnet.
 
----
 
-## Creating a DualStack Cluster
+## Creating a dual-stack Cluster
 
-To create a DualStack cluster, rely on the `spec.networking.ipFamilies` field to specify the desired stack. Below is an example of a DualStack shoot configuration:
+To create a dual-stack cluster, both IP families (IPv4,IPv6) need to be specified under `spec.networking.ipFamilies`. Below is an example of a dual-stack shoot cluster configuration:
 
 ```yaml
 apiVersion: core.gardener.cloud/v1beta1
 kind: Shoot
 metadata:
- annotations:
-   provider.extensions.gardener.cloud/use-flow: "true"
   ...
 spec:
   ...
@@ -114,91 +91,46 @@ spec:
   ...
 ```
 
-### Explanation
-- **`spec.networking.ipFamilies`**: Specifies the stack (IPv4, IPv6, or both). In this example, both IPv4 and IPv6 are defined for a DualStack cluster.
-- **Annotation**: `provider.extensions.gardener.cloud/use-flow: "true"` is mandatory for DualStack support.
+## Migration of IPv4-only Shoot Clusters to dual-stack
 
----
-
-## Migration of IPv4-only Shoot Clusters to Dual-Stack
-
-Eventually, migration should be as easy as changing the `.spec.networking.ipFamilies` field in the `Shoot` resource from `IPv4` to `IPv4, IPv6`.
-However, as of now, this is not supported.
-
-It is worth recognizing that the migration from an IPv4-only shoot cluster to a dual-stack shoot cluster involves rolling of the nodes/workload as well.
-Nodes will not get a new IPv6 address assigned automatically.
-The same is true for pods as well.
-Once the migration is supported, the detailed caveats will be documented here.
-
----
+To trigger a migration of an IPv4 shoot cluster to DualStack, IPv6 needs to be added to `spec.networking.ipFamilies` in the shoot specification.
+Once the migration is triggered a constraint of type `ToDualStackMigration` is added to the shoot status. It is in progressing state.
+With the next shoot maintenance, the infrastructure is migrated to IPv6. The subnets get an external IPv6 range, the node subnet gets the secondary IPv4 range. The pod specific cloud routes are deleted from the VPC route table and alias IP ranges for the pod routes are added to the NIC of kubernetes nodes/instances. After that the status of the constraint will be changed to `DualStackInfraReady`. 
+With the next node roll-out, nodes will get IPv6 addresses and an IPv6 prefix for pods. When all nodes have IPv4 and IPv6 pod ranges, the status will be changed to `DualStackNodesReady`.
+The next reconcile will change all the remaining components to dual-stack. Once the migration has finished the constraint will be removed with the next reconcile.
 
 ## Load Balancer Service Configuration
 
-When creating LoadBalancer services in a DualStack cluster, you must include specific annotations to enable proper reconciliation by the `ingress-gce` component for IPv6 support.
+To create a dual-stack LoadBalancer the `spec.ipFamilies` and `spec.ipFamilyPolicy` field needs to be specified in the kubernetes service.
+An example configuration is shown below:
 
-### Required Annotation for IPv6 LoadBalancers
-Add the following annotation to the service:
-```yaml
-cloud.google.com/l4-rbs: enabled
 ```
-
-### Internal Load Balancer Considerations
-- Internal IPv6 LoadBalancers are **not supported**.
-- For internal IPv4 LoadBalancers, you can use:
-  - `"networking.gke.io/load-balancer-type=Internal"`
-  - `"cloud.google.com/load-balancer-type=internal"` (deprecated).
-  They are created by cloud-controller-manger and get an an IPv4 address from the internal subnet.
-
-### Example Configuration
-Here is an example of a DualStack LoadBalancer service configuration:
-
-```yaml
 apiVersion: v1
 kind: Service
 metadata:
+  name: nginx
+  namespace: default
   annotations:
     cloud.google.com/l4-rbs: enabled
-  name: webapp2
-  namespace: default
 spec:
-  ipFamilyPolicy: RequireDualStack
   ipFamilies:
   - IPv4
   - IPv6
+  ipFamilyPolicy: PreferDualStack
   ports:
-  - port: 80
-    targetPort: 80
+  - port: 12345
     protocol: TCP
+    targetPort: 80
   selector:
-    run: webapp2
+    run: nginx
   type: LoadBalancer
 ```
 
-### Explanation
-- **`cloud.google.com/l4-rbs: enabled`**: Ensures that `ingress-gce` properly reconciles the LoadBalancer service with IPv6 support.
-- **`ipFamilyPolicy` and `ipFamilies`**: Specify the DualStack configuration.
-- **Internal LoadBalancer**: Use the specific annotations for internal IPv4-only LoadBalancers.
----
+The required annotation `cloud.google.com/l4-rbs: enabled` for ingress-gce is added automatically via webhook for services of `type: LoadBalancer`.
 
-## Key Benefits of DualStack Support
-
-1. **Improved Network Compatibility**: DualStack enables seamless communication across both IPv4 and IPv6 environments.
-2. **Enhanced Scalability**: IPv6 significantly expands the available address space.
-3. **Future-Proofing**: DualStack readiness ensures compliance with modern networking standards.
-
----
-
-## Summary
-
-- DualStack is supported only with the **InfraFlow Controller**.
-- The annotation `provider.extensions.gardener.cloud/use-flow: "true"` is mandatory for enabling DualStack.
-- Dedicated subnets for nodes and services are created to manage IPv4 and IPv6 ranges.
-- Components like **Ingress-GCE** and the **Cloud Allocator** ensure proper functionality and Load Balancer creation.
-- Existing IPv4 clusters must have been created with InfraFlow or been migrated to it to be eligible for dual-stack migration once available.
-
-DualStack support in Gardener GCP extension represents a significant advancement in networking capabilities, catering to modern cloud-native requirements.
-
-
-
-
-
+### Internal Load Balancer
+- Internal IPv6 LoadBalancers are currently **not supported**.
+- To create internal IPv4 LoadBalancers, you can set one of the the following annotations:
+  - `"networking.gke.io/load-balancer-type=Internal"`
+  - `"cloud.google.com/load-balancer-type=internal"` (deprecated).
+  Internal load balancers are created by cloud-controller-manger and get an IPv4 address from the internal subnet.
