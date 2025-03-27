@@ -93,3 +93,26 @@ func ValidateWorkersUpdate(oldWorkers, newWorkers []core.Worker, fldPath *field.
 	}
 	return allErrs
 }
+
+// ValidateNetworkingConfigUpdate validates updates on Networking.
+func ValidateNetworkingConfigUpdate(oldNetworkConfig, newNetworkConfig *core.Networking, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, ValidateIPFamiliesUpdate(oldNetworkConfig.IPFamilies, newNetworkConfig.IPFamilies, fldPath.Child("ipFamilies"))...)
+	return allErrs
+}
+
+// ValidateIPFamiliesUpdate validates updates on IPFamilies.
+func ValidateIPFamiliesUpdate(oldIPFamilies, newIPFamilies []core.IPFamily, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if (len(oldIPFamilies) == 0 && len(newIPFamilies) == 0) ||
+		(len(oldIPFamilies) == 0 && len(newIPFamilies) == 1 && newIPFamilies[0] == core.IPFamilyIPv4) ||
+		(len(oldIPFamilies) == 1 && len(newIPFamilies) == 1 && oldIPFamilies[0] == newIPFamilies[0]) ||
+		(len(oldIPFamilies) == 2 && len(newIPFamilies) == 2) ||
+		(len(oldIPFamilies) == 1 && oldIPFamilies[0] == core.IPFamilyIPv4 && len(newIPFamilies) == 2 && newIPFamilies[0] == core.IPFamilyIPv4 && newIPFamilies[1] == core.IPFamilyIPv6) {
+		return allErrs
+	}
+
+	allErrs = append(allErrs, field.Invalid(fldPath, newIPFamilies, "unsupported IPFamilies update"))
+	return allErrs
+}

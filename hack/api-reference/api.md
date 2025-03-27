@@ -943,6 +943,18 @@ map[string]string
 <p>Data is map to store things.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>routes</code></br>
+<em>
+[]github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp.Route
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Routes contains information about cluster routes</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.InfrastructureStatus">InfrastructureStatus

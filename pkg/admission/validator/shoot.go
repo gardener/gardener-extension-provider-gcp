@@ -161,10 +161,15 @@ func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core
 	}
 
 	var (
+		oldNetworkConfig, currentNetworkConfig               = oldValContext.shoot.Spec.Networking, currentValContext.shoot.Spec.Networking
 		oldInfrastructureConfig, currentInfrastructureConfig = oldValContext.infrastructureConfig, currentValContext.infrastructureConfig
 		oldControlPlaneConfig, currentControlPlaneConfig     = oldValContext.controlPlaneConfig, currentValContext.controlPlaneConfig
 		allErrors                                            = field.ErrorList{}
 	)
+
+	if !reflect.DeepEqual(oldNetworkConfig, currentNetworkConfig) {
+		allErrors = append(allErrors, gcpvalidation.ValidateNetworkingConfigUpdate(oldNetworkConfig, currentNetworkConfig, networkPath)...)
+	}
 
 	if !reflect.DeepEqual(oldInfrastructureConfig, currentInfrastructureConfig) {
 		allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfigUpdate(oldInfrastructureConfig, currentInfrastructureConfig, infrastructureConfigPath)...)
