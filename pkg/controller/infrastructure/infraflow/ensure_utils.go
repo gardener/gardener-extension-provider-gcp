@@ -346,9 +346,9 @@ func isUserVPC(config *gcp.InfrastructureConfig) bool {
 
 func isToDualStackMigration(shoot *gardencorev1beta1.Shoot) bool {
 	nodesInMigration := false
-	condition := gardencorev1beta1helper.GetCondition(shoot.Status.Constraints, "ToDualStackMigration")
+	condition := gardencorev1beta1helper.GetCondition(shoot.Status.Constraints, "DualStackNodesMigrationReady")
 
-	if condition != nil && condition.Status != "DualStackNodesReady" {
+	if condition != nil && condition.Status != gardencorev1beta1.ConditionTrue {
 		nodesInMigration = true
 	}
 	return nodesInMigration
