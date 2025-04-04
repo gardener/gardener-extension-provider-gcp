@@ -17,7 +17,6 @@ LD_FLAGS                    := "-w $(shell bash $(GARDENER_HACK_DIR)/get-build-l
 LEADER_ELECTION             := false
 IGNORE_OPERATION_ANNOTATION := true
 PLATFORM                    := linux/amd64
-TEST_RECONCILER             := flow
 
 WEBHOOK_CONFIG_PORT	:= 8443
 WEBHOOK_CONFIG_MODE	:= url
@@ -173,7 +172,6 @@ integration-test-infra:
 		--kubeconfig=${KUBECONFIG} \
 		--service-account='$(shell cat $(SERVICE_ACCOUNT_FILE))' \
 		--region=$(REGION) \
-		--reconciler=$(TEST_RECONCILER)
 
 .PHONY: integration-test-bastion
 integration-test-bastion:
