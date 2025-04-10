@@ -15,7 +15,7 @@ ARG EFFECTIVE_VERSION
 RUN make install EFFECTIVE_VERSION=$EFFECTIVE_VERSION
 
 ############# base image
-FROM gcr.io/distroless/static-debian11:nonroot AS base
+FROM gcr.io/distroless/static-debian12:nonroot AS base
 
 ############# gardener-extension-provider-gcp
 FROM base AS gardener-extension-provider-gcp
