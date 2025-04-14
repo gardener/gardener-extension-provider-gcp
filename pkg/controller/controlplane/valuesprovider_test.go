@@ -23,10 +23,8 @@ import (
 	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -239,7 +237,6 @@ var _ = Describe("ValuesProvider", func() {
 			c.EXPECT().Delete(context.TODO(), &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: gcp.CSISnapshotValidationName, Namespace: namespace}})
 			c.EXPECT().Delete(context.TODO(), &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: gcp.CSISnapshotValidationName, Namespace: namespace}})
 			c.EXPECT().Delete(context.TODO(), &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "csi-driver-controller-observability-config", Namespace: namespace}})
-			c.EXPECT().Get(context.TODO(), client.ObjectKey{Name: "prometheus-shoot", Namespace: cp.Namespace}, gomock.AssignableToTypeOf(&appsv1.StatefulSet{})).Return(apierrors.NewNotFound(schema.GroupResource{}, ""))
 		})
 
 		It("should return correct control plane chart values", func() {
@@ -251,7 +248,6 @@ var _ = Describe("ValuesProvider", func() {
 				},
 				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
-					"gep19Monitoring":     false,
 					"allocatorType":       "RangeAllocator",
 					"useWorkloadIdentity": false,
 				}),
@@ -287,7 +283,6 @@ var _ = Describe("ValuesProvider", func() {
 				"kubernetesVersion":    cluster.Shoot.Spec.Kubernetes.Version,
 				"configureCloudRoutes": true,
 				"allocatorType":        "RangeAllocator",
-				"gep19Monitoring":      false,
 				"useWorkloadIdentity":  false,
 			})))
 		})
@@ -307,7 +302,6 @@ var _ = Describe("ValuesProvider", func() {
 				"kubernetesVersion":    cluster.Shoot.Spec.Kubernetes.Version,
 				"nodeCIDRMaskSizeIPv4": int32(22),
 				"allocatorType":        "RangeAllocator",
-				"gep19Monitoring":      false,
 				"useWorkloadIdentity":  false,
 			})))
 		})

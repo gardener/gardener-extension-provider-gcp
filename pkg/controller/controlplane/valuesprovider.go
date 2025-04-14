@@ -330,15 +330,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, err
 	}
 
-	// TODO(rfranzke): Delete this after August 2024.
-	gep19Monitoring := vp.client.Get(ctx, k8sclient.ObjectKey{Name: "prometheus-shoot", Namespace: cp.Namespace}, &appsv1.StatefulSet{}) == nil
-	if gep19Monitoring {
-		if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-observability-config", Namespace: cp.Namespace}}); err != nil {
-			return nil, fmt.Errorf("failed deleting cloud-controller-manager-observability-config ConfigMap: %w", err)
-		}
-	}
-
-	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown, gep19Monitoring)
+	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
@@ -398,12 +390,11 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 	credentialsConfig *gcp.CredentialsConfig,
 	checksums map[string]string,
 	scaledDown bool,
-	gep19Monitoring bool,
 ) (
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring, shouldUseWorkloadIdentity(credentialsConfig))
+	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, shouldUseWorkloadIdentity(credentialsConfig))
 	if err != nil {
 		return nil, err
 	}
@@ -442,7 +433,6 @@ func (vp *valuesProvider) getCCMChartValues(
 	secretsReader secretsmanager.Reader,
 	checksums map[string]string,
 	scaledDown bool,
-	gep19Monitoring bool,
 	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
@@ -469,7 +459,6 @@ func (vp *valuesProvider) getCCMChartValues(
 		"secrets": map[string]interface{}{
 			"server": serverSecret.Name,
 		},
-		"gep19Monitoring":     gep19Monitoring,
 		"useWorkloadIdentity": useWorkloadIdentity,
 	}
 
