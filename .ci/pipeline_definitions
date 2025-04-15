@@ -1,5 +1,5 @@
 gardener-extension-provider-gcp:
-  templates: 
+  templates:
     helmcharts:
     - &provider-gcp
       name: provider-gcp
@@ -43,6 +43,9 @@ gardener-extension-provider-gcp:
             github_hostname: 'github.com'
       publish:
         oci-builder: 'docker-buildx'
+        platforms:
+        - 'linux/x86_64'
+        - 'linux/arm64'
         dockerimages:
           gardener-extension-provider-gcp:
             image: europe-docker.pkg.dev/gardener-project/snapshots/gardener/extensions/provider-gcp
