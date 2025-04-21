@@ -40,7 +40,6 @@ import (
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
-	gcpWorker "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
@@ -204,7 +203,7 @@ var _ = Describe("Machines", func() {
 					"memory": resource.MustParse("128Gi"),
 				}
 				nodeTemplatePool1Zone1 = machinev1alpha1.NodeTemplate{
-					Capacity:     gcpWorker.InitializeCapacity(nodeCapacity, acceleratorCount),
+					Capacity:     InitializeCapacity(nodeCapacity, acceleratorCount),
 					InstanceType: machineType,
 					Region:       region,
 					Zone:         zone1,
@@ -212,7 +211,7 @@ var _ = Describe("Machines", func() {
 				}
 
 				nodeTemplatePool1Zone2 = machinev1alpha1.NodeTemplate{
-					Capacity:     gcpWorker.InitializeCapacity(nodeCapacity, acceleratorCount),
+					Capacity:     InitializeCapacity(nodeCapacity, acceleratorCount),
 					InstanceType: machineType,
 					Region:       region,
 					Zone:         zone2,
@@ -566,48 +565,76 @@ var _ = Describe("Machines", func() {
 					labelsZone2 := utils.MergeStringMaps(poolLabels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone2})
 					machineDeployments = worker.MachineDeployments{
 						{
-							Name:                 machineClassNamePool1Zone1,
-							ClassName:            machineClassWithHashPool1Zone1,
-							SecretName:           machineClassWithHashPool1Zone1,
-							Minimum:              worker.DistributeOverZones(0, minPool1, 2),
-							Maximum:              worker.DistributeOverZones(0, maxPool1, 2),
-							MaxSurge:             worker.DistributePositiveIntOrPercent(0, maxSurgePool1, 2, maxPool1),
-							MaxUnavailable:       worker.DistributePositiveIntOrPercent(0, maxUnavailablePool1, 2, minPool1),
+							Name:       machineClassNamePool1Zone1,
+							ClassName:  machineClassWithHashPool1Zone1,
+							SecretName: machineClassWithHashPool1Zone1,
+							Minimum:    worker.DistributeOverZones(0, minPool1, 2),
+							Maximum:    worker.DistributeOverZones(0, maxPool1, 2),
+							Strategy: machinev1alpha1.MachineDeploymentStrategy{
+								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+										MaxSurge:       ptr.To(worker.DistributePositiveIntOrPercent(0, maxSurgePool1, 2, maxPool1)),
+										MaxUnavailable: ptr.To(worker.DistributePositiveIntOrPercent(0, maxUnavailablePool1, 2, minPool1)),
+									},
+								},
+							},
 							Labels:               labelsZone1,
 							MachineConfiguration: machineConfiguration,
 						},
 						{
-							Name:                 machineClassNamePool1Zone2,
-							ClassName:            machineClassWithHashPool1Zone2,
-							SecretName:           machineClassWithHashPool1Zone2,
-							Minimum:              worker.DistributeOverZones(1, minPool1, 2),
-							Maximum:              worker.DistributeOverZones(1, maxPool1, 2),
-							MaxSurge:             worker.DistributePositiveIntOrPercent(1, maxSurgePool1, 2, maxPool1),
-							MaxUnavailable:       worker.DistributePositiveIntOrPercent(1, maxUnavailablePool1, 2, minPool1),
+							Name:       machineClassNamePool1Zone2,
+							ClassName:  machineClassWithHashPool1Zone2,
+							SecretName: machineClassWithHashPool1Zone2,
+							Minimum:    worker.DistributeOverZones(1, minPool1, 2),
+							Maximum:    worker.DistributeOverZones(1, maxPool1, 2),
+							Strategy: machinev1alpha1.MachineDeploymentStrategy{
+								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+										MaxSurge:       ptr.To(worker.DistributePositiveIntOrPercent(1, maxSurgePool1, 2, maxPool1)),
+										MaxUnavailable: ptr.To(worker.DistributePositiveIntOrPercent(1, maxUnavailablePool1, 2, minPool1)),
+									},
+								},
+							},
 							Labels:               labelsZone2,
 							MachineConfiguration: machineConfiguration,
 						},
 						{
-							Name:                 machineClassNamePool2Zone1,
-							ClassName:            machineClassWithHashPool2Zone1,
-							SecretName:           machineClassWithHashPool2Zone1,
-							Minimum:              worker.DistributeOverZones(0, minPool2, 2),
-							Maximum:              worker.DistributeOverZones(0, maxPool2, 2),
-							Priority:             ptr.To(priorityPool2),
-							MaxSurge:             worker.DistributePositiveIntOrPercent(0, maxSurgePool2, 2, maxPool2),
-							MaxUnavailable:       worker.DistributePositiveIntOrPercent(0, maxUnavailablePool2, 2, minPool2),
+							Name:       machineClassNamePool2Zone1,
+							ClassName:  machineClassWithHashPool2Zone1,
+							SecretName: machineClassWithHashPool2Zone1,
+							Minimum:    worker.DistributeOverZones(0, minPool2, 2),
+							Maximum:    worker.DistributeOverZones(0, maxPool2, 2),
+							Priority:   ptr.To(priorityPool2),
+							Strategy: machinev1alpha1.MachineDeploymentStrategy{
+								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+										MaxSurge:       ptr.To(worker.DistributePositiveIntOrPercent(0, maxSurgePool2, 2, maxPool2)),
+										MaxUnavailable: ptr.To(worker.DistributePositiveIntOrPercent(0, maxUnavailablePool2, 2, minPool2)),
+									},
+								},
+							},
 							Labels:               labelsZone1,
 							MachineConfiguration: machineConfiguration,
 						},
 						{
-							Name:                 machineClassNamePool2Zone2,
-							ClassName:            machineClassWithHashPool2Zone2,
-							SecretName:           machineClassWithHashPool2Zone2,
-							Minimum:              worker.DistributeOverZones(1, minPool2, 2),
-							Maximum:              worker.DistributeOverZones(1, maxPool2, 2),
-							Priority:             ptr.To(priorityPool2),
-							MaxSurge:             worker.DistributePositiveIntOrPercent(1, maxSurgePool2, 2, maxPool2),
-							MaxUnavailable:       worker.DistributePositiveIntOrPercent(1, maxUnavailablePool2, 2, minPool2),
+							Name:       machineClassNamePool2Zone2,
+							ClassName:  machineClassWithHashPool2Zone2,
+							SecretName: machineClassWithHashPool2Zone2,
+							Minimum:    worker.DistributeOverZones(1, minPool2, 2),
+							Maximum:    worker.DistributeOverZones(1, maxPool2, 2),
+							Priority:   ptr.To(priorityPool2),
+							Strategy: machinev1alpha1.MachineDeploymentStrategy{
+								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+										MaxSurge:       ptr.To(worker.DistributePositiveIntOrPercent(1, maxSurgePool2, 2, maxPool2)),
+										MaxUnavailable: ptr.To(worker.DistributePositiveIntOrPercent(1, maxUnavailablePool2, 2, minPool2)),
+									},
+								},
+							},
 							Labels:               labelsZone2,
 							MachineConfiguration: machineConfiguration,
 						},
