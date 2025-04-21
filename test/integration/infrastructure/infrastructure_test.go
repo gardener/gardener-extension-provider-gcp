@@ -608,10 +608,11 @@ func newInfrastructure(namespace string, reconciler string, providerConfig *gcpv
 		},
 	}
 
-	if reconciler == reconcilerUseFlow {
+	switch reconciler {
+	case reconcilerUseFlow:
 		log.Info("creating infrastructure with flow annotation")
 		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, gcp.AnnotationKeyUseFlow, "true")
-	} else if reconciler == reconcilerUseTF {
+	case reconcilerUseTF:
 		log.Info("creating infrastructure with terraform annotation")
 		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, gcp.AnnotationKeyUseFlow, "false")
 	}
@@ -664,11 +665,10 @@ func teardownNetwork(ctx context.Context, logger logr.Logger, project string, co
 
 	routerOp, err := computeService.Routers.Delete(project, *region, routerName).Context(ctx).Do()
 	if err != nil {
-		if gcpclient.IsErrorCode(err, http.StatusNotFound) {
-			logger.Info("The router is gone", "router", routerName)
-		} else {
+		if !gcpclient.IsErrorCode(err, http.StatusNotFound) {
 			return err
 		}
+		logger.Info("The router is gone", "router", routerName)
 	} else {
 		logger.Info("Waiting until router is deleted...", "router", routerName)
 		if err = waitForOperation(ctx, project, computeService, routerOp); err != nil {
@@ -679,10 +679,9 @@ func teardownNetwork(ctx context.Context, logger logr.Logger, project string, co
 	networkOp, err := computeService.Networks.Delete(project, networkName).Context(ctx).Do()
 	if err != nil {
 		if gcpclient.IsErrorCode(err, http.StatusNotFound) {
-			logger.Info("The network is gone", "network", networkName)
-		} else {
 			return err
 		}
+		logger.Info("The network is gone", "network", networkName)
 	} else {
 		logger.Info("Waiting until network is deleted...", "network", networkName)
 		if err = waitForOperation(ctx, project, computeService, networkOp); err != nil {

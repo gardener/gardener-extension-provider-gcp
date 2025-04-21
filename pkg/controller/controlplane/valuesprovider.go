@@ -15,7 +15,6 @@ import (
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
-	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -490,7 +489,7 @@ func (vp *valuesProvider) getCCMChartValues(
 	}
 
 	if cluster.Shoot.Spec.Kubernetes.KubeControllerManager != nil && cluster.Shoot.Spec.Kubernetes.KubeControllerManager.NodeCIDRMaskSize != nil {
-		if len(cluster.Shoot.Spec.Networking.IPFamilies) == 1 && cluster.Shoot.Spec.Networking.IPFamilies[0] == v1beta1.IPFamilyIPv4 {
+		if len(cluster.Shoot.Spec.Networking.IPFamilies) == 1 && cluster.Shoot.Spec.Networking.IPFamilies[0] == gardencorev1beta1.IPFamilyIPv4 {
 			values["nodeCIDRMaskSizeIPv4"] = *cluster.Shoot.Spec.Kubernetes.KubeControllerManager.NodeCIDRMaskSize
 		}
 	}

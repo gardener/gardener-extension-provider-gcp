@@ -719,11 +719,10 @@ func getMyPublicIPWithMask() (string, error) {
 
 	ip := net.ParseIP(string(body))
 	var mask net.IPMask
-	if ip.To4() != nil {
-		mask = net.CIDRMask(24, 32) // use a /24 net for IPv4
-	} else {
+	if ip.To4() == nil {
 		return "", fmt.Errorf("not valid IPv4 address")
 	}
+	mask = net.CIDRMask(24, 32) // use a /24 net for IPv4
 
 	cidr := net.IPNet{
 		IP:   ip,
