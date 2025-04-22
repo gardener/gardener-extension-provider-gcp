@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -415,11 +414,6 @@ func (c *computeClient) ListRoutes(ctx context.Context, opts RouteListOpts) ([]*
 }
 
 func (c *computeClient) InsertAliasIPRoute(ctx context.Context, route apisgcp.Route, defaultSecondarySubnetName string) error {
-
-	maxRetries := 5
-	initialBackoff := 1 * time.Second
-	backoffFactor := 2
-
 	log := shared.LogFromContext(ctx)
 
 	instance, err := c.GetInstance(ctx, route.Zone, route.InstanceName)
@@ -436,20 +430,14 @@ func (c *computeClient) InsertAliasIPRoute(ctx context.Context, route apisgcp.Ro
 	// Append the alias IP range to the existing list
 	instance.NetworkInterfaces[0].AliasIpRanges = append(instance.NetworkInterfaces[0].AliasIpRanges, aliasIpRange)
 
-	// Retry logic for updating the instance
 	var op *compute.Operation
-	for i := 0; i < maxRetries; i++ {
-		op, err = c.service.Instances.UpdateNetworkInterface(c.projectID, route.Zone, route.InstanceName, instance.NetworkInterfaces[0].Name, instance.NetworkInterfaces[0]).Context(ctx).Do()
-		if err == nil {
-			log.Info("Operation to update network interface started: ", "opName", op.Name, "name", instance.NetworkInterfaces[0].Name)
-			return nil
-		}
-
-		log.Info("Failed to update network interface", "attempt", strconv.Itoa(i), "name", instance.NetworkInterfaces[0].Name, "error", err)
-		time.Sleep(initialBackoff * time.Duration(backoffFactor^i))
+	op, err = c.service.Instances.UpdateNetworkInterface(c.projectID, route.Zone, route.InstanceName, instance.NetworkInterfaces[0].Name, instance.NetworkInterfaces[0]).Context(ctx).Do()
+	if err == nil {
+		log.Info("Operation to update network interface started: ", "opName", op.Name, "name", instance.NetworkInterfaces[0].Name)
+		return nil
 	}
 
-	log.Info("Failed to update network interface after retries", "name", instance.NetworkInterfaces[0].Name, "error", err)
+	log.Info("Failed to update network interface", "name", instance.NetworkInterfaces[0].Name, "error", err)
 	return err
 }
 

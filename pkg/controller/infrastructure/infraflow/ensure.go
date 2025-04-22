@@ -16,6 +16,7 @@ import (
 	ctclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
@@ -124,7 +125,7 @@ func (fctx *FlowContext) ensureIPv6CIDRs(ctx context.Context) error {
 	return nil
 }
 
-func (fctx *FlowContext) ensureKubernetesRoutesCleanup(ctx context.Context) error {
+func (fctx *FlowContext) ensureKubernetesRoutesCleanupForDualStackMigration(ctx context.Context) error {
 	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
 		return err
 	}
@@ -164,29 +165,53 @@ func (fctx *FlowContext) ensureKubernetesRoutesCleanup(ctx context.Context) erro
 		return err
 	}
 
+	routes := []v1alpha1.Route{}
+	// Safely retrieve and cast the routes object
+	if routesObj := fctx.whiteboard.GetObject(ObjectKeyRoutes); routesObj != nil {
+		if castedRoutes, ok := routesObj.([]v1alpha1.Route); ok {
+			routes = castedRoutes
+		}
+	}
+
+	// Ensure all cloudRoutes are added to the whiteboard, avoiding duplicates
 	for _, route := range cloudRoutes {
 		instanceName, zone, err := extractInstanceAndZone(route.NextHopInstance)
 		if err != nil {
 			return err
 		}
 
-		fctx.state.Routes = append(fctx.state.Routes, apisgcp.Route{InstanceName: instanceName, DestinationCIDR: route.DestRange, Zone: zone})
-		// Delete the route
-		if err := fctx.computeClient.DeleteRoute(ctx, route.Name); err != nil {
-			// scale CCM back to originalScale in case if there are errors from DeleteRoutes() call
-			_ = scaleCCMto(originalScale)
-			// if route couldn't be remove last route from stack
-			fctx.state.Routes = fctx.state.Routes[:len(fctx.state.Routes)-1]
-			err = fctx.persistState(ctx)
-			if err != nil {
-				fctx.log.Error(err, "failed to persist state")
+		// Check if the route already exists in the list
+		exists := false
+		for _, r := range routes {
+			if r.InstanceName == instanceName && r.DestinationCIDR == route.DestRange && r.Zone == zone {
+				exists = true
+				break
 			}
-			return err
+		}
+
+		// Add the route if it doesn't already exist
+		if !exists {
+			routes = append(routes, v1alpha1.Route{
+				InstanceName:    instanceName,
+				DestinationCIDR: route.DestRange,
+				Zone:            zone,
+			})
 		}
 	}
+	fctx.whiteboard.SetObject(ObjectKeyRoutes, routes)
 	err = fctx.persistState(ctx)
 	if err != nil {
 		fctx.log.Error(err, "failed to persist state")
+	}
+
+	// Delete all cloudroutes
+	for _, route := range cloudRoutes {
+		fctx.log.Info("Deleting route", "name", route.Name, "destRange", route.DestRange)
+		if err := fctx.computeClient.DeleteRoute(ctx, route.Name); err != nil {
+			// scale CCM back to originalScale in case if there are errors from DeleteRoutes() call
+			_ = scaleCCMto(originalScale)
+			return err
+		}
 	}
 	return nil
 }
@@ -636,30 +661,46 @@ func (fctx *FlowContext) ensureKubernetesRoutesDeleted(ctx context.Context) erro
 func (fctx *FlowContext) ensureAliasIpRanges(ctx context.Context) error {
 	log := shared.LogFromContext(ctx)
 
-	for i, route := range fctx.state.Routes {
-		// if machine is already gone procceed with next route
-		if err := fctx.computeClient.InsertAliasIPRoute(ctx, route, DefaultSecondarySubnetName); err != nil && !strings.Contains(err.Error(), "notFound") {
-			log.Info("Failed to add alias IP", "route", route.DestinationCIDR, "instance", route.InstanceName, "error", err)
-			perr := fctx.persistState(ctx)
-			if perr != nil {
-				fctx.log.Error(perr, "failed to persist state")
-			}
-			return err
-		} else {
-			log.Info("Successfully added alias IP", "route", route.DestinationCIDR, "instance", route.InstanceName)
-			if i >= 0 && i < len(fctx.state.Routes) {
-				if i < len(fctx.state.Routes)-1 {
-					fctx.state.Routes = append(fctx.state.Routes[:i], fctx.state.Routes[i+1:]...)
-				} else {
-					fctx.state.Routes = fctx.state.Routes[:i]
-				}
-			}
-		}
+	// Retrieve and cast the routes object from the whiteboard
+	routes, ok := fctx.whiteboard.GetObject(ObjectKeyRoutes).([]v1alpha1.Route)
+	if !ok || routes == nil {
+		log.Info("No routes found in the whiteboard")
+		return nil
 	}
+
+	// Iterate over the routes and process each one
+	// Adding an already existing alias IP route will not fail so we can persist the state at the end
+	// of the loop
+	for _, route := range routes {
+		// Attempt to insert the alias IP route
+		err := fctx.computeClient.InsertAliasIPRoute(ctx, apisgcp.Route{
+			InstanceName:    route.InstanceName,
+			DestinationCIDR: route.DestinationCIDR,
+			Zone:            route.Zone,
+		}, DefaultSecondarySubnetName)
+
+		if err != nil {
+			// Handle errors other than "notFound"
+			if !strings.Contains(err.Error(), "notFound") {
+				log.Error(err, "Failed to add alias IP", "route", route.DestinationCIDR, "instance", route.InstanceName)
+				return err
+			}
+
+			// Log and skip if the machine is already gone
+			log.Info("Machine not found, skipping route", "route", route.DestinationCIDR, "instance", route.InstanceName)
+			continue
+		}
+
+		// Log success and remove the processed route from the list
+		log.Info("Successfully added alias IP", "route", route.DestinationCIDR, "instance", route.InstanceName)
+	}
+
+	// All routes have been processed, so we can clear the whiteboard
+	// and persist the state
+	fctx.whiteboard.SetObject(ObjectKeyRoutes, []v1alpha1.Route{})
 	err := fctx.persistState(ctx)
 	if err != nil {
 		fctx.log.Error(err, "failed to persist state")
 	}
-
 	return nil
 }

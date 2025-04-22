@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
@@ -57,6 +56,8 @@ const (
 	ObjectKeyNAT = "nat"
 	// ObjectKeyIPAddresses is the key for the IP Address slice.
 	ObjectKeyIPAddresses = "addresses/ip"
+	// ObjectKeyRoutes is the key for the routes slice.
+	ObjectKeyRoutes = "routes"
 )
 
 // DefaultUpdaterFunc is the default constructor used for an Updated used in the package.
@@ -72,7 +73,7 @@ type FlowContext struct {
 	clusterName       string
 	technicalID       string
 	runtimeClient     client.Client
-	networking        *v1beta1.Networking
+	networking        *gardencorev1beta1.Networking
 	whiteboard        shared.Whiteboard
 	log               logr.Logger
 	shoot             *gardencorev1beta1.Shoot
@@ -100,6 +101,7 @@ type Opts struct {
 func NewFlowContext(ctx context.Context, opts Opts) (*FlowContext, error) {
 	wb := shared.NewWhiteboard()
 	wb.ImportFromFlatMap(opts.State.Data)
+	wb.ImportRoutesFromState(ObjectKeyRoutes, opts.State.Routes)
 	config, err := helper.InfrastructureConfigFromInfrastructure(opts.Infra)
 	if err != nil {
 		return nil, err
@@ -231,13 +233,22 @@ func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 }
 
 func (fctx *FlowContext) getCurrentState() *runtime.RawExtension {
+	routes := []v1alpha1.Route{}
+
+	// Safely retrieve and cast the routes object
+	if routesObj := fctx.whiteboard.GetObject(ObjectKeyRoutes); routesObj != nil {
+		if castedRoutes, ok := routesObj.([]v1alpha1.Route); ok {
+			routes = castedRoutes
+		}
+	}
+
 	state := &v1alpha1.InfrastructureState{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
 			Kind:       "InfrastructureState",
 		},
 		Data:   fctx.whiteboard.ExportAsFlatMap(),
-		Routes: fctx.state.Routes,
+		Routes: routes, // Use the safely casted routes
 	}
 
 	return &runtime.RawExtension{
@@ -266,7 +277,7 @@ func PatchProviderStatusAndState(
 	ctx context.Context,
 	runtimeClient client.Client,
 	infra *extensionsv1alpha1.Infrastructure,
-	networking *v1beta1.Networking,
+	networking *gardencorev1beta1.Networking,
 	status *v1alpha1.InfrastructureStatus,
 	state *runtime.RawExtension,
 	nodesSubnetIPv6CIDR *string,

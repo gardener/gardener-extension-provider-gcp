@@ -7,8 +7,6 @@ package v1alpha1
 import (
 	corev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 // +genclient
@@ -183,5 +181,15 @@ type InfrastructureState struct {
 	Data map[string]string `json:"data,omitempty"`
 	// Routes contains information about cluster routes
 	// +optional
-	Routes []apisgcp.Route `json:"routes,omitempty"`
+	Routes []Route `json:"routes,omitempty"`
+}
+
+// Route is a structure containing information about the routes.
+type Route struct {
+	// InstanceName
+	InstanceName string `json:"instanceName,omitempty"`
+	// DestinationCIDR
+	DestinationCIDR string `json:"destinationCIDR,omitempty"`
+	// Zone is the zone of the route
+	Zone string `json:"zone,omitempty"`
 }

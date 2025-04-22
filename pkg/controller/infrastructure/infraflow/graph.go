@@ -28,7 +28,7 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	ensureVPC := fctx.AddTask(g, "ensure VPC", fctx.ensureVPC,
 		shared.Timeout(defaultCreateTimeout),
 	)
-	ensureDualStackKubernetesRoutesCleanup := fctx.AddTask(g, "ensure kubernetes routes cleanup", fctx.ensureKubernetesRoutesCleanup,
+	ensureDualStackKubernetesRoutesCleanup := fctx.AddTask(g, "ensure kubernetes routes cleanup", fctx.ensureKubernetesRoutesCleanupForDualStackMigration,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
 		shared.DoIf(isToDualStackMigration(fctx.shoot)),
