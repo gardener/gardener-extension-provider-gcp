@@ -98,7 +98,6 @@ func httpClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, s
 	}
 
 	return oauth2.NewClient(ctx, ts), nil
-
 }
 
 func clientOptions(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) (option.ClientOption, error) {
@@ -119,5 +118,4 @@ func clientOptions(ctx context.Context, credentialsConfig *gcp.CredentialsConfig
 	}
 
 	return option.WithCredentials(credentials), nil
-
 }

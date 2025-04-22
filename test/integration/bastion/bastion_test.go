@@ -329,7 +329,6 @@ func prepareNewNetwork(ctx context.Context, log logr.Logger, project string, com
 }
 
 func teardownNetwork(ctx context.Context, log logr.Logger, project string, computeService *compute.Service, networkName string, routerName string, subnetName string) error {
-
 	routerOp, err := computeService.Routers.Delete(project, *region, routerName).Context(ctx).Do()
 	if err != nil {
 		return err

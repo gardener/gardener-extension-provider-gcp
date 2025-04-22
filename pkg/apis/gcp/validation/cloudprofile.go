@@ -77,7 +77,6 @@ func ValidateCloudProfileConfig(cpConfig *apisgcp.CloudProfileConfig, machineIma
 				allErrs = append(allErrs, field.NotSupported(
 					imageVersionPath.Child("architecture"),
 					versionArch, v1beta1constants.ValidArchitectures))
-
 			}
 		}
 	}

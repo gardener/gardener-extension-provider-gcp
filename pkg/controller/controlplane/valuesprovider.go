@@ -507,7 +507,6 @@ func getCSIControllerChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
-
 	values := map[string]interface{}{
 		"enabled":   true,
 		"replicas":  extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
