@@ -236,7 +236,6 @@ var _ = Describe("ValuesProvider", func() {
 
 			c.EXPECT().Delete(context.TODO(), &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: gcp.CSISnapshotValidationName, Namespace: namespace}})
 			c.EXPECT().Delete(context.TODO(), &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: gcp.CSISnapshotValidationName, Namespace: namespace}})
-			c.EXPECT().Delete(context.TODO(), &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "csi-driver-controller-observability-config", Namespace: namespace}})
 		})
 
 		It("should return correct control plane chart values", func() {
