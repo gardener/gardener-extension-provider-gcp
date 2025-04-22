@@ -52,7 +52,7 @@ type ensurer struct {
 // EnsureCloudProviderSecret ensures that cloudprovider secret
 // contains the proper credential source.
 func (e *ensurer) EnsureCloudProviderSecret(_ context.Context, _ gcontext.GardenContext, newSecret, _ *corev1.Secret) error {
-	if newSecret.ObjectMeta.Labels == nil || newSecret.ObjectMeta.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] != "gcp" {
+	if newSecret.Labels == nil || newSecret.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] != "gcp" {
 		return nil
 	}
 

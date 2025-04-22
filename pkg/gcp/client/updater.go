@@ -53,7 +53,7 @@ func (u *updater) VPC(ctx context.Context, desired, current *compute.Network) (*
 	// dismiss non-functional changes that may block update
 	desired.Description = ""
 
-	modified := false
+	var modified bool
 	if desired.RoutingConfig != current.RoutingConfig {
 		modified = true
 	}
