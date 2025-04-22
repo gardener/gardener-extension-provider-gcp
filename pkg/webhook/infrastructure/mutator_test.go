@@ -139,7 +139,7 @@ var _ = Describe("Mutate", func() {
 				}
 
 				err := mutator.Mutate(ctx, newInfra, nil)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(newInfra.Annotations[gcp.AnnotationKeyUseFlow]).To(Equal("true"))
 			})
 
