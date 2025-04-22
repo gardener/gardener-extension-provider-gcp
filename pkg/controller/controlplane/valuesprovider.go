@@ -14,7 +14,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
-	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
+	extensionssecretmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -33,7 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -51,8 +51,8 @@ const (
 	cloudControllerManagerServerName     = "cloud-controller-manager-server"
 )
 
-func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfigWithOptions {
-	return []extensionssecretsmanager.SecretConfigWithOptions{
+func secretConfigsFunc(namespace string) []extensionssecretmanager.SecretConfigWithOptions {
+	return []extensionssecretmanager.SecretConfigWithOptions{
 		{
 			Config: &secretutils.CertificateSecretConfig{
 				Name:       caNameControlPlane,
@@ -108,7 +108,7 @@ var (
 					{Type: &corev1.Service{}, Name: "cloud-controller-manager"},
 					{Type: &appsv1.Deployment{}, Name: "cloud-controller-manager"},
 					{Type: &corev1.ConfigMap{}, Name: "cloud-controller-manager-observability-config"},
-					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: "cloud-controller-manager-vpa"},
+					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: "cloud-controller-manager-vpa"},
 					{Type: &monitoringv1.ServiceMonitor{}, Name: "shoot-cloud-controller-manager"},
 					{Type: &monitoringv1.PrometheusRule{}, Name: "shoot-cloud-controller-manager"},
 				},
@@ -128,10 +128,10 @@ var (
 					// csi-driver-controller
 					{Type: &appsv1.Deployment{}, Name: gcp.CSIControllerName},
 					{Type: &corev1.ConfigMap{}, Name: gcp.CSIControllerConfigName},
-					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: gcp.CSIControllerName + "-vpa"},
+					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: gcp.CSIControllerName + "-vpa"},
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: gcp.CSISnapshotControllerName},
-					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: gcp.CSISnapshotControllerName + "-vpa"},
+					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: gcp.CSISnapshotControllerName + "-vpa"},
 				},
 			},
 			{
@@ -141,7 +141,7 @@ var (
 				},
 				Objects: []*chart.Object{
 					{Type: &appsv1.Deployment{}, Name: gcp.IngressGCEName},
-					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: gcp.IngressGCEName + "-vpa"},
+					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: gcp.IngressGCEName + "-vpa"},
 					{Type: &corev1.ServiceAccount{}, Name: "glbc"},
 				},
 			},
