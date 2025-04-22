@@ -21,11 +21,6 @@ import (
 
 var _ = Describe("WorkloadIdentity validator", func() {
 	Describe("#Validate", func() {
-		const (
-			namespace = "garden-dev"
-			name      = "my-provider-account"
-		)
-
 		var (
 			workloadIdentityValidator extensionswebhook.Validator
 			workloadIdentity          *securityv1alpha1.WorkloadIdentity

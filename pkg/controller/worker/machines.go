@@ -25,7 +25,7 @@ import (
 	"github.com/gardener/gardener/pkg/utils"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	computev1 "google.golang.org/api/compute/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -49,7 +49,7 @@ const (
 	hyperDiskThroughput       = "hyperdisk-throughput"
 	maxGcpLabelCharactersSize = 63
 	// ResourceGPU is the GPU resource. It should be a non-negative integer.
-	ResourceGPU v1.ResourceName = "gpu"
+	ResourceGPU corev1.ResourceName = "gpu"
 	// VolumeTypeScratch is the gcp SCRATCH volume type
 	VolumeTypeScratch = "SCRATCH"
 )
@@ -497,7 +497,7 @@ func getGcePoolLabels(worker *v1alpha1.Worker, pool v1alpha1.WorkerPool) map[str
 	return gceInstanceLabels
 }
 
-func initializeCapacity(capacityList v1.ResourceList, gpuCount int32) v1.ResourceList {
+func initializeCapacity(capacityList corev1.ResourceList, gpuCount int32) corev1.ResourceList {
 	resultCapacity := capacityList.DeepCopy()
 	if gpuCount != 0 {
 		resultCapacity[ResourceGPU] = *resource.NewQuantity(int64(gpuCount), resource.DecimalSI)

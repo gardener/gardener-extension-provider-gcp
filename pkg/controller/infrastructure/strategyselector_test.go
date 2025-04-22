@@ -111,6 +111,8 @@ func newInfrastructureState() *v1alpha1.InfrastructureState {
 }
 
 // makeCluster returns a cluster object used for testing.
+//
+//nolint:unparam
 func makeCluster(pods, services string) *controller.Cluster {
 	var (
 		shoot = gardencorev1beta1.Shoot{

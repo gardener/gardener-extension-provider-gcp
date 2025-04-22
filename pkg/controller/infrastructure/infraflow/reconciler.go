@@ -63,8 +63,6 @@ var DefaultUpdaterFunc = gcpclient.NewUpdater
 
 // FlowContext is capable of reconciling and deleting the infrastructure for a shoot.
 type FlowContext struct {
-	bfg *shared.BasicFlowContext
-
 	infra             *extensionsv1alpha1.Infrastructure
 	config            *gcp.InfrastructureConfig
 	state             *gcp.InfrastructureState
@@ -257,17 +255,6 @@ func (fctx *FlowContext) persistState(ctx context.Context) error {
 		nodesSubnetIPv6CIDR,
 		servicesSubnetIPv6CIDR,
 	)
-}
-
-func (fctx *FlowContext) loadWhiteBoard() {
-	if fctx.whiteboard == nil {
-		return
-	}
-	if fctx.state == nil {
-		return
-	}
-
-	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
 }
 
 // PatchProviderStatusAndState computes and persists the infrastructure state

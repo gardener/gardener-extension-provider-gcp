@@ -14,7 +14,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/go-logr/logr"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 
@@ -93,7 +93,7 @@ func HasFlowAnnotation(infrastructure *extensionsv1alpha1.Infrastructure, cluste
 	return false
 }
 
-func hasBoolAnnotation(o v1.Object, keys ...string) *bool {
+func hasBoolAnnotation(o metav1.Object, keys ...string) *bool {
 	if annotations := o.GetAnnotations(); annotations != nil {
 		for _, k := range keys {
 			if v, ok := annotations[k]; ok {
