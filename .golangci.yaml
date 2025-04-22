@@ -3,9 +3,14 @@ run:
   concurrency: 4
 linters:
   enable:
+    - ginkgolinter
+    - importas
+    - misspell
+    - nilerr
     - revive
-  disable:
-    - unused
+    - unconvert
+    - unparam
+    - whitespace
   settings:
     importas:
       alias:
@@ -39,6 +44,10 @@ linters:
           alias: gutil
         - pkg: github.com/gardener/gardener/pkg/utils/kubernetes
           alias: kutil
+        - pkg: github.com/gardener/etcd-druid/api/core/v1alpha1
+          alias: druidcorev1alpha1
+        - pkg: github.com/gardener/etcd-druid/api/core/crds
+          alias: druidcorecrds
     loggercheck:
       require-string-key: true
       no-printf-like: true
@@ -57,28 +66,42 @@ linters:
     rules:
       - linters:
           - staticcheck
-        text: 'SA1019:'
+        text: 'SA1019:' # Excludes messages where deprecated variables are used
+      - linters:
+          - staticcheck
+        text: 'ST1001:' # should not use dot imports
+      # errcheck: Almost all programs ignore errors on these functions and in most cases it's ok
       - path: (.+)\.go$
-        text: var-naming
+        text: Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*print(f|ln)?|os\.(Un)?Setenv). is not checked
+      # revive:
       - path: (.+)\.go$
-        text: dot-imports
+        text: var-naming # ((var|const|struct field|func) .* should be .*
       - path: (.+)\.go$
-        text: package-comments
+        text: dot-imports # should not use dot imports
       - path: (.+)\.go$
-        text: indent-error-flow
+        text: package-comments # package comment should be of the form
       - path: (.+)\.go$
-        text: unexported-return
+        text: unexported-return # exported func .* returns unexported type .*, which can be annoying to use
+      - path: (.+)\.go$
+        text: indent-error-flow # if block ends with a return statement, so drop this else and outdent its block
       - path: (.+)\.go$
         text: 'exported: (type|func) name will be used as .* by other packages, and that stutters;'
+      - path: (.+)\.go$
+        text: exported function Convert_.* should have comment or be unexported
+      - path: (.+)\.go$
+        text: redundant-import-alias
+      # typecheck:
       - path: (.+)\.go$
         text: 'undeclared name: `.*`'
       - path: (.+)\.go$
         text: '".*" imported but not used'
+      # allow non-capitalized messages if they start with technical terms
+      - path: (.+)\.go$
+        text: 'structured logging message should be capitalized: "garden(er-apiserver|er-controller-manager|er-admission-controller|er-operator|er-resource-manager|let)'
     paths:
-      - third_party$
-      - builtin$
+      - zz_generated\..*\.go$
       - examples$
-formatters:
+formatters: # how code formatting is handled
   settings:
     gofmt:
       rewrite-rules:
@@ -87,6 +110,7 @@ formatters:
   exclusions:
     generated: lax
     paths:
-      - third_party$
-      - builtin$
       - examples$
+issues:
+  max-issues-per-linter: 0 # A value of 0 means no limit
+  max-same-issues: 0 # A value of 0 means no limit
