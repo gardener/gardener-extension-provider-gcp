@@ -28,8 +28,8 @@ var _ = Describe("Defaults", func() {
 
 			SetDefaults_Storage(obj)
 
-			Expect(*obj.ManagedDefaultStorageClass).To(Equal(true))
-			Expect(*obj.ManagedDefaultVolumeSnapshotClass).To(Equal(true))
+			Expect(*obj.ManagedDefaultStorageClass).To(BeTrue())
+			Expect(*obj.ManagedDefaultStorageClass).To(BeTrue())
 		})
 	})
 })

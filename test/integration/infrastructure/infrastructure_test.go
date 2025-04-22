@@ -549,11 +549,11 @@ func verifyDualStackSetup(ctx context.Context, project string, computeService *c
 
 	Expect(
 		firewallRules[infraflow.FirewallRuleAllowHealthChecksNameIPv6(namespace)],
-	).ToNot(BeFalse(), "Missing firewall rule to allow IPv6 health check")
+	).To(BeTrue(), "Missing firewall rule to allow IPv6 health check")
 
 	Expect(
 		firewallRules[infraflow.FirewallRuleAllowInternalNameIPv6(namespace)],
-	).ToNot(BeFalse(), "Missing firewall rule to allow IPv6 internal access")
+	).To(BeTrue(), "Missing firewall rule to allow IPv6 internal access")
 }
 
 func newProviderConfig(vpc *gcpv1alpha1.VPC, cloudNAT *gcpv1alpha1.CloudNAT) *gcpv1alpha1.InfrastructureConfig {

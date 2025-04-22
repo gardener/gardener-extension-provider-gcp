@@ -190,7 +190,7 @@ var _ = Describe("Bastion", func() {
 	Describe("check getProviderStatus", func() {
 		It("Should return an error and nil", func() {
 			res, err := getProviderStatus(bastion)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(BeNil())
 		})
 		It("Should return a providerStatusRaw struct", func() {

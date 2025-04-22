@@ -212,7 +212,7 @@ var _ = Describe("Terraform", func() {
 	Describe("#ComputeTerraformerTemplateValues", func() {
 		It("should correctly compute the terraformer chart values without serviceAccount", func() {
 			values, err := ComputeTerraformerTemplateValues(infra, credentialsConfig, config, &podCIDR, false)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
 					"region":  infra.Spec.Region,
@@ -249,7 +249,7 @@ var _ = Describe("Terraform", func() {
 
 		It("should correctly compute the terraformer chart values with serviceAccount", func() {
 			values, err := ComputeTerraformerTemplateValues(infra, credentialsConfig, config, &podCIDR, true)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
 					"region":  infra.Spec.Region,
@@ -314,7 +314,7 @@ var _ = Describe("Terraform", func() {
 			}
 
 			values, err := ComputeTerraformerTemplateValues(infra, credentialsConfig, config, &podCIDR, true)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
 					"region":  infra.Spec.Region,
@@ -386,7 +386,7 @@ var _ = Describe("Terraform", func() {
 			}
 
 			values, err := ComputeTerraformerTemplateValues(infra, credentialsConfig, config, &podCIDR, true)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
 					"region":  infra.Spec.Region,
@@ -429,7 +429,7 @@ var _ = Describe("Terraform", func() {
 		It("should correctly compute the terraformer chart values with vpc creation", func() {
 			config.Networks.VPC = nil
 			values, err := ComputeTerraformerTemplateValues(infra, credentialsConfig, config, &podCIDR, true)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"google": map[string]interface{}{
 					"region":  infra.Spec.Region,
