@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
 
@@ -50,7 +50,7 @@ func (p *namespacedCloudProfile) Validate(ctx context.Context, newObj, _ client.
 		return nil
 	}
 
-	cpConfig := &api.CloudProfileConfig{}
+	cpConfig := &apisgcp.CloudProfileConfig{}
 	if profile.Spec.ProviderConfig != nil {
 		var err error
 		cpConfig, err = admission.DecodeCloudProfileConfig(p.decoder, profile.Spec.ProviderConfig)
@@ -72,7 +72,7 @@ func (p *namespacedCloudProfile) Validate(ctx context.Context, newObj, _ client.
 }
 
 // validateNamespacedCloudProfileProviderConfig validates the CloudProfileConfig passed with a NamespacedCloudProfile.
-func (p *namespacedCloudProfile) validateNamespacedCloudProfileProviderConfig(providerConfig *api.CloudProfileConfig, profileSpec core.NamespacedCloudProfileSpec, parentSpec gardencorev1beta1.CloudProfileSpec) field.ErrorList {
+func (p *namespacedCloudProfile) validateNamespacedCloudProfileProviderConfig(providerConfig *apisgcp.CloudProfileConfig, profileSpec core.NamespacedCloudProfileSpec, parentSpec gardencorev1beta1.CloudProfileSpec) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	allErrs = append(allErrs, p.validateMachineImages(providerConfig, profileSpec.MachineImages, parentSpec)...)
@@ -80,7 +80,7 @@ func (p *namespacedCloudProfile) validateNamespacedCloudProfileProviderConfig(pr
 	return allErrs
 }
 
-func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.CloudProfileConfig, machineImages []core.MachineImage, parentSpec gardencorev1beta1.CloudProfileSpec) field.ErrorList {
+func (p *namespacedCloudProfile) validateMachineImages(providerConfig *apisgcp.CloudProfileConfig, machineImages []core.MachineImage, parentSpec gardencorev1beta1.CloudProfileSpec) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	providerConfigPath := field.NewPath("spec.providerConfig")

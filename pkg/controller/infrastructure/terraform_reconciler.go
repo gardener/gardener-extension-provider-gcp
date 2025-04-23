@@ -21,7 +21,7 @@ import (
 	"k8s.io/client-go/rest"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow"
@@ -233,7 +233,7 @@ func getTerraformerRawState(state *runtime.RawExtension) (*terraformer.RawState,
 
 func cleanupKubernetesFirewallRules(
 	ctx context.Context,
-	config *api.InfrastructureConfig,
+	config *apisgcp.InfrastructureConfig,
 	client gcpclient.ComputeClient,
 	tf terraformer.Terraformer,
 	shootSeedNamespace string,
@@ -251,7 +251,7 @@ func cleanupKubernetesFirewallRules(
 
 func cleanupKubernetesRoutes(
 	ctx context.Context,
-	config *api.InfrastructureConfig,
+	config *apisgcp.InfrastructureConfig,
 	client gcpclient.ComputeClient,
 	tf terraformer.Terraformer,
 	shootSeedNamespace string,
@@ -270,7 +270,7 @@ func cleanupKubernetesRoutes(
 func (t *TerraformReconciler) computeTerraformStatus(
 	ctx context.Context,
 	tf terraformer.Terraformer,
-	config *api.InfrastructureConfig,
+	config *apisgcp.InfrastructureConfig,
 	createSA bool,
 ) (*v1alpha1.InfrastructureStatus, *runtime.RawExtension, error) {
 	status, err := infrastructure.ComputeStatus(ctx, tf, config, createSA)
