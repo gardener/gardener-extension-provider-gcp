@@ -107,7 +107,6 @@ var (
 				Objects: []*chart.Object{
 					{Type: &corev1.Service{}, Name: "cloud-controller-manager"},
 					{Type: &appsv1.Deployment{}, Name: "cloud-controller-manager"},
-					{Type: &corev1.ConfigMap{}, Name: "cloud-controller-manager-observability-config"},
 					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: "cloud-controller-manager-vpa"},
 					{Type: &monitoringv1.ServiceMonitor{}, Name: "shoot-cloud-controller-manager"},
 					{Type: &monitoringv1.PrometheusRule{}, Name: "shoot-cloud-controller-manager"},
@@ -320,25 +319,12 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
 
-	// TODO(rfranzke): Delete this in a future release.
-	if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "csi-driver-controller-observability-config", Namespace: cp.Namespace}}); err != nil {
-		return nil, fmt.Errorf("failed deleting legacy csi-driver-controller-observability-config ConfigMap: %w", err)
-	}
-
 	// TODO(AndreasBurger): rm in future release.
 	if err := cleanupSeedLegacyCSISnapshotValidation(ctx, vp.client, cp.Namespace); err != nil {
 		return nil, err
 	}
 
-	// TODO(rfranzke): Delete this after August 2024.
-	gep19Monitoring := vp.client.Get(ctx, k8sclient.ObjectKey{Name: "prometheus-shoot", Namespace: cp.Namespace}, &appsv1.StatefulSet{}) == nil
-	if gep19Monitoring {
-		if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-observability-config", Namespace: cp.Namespace}}); err != nil {
-			return nil, fmt.Errorf("failed deleting cloud-controller-manager-observability-config ConfigMap: %w", err)
-		}
-	}
-
-	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown, gep19Monitoring)
+	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
@@ -398,12 +384,11 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 	credentialsConfig *gcp.CredentialsConfig,
 	checksums map[string]string,
 	scaledDown bool,
-	gep19Monitoring bool,
 ) (
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring, shouldUseWorkloadIdentity(credentialsConfig))
+	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, shouldUseWorkloadIdentity(credentialsConfig))
 	if err != nil {
 		return nil, err
 	}
@@ -442,7 +427,6 @@ func (vp *valuesProvider) getCCMChartValues(
 	secretsReader secretsmanager.Reader,
 	checksums map[string]string,
 	scaledDown bool,
-	gep19Monitoring bool,
 	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
@@ -469,7 +453,6 @@ func (vp *valuesProvider) getCCMChartValues(
 		"secrets": map[string]interface{}{
 			"server": serverSecret.Name,
 		},
-		"gep19Monitoring":     gep19Monitoring,
 		"useWorkloadIdentity": useWorkloadIdentity,
 	}
 
