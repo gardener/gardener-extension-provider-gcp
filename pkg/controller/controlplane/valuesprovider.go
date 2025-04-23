@@ -581,8 +581,8 @@ func getCSIControllerChartValues(
 	if versionutils.ConstraintK8sGreaterEqual134.Check(k8sVersion) || lessThan134VACEnabled {
 		values["csiDriver"] = map[string]interface{}{
 			"storage": map[string]interface{}{
-				"supportsDynamicIopsProvisioning":       []string{"hyperdisk-balanced", "hyperdisk-extreme"},
-				"supportsDynamicThroughputProvisioning": []string{"hyperdisk-balanced", "hyperdisk-throughput", "hyperdisk-ml"},
+				"supportsDynamicIopsProvisioning":       []string{gcp.HyperDiskBalanced, gcp.HyperDiskExtreme},
+				"supportsDynamicThroughputProvisioning": []string{gcp.HyperDiskBalanced, gcp.HyperDiskThroughput, gcp.HyperDiskML},
 			},
 		}
 	}

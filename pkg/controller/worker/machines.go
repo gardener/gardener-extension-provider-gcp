@@ -42,10 +42,6 @@ var labelRegex = regexp.MustCompile(`[^a-z0-9_-]`)
 var InitializeCapacity = initializeCapacity
 
 const (
-	persistentDiskExtreme     = "pd-extreme"
-	hyperDiskBalanced         = "hyperdisk-balanced"
-	hyperDiskExtreme          = "hyperdisk-extreme"
-	hyperDiskThroughput       = "hyperdisk-throughput"
 	maxGcpLabelCharactersSize = 63
 	// ResourceGPU is the GPU resource. It should be a non-negative integer.
 	ResourceGPU corev1.ResourceName = "gpu"
@@ -55,9 +51,9 @@ const (
 
 var (
 	// AllowedTypesIops are the volume types for which iops can be configured
-	AllowedTypesIops = []string{persistentDiskExtreme, hyperDiskExtreme, hyperDiskBalanced}
+	AllowedTypesIops = []string{gcp.PersistentDiskExtreme, gcp.HyperDiskExtreme, gcp.HyperDiskBalanced}
 	// AllowedTypesThroughput are the volume types for which throughput can be configured
-	AllowedTypesThroughput = []string{hyperDiskThroughput, hyperDiskBalanced}
+	AllowedTypesThroughput = []string{gcp.HyperDiskThroughput, gcp.HyperDiskBalanced}
 )
 
 // MachineClassKind yields the name of the machine class kind used by GCP provider.
