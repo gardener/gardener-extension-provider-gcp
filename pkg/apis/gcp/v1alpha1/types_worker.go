@@ -20,9 +20,13 @@ type WorkerConfig struct {
 	// +optional
 	GPU *GPU `json:"gpu,omitempty"`
 
-	// Volume contains configuration for the root disks attached to VMs.
+	// Volume contains general configuration for the disks attached to VMs.
 	// +optional
 	Volume *Volume `json:"volume,omitempty"`
+
+	// BootVolume contains configuration for the root disks attached to VMs.
+	// +optional
+	BootVolume *BootVolume `json:"bootVolume,omitempty"`
 
 	// DataVolumes contains configuration for the additional disks attached to VMs.
 	// +optional
@@ -30,6 +34,7 @@ type WorkerConfig struct {
 
 	// MinCpuPlatform is the name of the minimum CPU platform that is to be
 	// requested for the VM.
+	// +optional
 	MinCpuPlatform *string `json:"minCpuPlatform,omitempty"`
 
 	// Service account, with their specified scopes, authorized for this worker.
@@ -45,15 +50,44 @@ type WorkerConfig struct {
 	NodeTemplate *extensionsv1alpha1.NodeTemplate `json:"nodeTemplate,omitempty"`
 }
 
-// Volume contains configuration for the disks attached to VMs.
+// Volume contains general configuration for all disks attached to VMs.
 type Volume struct {
 	// LocalSSDInterface is the interface of that the local ssd disk supports.
 	// +optional
 	LocalSSDInterface *string `json:"interface,omitempty"`
 
-	// Encryption refers to the disk encryption details for this volume
+	// Encryption refers to the disk encryption details
 	// +optional
 	Encryption *DiskEncryption `json:"encryption,omitempty"`
+}
+
+// DiskSettings stores single disc specific information.
+type DiskSettings struct {
+	// ProvisionedIops of disk to create.
+	// Only for certain types of disk, see worker.AllowedTypesIops
+	// The IOPS must be specified within defined limits.
+	// If not set gcp calculates a default value taking the disk size into consideration.
+	// Hyperdisk Extreme volumes can't be used as boot disks.
+	// +optional
+	ProvisionedIops *int64 `json:"provisionedIops"`
+
+	// ProvisionedThroughput of disk to create.
+	// Only for certain types of disk, see worker.AllowedTypesThroughput
+	// measured in MiB per second, that the disk can handle.
+	// The throughput must be specified within defined limits.
+	// If not set gcp calculates a default value taking the disk size into consideration.
+	// Hyperdisk Throughput volumes can't be used as boot disks.
+	// +optional
+	ProvisionedThroughput *int64 `json:"provisionedThroughput"`
+
+	// StoragePool in which the new disk is created.
+	// +optional
+	StoragePool *string `json:"storagePool"`
+}
+
+// BootVolume contains configuration for the boot volume attached to VMs.
+type BootVolume struct {
+	DiskSettings
 }
 
 // DataVolume contains configuration for data volumes attached to VMs.
@@ -66,22 +100,10 @@ type DataVolume struct {
 	// For example GardenLinux works with filesystem LABELs only and creating
 	// another disk form the very same image causes the LABELs to be duplicated.
 	// See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323
+	// +optional
 	SourceImage *string `json:"sourceImage,omitempty"`
 
-	// ProvisionedIops of disk to create.
-	// Only for certain types of disk, see worker.AllowedTypesIops
-	// The IOPS must be specified within defined limits.
-	// If not set gcp calculates a default value taking the disk size into consideration.
-	// Hyperdisk Extreme volumes can't be used as boot disks.
-	ProvisionedIops *int64 `json:"provisionedIops"`
-
-	// ProvisionedThroughput of disk to create.
-	// Only for certain types of disk, see worker.AllowedTypesThroughput
-	// measured in MiB per second, that the disk can handle.
-	// The throughput must be specified within defined limits.
-	// If not set gcp calculates a default value taking the disk size into consideration.
-	// Hyperdisk Throughput volumes can't be used as boot disks.
-	ProvisionedThroughput *int64 `json:"provisionedThroughput"`
+	DiskSettings
 }
 
 // DiskEncryption encapsulates the encryption configuration for a disk.

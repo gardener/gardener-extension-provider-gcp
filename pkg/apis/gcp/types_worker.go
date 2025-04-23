@@ -17,10 +17,16 @@ type WorkerConfig struct {
 	metav1.TypeMeta
 
 	// GPU contains configuration for the GPU attached to VMs.
+	// +optional
 	GPU *GPU
 
-	// Volume contains configuration for the root disks attached to VMs.
+	// Volume contains general configuration for the disks attached to VMs.
+	// +optional
 	Volume *Volume
+
+	// BootVolume contains configuration for the root disks attached to VMs.
+	// +optional
+	BootVolume *BootVolume
 
 	// DataVolumes contains configuration for the additional disks attached to VMs.
 	// +optional
@@ -28,6 +34,7 @@ type WorkerConfig struct {
 
 	// MinCpuPlatform is the name of the minimum CPU platform that is to be
 	// requested for the VM.
+	// +optional
 	MinCpuPlatform *string
 
 	// Service account, with their specified scopes, authorized for this worker.
@@ -35,19 +42,52 @@ type WorkerConfig struct {
 	// the metadata server and used to authenticate applications on the
 	// instance.
 	// This service account should be created in advance.
+	// +optional
 	ServiceAccount *ServiceAccount
 
 	// NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.
+	// +optional
 	NodeTemplate *extensionsv1alpha1.NodeTemplate
 }
 
-// Volume contains configuration for the additional disks attached to VMs.
+// Volume contains general configuration for all disks attached to VMs.
 type Volume struct {
 	// LocalSSDInterface is the interface of that the local ssd disk supports.
+	// +optional
 	LocalSSDInterface *string
 
-	// Encryption refers to the disk encryption details for this volume
+	// Encryption refers to the disk encryption details
+	// +optional
 	Encryption *DiskEncryption
+}
+
+// DiskSettings stores single disc specific information.
+type DiskSettings struct {
+	// ProvisionedIops of disk to create.
+	// Only for certain types of disk, see worker.AllowedTypesIops
+	// The IOPS must be specified within defined limits.
+	// If not set gcp calculates a default value taking the disk size into consideration.
+	// Hyperdisk Extreme volumes can't be used as boot disks.
+	// +optional
+	ProvisionedIops *int64
+
+	// ProvisionedThroughput of disk to create.
+	// Only for certain types of disk, see worker.AllowedTypesThroughput
+	// measured in MiB per second, that the disk can handle.
+	// The throughput must be specified within defined limits.
+	// If not set gcp calculates a default value taking the disk size into consideration.
+	// Hyperdisk Throughput volumes can't be used as boot disks.
+	// +optional
+	ProvisionedThroughput *int64
+
+	// StoragePool in which the new disk is created.
+	// +optional
+	StoragePool *string
+}
+
+// BootVolume contains configuration for the boot volume attached to VMs.
+type BootVolume struct {
+	DiskSettings
 }
 
 // DataVolume contains configuration for data volumes attached to VMs.
@@ -60,22 +100,10 @@ type DataVolume struct {
 	// For example GardenLinux works with filesystem LABELs only and creating
 	// another disk form the very same image causes the LABELs to be duplicated.
 	// See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323
+	// +optional
 	SourceImage *string
 
-	// ProvisionedIops of disk to create.
-	// Only for certain types of disk, see worker.AllowedTypesIops
-	// The IOPS must be specified within defined limits.
-	// If not set gcp calculates a default value taking the disk size into consideration.
-	// Hyperdisk Extreme volumes can't be used as boot disks.
-	ProvisionedIops *int64
-
-	// ProvisionedThroughput of disk to create.
-	// Only for certain types of disk, see worker.AllowedTypesThroughput
-	// measured in MiB per second, that the disk can handle.
-	// The throughput must be specified within defined limits.
-	// If not set gcp calculates a default value taking the disk size into consideration.
-	// Hyperdisk Throughput volumes can't be used as boot disks.
-	ProvisionedThroughput *int64
+	DiskSettings
 }
 
 // DiskEncryption encapsulates the encryption configuration for a disk.
@@ -85,6 +113,7 @@ type DiskEncryption struct {
 	// For using keys to encrypt resources, see:
 	// https://cloud.google.com/compute/docs/disks/customer-managed-encryption#encrypt_a_new_persistent_disk_with_your_own_keys
 	// This field is being kept optional since this would allow CSEK fields in future in lieu of CMEK fields
+	// +optional
 	KmsKeyName *string
 
 	// KmsKeyServiceAccount specifies the service account granted the `roles/cloudkms.cryptoKeyEncrypterDecrypter` for the key name.
@@ -94,6 +123,7 @@ type DiskEncryption struct {
 	// One can add IAM roles using the gcloud CLI:
 	//  gcloud projects add-iam-policy-binding projectId --member
 	//	serviceAccount:name@projectIdgserviceaccount.com --role roles/cloudkms.cryptoKeyEncrypterDecrypter
+	// +optional
 	KmsKeyServiceAccount *string
 }
 
@@ -109,6 +139,7 @@ type WorkerStatus struct {
 	// a version that is still in use gets removed from this componentconfig it cannot reconcile anymore existing `Worker`
 	// resources that are still using this version. Hence, it stores the used versions in the provider status to ensure
 	// reconciliation is possible.
+	// +optional
 	MachineImages []MachineImage
 }
 
@@ -129,6 +160,7 @@ type MachineImage struct {
 	// Image is the path to the image.
 	Image string
 	// Architecture is the CPU architecture of the machine image.
+	// +optional
 	Architecture *string
 }
 

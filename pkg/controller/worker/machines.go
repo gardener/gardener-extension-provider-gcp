@@ -150,7 +150,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 		disks := make([]map[string]interface{}, 0)
 		// root volume
 		if pool.Volume != nil {
-			disk, err := createDiskSpecForVolume(pool.Volume, machineImage, workerConfig, poolLabels)
+			disk, err := createDiskSpecBootVolume(pool.Volume, machineImage, workerConfig, poolLabels)
 			if err != nil {
 				return err
 			}
@@ -159,7 +159,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		// additional volumes
 		for _, volume := range pool.DataVolumes {
-			disk, err := createDiskSpecForDataVolume(volume, workerConfig, poolLabels)
+			disk, err := createDiskSpecDataVolume(volume, workerConfig, poolLabels)
 			if err != nil {
 				return err
 			}
@@ -384,16 +384,20 @@ func workerPoolHashDataV2(pool v1alpha1.WorkerPool) []string {
 	return []string{}
 }
 
-func createDiskSpecForVolume(volume *v1alpha1.Volume, image string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
-	return createDiskSpec(volume.Size, true, &image, volume.Type, workerConfig.Volume, nil, labels)
+func createDiskSpecBootVolume(volume *v1alpha1.Volume, image string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
+	var diskSettings *apisgcp.DiskSettings
+	if workerConfig.BootVolume != nil {
+		diskSettings = &workerConfig.BootVolume.DiskSettings
+	}
+	return createDiskSpec(volume.Size, true, &image, volume.Type, workerConfig.Volume, diskSettings, labels)
 }
 
-func createDiskSpecForDataVolume(volume v1alpha1.DataVolume, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
+func createDiskSpecDataVolume(volume v1alpha1.DataVolume, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
 	dataVolumeConf := getDataVolumeWorkerConf(volume.Name, workerConfig.DataVolumes)
-	return createDiskSpec(volume.Size, false, dataVolumeConf.SourceImage, volume.Type, workerConfig.Volume, &dataVolumeConf, labels)
+	return createDiskSpec(volume.Size, false, dataVolumeConf.SourceImage, volume.Type, workerConfig.Volume, &dataVolumeConf.DiskSettings, labels)
 }
 
-func createDiskSpec(size string, boot bool, image, volumeType *string, volumeConf *apisgcp.Volume, dataVolumeConf *apisgcp.DataVolume, labels map[string]interface{}) (map[string]interface{}, error) {
+func createDiskSpec(size string, boot bool, image, volumeType *string, volumeConf *apisgcp.Volume, diskSettings *apisgcp.DiskSettings, labels map[string]interface{}) (map[string]interface{}, error) {
 	volumeSize, err := worker.DiskSize(size)
 	if err != nil {
 		return nil, err
@@ -423,17 +427,20 @@ func createDiskSpec(size string, boot bool, image, volumeType *string, volumeCon
 		// Only add encryption details for non-scratch disks, checked by worker validation
 		addDiskEncryptionDetails(disk, volumeConf.Encryption)
 		// only allowed if volume type is SCRATCH - checked by worker validation
-		if volumeConf.LocalSSDInterface != nil && *volumeType == VolumeTypeScratch {
+		if volumeConf.LocalSSDInterface != nil && volumeType != nil && *volumeType == VolumeTypeScratch {
 			disk["interface"] = *volumeConf.LocalSSDInterface
 		}
 	}
 
-	if dataVolumeConf != nil {
-		if dataVolumeConf.ProvisionedIops != nil && slices.Contains(AllowedTypesIops, *volumeType) {
-			disk["provisionedIops"] = *dataVolumeConf.ProvisionedIops
+	if diskSettings != nil {
+		if diskSettings.ProvisionedIops != nil && slices.Contains(AllowedTypesIops, *volumeType) {
+			disk["provisionedIops"] = *diskSettings.ProvisionedIops
 		}
-		if dataVolumeConf.ProvisionedThroughput != nil && slices.Contains(AllowedTypesThroughput, *volumeType) {
-			disk["provisionedThroughput"] = *dataVolumeConf.ProvisionedThroughput
+		if diskSettings.ProvisionedThroughput != nil && slices.Contains(AllowedTypesThroughput, *volumeType) {
+			disk["provisionedThroughput"] = *diskSettings.ProvisionedThroughput
+		}
+		if diskSettings.StoragePool != nil {
+			disk["storagePool"] = *diskSettings.StoragePool
 		}
 	}
 
