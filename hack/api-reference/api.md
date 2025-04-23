@@ -284,7 +284,21 @@ Volume
 </td>
 <td>
 <em>(Optional)</em>
-<p>Volume contains configuration for the root disks attached to VMs.</p>
+<p>Volume contains general configuration for the disks attached to VMs.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>bootVolume</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.BootVolume">
+BootVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BootVolume contains configuration for the root disks attached to VMs.</p>
 </td>
 </tr>
 <tr>
@@ -309,6 +323,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>MinCpuPlatform is the name of the minimum CPU platform that is to be
 requested for the VM.</p>
 </td>
@@ -395,6 +410,37 @@ k8s.io/apimachinery/pkg/runtime.RawExtension
 </td>
 <td>
 <p>CredentialsConfig contains information for workload authentication against GCP.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.BootVolume">BootVolume
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+</p>
+<p>
+<p>BootVolume contains configuration for the boot volume attached to VMs.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>DiskSettings</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.DiskSettings">
+DiskSettings
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -670,6 +716,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>SourceImage is the image to create this disk
 However, this parameter should only be used with particular caution.
 For example GardenLinux works with filesystem LABELs only and creating
@@ -679,33 +726,14 @@ See: <a href="https://github.com/gardener/gardener-extension-provider-gcp/issues
 </tr>
 <tr>
 <td>
-<code>provisionedIops</code></br>
+<code>DiskSettings</code></br>
 <em>
-int64
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.DiskSettings">
+DiskSettings
+</a>
 </em>
 </td>
 <td>
-<p>ProvisionedIops of disk to create.
-Only for certain types of disk, see worker.AllowedTypesIops
-The IOPS must be specified within defined limits.
-If not set gcp calculates a default value taking the disk size into consideration.
-Hyperdisk Extreme volumes can&rsquo;t be used as boot disks.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>provisionedThroughput</code></br>
-<em>
-int64
-</em>
-</td>
-<td>
-<p>ProvisionedThroughput of disk to create.
-Only for certain types of disk, see worker.AllowedTypesThroughput
-measured in MiB per second, that the disk can handle.
-The throughput must be specified within defined limits.
-If not set gcp calculates a default value taking the disk size into consideration.
-Hyperdisk Throughput volumes can&rsquo;t be used as boot disks.</p>
 </td>
 </tr>
 </tbody>
@@ -759,6 +787,71 @@ See: <a href="https://cloud.google.com/iam/docs/service-agents#compute-engine-se
 One can add IAM roles using the gcloud CLI:
 gcloud projects add-iam-policy-binding projectId &ndash;member
 serviceAccount:name@projectIdgserviceaccount.com &ndash;role roles/cloudkms.cryptoKeyEncrypterDecrypter</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.DiskSettings">DiskSettings
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.BootVolume">BootVolume</a>, 
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.DataVolume">DataVolume</a>)
+</p>
+<p>
+<p>DiskSettings stores single disc specific information.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>provisionedIops</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ProvisionedIops of disk to create.
+Only for certain types of disk, see worker.AllowedTypesIops
+The IOPS must be specified within defined limits.
+If not set gcp calculates a default value taking the disk size into consideration.
+Hyperdisk Extreme volumes can&rsquo;t be used as boot disks.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>provisionedThroughput</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ProvisionedThroughput of disk to create.
+Only for certain types of disk, see worker.AllowedTypesThroughput
+measured in MiB per second, that the disk can handle.
+The throughput must be specified within defined limits.
+If not set gcp calculates a default value taking the disk size into consideration.
+Hyperdisk Throughput volumes can&rsquo;t be used as boot disks.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storagePool</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StoragePool in which the new disk is created.</p>
 </td>
 </tr>
 </tbody>
@@ -1675,7 +1768,7 @@ CloudRouter
 <a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
 </p>
 <p>
-<p>Volume contains configuration for the disks attached to VMs.</p>
+<p>Volume contains general configuration for all disks attached to VMs.</p>
 </p>
 <table>
 <thead>
@@ -1708,7 +1801,7 @@ DiskEncryption
 </td>
 <td>
 <em>(Optional)</em>
-<p>Encryption refers to the disk encryption details for this volume</p>
+<p>Encryption refers to the disk encryption details</p>
 </td>
 </tr>
 </tbody>
