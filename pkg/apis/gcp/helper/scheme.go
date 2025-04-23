@@ -16,7 +16,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 )
 
@@ -40,8 +40,8 @@ func init() {
 
 // InfrastructureConfigFromInfrastructure extracts the InfrastructureConfig from the
 // ProviderConfig section of the given Infrastructure.
-func InfrastructureConfigFromInfrastructure(infra *extensionsv1alpha1.Infrastructure) (*api.InfrastructureConfig, error) {
-	config := &api.InfrastructureConfig{}
+func InfrastructureConfigFromInfrastructure(infra *extensionsv1alpha1.Infrastructure) (*apisgcp.InfrastructureConfig, error) {
+	config := &apisgcp.InfrastructureConfig{}
 	if infra.Spec.ProviderConfig != nil && infra.Spec.ProviderConfig.Raw != nil {
 		if _, _, err := decoder.Decode(infra.Spec.ProviderConfig.Raw, nil, config); err != nil {
 			return nil, err
@@ -53,8 +53,8 @@ func InfrastructureConfigFromInfrastructure(infra *extensionsv1alpha1.Infrastruc
 
 // InfrastructureStatusFromRaw extracts the InfrastructureStatus from the
 // ProviderStatus section of the given Infrastructure.
-func InfrastructureStatusFromRaw(raw *runtime.RawExtension) (*api.InfrastructureStatus, error) {
-	status := &api.InfrastructureStatus{}
+func InfrastructureStatusFromRaw(raw *runtime.RawExtension) (*apisgcp.InfrastructureStatus, error) {
+	status := &apisgcp.InfrastructureStatus{}
 	if raw != nil && raw.Raw != nil {
 		if _, _, err := lenientDecoder.Decode(raw.Raw, nil, status); err != nil {
 			return nil, err
@@ -65,14 +65,14 @@ func InfrastructureStatusFromRaw(raw *runtime.RawExtension) (*api.Infrastructure
 }
 
 // CloudProfileConfigFromCluster decodes the provider specific cloud profile configuration for a cluster
-func CloudProfileConfigFromCluster(cluster *controller.Cluster) (*api.CloudProfileConfig, error) {
-	var cloudProfileConfig *api.CloudProfileConfig
+func CloudProfileConfigFromCluster(cluster *controller.Cluster) (*apisgcp.CloudProfileConfig, error) {
+	var cloudProfileConfig *apisgcp.CloudProfileConfig
 	if cluster != nil && cluster.CloudProfile != nil && cluster.CloudProfile.Spec.ProviderConfig != nil && cluster.CloudProfile.Spec.ProviderConfig.Raw != nil {
 		cloudProfileSpecifier := fmt.Sprintf("CloudProfile %q", k8sclient.ObjectKeyFromObject(cluster.CloudProfile))
 		if cluster.Shoot != nil && cluster.Shoot.Spec.CloudProfile != nil {
 			cloudProfileSpecifier = fmt.Sprintf("%s '%s/%s'", cluster.Shoot.Spec.CloudProfile.Kind, cluster.Shoot.Namespace, cluster.Shoot.Spec.CloudProfile.Name)
 		}
-		cloudProfileConfig = &api.CloudProfileConfig{}
+		cloudProfileConfig = &apisgcp.CloudProfileConfig{}
 		if _, _, err := decoder.Decode(cluster.CloudProfile.Spec.ProviderConfig.Raw, nil, cloudProfileConfig); err != nil {
 			return nil, fmt.Errorf("could not decode providerConfig of %s: %w", cloudProfileSpecifier, err)
 		}

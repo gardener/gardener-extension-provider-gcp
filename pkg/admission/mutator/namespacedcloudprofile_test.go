@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/mutator"
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 )
 
@@ -103,14 +103,14 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 					MatchFields(IgnoreExtras, Fields{
 						"Name": Equal("image-1"),
 						"Versions": ContainElements(
-							api.MachineImageVersion{Version: "1.0", Image: "imgRef0", Architecture: ptr.To("amd64")},
-							api.MachineImageVersion{Version: "1.0", Image: "imgRef1", Architecture: ptr.To("arm64")},
-							api.MachineImageVersion{Version: "1.1", Image: "imgRef2", Architecture: ptr.To("arm64")},
+							apisgcp.MachineImageVersion{Version: "1.0", Image: "imgRef0", Architecture: ptr.To("amd64")},
+							apisgcp.MachineImageVersion{Version: "1.0", Image: "imgRef1", Architecture: ptr.To("arm64")},
+							apisgcp.MachineImageVersion{Version: "1.1", Image: "imgRef2", Architecture: ptr.To("arm64")},
 						),
 					}),
 					MatchFields(IgnoreExtras, Fields{
 						"Name":     Equal("image-2"),
-						"Versions": ContainElements(api.MachineImageVersion{Version: "2.0", Image: "imgRef3", Architecture: ptr.To("amd64")}),
+						"Versions": ContainElements(apisgcp.MachineImageVersion{Version: "2.0", Image: "imgRef3", Architecture: ptr.To("amd64")}),
 					}),
 				))
 			})
@@ -118,8 +118,8 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 	})
 })
 
-func decodeCloudProfileConfig(decoder runtime.Decoder, config *runtime.RawExtension) (*api.CloudProfileConfig, error) {
-	cloudProfileConfig := &api.CloudProfileConfig{}
+func decodeCloudProfileConfig(decoder runtime.Decoder, config *runtime.RawExtension) (*apisgcp.CloudProfileConfig, error) {
+	cloudProfileConfig := &apisgcp.CloudProfileConfig{}
 	if err := util.Decode(decoder, config.Raw, cloudProfileConfig); err != nil {
 		return nil, err
 	}
