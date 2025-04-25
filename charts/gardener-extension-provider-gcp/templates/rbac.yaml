@@ -126,8 +126,6 @@ rules:
   verbs:
   - create
   - get
-  - list
-  - watch
   - patch
   - update
   - delete
