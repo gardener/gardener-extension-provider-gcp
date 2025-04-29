@@ -36,7 +36,13 @@ rules:
   resources:
   - managedresources
   verbs:
-  - "*"
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+  - delete
 - apiGroups:
   - coordination.k8s.io
   resources:
@@ -89,19 +95,40 @@ rules:
   - servicemonitors
   - prometheusrules
   verbs:
-  - "*"
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+  - delete
+  - deletecollection
 - apiGroups:
   - machine.sapcloud.io
   resources:
-  - "*"
+  - machineclasses
+  - machinedeployments
+  - machines
+  - machinesets
   verbs:
-  - "*"
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+  - delete
+  - deletecollection
 - apiGroups:
   - autoscaling.k8s.io
   resources:
   - verticalpodautoscalers
   verbs:
-  - "*"
+  - create
+  - get
+  - patch
+  - update
+  - delete
 - apiGroups:
   - policy
   resources:
