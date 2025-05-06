@@ -232,7 +232,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			workerCtrlOpts.Completed().Apply(&gcpworker.DefaultAddOptions.Controller)
 			gcpworker.DefaultAddOptions.GardenCluster = gardenCluster
 
-			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil)
+			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil, generalOpts.Completed().AutonomousShootCluster)
 			if err != nil {
 				return fmt.Errorf("could not add webhooks to manager: %w", err)
 			}
