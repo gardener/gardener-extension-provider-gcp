@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"google.golang.org/api/compute/v1"
@@ -204,14 +205,35 @@ func (fctx *FlowContext) ensureKubernetesRoutesCleanupForDualStackMigration(ctx 
 		fctx.log.Error(err, "failed to persist state")
 	}
 
-	// Delete all cloudroutes
+	// Delete all cloudRoutes in parallel
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(cloudRoutes))
+
 	for _, route := range cloudRoutes {
-		fctx.log.Info("Deleting route", "name", route.Name, "destRange", route.DestRange)
-		if err := fctx.computeClient.DeleteRoute(ctx, route.Name); err != nil {
-			// scale CCM back to originalScale in case if there are errors from DeleteRoutes() call
-			_ = scaleCCMto(originalScale)
-			return err
-		}
+		wg.Add(1)
+		go func(route *compute.Route) {
+			defer wg.Done()
+			fctx.log.Info("Deleting route", "name", route.Name, "destRange", route.DestRange)
+			if err := fctx.computeClient.DeleteRoute(ctx, route.Name); err != nil {
+				errChan <- fmt.Errorf("failed to delete route %s: %w", route.Name, err)
+			}
+		}(route)
+	}
+
+	// Wait for all deletions to complete
+	wg.Wait()
+	close(errChan)
+
+	// Collect errors, if any
+	var combinedErr error
+	for err := range errChan {
+		combinedErr = fmt.Errorf("%v; %w", combinedErr, err)
+	}
+
+	// Scale CCM back to originalScale if there were errors
+	if combinedErr != nil {
+		_ = scaleCCMto(originalScale)
+		return combinedErr
 	}
 	return nil
 }
