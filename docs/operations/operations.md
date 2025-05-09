@@ -13,7 +13,36 @@ This section describes, how the configuration for `CloudProfile`s looks like for
 ### `CloudProfileConfig`
 
 The cloud profile configuration contains information about the real machine image IDs in the GCP environment (image URLs).
+
 You have to map every version that you specify in `.spec.machineImages[].versions` here such that the GCP extension knows the image URL for every version you want to offer.
+
+#### NEW: MachineCapabilities
+With the introduction of `spec.machineCapabilities` in Gardener *v1.131.0* you have to map every `capabilityFlavor` in `.spec.machineImages[].versions` here to an available Image ID in GCP.
+
+Always required is the architecture capability:
+- `architecture`: `amd64` and `arm64` (specifies the CPU architecture of the machine on which given machine image can be used)
+
+But any other capability can be mapped here as well, e.g. `gpu`, `networkPerformance`, etc. with any value that makes sense for your environment.
+
+An example `CloudProfileConfig` for the GCP extension looks as follows:
+
+```yaml
+apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+kind: CloudProfileConfig
+machineImages:
+- name: gardenlinux
+  versions:
+  - version: 1877.5.0
+    capabilityFlavors:
+    - image: projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-f03494b5e33cba13-1877-5-7a907e4e
+      capabilities:
+        architecture: [amd64]
+    - image: projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-e4c18db54c0e1287-1877-5-7a907e4e
+      capabilities:
+        architecture: [arm64]
+```
+
+#### Old format 
 For each machine image version an `architecture` field can be specified which specifies the CPU architecture of the machine on which given machine image can be used.
 
 An example `CloudProfileConfig` for the GCP extension looks as follows:
@@ -34,6 +63,9 @@ machineImages:
 If you want to allow that shoots can create VMs with local SSDs volumes then you have to specify the type of the disk with `SCRATCH` in the `.spec.volumeTypes[]` list.
 Please find below an example `CloudProfile` manifest:
 
+#### New: with `spec.machineCapabilities`:
+
+#### Without `spec.machineCapabilities`:
 ```yaml
 apiVersion: core.gardener.cloud/v1beta1
 kind: CloudProfile
@@ -47,14 +79,19 @@ spec:
     - version: 1.31.2
       expirationDate: "2026-03-31T23:59:59Z"
   machineImages:
-  - name: coreos
+  - name: gardenlinux
     versions:
-    - version: 2135.6.0
+    - version: 1877.5.0
+      capabilityFlavors:
+      - architecture: [amd64]
+      - architecture: [arm64]
   machineTypes:
   - name: n1-standard-4
     cpu: "4"
     gpu: "0"
     memory: 15Gi
+    capabilities:
+      architecture: [amd64]
   volumeTypes:
   - name: pd-standard
     class: standard
@@ -72,11 +109,16 @@ spec:
     apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
     kind: CloudProfileConfig
     machineImages:
-    - name: coreos
-      versions:
-      - version: 2135.6.0
-        image: projects/coreos-cloud/global/images/coreos-stable-2135-6-0-v20190801
-        # architecture: amd64 # optional
+      - name: gardenlinux
+        versions:
+          - version: 1877.5.0
+            capabilityFlavors:
+              - image: projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-f03494b5e33cba13-1877-5-7a907e4e
+                capabilities:
+                  architecture: [amd64]
+              - image: projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-e4c18db54c0e1287-1877-5-7a907e4e
+                capabilities:
+                  architecture: [arm64]
 ```
 
 ## `Seed` resource
