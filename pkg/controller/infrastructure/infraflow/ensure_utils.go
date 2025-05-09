@@ -2,7 +2,11 @@ package infraflow
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	"google.golang.org/api/compute/v1"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -338,4 +342,32 @@ func isUserRouter(config *gcp.InfrastructureConfig) bool {
 
 func isUserVPC(config *gcp.InfrastructureConfig) bool {
 	return config.Networks.VPC != nil && len(config.Networks.VPC.Name) > 0
+}
+
+func isToDualStackMigration(shoot *gardencorev1beta1.Shoot) bool {
+	nodesInMigration := false
+	condition := gardencorev1beta1helper.GetCondition(shoot.Status.Constraints, "DualStackNodesMigrationReady")
+
+	if condition != nil && condition.Status != gardencorev1beta1.ConditionTrue {
+		nodesInMigration = true
+	}
+	return nodesInMigration
+}
+
+// extractInstanceAndZone parses the NextHopInstance URL to extract the instance and zone.
+func extractInstanceAndZone(nextHopInstance string) (string, string, error) {
+	u, err := url.Parse(nextHopInstance)
+	if err != nil {
+		return "", "", err
+	}
+
+	parts := strings.Split(u.Path, "/")
+	if len(parts) < 8 {
+		return "", "", fmt.Errorf("invalid NextHopInstance URL: %s", nextHopInstance)
+	}
+
+	zone := parts[6]
+	instance := parts[8]
+
+	return instance, zone, nil
 }

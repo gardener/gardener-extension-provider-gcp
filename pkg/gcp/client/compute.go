@@ -15,6 +15,8 @@ import (
 	"google.golang.org/api/googleapi"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
@@ -72,6 +74,8 @@ type ComputeClient interface {
 	ListRoutes(ctx context.Context, opts RouteListOpts) ([]*compute.Route, error)
 	// DeleteRoute deletes the specified route.
 	DeleteRoute(ctx context.Context, id string) error
+	// InsertAliasIPRoute creates an alias IP route on the instance
+	InsertAliasIPRoute(ctx context.Context, route apisgcp.Route, defaultSecondarySubnetName string) error
 
 	// InsertFirewallRule creates a firewall rule with the given specification.
 	InsertFirewallRule(ctx context.Context, firewall *compute.Firewall) (*compute.Firewall, error)
@@ -407,6 +411,34 @@ func (c *computeClient) ListRoutes(ctx context.Context, opts RouteListOpts) ([]*
 	}
 
 	return res, nil
+}
+
+func (c *computeClient) InsertAliasIPRoute(ctx context.Context, route apisgcp.Route, defaultSecondarySubnetName string) error {
+	log := shared.LogFromContext(ctx)
+
+	instance, err := c.GetInstance(ctx, route.Zone, route.InstanceName)
+	if err != nil {
+		return err
+	}
+
+	// Add an alias IP range to the first network interface
+	aliasIpRange := &compute.AliasIpRange{
+		IpCidrRange:         route.DestinationCIDR,
+		SubnetworkRangeName: defaultSecondarySubnetName,
+	}
+
+	// Append the alias IP range to the existing list
+	instance.NetworkInterfaces[0].AliasIpRanges = append(instance.NetworkInterfaces[0].AliasIpRanges, aliasIpRange)
+
+	var op *compute.Operation
+	op, err = c.service.Instances.UpdateNetworkInterface(c.projectID, route.Zone, route.InstanceName, instance.NetworkInterfaces[0].Name, instance.NetworkInterfaces[0]).Context(ctx).Do()
+	if err == nil {
+		log.Info("Operation to update network interface started: ", "opName", op.Name, "name", instance.NetworkInterfaces[0].Name)
+		return nil
+	}
+
+	log.Info("Failed to update network interface", "name", instance.NetworkInterfaces[0].Name, "error", err)
+	return err
 }
 
 // GetAddress returns a compute.Address.

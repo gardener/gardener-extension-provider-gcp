@@ -170,4 +170,17 @@ type InfrastructureState struct {
 	// Data is map to store things.
 	// +optional
 	Data map[string]string
+	// Routes contains information about cluster routes
+	// +optional
+	Routes []Route
+}
+
+// Route is a structure containing information about the routes.
+type Route struct {
+	// InstanceName
+	InstanceName string
+	// DestinationCIDR
+	DestinationCIDR string
+	// Zone is the zone of the route
+	Zone string
 }

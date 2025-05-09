@@ -179,4 +179,17 @@ type InfrastructureState struct {
 	// Data is map to store things.
 	// +optional
 	Data map[string]string `json:"data,omitempty"`
+	// Routes contains information about cluster routes
+	// +optional
+	Routes []Route `json:"routes,omitempty"`
+}
+
+// Route is a structure containing information about the routes.
+type Route struct {
+	// InstanceName
+	InstanceName string `json:"instanceName,omitempty"`
+	// DestinationCIDR
+	DestinationCIDR string `json:"destinationCIDR,omitempty"`
+	// Zone is the zone of the route
+	Zone string `json:"zone,omitempty"`
 }
