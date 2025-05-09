@@ -83,8 +83,16 @@ func (p *namespacedCloudProfile) validateNamespacedCloudProfileProviderConfig(pr
 func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.CloudProfileConfig, machineImages []core.MachineImage, parentSpec gardencorev1beta1.CloudProfileSpec) field.ErrorList {
 	allErrs := field.ErrorList{}
 
+	capabilitiesDefinition := core.Capabilities{}
+	for _, capabilityDefinition := range parentSpec.Capabilities {
+		capabilitiesDefinition[capabilityDefinition.Name] = core.CapabilityValues{}
+		for _, capabilityValue := range capabilityDefinition.Values {
+			capabilitiesDefinition[capabilityDefinition.Name] = append(capabilitiesDefinition[capabilityDefinition.Name], capabilityValue)
+		}
+	}
+
 	providerConfigPath := field.NewPath("spec.providerConfig")
-	allErrs = append(allErrs, validation.ValidateCloudProfileConfig(providerConfig, machineImages, providerConfigPath)...)
+	allErrs = append(allErrs, validation.ValidateCloudProfileConfig(providerConfig, machineImages, capabilitiesDefinition, providerConfigPath)...)
 
 	profileImages := util.NewCoreImagesContext(machineImages)
 	parentImages := util.NewV1beta1ImagesContext(parentSpec.MachineImages)
