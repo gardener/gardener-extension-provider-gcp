@@ -29,7 +29,7 @@ var (
 )
 
 // ValidateWorkerConfig validates a WorkerConfig object.
-func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.DataVolume) field.ErrorList {
+func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.DataVolume, bootVolume *core.Volume) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	for i, dataVolume := range dataVolumes {
@@ -46,6 +46,9 @@ func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.Dat
 		allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, providerFldPath.Child("nodeTemplate"))...)
 		if workerConfig.DataVolumes != nil {
 			allErrs = append(allErrs, validateDataVolumeConfigs(dataVolumes, workerConfig.DataVolumes)...)
+		}
+		if bootVolume != nil && bootVolume.Type != nil && workerConfig.BootVolume != nil {
+			allErrs = append(allErrs, validateBootVolumeConfig(*workerConfig.BootVolume, *bootVolume.Type)...)
 		}
 	}
 
@@ -158,17 +161,17 @@ func validateScratchDisk(volumeType string, workerConfig *gcp.WorkerConfig) fiel
 	return allErrs
 }
 
-func validateHyperDisk(dataVolume core.DataVolume, config gcp.DataVolume) field.ErrorList {
+func validateHyperDisk(config gcp.DiskSettings, volumeType string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if config.ProvisionedIops != nil && !slices.Contains(worker.AllowedTypesIops, *dataVolume.Type) {
+	if config.ProvisionedIops != nil && !slices.Contains(worker.AllowedTypesIops, volumeType) {
 		allErrs = append(allErrs, field.Forbidden(
-			dataVolumeFldPath.Child("provisionedIops"),
+			fldPath.Child("provisionedIops"),
 			fmt.Sprintf("is only allowed for types: %v", worker.AllowedTypesIops)))
 	}
-	if config.ProvisionedThroughput != nil && !slices.Contains(worker.AllowedTypesThroughput, *dataVolume.Type) {
+	if config.ProvisionedThroughput != nil && !slices.Contains(worker.AllowedTypesThroughput, volumeType) {
 		allErrs = append(allErrs, field.Forbidden(
-			dataVolumeFldPath.Child("provisionedThroughput"),
+			fldPath.Child("provisionedThroughput"),
 			fmt.Sprintf("is only allowed for types: %v", worker.AllowedTypesThroughput)))
 	}
 	return allErrs
@@ -193,10 +196,17 @@ func validateDataVolumeConfigs(dataVolumes []core.DataVolume, configs []gcp.Data
 			continue
 		}
 		volumeNames.Insert(volumeName)
-		allErrs = append(allErrs, validateHyperDisk(dataVolumes[idx], configDataVolume)...)
+		if dataVolumes[idx].Type != nil {
+			allErrs = append(allErrs, validateHyperDisk(
+				configDataVolume.DiskSettings, *dataVolumes[idx].Type, dataVolumeFldPath)...)
+		}
 	}
 
 	return allErrs
+}
+
+func validateBootVolumeConfig(config gcp.BootVolume, volumeType string) field.ErrorList {
+	return validateHyperDisk(config.DiskSettings, volumeType, volumeFldPath)
 }
 
 func validateNodeTemplate(nt *extensionsv1alpha1.NodeTemplate, fldPath *field.Path) field.ErrorList {

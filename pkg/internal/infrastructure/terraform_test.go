@@ -18,7 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
@@ -26,7 +26,7 @@ import (
 var _ = Describe("Terraform", func() {
 	var (
 		infra                 *extensionsv1alpha1.Infrastructure
-		config                *api.InfrastructureConfig
+		config                *apisgcp.InfrastructureConfig
 		projectID             string
 		credentialsConfigData []byte
 		credentialsConfig     *gcp.CredentialsConfig
@@ -66,11 +66,11 @@ var _ = Describe("Terraform", func() {
 
 		internalCIDR := "192.168.0.0/16"
 
-		config = &api.InfrastructureConfig{
-			Networks: api.NetworkConfig{
-				VPC: &api.VPC{
+		config = &apisgcp.InfrastructureConfig{
+			Networks: apisgcp.NetworkConfig{
+				VPC: &apisgcp.VPC{
 					Name: "vpc",
-					CloudRouter: &api.CloudRouter{
+					CloudRouter: &apisgcp.CloudRouter{
 						Name: "cloudrouter",
 					},
 				},
@@ -121,11 +121,11 @@ var _ = Describe("Terraform", func() {
 		It("should return correct state when cloudRouter name is specified", func() {
 			var (
 				cloudRouterName             = "test"
-				vpcWithoutCloudRouterConfig = &api.InfrastructureConfig{
-					Networks: api.NetworkConfig{
-						VPC: &api.VPC{
+				vpcWithoutCloudRouterConfig = &apisgcp.InfrastructureConfig{
+					Networks: apisgcp.NetworkConfig{
+						VPC: &apisgcp.VPC{
 							Name:        "vpc",
-							CloudRouter: &api.CloudRouter{Name: cloudRouterName},
+							CloudRouter: &apisgcp.CloudRouter{Name: cloudRouterName},
 						},
 						Workers: "10.1.0.0/16",
 					},
@@ -169,9 +169,9 @@ var _ = Describe("Terraform", func() {
 		})
 		It("should return correct state when cloudRouter name is NOT specified", func() {
 			var (
-				vpcWithoutCloudRouterConfig = &api.InfrastructureConfig{
-					Networks: api.NetworkConfig{
-						VPC: &api.VPC{
+				vpcWithoutCloudRouterConfig = &apisgcp.InfrastructureConfig{
+					Networks: apisgcp.NetworkConfig{
+						VPC: &apisgcp.VPC{
 							Name: "vpc",
 						},
 						Workers: "10.1.0.0/16",
@@ -290,21 +290,21 @@ var _ = Describe("Terraform", func() {
 			internalCIDR := "192.168.0.0/16"
 			ipName1 := "manualnat1"
 			ipName2 := "manualnat2"
-			natIPNamesInput := []api.NatIPName{{Name: ipName1}, {Name: ipName2}}
+			natIPNamesInput := []apisgcp.NatIPName{{Name: ipName1}, {Name: ipName2}}
 			natIPNamesOutput := []string{ipName1, ipName2}
 
-			config = &api.InfrastructureConfig{
-				Networks: api.NetworkConfig{
-					VPC: &api.VPC{
+			config = &apisgcp.InfrastructureConfig{
+				Networks: apisgcp.NetworkConfig{
+					VPC: &apisgcp.VPC{
 						Name: "vpc",
-						CloudRouter: &api.CloudRouter{
+						CloudRouter: &apisgcp.CloudRouter{
 							Name: "cloudrouter",
 						},
 					},
-					CloudNAT: &api.CloudNAT{
+					CloudNAT: &apisgcp.CloudNAT{
 						MinPortsPerVM: &minPortsPerVM,
 						NatIPNames:    natIPNamesInput,
-						EndpointIndependentMapping: &api.EndpointIndependentMapping{
+						EndpointIndependentMapping: &apisgcp.EndpointIndependentMapping{
 							Enabled: true,
 						},
 					},
@@ -367,15 +367,15 @@ var _ = Describe("Terraform", func() {
 			aggregationInterval := "INTERVAL_30_SEC"
 			metadata := "INCLUDE_ALL_METADATA"
 			flowSampling := float64(0.5)
-			config = &api.InfrastructureConfig{
-				Networks: api.NetworkConfig{
-					VPC: &api.VPC{
+			config = &apisgcp.InfrastructureConfig{
+				Networks: apisgcp.NetworkConfig{
+					VPC: &apisgcp.VPC{
 						Name: "vpc",
-						CloudRouter: &api.CloudRouter{
+						CloudRouter: &apisgcp.CloudRouter{
 							Name: "cloudrouter",
 						},
 					},
-					FlowLogs: &api.FlowLogs{
+					FlowLogs: &apisgcp.FlowLogs{
 						AggregationInterval: &aggregationInterval,
 						FlowSampling:        &flowSampling,
 						Metadata:            &metadata,
