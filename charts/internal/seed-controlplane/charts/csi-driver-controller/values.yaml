@@ -49,3 +49,4 @@ csiSnapshotController:
       memory: 32Mi
 
 useWorkloadIdentity: false
+enableDataCache: false

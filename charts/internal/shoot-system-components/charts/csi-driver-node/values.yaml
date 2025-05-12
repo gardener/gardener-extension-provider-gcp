@@ -25,3 +25,5 @@ resources:
     requests:
       cpu: 11m
       memory: 32Mi
+
+enableDataCache: false
