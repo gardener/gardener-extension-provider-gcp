@@ -42,6 +42,7 @@ spec:
         - --endpoint=$(CSI_ENDPOINT)
         - --run-controller-service=false
         - --maxprocs=2 # https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver/issues/968
+        - --enable-data-cache={{ .Values.enableDataCache }}
         - --logtostderr
         - --v=5
         env:
