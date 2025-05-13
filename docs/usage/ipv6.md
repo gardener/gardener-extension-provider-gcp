@@ -91,8 +91,31 @@ spec:
 
 ## Migration of IPv4-Only Shoot Clusters to Dual-Stack
 
-To trigger a migration of an IPv4 cluster to dual-stack, IPv6 needs to be added to `spec.networking.ipFamilies` in the shoot specification.
-A constraint of type `DualStackNodesMigrationReady` is added to the shoot status. It is in state `False` until all nodes have an IPv4 and IPv6 address assigned.
+
+To migrate an IPv4-only shoot cluster to Dual-Stack simply change the `.spec.networking.ipFamilies` field in the `Shoot` resource from `IPv4` to `IPv4, IPv6` as shown below.
+
+```yaml
+kind: Shoot
+apiVersion: core.gardener.cloud/v1beta1
+metadata:
+  ...
+spec:
+  ...
+  networking:
+    type: ...
+    ipFamilies:
+      - IPv4
+      - IPv6
+  ...
+```
+
+You can find more information about the process and the steps required [here](https://gardener.cloud/docs/gardener/networking/dual-stack-networking-migration/).
+
+> [!WARNING]
+> Please note that the dual-stack migration requires the IPv4-only cluster to run in native routing mode, i.e. pod overlay network needs to be disabled.
+> The default quota of static routes per VPC in GCP is 200. This restricts the cluster size. Therefore, please adapt (if necessary) the quota for the routes per VPC (`STATIC_ROUTES_PER_NETWORK`) in the gcp cloud console accordingly before switching to native routing.
+
+After triggering the migration a constraint of type `DualStackNodesMigrationReady` is added to the shoot status. It is in state `False` until all nodes have an IPv4 and IPv6 address assigned.
 Changing the `ipFamilies` field triggers immediately an infrastructure reconciliation, where the infrastructure is reconfigured to additionally support IPv6. During this infrastructure migration process the subnets get an external IPv6 range and the node subnet gets a secondary IPv4 range. Pod specific cloud routes are deleted from the VPC route table and alias IP ranges for the pod routes are added to the NIC of Kubernetes nodes/instances.
 With the next node roll-out which is a manual step and will not be triggered automatically, all nodes will get an IPv6 address and an IPv6 prefix for pods assigned. When all nodes have IPv4 and IPv6 pod ranges, the status of the `DualStackNodesMigrationReady` constraint will be changed to `True`.
 Once all nodes are migrated, the remaining control plane components and the Container Network Interface (CNI) are configured for dual-stack networking and the migration constraint is removed at the end of this step.
