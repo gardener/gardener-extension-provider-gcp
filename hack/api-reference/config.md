@@ -108,7 +108,7 @@ WorkloadIdentity
 </em>
 </td>
 <td>
-<p>WorkloadIdentity is a configuration that specifies how workload identity configs are treated.</p>
+<p>WorkloadIdentity is a configuration that specifies how workload identity configs are validated.</p>
 </td>
 </tr>
 </tbody>
