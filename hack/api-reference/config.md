@@ -98,19 +98,6 @@ or disable alpha/experimental features.
 Default: nil</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>workloadIdentity</code></br>
-<em>
-<a href="#%09gcp.provider.extensions.config.gardener.cloud/v1alpha1.WorkloadIdentity">
-WorkloadIdentity
-</a>
-</em>
-</td>
-<td>
-<p>WorkloadIdentity is a configuration that specifies how workload identity configs are validated.</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="	gcp.provider.extensions.config.gardener.cloud/v1alpha1.ETCD">ETCD
@@ -230,47 +217,6 @@ k8s.io/apimachinery/pkg/api/resource.Quantity
 <td>
 <em>(Optional)</em>
 <p>Capacity is the storage capacity used in etcd-main volume claims.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="	gcp.provider.extensions.config.gardener.cloud/v1alpha1.WorkloadIdentity">WorkloadIdentity
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#%09gcp.provider.extensions.config.gardener.cloud/v1alpha1.ControllerConfiguration">ControllerConfiguration</a>)
-</p>
-<p>
-<p>WorkloadIdentity is a configuration that specifies how workload identity configs are treated.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>allowedTokenURLs</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-<p>AllowedTokenURLs are the allowed token URLs.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>allowedServiceAccountImpersonationURLRegExps</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-<p>AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.</p>
 </td>
 </tr>
 </tbody>

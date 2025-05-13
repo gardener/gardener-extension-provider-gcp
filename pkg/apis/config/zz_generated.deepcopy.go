@@ -37,7 +37,6 @@ func (in *ControllerConfiguration) DeepCopyInto(out *ControllerConfiguration) {
 			(*out)[key] = val
 		}
 	}
-	in.WorkloadIdentity.DeepCopyInto(&out.WorkloadIdentity)
 	return
 }
 

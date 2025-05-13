@@ -32,9 +32,6 @@ type ControllerConfiguration struct {
 	// Default: nil
 	// +optional
 	FeatureGates map[string]bool `json:"featureGates,omitempty"`
-
-	// WorkloadIdentity is a configuration that specifies how workload identity configs are validated.
-	WorkloadIdentity WorkloadIdentity `json:"workloadIdentity,omitempty"`
 }
 
 // ETCD is an etcd configuration.
@@ -60,12 +57,4 @@ type ETCDBackup struct {
 	// Schedule is the etcd backup schedule.
 	// +optional
 	Schedule *string `json:"schedule,omitempty"`
-}
-
-// WorkloadIdentity is a configuration that specifies how workload identity configs are treated.
-type WorkloadIdentity struct {
-	// AllowedTokenURLs are the allowed token URLs.
-	AllowedTokenURLs []string `json:"allowedTokenURLs,omitempty"`
-	// AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.
-	AllowedServiceAccountImpersonationURLRegExps []string `json:"allowedServiceAccountImpersonationURLRegExps,omitempty"`
 }

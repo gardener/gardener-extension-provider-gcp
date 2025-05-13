@@ -28,9 +28,6 @@ type ControllerConfiguration struct {
 	// or disable alpha/experimental features.
 	// Default: nil
 	FeatureGates map[string]bool
-
-	// WorkloadIdentity is a configuration that specifies how workload identity configs are validated.
-	WorkloadIdentity WorkloadIdentity
 }
 
 // ETCD is an etcd configuration.
@@ -55,7 +52,7 @@ type ETCDBackup struct {
 	Schedule *string
 }
 
-// WorkloadIdentity is a configuration that specifies how workload identity configs are treated.
+// WorkloadIdentity is a configuration that specifies how workload identity configs are validated.
 type WorkloadIdentity struct {
 	// AllowedTokenURLs are the allowed token URLs.
 	AllowedTokenURLs []string
