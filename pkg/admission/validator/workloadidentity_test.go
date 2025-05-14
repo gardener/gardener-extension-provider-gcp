@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/validator"
-	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpapiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 )
 
@@ -53,7 +53,7 @@ credentialsConfig:
 			}
 			scheme := runtime.NewScheme()
 			Expect(securityv1alpha1.AddToScheme(scheme)).To(Succeed())
-			Expect(gcpapi.AddToScheme(scheme)).To(Succeed())
+			Expect(apisgcp.AddToScheme(scheme)).To(Succeed())
 			Expect(gcpapiv1alpha1.AddToScheme(scheme)).To(Succeed())
 
 			workloadIdentityValidator = validator.NewWorkloadIdentityValidator(
