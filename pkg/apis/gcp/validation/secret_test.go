@@ -52,7 +52,10 @@ var _ = Describe("Secret validation", func() {
 			map[string][]byte{gcp.ServiceAccountJSONField: []byte(`{"project_id": "my-project", "type": "service_account"}`)},
 			BeNil()),
 		Entry("should fail when the credential type is in not in the allowed list",
-			map[string][]byte{gcp.ServiceAccountJSONField: []byte(`{"project_id": "my-project", "type": "service_account"}`)},
-			BeNil()),
+			map[string][]byte{gcp.ServiceAccountJSONField: []byte(`{"project_id": "my-project", "type": "not-allowed"}`)},
+			HaveOccurred()),
+		Entry("should fail when extra fields are present",
+			map[string][]byte{gcp.ServiceAccountJSONField: []byte(`{"project_id": "my-project", "type": "service_account", "additional": "foo"}`)},
+			MatchError(ContainSubstring("forbidden fields are present. Allowed fields are"))),
 	)
 })

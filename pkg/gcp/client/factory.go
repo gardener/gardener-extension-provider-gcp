@@ -6,9 +6,8 @@ package client
 
 import (
 	"context"
-	"net/http"
+	"fmt"
 
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/google/externalaccount"
 	"google.golang.org/api/option"
@@ -81,41 +80,34 @@ func (f factory) IAM(ctx context.Context, c client.Client, sr corev1.SecretRefer
 
 	return NewIAMClient(ctx, credentialsConfig)
 }
-func httpClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) (*http.Client, error) {
-	conf := externalaccount.Config{
-		Audience:                       credentialsConfig.Audience,
-		SubjectTokenType:               credentialsConfig.SubjectTokenType,
-		TokenURL:                       credentialsConfig.TokenURL,
-		Scopes:                         scopes,
-		SubjectTokenSupplier:           credentialsConfig.TokenRetriever,
-		UniverseDomain:                 credentialsConfig.UniverseDomain,
-		ServiceAccountImpersonationURL: credentialsConfig.ServiceAccountImpersonationURL,
-	}
-
-	ts, err := externalaccount.NewTokenSource(ctx, conf)
-	if err != nil {
-		return nil, err
-	}
-
-	return oauth2.NewClient(ctx, ts), nil
-}
 
 func clientOptions(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) (option.ClientOption, error) {
-	if credentialsConfig.TokenRetriever != nil && credentialsConfig.Type == gcp.ExternalAccountCredentialType {
-		http, err := httpClient(ctx, credentialsConfig, scopes)
+	switch {
+	case credentialsConfig.TokenRetriever != nil && credentialsConfig.Type == gcp.ExternalAccountCredentialType:
+		conf := externalaccount.Config{
+			Audience:                       credentialsConfig.Audience,
+			SubjectTokenType:               credentialsConfig.SubjectTokenType,
+			TokenURL:                       credentialsConfig.TokenURL,
+			Scopes:                         scopes,
+			SubjectTokenSupplier:           credentialsConfig.TokenRetriever,
+			UniverseDomain:                 credentialsConfig.UniverseDomain,
+			ServiceAccountImpersonationURL: credentialsConfig.ServiceAccountImpersonationURL,
+		}
+
+		ts, err := externalaccount.NewTokenSource(ctx, conf)
 		if err != nil {
 			return nil, err
 		}
 
-		return option.WithHTTPClient(http), nil
-	}
+		return option.WithTokenSource(ts), nil
+	case credentialsConfig.Type == gcp.ServiceAccountCredentialType:
+		jwt, err := google.JWTConfigFromJSON(credentialsConfig.Raw, scopes...)
+		if err != nil {
+			return nil, err
+		}
 
-	credentials, err := google.CredentialsFromJSONWithParams(ctx, credentialsConfig.Raw, google.CredentialsParams{
-		Scopes: scopes,
-	})
-	if err != nil {
-		return nil, err
+		return option.WithTokenSource(jwt.TokenSource(ctx)), nil
+	default:
+		return nil, fmt.Errorf("unknow credential type: %s", credentialsConfig.Type)
 	}
-
-	return option.WithCredentials(credentials), nil
 }

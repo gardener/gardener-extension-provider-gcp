@@ -5,6 +5,8 @@
 package validation_test
 
 import (
+	"regexp"
+
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,7 +20,9 @@ import (
 
 var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	var (
-		workloadIdentityConfig *apisgcp.WorkloadIdentityConfig
+		workloadIdentityConfig                       *apisgcp.WorkloadIdentityConfig
+		allowedTokenURLs                             = []string{"https://sts.googleapis.com/v1/token"}
+		allowedServiceAccountImpersonationURLRegExps = []*regexp.Regexp{regexp.MustCompile(`^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$`)}
 	)
 
 	BeforeEach(func() {
@@ -31,13 +35,7 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	"type": "external_account",
 	"audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
 	"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
-	"token_url": "https://sts.googleapis.com/v1/token",
-	"credential_source": {
-		"file": "/abc/cloudprovider/xyz",
-		"abc": {
-		  "foo": "text"
-		}
-	}
+	"token_url": "https://sts.googleapis.com/v1/token"
 }
 `),
 			},
@@ -45,14 +43,13 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	})
 
 	It("should validate the config successfully", func() {
-		Expect(validation.ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath(""))).To(BeEmpty())
+		Expect(validation.ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath(""), allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)).To(BeEmpty())
 	})
 
 	It("should contain all expected validation errors", func() {
 		workloadIdentityConfig.ProjectID = "_invalid"
 		workloadIdentityConfig.CredentialsConfig.Raw = []byte(`
 {
-	"extra": "field",
 	"type": "not_external_account",
 	"audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
 	"subject_token_type": "invalid",
@@ -66,7 +63,7 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	}
 }
 `)
-		errorList := validation.ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"))
+		errorList := validation.ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"), []string{"https://foo.bar.real.api/token"}, []*regexp.Regexp{regexp.MustCompile("https://does-not-match")})
 		Expect(errorList).To(ConsistOfFields(
 			Fields{
 				"Type":   Equal(field.ErrorTypeForbidden),
@@ -103,22 +100,34 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 			},
 			Fields{
 				"Type":     Equal(field.ErrorTypeInvalid),
+				"Field":    Equal("providerConfig.credentialsConfig.token_url"),
+				"BadValue": Equal("http://insecure"),
+				"Detail":   Equal("should be one of the allowed URLs: https://foo.bar.real.api/token"),
+			},
+			Fields{
+				"Type":     Equal(field.ErrorTypeInvalid),
 				"Field":    Equal("providerConfig.credentialsConfig.service_account_impersonation_url"),
 				"BadValue": Equal("http://insecure"),
 				"Detail":   Equal("should start with https://"),
+			},
+			Fields{
+				"Type":     Equal(field.ErrorTypeInvalid),
+				"Field":    Equal("providerConfig.credentialsConfig.service_account_impersonation_url"),
+				"BadValue": Equal("http://insecure"),
+				"Detail":   Equal("should match one of the allowed regular expressions: https://does-not-match"),
 			},
 		))
 	})
 
 	It("should validate the config successfully during update", func() {
 		newConfig := workloadIdentityConfig.DeepCopy()
-		Expect(validation.ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath(""))).To(BeEmpty())
+		Expect(validation.ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath(""), allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)).To(BeEmpty())
 	})
 
 	It("should not allow chaning the projectID during update", func() {
 		newConfig := workloadIdentityConfig.DeepCopy()
 		newConfig.ProjectID = "valid123"
-		errorList := validation.ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath("providerConfig"))
+		errorList := validation.ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath("providerConfig"), allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)
 
 		Expect(errorList).To(ConsistOfFields(
 			Fields{

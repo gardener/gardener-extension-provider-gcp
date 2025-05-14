@@ -96,7 +96,7 @@ spec:
       apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
       kind: WorkloadIdentityConfig
       projectID: gcp-project-name # This is the name of the project which the workload identity will access
-      # Use the downloaded credential configuration file to set this field. The credential_source field is not important to Gardener and can be omitted.
+      # Use the downloaded credential configuration file to set this field. The credential_source field is not important to Gardener and should be omitted.
       credentialsConfig:
         universe_domain: "googleapis.com"
         type: "external_account"

@@ -51,3 +51,11 @@ type ETCDBackup struct {
 	// Schedule is the etcd backup schedule.
 	Schedule *string
 }
+
+// WorkloadIdentity is a configuration that specifies how workload identity configs are validated.
+type WorkloadIdentity struct {
+	// AllowedTokenURLs are the allowed token URLs.
+	AllowedTokenURLs []string
+	// AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.
+	AllowedServiceAccountImpersonationURLRegExps []string
+}
