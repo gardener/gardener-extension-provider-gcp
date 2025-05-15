@@ -121,18 +121,14 @@ Please make sure the service account associated with the provided credentials ha
 
 ### Rolling Update Triggers
 
-Changes to the `Shoot` worker-pools are applied in-place where possible. In case this is not possible a rolling update of the workers will be performed to apply the new configuration, as outlined in [the Gardener documentation](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#in-place-vs-rolling-updates). The exact fields that trigger this behaviour depend on whether the feature gate `NewWorkerPoolHash` is enabled. If it is not enabled, only the fields mentioned in the [Gardener doc](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#rolling-update-triggers) are used.
-If the feature gate _is_ enabled, instead of the complete provider config only the following fields are used:
+Changes to the `Shoot` worker-pools are applied in-place where possible.
+In case this is not possible a rolling update of the workers will be performed to apply the new configuration, 
+as outlined in [the Gardener documentation](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#in-place-vs-rolling-updates).
+The exact fields that trigger this behaviour depend on whether the feature gate `NewWorkerPoolHash` is enabled.
+If it is not enabled, only the fields mentioned in the [Gardener doc](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#rolling-update-triggers) are used.
+If the feature gate _is_ enabled, the whole provider config is used with a few additions:
 
 - `.spec.provider.workers[].dataVolumes[].name`
 - `.spec.provider.workers[].dataVolumes[].size`
 - `.spec.provider.workers[].dataVolumes[].type`
 - `.spec.provider.workers[].dataVolumes[].encrypted`
-- `.spec.provider.workers[].providerConfig.volume.encryption`
-- `.spec.provider.workers[].providerConfig.volume.localSsdInterface`
-- `.spec.provider.workers[].providerConfig.dataVolumes[].name`
-- `.spec.provider.workers[].providerConfig.dataVolumes[].sourceImage`
-- `.spec.provider.workers[].providerConfig.dataVolumes[].provisionedIops`
-- `.spec.provider.workers[].providerConfig.minCpuPlatform`
-- `.spec.provider.workers[].providerConfig.gpu`
-- `.spec.provider.workers[].providerConfig.serviceAccount`
