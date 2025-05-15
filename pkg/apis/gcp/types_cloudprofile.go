@@ -41,6 +41,7 @@ type MachineImageVersion struct {
 	CapabilitySets []CapabilitySet
 }
 
+// CapabilitySet is a flavor of the machine image version that supports a specific set of capabilities.
 type CapabilitySet struct {
 	// Capabilities is the set of capabilities that are supported by the AMIs in this set.
 	Capabilities core.Capabilities

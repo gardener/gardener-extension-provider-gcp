@@ -107,14 +107,11 @@ var _ = Describe("CloudProfileConfig validation", func() {
 			})
 
 			It("should forbid missing architecture or capabilitySet mapping", func() {
-				var fieldMatcher types.GomegaMatcher
 				if isCapabilitiesCloudProfile {
-					fieldMatcher = Equal("machineImages[0].versions[0].capabilitySets[0]")
 					machineImages[0].Versions[0].CapabilitySets = []core.CapabilitySet{
 						{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureARM64}}},
 					}
 				} else {
-					fieldMatcher = Equal("machineImages[0].versions[0]")
 					machineImages[0].Versions[0].Architectures = []string{"arm64"}
 				}
 				errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, capabilitiesDefinition, nilPath)
@@ -122,23 +119,21 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":   Equal(field.ErrorTypeRequired),
-						"Field":  fieldMatcher,
+						"Field":  Equal("machineImages[0].versions[0]"),
 						"Detail": ContainSubstring("is not defined in the providerConfig"),
 					})),
 				))
 			})
 
 			It("should forbid unsupported machine image version configuration", func() {
-				var imageMatcher, capabilitiesMatcher, missingVersionMatcher types.GomegaMatcher
+				var imageMatcher, capabilitiesMatcher types.GomegaMatcher
 
 				if isCapabilitiesCloudProfile {
-					missingVersionMatcher = Equal("machineImages[0].versions[0].capabilitySets[0]")
 					imageMatcher = Equal("providerConfig.machineImages[0].versions[0].capabilitySets[0].image")
 					capabilitiesMatcher = Equal("providerConfig.machineImages[0].versions[0].capabilitySets[0].capabilities.architecture[0]")
 					cloudProfileConfig.MachineImages[0].Versions[0].CapabilitySets[0].Image = ""
 					cloudProfileConfig.MachineImages[0].Versions[0].CapabilitySets[0].Capabilities = core.Capabilities{v1beta1constants.ArchitectureName: []string{"foo"}}
 				} else {
-					missingVersionMatcher = Equal("machineImages[0].versions[0]")
 					imageMatcher = Equal("providerConfig.machineImages[0].versions[0].image")
 					capabilitiesMatcher = Equal("providerConfig.machineImages[0].versions[0].architecture")
 					cloudProfileConfig.MachineImages[0].Versions[0].Image = ""
@@ -150,7 +145,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":   Equal(field.ErrorTypeRequired),
-						"Field":  missingVersionMatcher,
+						"Field":  Equal("machineImages[0].versions[0]"),
 						"Detail": ContainSubstring("is not defined in the providerConfig"),
 					})),
 					PointTo(MatchFields(IgnoreExtras, Fields{

@@ -75,7 +75,6 @@ func ValidateCloudProfileConfig(cpConfig *apisgcp.CloudProfileConfig, machineIma
 					imageVersionPath.Child("architecture"),
 					versionArch, v1beta1constants.ValidArchitectures))
 			}
-
 		}
 	}
 
@@ -123,7 +122,6 @@ func ValidateProviderMachineImage(validationPath *field.Path, providerImage apis
 		if len(version.Image) != 0 {
 			allErrs = append(allErrs, field.Forbidden(jdxPath.Child("image"), "must not set image when capabilitySet is defined"))
 		}
-
 	}
 
 	return allErrs
@@ -132,19 +130,20 @@ func ValidateProviderMachineImage(validationPath *field.Path, providerImage apis
 func validateCapabilitiesMapping(version core.MachineImageVersion, machineImage apisgcp.MachineImages, capabilitiesDefinition core.Capabilities, machineImageVersionPath *field.Path, allErrs field.ErrorList) field.ErrorList {
 	versionCapabilitySets := GetVersionCapabilitySets(version, capabilitiesDefinition)
 
-	for idxCapabilitySet, coreCapabilitySet := range versionCapabilitySets {
-		kdxPath := machineImageVersionPath.Child("capabilitySets").Index(idxCapabilitySet)
+	for _, coreCapabilitySet := range versionCapabilitySets {
 		isFound := false
 		// search for the corresponding imageVersion.CapabilitySet
 		for _, providerVersion := range machineImage.Versions {
-			for _, providerCapabilitySet := range providerVersion.CapabilitySets {
-				if AreCapabilitiesEqual(coreCapabilitySet.Capabilities, providerCapabilitySet.Capabilities, capabilitiesDefinition) {
-					isFound = true
+			if version.Version == providerVersion.Version {
+				for _, providerCapabilitySet := range providerVersion.CapabilitySets {
+					if AreCapabilitiesEqual(coreCapabilitySet.Capabilities, providerCapabilitySet.Capabilities, capabilitiesDefinition) {
+						isFound = true
+					}
 				}
 			}
 		}
 		if !isFound {
-			allErrs = append(allErrs, field.Required(kdxPath,
+			allErrs = append(allErrs, field.Required(machineImageVersionPath,
 				fmt.Sprintf("machine image version %s@%s and capabilitySet %v is not defined in the providerConfig",
 					machineImage.Name, version.Version, coreCapabilitySet.Capabilities)))
 		}
