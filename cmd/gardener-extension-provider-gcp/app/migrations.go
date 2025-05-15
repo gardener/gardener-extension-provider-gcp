@@ -49,5 +49,5 @@ func purgeMachineControllerManagerRBACResources(ctx context.Context, client clie
 			}
 		}
 	}
-	return nil
+	return fmt.Errorf("test error")
 }
