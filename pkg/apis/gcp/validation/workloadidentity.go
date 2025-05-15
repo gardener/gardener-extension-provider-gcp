@@ -56,6 +56,8 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 	if err := json.Unmarshal(config.CredentialsConfig.Raw, &cfg); err != nil {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig"), config.CredentialsConfig.Raw, "has invalid format"))
 	} else {
+		// clone the map and remove all allowed fields
+		// if the cloned map has length greater than 0 then we have some extra fields in the original
 		cloned := maps.Clone(cfg)
 		for _, f := range workloadIdentityAllowedFields {
 			delete(cloned, f)
@@ -64,6 +66,7 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig"), "contains extra fields, allowed fields are: "+strings.Join(workloadIdentityAllowedFields, ", ")))
 		}
 
+		// ensure that all required fields are present in the passed config
 		for _, f := range workloadIdentityRequiredConfigFields {
 			if _, ok := cfg[f]; !ok {
 				allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig"), fmt.Sprintf("missing required field: %q", f)))
