@@ -101,7 +101,7 @@ type Opts struct {
 func NewFlowContext(ctx context.Context, opts Opts) (*FlowContext, error) {
 	wb := shared.NewWhiteboard()
 	wb.ImportFromFlatMap(opts.State.Data)
-	wb.ImportRoutesFromState(ObjectKeyRoutes, opts.State.Routes)
+	wb.SetObject(ObjectKeyRoutes, opts.State.Routes)
 	config, err := helper.InfrastructureConfigFromInfrastructure(opts.Infra)
 	if err != nil {
 		return nil, err

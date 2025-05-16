@@ -15,7 +15,6 @@ import (
 	"google.golang.org/api/googleapi"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
@@ -75,7 +74,7 @@ type ComputeClient interface {
 	// DeleteRoute deletes the specified route.
 	DeleteRoute(ctx context.Context, id string) error
 	// InsertAliasIPRoute creates an alias IP route on the instance
-	InsertAliasIPRoute(ctx context.Context, route apisgcp.Route, defaultSecondarySubnetName string) error
+	InsertAliasIPRoute(ctx context.Context, route Route, defaultSecondarySubnetName string) error
 
 	// InsertFirewallRule creates a firewall rule with the given specification.
 	InsertFirewallRule(ctx context.Context, firewall *compute.Firewall) (*compute.Firewall, error)
@@ -93,6 +92,16 @@ type ComputeClient interface {
 
 	// GetRegion returns the Region specified.
 	GetRegion(ctx context.Context, region string) (*compute.Region, error)
+}
+
+// Route is a struct that contains the information needed to create a route.
+type Route struct {
+	// InstanceName
+	InstanceName string
+	// DestinationCIDR
+	DestinationCIDR string
+	// Zone is the zone of the route
+	Zone string
 }
 
 type computeClient struct {
@@ -413,7 +422,7 @@ func (c *computeClient) ListRoutes(ctx context.Context, opts RouteListOpts) ([]*
 	return res, nil
 }
 
-func (c *computeClient) InsertAliasIPRoute(ctx context.Context, route apisgcp.Route, defaultSecondarySubnetName string) error {
+func (c *computeClient) InsertAliasIPRoute(ctx context.Context, route Route, defaultSecondarySubnetName string) error {
 	log := shared.LogFromContext(ctx)
 
 	instance, err := c.GetInstance(ctx, route.Zone, route.InstanceName)
@@ -435,6 +444,12 @@ func (c *computeClient) InsertAliasIPRoute(ctx context.Context, route apisgcp.Ro
 	if err == nil {
 		log.Info("Operation to update network interface started: ", "opName", op.Name, "name", instance.NetworkInterfaces[0].Name)
 		return nil
+	}
+
+	// Wait for the operation to complete
+	if waitErr := c.wait(ctx, op); waitErr != nil {
+		log.Info("Failed waiting for update operation", "opName", op.Name, "error", waitErr)
+		return waitErr
 	}
 
 	log.Info("Failed to update network interface", "name", instance.NetworkInterfaces[0].Name, "error", err)

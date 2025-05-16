@@ -16,7 +16,6 @@ import (
 	"k8s.io/utils/ptr"
 	ctclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -232,7 +231,11 @@ func (fctx *FlowContext) ensureKubernetesRoutesCleanupForDualStackMigration(ctx 
 
 	// Scale CCM back to originalScale if there were errors
 	if combinedErr != nil {
-		_ = scaleCCMto(originalScale)
+		if originalScale > 0 {
+			_ = scaleCCMto(originalScale)
+		} else {
+			_ = scaleCCMto(1)
+		}
 		return combinedErr
 	}
 	return nil
@@ -695,7 +698,7 @@ func (fctx *FlowContext) ensureAliasIpRanges(ctx context.Context) error {
 	// of the loop
 	for _, route := range routes {
 		// Attempt to insert the alias IP route
-		err := fctx.computeClient.InsertAliasIPRoute(ctx, apisgcp.Route{
+		err := fctx.computeClient.InsertAliasIPRoute(ctx, client.Route{
 			InstanceName:    route.InstanceName,
 			DestinationCIDR: route.DestinationCIDR,
 			Zone:            route.Zone,

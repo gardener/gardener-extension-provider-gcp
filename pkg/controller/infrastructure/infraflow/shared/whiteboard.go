@@ -11,8 +11,6 @@ import (
 	"sync/atomic"
 
 	"k8s.io/utils/ptr"
-
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 const (
@@ -59,8 +57,6 @@ type Whiteboard interface {
 
 	// ImportFromFlatMap reconstructs the hierarchical structure from a flat map containing path-like keys
 	ImportFromFlatMap(data FlatMap)
-	// ImportRoutesFromState imports routes from the state. It is used to import routes from the state into the whiteboard.
-	ImportRoutesFromState(key string, routes []gcp.Route)
 	// ExportAsFlatMap exports the hierarchical structure to a flat map with path-like keys. Objects are ignored.
 	ExportAsFlatMap() FlatMap
 
@@ -234,22 +230,6 @@ func (w *whiteboard) ImportFromFlatMap(data FlatMap) {
 		}
 		level.Set(parts[len(parts)-1], value)
 	}
-}
-
-// ImportRoutesFromState imports routes from the state into the whiteboard.
-// It stores the routes as an object under the ObjectKeyRoutes key.
-func (w *whiteboard) ImportRoutesFromState(key string, routes []gcp.Route) {
-	if routes == nil {
-		return
-	}
-	w.Lock()
-	defer w.Unlock()
-
-	// Store the routes as an object in the whiteboard
-	w.objects[key] = routes
-
-	// Mark the whiteboard as modified to increment the generation
-	w.modified()
 }
 
 func (w *whiteboard) ExportAsFlatMap() FlatMap {
