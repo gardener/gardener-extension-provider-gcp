@@ -335,7 +335,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 	return nil
 }
 
-func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, workerConfig apisgcp.WorkerConfig) (string, error) {
+func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, _ apisgcp.WorkerConfig) (string, error) {
 	var additionalData []string
 
 	volumes := slices.Clone(pool.DataVolumes)
