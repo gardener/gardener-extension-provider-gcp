@@ -444,6 +444,20 @@ func (mr *MockComputeClientMockRecorder) GetSubnet(ctx, region, id any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubnet", reflect.TypeOf((*MockComputeClient)(nil).GetSubnet), ctx, region, id)
 }
 
+// InsertAliasIPRoute mocks base method.
+func (m *MockComputeClient) InsertAliasIPRoute(ctx context.Context, route client.Route, defaultSecondarySubnetName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertAliasIPRoute", ctx, route, defaultSecondarySubnetName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InsertAliasIPRoute indicates an expected call of InsertAliasIPRoute.
+func (mr *MockComputeClientMockRecorder) InsertAliasIPRoute(ctx, route, defaultSecondarySubnetName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertAliasIPRoute", reflect.TypeOf((*MockComputeClient)(nil).InsertAliasIPRoute), ctx, route, defaultSecondarySubnetName)
+}
+
 // InsertDisk mocks base method.
 func (m *MockComputeClient) InsertDisk(ctx context.Context, zone string, disk *compute.Disk) (*compute.Disk, error) {
 	m.ctrl.T.Helper()
