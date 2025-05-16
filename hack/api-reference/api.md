@@ -399,6 +399,46 @@ k8s.io/apimachinery/pkg/runtime.RawExtension
 </tr>
 </tbody>
 </table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CapabilitySet">CapabilitySet
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>capabilities</code></br>
+<em>
+github.com/gardener/gardener/pkg/apis/core.Capabilities
+</em>
+</td>
+<td>
+<p>Capabilities is the set of capabilities that are supported by the AMIs in this set.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Image is the path to the image.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CloudControllerManagerConfig">CloudControllerManagerConfig
 </h3>
 <p>
@@ -1084,6 +1124,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Image is the path to the image.</p>
 </td>
 </tr>
@@ -1097,6 +1138,19 @@ string
 <td>
 <em>(Optional)</em>
 <p>Architecture is the CPU architecture of the machine image.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>capabilitySets</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CapabilitySet">
+[]CapabilitySet
+</a>
+</em>
+</td>
+<td>
+<p>CapabilitySets is a collection of all images for that version with capabilities.</p>
 </td>
 </tr>
 </tbody>

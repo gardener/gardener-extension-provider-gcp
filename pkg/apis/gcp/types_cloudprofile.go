@@ -5,6 +5,7 @@
 package gcp
 
 import (
+	"github.com/gardener/gardener/pkg/apis/core"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -36,4 +37,14 @@ type MachineImageVersion struct {
 	Image string
 	// Architecture is the CPU architecture of the machine image.
 	Architecture *string
+	// CapabilitySets is a collection of all images for that version with capabilities.
+	CapabilitySets []CapabilitySet
+}
+
+// CapabilitySet is a flavor of the machine image version that supports a specific set of capabilities.
+type CapabilitySet struct {
+	// Capabilities is the set of capabilities that are supported by the AMIs in this set.
+	Capabilities core.Capabilities
+	// Image is the path to the image.
+	Image string
 }
