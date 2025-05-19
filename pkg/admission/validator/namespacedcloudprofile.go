@@ -7,6 +7,8 @@ package validator
 import (
 	"context"
 	"fmt"
+	gardencoreapi "github.com/gardener/gardener/pkg/api"
+	"github.com/gardener/gardener/pkg/apis/core/helper"
 	"slices"
 
 	"github.com/gardener/gardener/extensions/pkg/util"
@@ -83,13 +85,12 @@ func (p *namespacedCloudProfile) validateNamespacedCloudProfileProviderConfig(pr
 func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.CloudProfileConfig, machineImages []core.MachineImage, parentSpec gardencorev1beta1.CloudProfileSpec) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	capabilitiesDefinition := core.Capabilities{}
-	for _, capabilityDefinition := range parentSpec.Capabilities {
-		capabilitiesDefinition[capabilityDefinition.Name] = core.CapabilityValues{}
-		for _, capabilityValue := range capabilityDefinition.Values {
-			capabilitiesDefinition[capabilityDefinition.Name] = append(capabilitiesDefinition[capabilityDefinition.Name], capabilityValue)
-		}
+	var parentCloudProfileSpecCore core.CloudProfileSpec
+	if err := gardencoreapi.Scheme.Convert(&parentSpec, &parentCloudProfileSpecCore, nil); err != nil {
+		return append(allErrs, field.InternalError(field.NewPath(""), err))
 	}
+
+	capabilitiesDefinition := helper.CapabilityDefinitionsToCapabilities(parentCloudProfileSpecCore.Capabilities)
 
 	providerConfigPath := field.NewPath("spec.providerConfig")
 	allErrs = append(allErrs, validation.ValidateCloudProfileConfig(providerConfig, machineImages, capabilitiesDefinition, providerConfigPath)...)
@@ -188,13 +189,13 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 func validateMachineImageCapabilities(machineImage core.MachineImage, version core.MachineImageVersion, providerImageVersion api.MachineImageVersion, capabilitiesDefinition core.Capabilities) field.ErrorList {
 	allErrs := field.ErrorList{}
 	path := field.NewPath("spec.providerConfig.machineImages")
-	coreVersionCapabilitySets := validation.GetVersionCapabilitySets(version, capabilitiesDefinition)
+	coreVersionCapabilitySets := util.GetVersionCapabilitySets(version, capabilitiesDefinition)
 
 	// 1. Create an error for each capabilitySet in the providerConfig that is not defined in the core machine image version
 	for _, capabilitySet := range providerImageVersion.CapabilitySets {
 		isFound := false
 		for _, coreCapabilitySet := range coreVersionCapabilitySets {
-			if validation.AreCapabilitiesEqual(coreCapabilitySet.Capabilities, capabilitySet.Capabilities, capabilitiesDefinition) {
+			if util.AreCapabilitiesEqual(coreCapabilitySet.Capabilities, capabilitySet.Capabilities, capabilitiesDefinition) {
 				isFound = true
 			}
 		}
@@ -209,7 +210,7 @@ func validateMachineImageCapabilities(machineImage core.MachineImage, version co
 	for _, coreCapabilitySet := range coreVersionCapabilitySets {
 		isFound := false
 		for _, capabilitySet := range providerImageVersion.CapabilitySets {
-			if validation.AreCapabilitiesEqual(coreCapabilitySet.Capabilities, capabilitySet.Capabilities, capabilitiesDefinition) {
+			if util.AreCapabilitiesEqual(coreCapabilitySet.Capabilities, capabilitySet.Capabilities, capabilitiesDefinition) {
 				isFound = true
 			}
 		}
