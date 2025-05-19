@@ -5,8 +5,10 @@
 package validation
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/gardener/gardener/pkg/apis/core"
@@ -14,9 +16,15 @@ import (
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
+)
+
+const (
+	overlayKey = "overlay"
+	enabledKey = "enabled"
 )
 
 // ValidateNetworking validates the network settings of a Shoot.
@@ -33,6 +41,21 @@ func ValidateNetworking(networking *core.Networking, fldPath *field.Path, k8sVer
 
 	if len(networking.IPFamilies) > 1 && versionutils.ConstraintK8sLess131.Check(k8sVersion) {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("ipFamilies"), networking.IPFamilies, "dual-stack is not supported for Kubernetes versions < 1.31"))
+	}
+
+	if networking.IPFamilies != nil && slices.Contains(networking.IPFamilies, core.IPFamilyIPv6) {
+		networkConfig, err := decodeNetworkConfig(networking.ProviderConfig)
+		if err != nil {
+			return append(allErrs, field.Invalid(fldPath.Child("providerConfig"), networking.ProviderConfig, fmt.Sprintf("failed to decode networking provider config: %v", err)))
+		}
+
+		if _, ok := networkConfig[overlayKey]; ok {
+			if overlay, ok := networkConfig[overlayKey].(map[string]interface{}); ok {
+				if enabled, ok := overlay[enabledKey].(bool); ok && enabled {
+					allErrs = append(allErrs, field.Invalid(fldPath.Child("providerConfig").Child(overlayKey).Child(enabledKey), enabled, "overlay is not supported in conjunction with IPv6"))
+				}
+			}
+		}
 	}
 
 	return allErrs
@@ -92,4 +115,15 @@ func ValidateWorkersUpdate(oldWorkers, newWorkers []core.Worker, fldPath *field.
 		}
 	}
 	return allErrs
+}
+
+func decodeNetworkConfig(network *runtime.RawExtension) (map[string]interface{}, error) {
+	var networkConfig map[string]interface{}
+	if network == nil || network.Raw == nil {
+		return map[string]interface{}{}, nil
+	}
+	if err := json.Unmarshal(network.Raw, &networkConfig); err != nil {
+		return nil, err
+	}
+	return networkConfig, nil
 }

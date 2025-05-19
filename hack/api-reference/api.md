@@ -943,6 +943,20 @@ map[string]string
 <p>Data is map to store things.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>routes</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Route">
+[]Route
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Routes contains information about cluster routes</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.InfrastructureStatus">InfrastructureStatus
@@ -1366,6 +1380,58 @@ VPC
 </td>
 <td>
 <p>IPFamilies is the list of the used ip families.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.Route">Route
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.InfrastructureState">InfrastructureState</a>)
+</p>
+<p>
+<p>Route is a structure containing information about the routes.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>instanceName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>InstanceName</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>destinationCIDR</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>DestinationCIDR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>zone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Zone is the zone of the route</p>
 </td>
 </tr>
 </tbody>
