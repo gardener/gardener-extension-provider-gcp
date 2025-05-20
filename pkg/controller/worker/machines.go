@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -336,7 +335,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 	return nil
 }
 
-func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, workerConfig apisgcp.WorkerConfig) (string, error) {
+func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, _ apisgcp.WorkerConfig) (string, error) {
 	var additionalData []string
 
 	volumes := slices.Clone(pool.DataVolumes)
@@ -353,55 +352,21 @@ func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, worker
 		}
 	}
 
-	workerVolumes := slices.Clone(workerConfig.DataVolumes)
-	slices.SortFunc(workerVolumes, func(i, j apisgcp.DataVolume) int {
-		return strings.Compare(i.Name, j.Name)
-	})
-	for _, volume := range workerVolumes {
-		additionalData = append(additionalData, volume.Name)
-		if sourceImage := volume.SourceImage; sourceImage != nil {
-			additionalData = append(additionalData, *sourceImage)
-		}
-		if ops := volume.ProvisionedIops; ops != nil {
-			additionalData = append(additionalData, strconv.Itoa(int(*ops)))
-		}
-		if throughput := volume.ProvisionedThroughput; throughput != nil {
-			additionalData = append(additionalData, strconv.Itoa(int(*throughput)))
-		}
-	}
+	additionalDataV2 := append(additionalData, workerPoolHashDataV2(pool)...)
 
+	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalDataV2)
+}
+
+func workerPoolHashDataV2(pool v1alpha1.WorkerPool) []string {
+	// in the future, we may not calculate a hash for the whole ProviderConfig
+	// for example volume field changes could be done in place, but MCM needs to support it
 	// see https://cloud.google.com/compute/docs/instances/update-instance-properties?hl=de#updatable-properties
 	// for a list of properties that requires a restart.
-
-	if minCpuPlatform := workerConfig.MinCpuPlatform; minCpuPlatform != nil {
-		additionalData = append(additionalData, *minCpuPlatform)
+	if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
+		return []string{string(pool.ProviderConfig.Raw)}
 	}
 
-	if gpu := workerConfig.GPU; gpu != nil {
-		additionalData = append(additionalData, gpu.AcceleratorType, strconv.Itoa(int(gpu.Count)))
-	}
-
-	if serviceaccount := workerConfig.ServiceAccount; serviceaccount != nil {
-		additionalData = append(additionalData, serviceaccount.Email)
-		sort.Strings(serviceaccount.Scopes)
-		additionalData = append(additionalData, serviceaccount.Scopes...)
-	}
-
-	if volume := workerConfig.Volume; volume != nil {
-		if encryption := volume.Encryption; encryption != nil {
-			if kmsKeyName := encryption.KmsKeyName; kmsKeyName != nil {
-				additionalData = append(additionalData, *kmsKeyName)
-			}
-			if kmsKeyServiceAccount := encryption.KmsKeyServiceAccount; kmsKeyServiceAccount != nil {
-				additionalData = append(additionalData, *kmsKeyServiceAccount)
-			}
-		}
-		if localSSDInterface := volume.LocalSSDInterface; localSSDInterface != nil {
-			additionalData = append(additionalData, *localSSDInterface)
-		}
-	}
-
-	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalData)
+	return []string{}
 }
 
 func createDiskSpecForVolume(volume *v1alpha1.Volume, image string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
