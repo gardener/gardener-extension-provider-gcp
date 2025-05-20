@@ -125,8 +125,8 @@ Changes to the `Shoot` worker-pools are applied in-place where possible.
 In case this is not possible a rolling update of the workers will be performed to apply the new configuration, 
 as outlined in [the Gardener documentation](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#in-place-vs-rolling-updates).
 The exact fields that trigger this behaviour depend on whether the feature gate `NewWorkerPoolHash` is enabled.
-If it is not enabled, only the fields mentioned in the [Gardener doc](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#rolling-update-triggers) are used.
-If the feature gate _is_ enabled, the whole provider config is used with a few additions:
+If it is not enabled, only the fields mentioned in the [Gardener doc](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#rolling-update-triggers) plus the providerConfig are used.
+If the feature gate _is_ enabled, it's the same with a few additions:
 
 - `.spec.provider.workers[].dataVolumes[].name`
 - `.spec.provider.workers[].dataVolumes[].size`
