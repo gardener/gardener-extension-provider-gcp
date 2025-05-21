@@ -270,6 +270,7 @@ The worker configuration contains:
     gcloud projects add-iam-policy-binding projectId --member
     serviceAccount:name@projectIdgserviceaccount.com --role roles/cloudkms.cryptoKeyEncrypterDecrypter
     ```
+  * Setting `.spec.provider.workers[].(data)Volumes[].encrypted` has no impact because GCP disks are encrypted by default. 
 
 * Setting a volume image with `dataVolumes.sourceImage`.
   However, this parameter should only be used with particular caution.
