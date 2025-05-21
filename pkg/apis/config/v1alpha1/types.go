@@ -32,6 +32,10 @@ type ControllerConfiguration struct {
 	// Default: nil
 	// +optional
 	FeatureGates map[string]bool `json:"featureGates,omitempty"`
+
+	// Debugging holds configuration for profiling related features.
+	// +optional
+	Debugging *componentbaseconfigv1alpha1.DebuggingConfiguration `json:"debugging,omitempty"`
 }
 
 // ETCD is an etcd configuration.
