@@ -131,4 +131,7 @@ If the feature gate _is_ enabled, it's the same with a few additions:
 - `.spec.provider.workers[].dataVolumes[].name`
 - `.spec.provider.workers[].dataVolumes[].size`
 - `.spec.provider.workers[].dataVolumes[].type`
-- `.spec.provider.workers[].dataVolumes[].encrypted`
+
+We exclude `.spec.provider.workers[].dataVolumes[].encrypted` from the hash calculation because GCP disks are encrypted by default, 
+and the field does not influence disk encryption behavior.
+Everything related to disk encryption is handled by the providerConfig.

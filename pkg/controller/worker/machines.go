@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
@@ -347,9 +346,8 @@ func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, _ apis
 		if volume.Type != nil {
 			additionalData = append(additionalData, *volume.Type)
 		}
-		if encrypted := volume.Encrypted; encrypted != nil && *encrypted {
-			additionalData = append(additionalData, strconv.FormatBool(*encrypted))
-		}
+		// We exclude volume.Encrypted from the hash calculation because GCP disks are encrypted by default,
+		// and the field does not influence disk encryption behavior.
 	}
 
 	additionalDataV2 := append(additionalData, workerPoolHashDataV2(pool)...)
