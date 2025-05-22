@@ -344,6 +344,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 		gcp.CSINodeName: map[string]interface{}{
 			"enabled":           true,
 			"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
+			"enableDataCache":   metav1.HasAnnotation(cluster.Shoot.ObjectMeta, gcp.AnnotationEnableCSIDataCache),
 		},
 		"default-http-backend": map[string]interface{}{
 			"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
@@ -503,6 +504,7 @@ func getCSIControllerChartValues(
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		},
 		"useWorkloadIdentity": shouldUseWorkloadIdentity(credentialsConfig),
+		"enableDataCache":     metav1.HasAnnotation(cluster.Shoot.ObjectMeta, gcp.AnnotationEnableCSIDataCache),
 	}
 
 	k8sVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
@@ -533,7 +535,7 @@ func getCSIControllerChartValues(
 	return values, nil
 }
 
-// getStorageClassChartValues collects and returns the shoot storage-class chart values.
+// GetStorageClassesChartValues collects and returns the shoot storage-class chart values.
 func (vp *valuesProvider) GetStorageClassesChartValues(
 	_ context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
