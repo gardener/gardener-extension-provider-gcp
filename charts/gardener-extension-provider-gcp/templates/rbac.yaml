@@ -129,6 +129,8 @@ rules:
   - patch
   - update
   - delete
+  - list
+  - watch
 - apiGroups:
   - policy
   resources:
