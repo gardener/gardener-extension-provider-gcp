@@ -62,5 +62,6 @@ func (a *actuator) delete(ctx context.Context, log logr.Logger, infra *extension
 	if err != nil {
 		return err
 	}
+	// TODO(kon-angelo): Remove this when we deprecate support for the terraformer library.
 	return CleanupTerraformerResources(ctx, tf)
 }

@@ -37,8 +37,7 @@ func (a *actuator) reconcile(ctx context.Context, log logr.Logger, infra *extens
 		err        error
 	)
 
-	// when the function is called, we may have: a. no state, b. terraform state (migration) or c. flow state. In case of a TF state
-	// because no explicit migration to the new flow format is necessary, we simply return an empty state.
+	// when the function is called, we may have: a. no state, b. terraform state (migration) or c. flow state.
 	fsOk, err := hasFlowState(infra.Status.State)
 	if err != nil {
 		return err
@@ -52,6 +51,7 @@ func (a *actuator) reconcile(ctx context.Context, log logr.Logger, infra *extens
 		}
 	} else {
 		// otherwise migrate it from the terraform state if needed.
+		// todo(kon-angelo): remove in future release when the terraform library is deprecated.
 		infraState, err = a.migrateFromTerraform(ctx, log, infra)
 		if err != nil {
 			return err
@@ -103,8 +103,10 @@ func (a *actuator) migrateFromTerraform(ctx context.Context, log logr.Logger, in
 	state := &gcp.InfrastructureState{
 		Data: map[string]string{},
 	}
-	// we want to prevent allowing the deletion of infrastructure if there may be still resources in the cloudprovider.
-	// We will initialize the data with a specific "marker" so that the deletion.
+
+	// This is a special case when migrating from Terraform. If TF had created any resources (meaning there is an actual tf.state written)
+	// we will mark that there are infra resources created. This is to prevent the edge case where we migrate to flow with
+	// an expired set of credentials, in which case we cannot verify if there are actual provider resources.
 	tf, err := NewTerraformer(log, a.restConfig, "infra", infra, a.disableProjectedTokenMount)
 	if err != nil {
 		return nil, err
