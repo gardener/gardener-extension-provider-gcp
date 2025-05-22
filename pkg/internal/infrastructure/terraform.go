@@ -15,7 +15,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
@@ -53,7 +53,7 @@ var StatusTypeMeta = metav1.TypeMeta{
 func ComputeTerraformerTemplateValues(
 	infra *extensionsv1alpha1.Infrastructure,
 	account *gcp.CredentialsConfig,
-	config *api.InfrastructureConfig,
+	config *apisgcp.InfrastructureConfig,
 	podCIDR *string,
 	createSA bool,
 ) (map[string]interface{}, error) {
@@ -200,7 +200,7 @@ func ComputeTerraformerTemplateValues(
 func RenderTerraformerTemplate(
 	infra *extensionsv1alpha1.Infrastructure,
 	account *gcp.CredentialsConfig,
-	config *api.InfrastructureConfig,
+	config *apisgcp.InfrastructureConfig,
 	podCIDR *string,
 	createSA bool,
 ) (*TerraformFiles, error) {
@@ -250,7 +250,7 @@ type TerraformState struct {
 func ExtractTerraformState(
 	ctx context.Context,
 	tf terraformer.Terraformer,
-	config *api.InfrastructureConfig,
+	config *apisgcp.InfrastructureConfig,
 	createSA bool,
 ) (*TerraformState, error) {
 	var (
@@ -352,7 +352,7 @@ func StatusFromTerraformState(state *TerraformState) *apiv1alpha1.Infrastructure
 }
 
 // ComputeStatus computes the status based on the Terraformer and the given InfrastructureConfig.
-func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, config *api.InfrastructureConfig, createSA bool) (*apiv1alpha1.InfrastructureStatus, error) {
+func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, config *apisgcp.InfrastructureConfig, createSA bool) (*apiv1alpha1.InfrastructureStatus, error) {
 	state, err := ExtractTerraformState(ctx, tf, config, createSA)
 	if err != nil {
 		return nil, err
@@ -361,6 +361,6 @@ func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, config *api.
 	return StatusFromTerraformState(state), nil
 }
 
-func manualNatIPsSet(config *api.InfrastructureConfig) bool {
+func manualNatIPsSet(config *apisgcp.InfrastructureConfig) bool {
 	return config.Networks.CloudNAT != nil && config.Networks.CloudNAT.NatIPNames != nil
 }

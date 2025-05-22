@@ -43,7 +43,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	bastionctrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
@@ -499,9 +499,9 @@ func createShoot(infrastructureConfig []byte) *gardencorev1beta1.Shoot {
 }
 
 func createCloudProfile() *gardencorev1beta1.CloudProfile {
-	profileConfig := &api.CloudProfileConfig{MachineImages: []api.MachineImages{{
+	profileConfig := &apisgcp.CloudProfileConfig{MachineImages: []apisgcp.MachineImages{{
 		Name: imageName,
-		Versions: []api.MachineImageVersion{{
+		Versions: []apisgcp.MachineImageVersion{{
 			Version:      "1443.9.0",
 			Image:        "projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-gcp-gardener-prod-amd64-1443-9-a9c614dc",
 			Architecture: ptr.To("amd64"),
