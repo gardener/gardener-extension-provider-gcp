@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	"github.com/gardener/gardener/pkg/apis/core"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -33,8 +34,19 @@ type MachineImageVersion struct {
 	// Version is the version of the image.
 	Version string `json:"version"`
 	// Image is the path to the image.
+	// +optional
 	Image string `json:"image"`
 	// Architecture is the CPU architecture of the machine image.
 	// +optional
 	Architecture *string `json:"architecture,omitempty"`
+	// CapabilitySets is a collection of all images for that version with capabilities.
+	CapabilitySets []CapabilitySet `json:"capabilitySets"`
+}
+
+// CapabilitySet is a flavor of the machine image version that supports a specific set of capabilities.
+type CapabilitySet struct {
+	// Capabilities is the set of capabilities that are supported by the AMIs in this set.
+	Capabilities core.Capabilities `json:"capabilities,omitempty"`
+	// Image is the path to the image.
+	Image string `json:"image"`
 }
