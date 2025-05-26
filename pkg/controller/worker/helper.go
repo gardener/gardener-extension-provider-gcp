@@ -12,12 +12,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 )
 
-func (w *WorkerDelegate) decodeWorkerProviderStatus() (*api.WorkerStatus, error) {
-	workerStatus := &api.WorkerStatus{}
+func (w *WorkerDelegate) decodeWorkerProviderStatus() (*apisgcp.WorkerStatus, error) {
+	workerStatus := &apisgcp.WorkerStatus{}
 
 	if w.worker.Status.ProviderStatus == nil {
 		return workerStatus, nil
@@ -30,7 +30,7 @@ func (w *WorkerDelegate) decodeWorkerProviderStatus() (*api.WorkerStatus, error)
 	return workerStatus, nil
 }
 
-func (w *WorkerDelegate) updateWorkerProviderStatus(ctx context.Context, workerStatus *api.WorkerStatus) error {
+func (w *WorkerDelegate) updateWorkerProviderStatus(ctx context.Context, workerStatus *apisgcp.WorkerStatus) error {
 	var workerStatusV1alpha1 = &v1alpha1.WorkerStatus{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),

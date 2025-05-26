@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
@@ -75,7 +75,7 @@ func getCredentialsConfig(ctx context.Context, c client.Client, bastion *v1alpha
 }
 
 func getWorkersCIDR(cluster *controller.Cluster) (string, error) {
-	infrastructureConfig := &gcpapi.InfrastructureConfig{}
+	infrastructureConfig := &apisgcp.InfrastructureConfig{}
 	err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig)
 	if err != nil {
 		return "", err
