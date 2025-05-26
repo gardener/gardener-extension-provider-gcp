@@ -24,7 +24,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
 	gcpinternal "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/infrastructure"
 )
 
 const (
@@ -180,7 +179,10 @@ func (fctx *FlowContext) Delete(ctx context.Context) error {
 
 func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 	status := &v1alpha1.InfrastructureStatus{
-		TypeMeta: infrastructure.StatusTypeMeta,
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1alpha1.SchemeGroupVersion.String(),
+			Kind:       "InfrastructureStatus",
+		},
 		Networks: v1alpha1.NetworkStatus{
 			VPC:        v1alpha1.VPC{},
 			Subnets:    []v1alpha1.Subnet{},
