@@ -100,13 +100,13 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 					MatchFields(IgnoreExtras, Fields{
 						"Name": Equal("image-1"),
 						"Versions": ContainElements(
-							api.MachineImageVersion{Version: "1.0", Image: "imgRef1", Architecture: ptr.To("amd64")},
+							api.MachineImageVersion{Version: "1.0", Image: "imgRef1"},
 							api.MachineImageVersion{Version: "1.1", Image: "imgRef2", Architecture: ptr.To("armhf")},
 						),
 					}),
 					MatchFields(IgnoreExtras, Fields{
 						"Name":     Equal("image-2"),
-						"Versions": ContainElements(api.MachineImageVersion{Version: "2.0", Image: "imgRef3", Architecture: ptr.To("amd64")}),
+						"Versions": ContainElements(api.MachineImageVersion{Version: "2.0", Image: "imgRef3"}),
 					}),
 				))
 			})

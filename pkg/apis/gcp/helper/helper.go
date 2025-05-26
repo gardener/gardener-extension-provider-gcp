@@ -50,6 +50,9 @@ func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, image
 				continue
 			}
 			for _, version := range machineImage.Versions {
+				if version.Architecture == nil {
+					version.Architecture = ptr.To(v1beta1constants.ArchitectureAMD64)
+				}
 				if imageVersion == version.Version && ptr.Equal(architecture, version.Architecture) {
 					return version.Image, nil
 				}
