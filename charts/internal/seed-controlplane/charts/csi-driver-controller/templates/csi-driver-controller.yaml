@@ -49,6 +49,9 @@ spec:
         - --logtostderr
         - --v=3
         - --enable-storage-pools
+        {{- if .Values.enableDataCache }}
+        - --enable-data-cache
+        {{- end }}
         {{- if (((.Values.csiDriver).storage).supportsDynamicIopsProvisioning) }}
         - --supports-dynamic-iops-provisioning={{ range $storageType := .Values.csiDriver.storage.supportsDynamicIopsProvisioning }}{{ $storageType }},{{ end }}
         {{- end }}
