@@ -72,6 +72,7 @@ spec:
     maximum: 1
     maxSurge: 1
     maxUnavailable: 0
+    updateStrategy: AutoRollingUpdate # AutoRollingUpdate/AutoInPlaceUpdate/ManualInPlaceUpdate
   # labels:
   #   key: value
   # annotations:
