@@ -63,7 +63,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return err
 	}
 
-	opt, err := DetermineOptions(bastion, cluster, credentialsConfig.ProjectID, infrastructureStatus.Networks.VPC.Name, subnet)
+	opt, err := NewOpts(bastion, cluster, credentialsConfig.ProjectID, infrastructureStatus.Networks.VPC.Name, subnet)
 	if err != nil {
 		return fmt.Errorf("failed to determine Options: %w", err)
 	}
@@ -148,7 +148,7 @@ func ensureFirewallRules(ctx context.Context, log logr.Logger, client gcpclient.
 }
 
 func ensureComputeInstance(ctx context.Context, logger logr.Logger, bastion *extensionsv1alpha1.Bastion, client gcpclient.ComputeClient, opt *Options) (*compute.Instance, error) {
-	instance, err := getBastionInstance(ctx, client, opt)
+	instance, err := getBastionInstance(ctx, client, opt.BaseOptions)
 	if instance != nil || err != nil {
 		return instance, err
 	}
@@ -160,7 +160,7 @@ func ensureComputeInstance(ctx context.Context, logger logr.Logger, bastion *ext
 		return nil, fmt.Errorf("failed to create bastion compute instance: %w", err)
 	}
 
-	instance, err = getBastionInstance(ctx, client, opt)
+	instance, err = getBastionInstance(ctx, client, opt.BaseOptions)
 	if instance != nil || err != nil {
 		return instance, err
 	}

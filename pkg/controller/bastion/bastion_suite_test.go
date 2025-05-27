@@ -35,10 +35,10 @@ func TestBastion(t *testing.T) {
 
 var _ = Describe("Bastion", func() {
 	var (
-		cluster *extensions.Cluster
-		bastion *extensionsv1alpha1.Bastion
+		cluster   *extensions.Cluster
+		bastion   *extensionsv1alpha1.Bastion
+		projectID = "projectID"
 
-		opt  Options
 		ctrl *gomock.Controller
 	)
 	BeforeEach(func() {
@@ -60,15 +60,14 @@ var _ = Describe("Bastion", func() {
 
 	Describe("Determine options", func() {
 		It("should return options", func() {
-			options, err := DetermineOptions(bastion, cluster, "projectID", "vNet", "subnet")
+			options, err := NewOpts(bastion, cluster, projectID, "vNet", "subnet")
 			Expect(err).To(Not(HaveOccurred()))
 
 			Expect(options.BastionInstanceName).To(Equal("cluster1-bastionName1-bastion-1cdc8"))
 			Expect(options.Zone).To(Equal("us-west1-a"))
 			Expect(options.DiskName).To(Equal("cluster1-bastionName1-bastion-1cdc8-disk"))
 			Expect(options.Subnetwork).To(Equal("regions/us-west/subnetworks/subnet"))
-			Expect(options.ProjectID).To(Equal("projectID"))
-			Expect(options.Network).To(Equal("projects/projectID/global/networks/vNet"))
+			Expect(options.Network).To(Equal(fmt.Sprintf("projects/%s/global/networks/vNet", projectID)))
 			Expect(options.WorkersCIDR).To(Equal("10.250.0.0/16"))
 		})
 	})
@@ -127,7 +126,6 @@ var _ = Describe("Bastion", func() {
 	})
 
 	Describe("check getNetworkName", func() {
-		opt = createTestOptions(opt)
 		It("should return network name vpc-123", func() {
 			network := &gcpapi.NetworkConfig{
 				VPC: &gcpapi.VPC{
@@ -137,18 +135,18 @@ var _ = Describe("Bastion", func() {
 
 			testCluster := createTestCluster(network)
 			clusterName := "clustername-123"
-			nameWork, err := getNetworkName(testCluster, opt.ProjectID, clusterName)
+			nameWork, err := getNetworkName(testCluster, projectID, clusterName)
 			Expect(err).To(Not(HaveOccurred()))
-			Expect(nameWork).To(Equal(fmt.Sprintf("projects/%s/global/networks/%s", opt.ProjectID, "vpc-123")))
+			Expect(nameWork).To(Equal(fmt.Sprintf("projects/%s/global/networks/%s", projectID, "vpc-123")))
 		})
 
 		It("should return network name clustername-123", func() {
 			network := &gcpapi.NetworkConfig{}
 			testCluster := createTestCluster(network)
 			clusterName := "clustername-123"
-			nameWork, err := getNetworkName(testCluster, opt.ProjectID, clusterName)
+			nameWork, err := getNetworkName(testCluster, projectID, clusterName)
 			Expect(err).To(Not(HaveOccurred()))
-			Expect(nameWork).To(Equal(fmt.Sprintf("projects/%s/global/networks/%s", opt.ProjectID, clusterName)))
+			Expect(nameWork).To(Equal(fmt.Sprintf("projects/%s/global/networks/%s", projectID, clusterName)))
 		})
 	})
 
@@ -353,13 +351,6 @@ func createTestCluster(networkConfig *gcpapi.NetworkConfig) *extensions.Cluster 
 			},
 		},
 	}
-}
-
-func createTestOptions(opt Options) Options {
-	opt.ProjectID = "test-project"
-	opt.Zone = "us-west1-a"
-	opt.BastionInstanceName = "test-bastion1"
-	return opt
 }
 
 func getNetworkName(cluster *extensions.Cluster, projectID string, clusterName string) (string, error) {
