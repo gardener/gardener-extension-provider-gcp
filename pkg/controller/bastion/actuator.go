@@ -41,7 +41,7 @@ func newActuator(mgr manager.Manager) bastion.Actuator {
 	}
 }
 
-func getBastionInstance(ctx context.Context, client gcpclient.ComputeClient, opt *Options) (*computev1.Instance, error) {
+func getBastionInstance(ctx context.Context, client gcpclient.ComputeClient, opt BaseOptions) (*computev1.Instance, error) {
 	instance, err := client.GetInstance(ctx, opt.Zone, opt.BastionInstanceName)
 	return instance, gcpclient.IgnoreNotFoundError(err)
 }
@@ -65,7 +65,7 @@ func patchFirewallRule(ctx context.Context, client gcpclient.ComputeClient, fire
 	return nil
 }
 
-func getDisk(ctx context.Context, client gcpclient.ComputeClient, opt *Options) (*computev1.Disk, error) {
+func getDisk(ctx context.Context, client gcpclient.ComputeClient, opt BaseOptions) (*computev1.Disk, error) {
 	disk, err := client.GetDisk(ctx, opt.Zone, opt.DiskName)
 	return disk, gcpclient.IgnoreNotFoundError(err)
 }

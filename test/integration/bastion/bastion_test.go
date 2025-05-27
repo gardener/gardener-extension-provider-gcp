@@ -409,7 +409,7 @@ func createBastion(cluster *controller.Cluster, name, project, vNet, subnet stri
 		},
 	}
 
-	options, err := bastionctrl.DetermineOptions(bastion, cluster, project, vNet, subnet)
+	options, err := bastionctrl.NewOpts(bastion, cluster, project, vNet, subnet)
 	Expect(err).NotTo(HaveOccurred())
 
 	return bastion, options
