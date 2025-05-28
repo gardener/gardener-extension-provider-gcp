@@ -51,10 +51,10 @@ func validateFlags() {
 	}
 }
 
-func getStorageClient(ctx context.Context, serviceAccount string) (*storage.Client, error) {
+func getStorageClient(ctx context.Context, serviceAccount string) *storage.Client {
 	client, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(serviceAccount)))
 	Expect(err).NotTo(HaveOccurred(), "Failed to create GCP storage client")
-	return client, nil
+	return client
 }
 
 func createNamespace(ctx context.Context, c client.Client, namespace *corev1.Namespace) {

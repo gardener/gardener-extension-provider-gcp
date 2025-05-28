@@ -170,8 +170,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(c).NotTo(BeNil())
 
-	storageClient, err := getStorageClient(ctx, *serviceAccount)
-	Expect(err).ToNot(HaveOccurred())
+	storageClient := getStorageClient(ctx, *serviceAccount)
 
 	By("creating test namespace")
 	testNamespace := &corev1.Namespace{
