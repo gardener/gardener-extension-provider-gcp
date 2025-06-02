@@ -519,6 +519,7 @@ var _ = Describe("Ensurer", func() {
 	Describe("#EnsureMachineControllerManagerDeployment", func() {
 		var (
 			deployment *appsv1.Deployment
+			shoot      *gardencorev1beta1.Shoot
 			ensurer    genericmutator.Ensurer
 			secret     *corev1.Secret
 		)
@@ -537,13 +538,20 @@ var _ = Describe("Ensurer", func() {
 					Namespace: "foo",
 				},
 			}
+			shoot = &gardencorev1beta1.Shoot{
+				Spec: gardencorev1beta1.ShootSpec{
+					Provider: gardencorev1beta1.Provider{
+						Workers: []gardencorev1beta1.Worker{},
+					},
+				},
+			}
 		})
 
 		It("should inject the sidecar container", func() {
 			Expect(fakeClient.Create(ctx, secret)).To(Succeed())
 			Expect(deployment.Spec.Template.Spec.Containers).To(BeEmpty())
-			Expect(ensurer.EnsureMachineControllerManagerDeployment(context.TODO(), nil, deployment, nil)).To(Succeed())
-			expectedContainer := machinecontrollermanager.ProviderSidecarContainer(deployment.Namespace, "provider-gcp", "foo:bar")
+			Expect(ensurer.EnsureMachineControllerManagerDeployment(context.TODO(), eContextK8s127, deployment, nil)).To(Succeed())
+			expectedContainer := machinecontrollermanager.ProviderSidecarContainer(shoot, deployment.Namespace, "provider-gcp", "foo:bar")
 			Expect(deployment.Spec.Template.Spec.Containers).To(ConsistOf(expectedContainer))
 		})
 
@@ -553,8 +561,8 @@ var _ = Describe("Ensurer", func() {
 			}
 			Expect(fakeClient.Create(ctx, secret)).To(Succeed())
 			Expect(deployment.Spec.Template.Spec.Containers).To(BeEmpty())
-			Expect(ensurer.EnsureMachineControllerManagerDeployment(context.TODO(), nil, deployment, nil)).To(Succeed())
-			expectedContainer := machinecontrollermanager.ProviderSidecarContainer(deployment.Namespace, "provider-gcp", "foo:bar")
+			Expect(ensurer.EnsureMachineControllerManagerDeployment(context.TODO(), eContextK8s127, deployment, nil)).To(Succeed())
+			expectedContainer := machinecontrollermanager.ProviderSidecarContainer(shoot, deployment.Namespace, "provider-gcp", "foo:bar")
 			expectedContainer.VolumeMounts = append(expectedContainer.VolumeMounts, corev1.VolumeMount{
 				Name:      "workload-identity",
 				MountPath: "/var/run/secrets/gardener.cloud/workload-identity",
