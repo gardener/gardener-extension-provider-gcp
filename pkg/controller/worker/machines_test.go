@@ -445,14 +445,15 @@ var _ = Describe("Machines", func() {
 								Labels: poolLabels,
 							},
 							{
-								Name:           namePool3,
-								Minimum:        minPool3,
-								Maximum:        maxPool3,
-								MaxSurge:       maxSurgePool3,
-								MaxUnavailable: maxUnavailablePool3,
-								MachineType:    machineType,
-								Architecture:   ptr.To(archAMD),
-								UpdateStrategy: ptr.To(gardencorev1beta1.AutoInPlaceUpdate),
+								Name:              namePool3,
+								Minimum:           minPool3,
+								Maximum:           maxPool3,
+								MaxSurge:          maxSurgePool3,
+								MaxUnavailable:    maxUnavailablePool3,
+								MachineType:       machineType,
+								Architecture:      ptr.To(archAMD),
+								UpdateStrategy:    ptr.To(gardencorev1beta1.AutoInPlaceUpdate),
+								KubernetesVersion: ptr.To(shootVersion),
 								MachineImage: extensionsv1alpha1.MachineImage{
 									Name:    machineImageName,
 									Version: machineImageVersion,
@@ -498,9 +499,9 @@ var _ = Describe("Machines", func() {
 
 				additionalData1 := []string{fmt.Sprintf("%dGi", volumeSize), minCpuPlatform, acceleratorTypeName, strconv.Itoa(int(acceleratorCount)), localVolumeInterface}
 				additionalData2 := []string{fmt.Sprintf("%dGi", volumeSize), minCpuPlatform, "foo", "bar", localVolumeInterface}
-				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, []string{}, additionalData1)
-				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, []string{}, additionalData2)
-				workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, nil, nil)
+				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, []string{}, additionalData1, nil)
+				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, []string{}, additionalData2, nil)
+				workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, nil, nil, nil)
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, clusterWithoutImages)
 			})

@@ -353,11 +353,6 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, _ apisgcp.WorkerConfig) (string, error) {
 	var additionalData []string
 
-	// Do not include providerConfig and dataVolumes in hash if the update strategy is InPlace.
-	if gardencorev1beta1helper.IsUpdateStrategyInPlace(pool.UpdateStrategy) {
-		return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalData)
-	}
-
 	volumes := slices.Clone(pool.DataVolumes)
 	slices.SortFunc(volumes, func(i, j v1alpha1.DataVolume) int {
 		return strings.Compare(i.Name, j.Name)
@@ -373,7 +368,7 @@ func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, _ apis
 
 	additionalDataV2 := append(additionalData, workerPoolHashDataV2(pool)...)
 
-	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalDataV2)
+	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalDataV2, []string{})
 }
 
 func workerPoolHashDataV2(pool v1alpha1.WorkerPool) []string {
