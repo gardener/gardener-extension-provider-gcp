@@ -23,11 +23,6 @@ import (
 )
 
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	credentialsConfig, err := getCredentialsConfig(ctx, a.client, bastion)
-	if err != nil {
-		return fmt.Errorf("failed to get service account: %w", err)
-	}
-
 	secretReference := corev1.SecretReference{
 		Namespace: cluster.ObjectMeta.Name,
 		Name:      v1beta1constants.SecretNameCloudProvider,
@@ -38,12 +33,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		return util.DetermineError(fmt.Errorf("failed to create GCP client: %w", err), helper.KnownCodes)
 	}
 
-	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, a.client, cluster)
-	if err != nil {
-		return err
-	}
-
-	opt, err := DetermineOptions(bastion, cluster, credentialsConfig.ProjectID, infrastructureStatus.Networks.VPC.Name, subnet)
+	opt, err := NewBaseOpts(bastion, cluster)
 	if err != nil {
 		return fmt.Errorf("failed to determine Options: %w", err)
 	}
@@ -82,7 +72,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 	return nil
 }
 
-func removeFirewallRules(ctx context.Context, client gcpclient.ComputeClient, opt *Options) error {
+func removeFirewallRules(ctx context.Context, client gcpclient.ComputeClient, opt BaseOptions) error {
 	firewallList := []string{FirewallIngressAllowSSHResourceName(opt.BastionInstanceName), FirewallEgressDenyAllResourceName(opt.BastionInstanceName), FirewallEgressAllowOnlyResourceName(opt.BastionInstanceName)}
 	for _, firewall := range firewallList {
 		if err := client.DeleteFirewallRule(ctx, firewall); err != nil {
@@ -92,7 +82,7 @@ func removeFirewallRules(ctx context.Context, client gcpclient.ComputeClient, op
 	return nil
 }
 
-func removeBastionInstance(ctx context.Context, logger logr.Logger, client gcpclient.ComputeClient, opt *Options) error {
+func removeBastionInstance(ctx context.Context, logger logr.Logger, client gcpclient.ComputeClient, opt BaseOptions) error {
 	instance, err := getBastionInstance(ctx, client, opt)
 	if err != nil {
 		return err
@@ -110,7 +100,7 @@ func removeBastionInstance(ctx context.Context, logger logr.Logger, client gcpcl
 	return nil
 }
 
-func isInstanceDeleted(ctx context.Context, client gcpclient.ComputeClient, opt *Options) (bool, error) {
+func isInstanceDeleted(ctx context.Context, client gcpclient.ComputeClient, opt BaseOptions) (bool, error) {
 	instance, err := getBastionInstance(ctx, client, opt)
 	if err != nil {
 		return false, err
@@ -119,7 +109,7 @@ func isInstanceDeleted(ctx context.Context, client gcpclient.ComputeClient, opt 
 	return instance == nil, nil
 }
 
-func removeDisk(ctx context.Context, logger logr.Logger, client gcpclient.ComputeClient, opt *Options) error {
+func removeDisk(ctx context.Context, logger logr.Logger, client gcpclient.ComputeClient, opt BaseOptions) error {
 	disk, err := getDisk(ctx, client, opt)
 	if err != nil {
 		return err

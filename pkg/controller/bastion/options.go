@@ -14,7 +14,6 @@ import (
 
 	extensionsbastion "github.com/gardener/gardener/extensions/pkg/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 
@@ -27,39 +26,60 @@ import (
 const maxLengthForBaseName = 33
 const maxLengthForResource = 63
 
+// BaseOptions contain the information needed for deleting a Bastion on GCP.
+type BaseOptions struct {
+	BastionInstanceName string
+	DiskName            string
+	Zone                string
+}
+
 // Options contains provider-related information required for setting up
 // a bastion instance. This struct combines precomputed values like the
 // bastion instance name with the IDs of pre-existing cloud provider
 // resources, like the Firewall name, subnet name etc.
 type Options struct {
-	Shoot               *gardencorev1beta1.Shoot
-	BastionInstanceName string
-	DiskName            string
-	Zone                string
-	Subnetwork          string
-	ProjectID           string
-	Network             string
-	WorkersCIDR         string
-	ImagePath           string
-	MachineName         string
+	// needed for creation and deletion
+	BaseOptions
+	// only needed for creation
+	Subnetwork  string
+	Network     string
+	WorkersCIDR string
+	ImagePath   string
+	MachineName string
 }
 
 type providerStatusRaw struct {
 	Zone string `json:"zone"`
 }
 
-// DetermineOptions determines the required information that are required to reconcile a Bastion on GCP. This
-// function does not create any IaaS resources.
-func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, projectID, vNetworkName, subnetWork string) (*Options, error) {
+// NewBaseOpts determines base opts that are required for creating and deleting a Bastion on GCP.
+// This function does not create any IaaS resources.
+func NewBaseOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) (BaseOptions, error) {
 	providerStatus, err := getProviderStatus(bastion)
 	if err != nil {
-		return nil, err
+		return BaseOptions{}, err
 	}
 
 	// Each resource name up to a maximum of 63 characters in GCP
 	// https://cloud.google.com/compute/docs/naming-resources
 	clusterName := cluster.ObjectMeta.Name
 	baseResourceName, err := generateBastionBaseResourceName(clusterName, bastion.Name)
+	if err != nil {
+		return BaseOptions{}, err
+	}
+
+	return BaseOptions{
+		BastionInstanceName: baseResourceName,
+		Zone:                getZone(cluster, cluster.Shoot.Spec.Region, providerStatus),
+		DiskName:            DiskResourceName(baseResourceName),
+	}, nil
+}
+
+// NewOpts determines the information that is required to reconcile a Bastion.
+// Not all fields in Options are required for deletion.
+// This function does not create any IaaS resources.
+func NewOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, projectID, vNetworkName, subnetWork string) (*Options, error) {
+	baseOpts, err := NewBaseOpts(bastion, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +88,6 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 	if err != nil {
 		return nil, err
 	}
-
-	region := cluster.Shoot.Spec.Region
 
 	bastionVmDetails, err := extensionsbastion.GetMachineSpecFromCloudProfile(cluster.CloudProfile)
 	if err != nil {
@@ -87,16 +105,12 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 	}
 
 	return &Options{
-		Shoot:               cluster.Shoot,
-		BastionInstanceName: baseResourceName,
-		Zone:                getZone(cluster, region, providerStatus),
-		DiskName:            DiskResourceName(baseResourceName),
-		Subnetwork:          fmt.Sprintf("regions/%s/subnetworks/%s", region, subnetWork),
-		ProjectID:           projectID,
-		Network:             fmt.Sprintf("projects/%s/global/networks/%s", projectID, vNetworkName),
-		WorkersCIDR:         workersCidr,
-		MachineName:         bastionVmDetails.MachineTypeName,
-		ImagePath:           image.Image,
+		BaseOptions: baseOpts,
+		Subnetwork:  fmt.Sprintf("regions/%s/subnetworks/%s", cluster.Shoot.Spec.Region, subnetWork),
+		Network:     fmt.Sprintf("projects/%s/global/networks/%s", projectID, vNetworkName),
+		WorkersCIDR: workersCidr,
+		MachineName: bastionVmDetails.MachineTypeName,
+		ImagePath:   image.Image,
 	}, nil
 }
 
