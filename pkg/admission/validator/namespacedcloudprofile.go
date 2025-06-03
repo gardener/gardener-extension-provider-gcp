@@ -7,6 +7,8 @@ package validator
 import (
 	"context"
 	"fmt"
+	gardencoreapi "github.com/gardener/gardener/pkg/api"
+	"github.com/gardener/gardener/pkg/apis/core/helper"
 	"slices"
 
 	"github.com/gardener/gardener/extensions/pkg/util"
@@ -83,8 +85,15 @@ func (p *namespacedCloudProfile) validateNamespacedCloudProfileProviderConfig(pr
 func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.CloudProfileConfig, machineImages []core.MachineImage, parentSpec gardencorev1beta1.CloudProfileSpec) field.ErrorList {
 	allErrs := field.ErrorList{}
 
+	var parentCloudProfileSpecCore core.CloudProfileSpec
+	if err := gardencoreapi.Scheme.Convert(&parentSpec, &parentCloudProfileSpecCore, nil); err != nil {
+		return append(allErrs, field.InternalError(field.NewPath(""), err))
+	}
+
+	capabilitiesDefinition := helper.CapabilityDefinitionsToCapabilities(parentCloudProfileSpecCore.Capabilities)
+
 	providerConfigPath := field.NewPath("spec.providerConfig")
-	allErrs = append(allErrs, validation.ValidateCloudProfileConfig(providerConfig, machineImages, providerConfigPath)...)
+	allErrs = append(allErrs, validation.ValidateCloudProfileConfig(providerConfig, machineImages, capabilitiesDefinition, providerConfigPath)...)
 
 	profileImages := util.NewCoreImagesContext(machineImages)
 	parentImages := util.NewV1beta1ImagesContext(parentSpec.MachineImages)
@@ -93,7 +102,8 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 	for _, machineImage := range profileImages.Images {
 		// Check that for each new image version defined in the NamespacedCloudProfile, the image is also defined in the providerConfig.
 		_, existsInParent := parentImages.GetImage(machineImage.Name)
-		if _, existsInProvider := providerImages.GetImage(machineImage.Name); !existsInParent && !existsInProvider {
+		providerImage, existsInProvider := providerImages.GetImage(machineImage.Name)
+		if !existsInParent && !existsInProvider {
 			allErrs = append(allErrs, field.Required(
 				field.NewPath("spec.providerConfig.machineImages"),
 				fmt.Sprintf("machine image %s is not defined in the NamespacedCloudProfile providerConfig", machineImage.Name),
@@ -101,9 +111,26 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 			continue
 		}
 		for _, version := range machineImage.Versions {
-			_, existsInParent := parentImages.GetImageVersion(machineImage.Name, version.Version)
-			for _, expectedArchitecture := range version.Architectures {
-				if _, exists := providerImages.GetImageVersion(machineImage.Name, validation.VersionArchitectureKey(version.Version, expectedArchitecture)); !existsInParent && !exists {
+			if len(capabilitiesDefinition) == 0 {
+				// check that each architecture defined has a corresponding entry in the providerConfig
+				for _, expectedArchitecture := range version.Architectures {
+					if _, exists := providerImages.GetImageVersion(machineImage.Name, validation.VersionArchitectureKey(version.Version, expectedArchitecture)); !existsInParent && !exists {
+						allErrs = append(allErrs, field.Required(
+							field.NewPath("spec.providerConfig.machineImages"),
+							fmt.Sprintf("machine image version %s@%s is not defined in the NamespacedCloudProfile providerConfig", machineImage.Name, version.Version),
+						))
+					}
+				}
+			} else {
+				// check that each capabilitySet defined has a corresponding entry in the providerConfig
+				isFound := false
+				for _, providerImageVersion := range providerImage.Versions {
+					if providerImageVersion.Version == version.Version {
+						isFound = true
+						allErrs = append(allErrs, validateMachineImageCapabilities(machineImage, version, providerImageVersion, capabilitiesDefinition)...)
+					}
+				}
+				if !isFound {
 					allErrs = append(allErrs, field.Required(
 						field.NewPath("spec.providerConfig.machineImages"),
 						fmt.Sprintf("machine image version %s@%s is not defined in the NamespacedCloudProfile providerConfig", machineImage.Name, version.Version),
@@ -112,6 +139,7 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 			}
 		}
 	}
+
 	for imageIdx, machineImage := range providerConfig.MachineImages {
 		// Check that the machine image version is not already defined in the parent CloudProfile.
 		if _, exists := parentImages.GetImage(machineImage.Name); exists {
@@ -141,16 +169,58 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 					"machine image version is not defined in the NamespacedCloudProfile",
 				))
 			}
-			providerConfigArchitecture := ptr.Deref(version.Architecture, constants.ArchitectureAMD64)
-			if !slices.Contains(profileImageVersion.Architectures, providerConfigArchitecture) {
-				allErrs = append(allErrs, field.Forbidden(
-					field.NewPath("spec.providerConfig.machineImages"),
-					fmt.Sprintf("machine image version %s@%s has an excess entry for architecture %q, which is not defined in the machineImages spec",
-						machineImage.Name, version.Version, providerConfigArchitecture),
-				))
+
+			if len(capabilitiesDefinition) == 0 {
+				providerConfigArchitecture := ptr.Deref(version.Architecture, constants.ArchitectureAMD64)
+				if !slices.Contains(profileImageVersion.Architectures, providerConfigArchitecture) {
+					allErrs = append(allErrs, field.Forbidden(
+						field.NewPath("spec.providerConfig.machineImages"),
+						fmt.Sprintf("machine image version %s@%s has an excess entry for architecture %q, which is not defined in the machineImages spec",
+							machineImage.Name, version.Version, providerConfigArchitecture),
+					))
+				}
 			}
 		}
 	}
 
+	return allErrs
+}
+
+func validateMachineImageCapabilities(machineImage core.MachineImage, version core.MachineImageVersion, providerImageVersion api.MachineImageVersion, capabilitiesDefinition core.Capabilities) field.ErrorList {
+	allErrs := field.ErrorList{}
+	path := field.NewPath("spec.providerConfig.machineImages")
+	coreVersionCapabilitySets := util.GetVersionCapabilitySets(version, capabilitiesDefinition)
+
+	// 1. Create an error for each capabilitySet in the providerConfig that is not defined in the core machine image version
+	for _, capabilitySet := range providerImageVersion.CapabilitySets {
+		isFound := false
+		for _, coreCapabilitySet := range coreVersionCapabilitySets {
+			if util.AreCapabilitiesEqual(coreCapabilitySet.Capabilities, capabilitySet.Capabilities, capabilitiesDefinition) {
+				isFound = true
+			}
+		}
+		if !isFound {
+			allErrs = append(allErrs, field.Forbidden(path,
+				fmt.Sprintf("machine image version %s@%s has an excess capabilitySet %v, which is not defined in the machineImages spec",
+					machineImage.Name, version.Version, capabilitySet.Capabilities)))
+		}
+	}
+
+	// 2. Create an error for each capabilitySet in the core machine image version that is not defined in the providerConfig
+	for _, coreCapabilitySet := range coreVersionCapabilitySets {
+		isFound := false
+		for _, capabilitySet := range providerImageVersion.CapabilitySets {
+			if util.AreCapabilitiesEqual(coreCapabilitySet.Capabilities, capabilitySet.Capabilities, capabilitiesDefinition) {
+				isFound = true
+			}
+		}
+		if !isFound {
+			allErrs = append(allErrs, field.Required(path,
+				fmt.Sprintf("machine image version %s@%s and capabilitySet %v is not defined in the NamespacedCloudProfile providerConfig",
+					machineImage.Name, version.Version, coreCapabilitySet.Capabilities)))
+			// no need to check the regions if the capabilitySet is not defined in the providerConfig
+			continue
+		}
+	}
 	return allErrs
 }
