@@ -22,6 +22,12 @@ spec:
       secretKeyRef:
         name: shoot-operator-gcp
         key: serviceaccount.json
+  - name: SERVICEACCOUNT_JSON_BACKUP
+    type: env
+    valueFrom:
+      secretKeyRef:
+        name: backup-operator-gcp
+        key: serviceaccount.json
 
   testflow:
   - name: infra-flow-test
