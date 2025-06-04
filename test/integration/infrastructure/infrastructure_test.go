@@ -63,16 +63,11 @@ const (
 	internalSubnetCIDR = "10.250.112.0/22"
 	podCIDR            = "100.96.0.0/11"
 	subnetCIDR         = "100.128.0.0/11"
-
-	reconcilerUseTF     string = "tf"
-	reconcilerMigrateTF string = "migrate"
-	reconcilerUseFlow   string = "flow"
 )
 
 var (
 	serviceAccount = flag.String("service-account", "", "Service account containing credentials for the GCP API")
 	region         = flag.String("region", "", "GCP region")
-	reconciler     = flag.String("reconciler", reconcilerUseTF, "Set annotation to use flow for reconciliation")
 	testId         = string(uuid.NewUUID())
 )
 
@@ -229,9 +224,6 @@ var _ = Describe("Infrastructure tests", func() {
 	Context("with invalid credentials", func() {
 		Context("during create", func() {
 			It("should successfully create and delete", func() {
-				if *reconciler != reconcilerUseFlow {
-					Skip("test is not working for terraform because the state is not exactly empty")
-				}
 				providerConfig := newProviderConfig(nil, nil)
 				var (
 					namespace *corev1.Namespace
@@ -299,7 +291,7 @@ var _ = Describe("Infrastructure tests", func() {
 				Expect(c.Create(ctx, cluster)).To(Succeed())
 
 				By("create infrastructure")
-				infra, err = newInfrastructure(namespaceName, *reconciler, providerConfig)
+				infra, err = newInfrastructure(namespaceName, providerConfig)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(c.Create(ctx, infra)).To(Succeed())
 
@@ -328,9 +320,6 @@ var _ = Describe("Infrastructure tests", func() {
 		})
 
 		It("should create VPC and subnets with dualstack enabled", func() {
-			if *reconciler != reconcilerUseFlow {
-				Skip("dualstack support is not implemented for terraform")
-			}
 			providerConfig := newProviderConfig(nil, nil)
 
 			namespace, err := generateNamespaceName()
@@ -342,9 +331,6 @@ var _ = Describe("Infrastructure tests", func() {
 		})
 
 		It("dualstack enabled with infrastructure that uses existing vpc", func() {
-			if *reconciler != reconcilerUseFlow {
-				Skip("dualstack support is not implemented for terraform")
-			}
 			namespace, providerConfig := newProviderConfigForExistingVPC()
 			err := runTest(ctx, c, namespace, providerConfig, project, computeService, iamService, true)
 			Expect(err).NotTo(HaveOccurred())
@@ -473,7 +459,7 @@ func runTest(
 	}
 
 	By("create infrastructure")
-	infra, err = newInfrastructure(namespaceName, *reconciler, providerConfig)
+	infra, err = newInfrastructure(namespaceName, providerConfig)
 	if err != nil {
 		return err
 	}
@@ -499,33 +485,6 @@ func runTest(
 
 	By("verify infrastructure creation")
 	verifyCreation(ctx, project, computeService, iamService, infra, providerConfig, dualStack)
-
-	if *reconciler == reconcilerMigrateTF {
-		By("verifying terraform migration")
-		infraCopy := infra.DeepCopy()
-		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, gcp.AnnotationKeyUseFlow, "true")
-		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, v1beta1constants.GardenerOperation, v1beta1constants.GardenerOperationReconcile)
-		Expect(c.Patch(ctx, infra, client.MergeFrom(infraCopy))).To(Succeed())
-
-		By("wait until infrastructure is reconciled")
-		if err := extensions.WaitUntilExtensionObjectReady(
-			ctx,
-			c,
-			log,
-			infra,
-			"Infrastructure",
-			10*time.Second,
-			30*time.Second,
-			16*time.Minute,
-			nil,
-		); err != nil {
-			return err
-		}
-
-		By("verify infrastructure creation after migration")
-		verifyCreation(ctx, project, computeService, iamService, infra, providerConfig, dualStack)
-	}
-
 	return err
 }
 
@@ -576,7 +535,7 @@ func newProviderConfig(vpc *gcpv1alpha1.VPC, cloudNAT *gcpv1alpha1.CloudNAT) *gc
 	}
 }
 
-func newInfrastructure(namespace string, reconciler string, providerConfig *gcpv1alpha1.InfrastructureConfig) (*extensionsv1alpha1.Infrastructure, error) {
+func newInfrastructure(namespace string, providerConfig *gcpv1alpha1.InfrastructureConfig) (*extensionsv1alpha1.Infrastructure, error) {
 	const sshPublicKey = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDcSZKq0lM9w+ElLp9I9jFvqEFbOV1+iOBX7WEe66GvPLOWl9ul03ecjhOf06+FhPsWFac1yaxo2xj+SJ+FVZ3DdSn4fjTpS9NGyQVPInSZveetRw0TV0rbYCFBTJuVqUFu6yPEgdcWq8dlUjLqnRNwlelHRcJeBfACBZDLNSxjj0oUz7ANRNCEne1ecySwuJUAz3IlNLPXFexRT0alV7Nl9hmJke3dD73nbeGbQtwvtu8GNFEoO4Eu3xOCKsLw6ILLo4FBiFcYQOZqvYZgCb4ncKM52bnABagG54upgBMZBRzOJvWp0ol+jK3Em7Vb6ufDTTVNiQY78U6BAlNZ8Xg+LUVeyk1C6vWjzAQf02eRvMdfnRCFvmwUpzbHWaVMsQm8gf3AgnTUuDR0ev1nQH/5892wZA86uLYW/wLiiSbvQsqtY1jSn9BAGFGdhXgWLAkGsd/E1vOT+vDcor6/6KjHBm0rG697A3TDBRkbXQ/1oFxcM9m17RteCaXuTiAYWMqGKDoJvTMDc4L+Uvy544pEfbOH39zfkIYE76WLAFPFsUWX6lXFjQrX3O7vEV73bCHoJnwzaNd03PSdJOw+LCzrTmxVezwli3F9wUDiBRB0HkQxIXQmncc1HSecCKALkogIK+1e1OumoWh6gPdkF4PlTMUxRitrwPWSaiUIlPfCpQ== your_email@example.com"
 
 	providerConfigJSON, err := json.Marshal(&providerConfig)
@@ -608,14 +567,6 @@ func newInfrastructure(namespace string, reconciler string, providerConfig *gcpv
 		},
 	}
 
-	switch reconciler {
-	case reconcilerUseFlow:
-		log.Info("creating infrastructure with flow annotation")
-		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, gcp.AnnotationKeyUseFlow, "true")
-	case reconcilerUseTF:
-		log.Info("creating infrastructure with terraform annotation")
-		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, gcp.AnnotationKeyUseFlow, "false")
-	}
 	return infra, nil
 }
 
