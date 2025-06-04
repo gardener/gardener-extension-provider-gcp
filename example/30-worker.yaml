@@ -96,7 +96,12 @@ spec:
   #     encryption: # Encryption Details
   #       kmsKeyName: "projects/projectId/locations/<zoneName>/keyRings/<keyRingName>/cryptoKeys/alpha"
   #       kmsKeyServiceAccount: "user@projectId.iam.gserviceaccount.com"
+  #   bootVolume:
+  #     storagePool: projects/<projectName>/zones/<zoneName>/storagePools/<storagePoolName>
+  #     provisionedIops: 3000 # applies only for certain volume types
+  #     provisionedThroughput: 140 # applies only for certain volume types
   #   dataVolume: # provider specific dataVolume configuration
+  #     name: alpha
   #     sourceImage: "projects/sap-se-gcp-gardenlinux/global/images/..."
   #     provisionedIops: 3000 # applies only for certain volume types
   #     provisionedThroughput: 140 # applies only for certain volume types
