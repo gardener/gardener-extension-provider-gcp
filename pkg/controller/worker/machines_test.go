@@ -117,6 +117,12 @@ var _ = Describe("Machines", func() {
 				maxSurgePool2       intstr.IntOrString
 				maxUnavailablePool2 intstr.IntOrString
 
+				namePool3           string
+				minPool3            int32
+				maxPool3            int32
+				maxSurgePool3       intstr.IntOrString
+				maxUnavailablePool3 intstr.IntOrString
+
 				zone1 string
 				zone2 string
 
@@ -134,10 +140,13 @@ var _ = Describe("Machines", func() {
 				nodeTemplatePool2Zone1 machinev1alpha1.NodeTemplate
 				nodeTemplatePool1Zone2 machinev1alpha1.NodeTemplate
 				nodeTemplatePool2Zone2 machinev1alpha1.NodeTemplate
+				nodeTemplatePool3Zone1 machinev1alpha1.NodeTemplate
+				nodeTemplatePool3Zone2 machinev1alpha1.NodeTemplate
 				machineConfiguration   *machinev1alpha1.MachineConfiguration
 
 				workerPoolHash1 string
 				workerPoolHash2 string
+				workerPoolHash3 string
 
 				shootVersionMajorMinor string
 				shootVersion           string
@@ -184,6 +193,12 @@ var _ = Describe("Machines", func() {
 				priorityPool2 = 100
 				maxSurgePool2 = intstr.FromInt(10)
 				maxUnavailablePool2 = intstr.FromInt(15)
+
+				namePool3 = "pool-3"
+				minPool3 = 5
+				maxPool3 = 10
+				maxSurgePool3 = intstr.FromInt(3)
+				maxUnavailablePool3 = intstr.FromInt(2)
 
 				zone1 = region + "a"
 				zone2 = region + "b"
@@ -232,6 +247,22 @@ var _ = Describe("Machines", func() {
 					Region:       region,
 					Zone:         zone2,
 					Architecture: &archARM,
+				}
+
+				nodeTemplatePool3Zone1 = machinev1alpha1.NodeTemplate{
+					Capacity:     InitializeCapacity(nodeCapacity, acceleratorCount),
+					InstanceType: machineType,
+					Region:       region,
+					Zone:         zone1,
+					Architecture: ptr.To(archAMD),
+				}
+
+				nodeTemplatePool3Zone2 = machinev1alpha1.NodeTemplate{
+					Capacity:     InitializeCapacity(nodeCapacity, acceleratorCount),
+					InstanceType: machineType,
+					Region:       region,
+					Zone:         zone2,
+					Architecture: ptr.To(archAMD),
 				}
 
 				machineConfiguration = &machinev1alpha1.MachineConfiguration{}
@@ -413,14 +444,64 @@ var _ = Describe("Machines", func() {
 								},
 								Labels: poolLabels,
 							},
+							{
+								Name:              namePool3,
+								Minimum:           minPool3,
+								Maximum:           maxPool3,
+								MaxSurge:          maxSurgePool3,
+								MaxUnavailable:    maxUnavailablePool3,
+								MachineType:       machineType,
+								Architecture:      ptr.To(archAMD),
+								UpdateStrategy:    ptr.To(gardencorev1beta1.AutoInPlaceUpdate),
+								KubernetesVersion: ptr.To(shootVersion),
+								MachineImage: extensionsv1alpha1.MachineImage{
+									Name:    machineImageName,
+									Version: machineImageVersion,
+								},
+								NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+									Capacity: nodeCapacity,
+								},
+								UserDataSecretRef: corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: userDataSecretName},
+									Key:                  userDataSecretDataKey,
+								},
+								Volume: &extensionsv1alpha1.Volume{
+									Type: &volumeType,
+									Size: fmt.Sprintf("%dGi", volumeSize),
+								},
+								DataVolumes: []extensionsv1alpha1.DataVolume{
+									{
+										Type: &localVolumeType,
+										Size: fmt.Sprintf("%dGi", volumeSize),
+									},
+								},
+								ProviderConfig: &runtime.RawExtension{
+									Raw: encode(&api.WorkerConfig{
+										Volume: &api.Volume{
+											LocalSSDInterface: &localVolumeInterface,
+										},
+										MinCpuPlatform: &minCpuPlatform,
+										GPU: &api.GPU{
+											AcceleratorType: acceleratorTypeName,
+											Count:           acceleratorCount,
+										},
+									}),
+								},
+								Zones: []string{
+									zone1,
+									zone2,
+								},
+								Labels: poolLabels,
+							},
 						},
 					},
 				}
 
 				additionalData1 := []string{fmt.Sprintf("%dGi", volumeSize), minCpuPlatform, acceleratorTypeName, strconv.Itoa(int(acceleratorCount)), localVolumeInterface}
 				additionalData2 := []string{fmt.Sprintf("%dGi", volumeSize), minCpuPlatform, "foo", "bar", localVolumeInterface}
-				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, []string{}, additionalData1)
-				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, []string{}, additionalData2)
+				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, []string{}, additionalData1, nil)
+				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, []string{}, additionalData2, nil)
+				workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, nil, nil, nil)
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, clusterWithoutImages)
 			})
@@ -532,33 +613,45 @@ var _ = Describe("Machines", func() {
 						machineClassPool1Zone2 = useDefaultMachineClass(defaultMachineClass, "zone", zone2)
 						machineClassPool2Zone1 = useDefaultMachineClass(machineClassPool2, "zone", zone1)
 						machineClassPool2Zone2 = useDefaultMachineClass(machineClassPool2, "zone", zone2)
+						machineClassPool3Zone1 = useDefaultMachineClass(defaultMachineClass, "zone", zone1)
+						machineClassPool3Zone2 = useDefaultMachineClass(defaultMachineClass, "zone", zone2)
 
 						machineClassNamePool1Zone1 = fmt.Sprintf("%s-%s-z1", namespace, namePool1)
 						machineClassNamePool1Zone2 = fmt.Sprintf("%s-%s-z2", namespace, namePool1)
 						machineClassNamePool2Zone1 = fmt.Sprintf("%s-%s-z1", namespace, namePool2)
 						machineClassNamePool2Zone2 = fmt.Sprintf("%s-%s-z2", namespace, namePool2)
+						machineClassNamePool3Zone1 = fmt.Sprintf("%s-%s-z1", namespace, namePool3)
+						machineClassNamePool3Zone2 = fmt.Sprintf("%s-%s-z2", namespace, namePool3)
 
 						machineClassWithHashPool1Zone1 = fmt.Sprintf("%s-%s", machineClassNamePool1Zone1, workerPoolHash1)
 						machineClassWithHashPool1Zone2 = fmt.Sprintf("%s-%s", machineClassNamePool1Zone2, workerPoolHash1)
 						machineClassWithHashPool2Zone1 = fmt.Sprintf("%s-%s", machineClassNamePool2Zone1, workerPoolHash2)
 						machineClassWithHashPool2Zone2 = fmt.Sprintf("%s-%s", machineClassNamePool2Zone2, workerPoolHash2)
+						machineClassWithHashPool3Zone1 = fmt.Sprintf("%s-%s", machineClassNamePool3Zone1, workerPoolHash3)
+						machineClassWithHashPool3Zone2 = fmt.Sprintf("%s-%s", machineClassNamePool3Zone2, workerPoolHash3)
 					)
 
 					addNameAndSecretToMachineClass(machineClassPool1Zone1, machineClassWithHashPool1Zone1, w.Spec.SecretRef)
 					addNameAndSecretToMachineClass(machineClassPool1Zone2, machineClassWithHashPool1Zone2, w.Spec.SecretRef)
 					addNameAndSecretToMachineClass(machineClassPool2Zone1, machineClassWithHashPool2Zone1, w.Spec.SecretRef)
 					addNameAndSecretToMachineClass(machineClassPool2Zone2, machineClassWithHashPool2Zone2, w.Spec.SecretRef)
+					addNameAndSecretToMachineClass(machineClassPool3Zone1, machineClassWithHashPool3Zone1, w.Spec.SecretRef)
+					addNameAndSecretToMachineClass(machineClassPool3Zone2, machineClassWithHashPool3Zone2, w.Spec.SecretRef)
 
 					addNodeTemplateToMachineClass(machineClassPool1Zone1, nodeTemplatePool1Zone1)
 					addNodeTemplateToMachineClass(machineClassPool1Zone2, nodeTemplatePool1Zone2)
 					addNodeTemplateToMachineClass(machineClassPool2Zone1, nodeTemplatePool2Zone1)
 					addNodeTemplateToMachineClass(machineClassPool2Zone2, nodeTemplatePool2Zone2)
+					addNodeTemplateToMachineClass(machineClassPool3Zone1, nodeTemplatePool3Zone1)
+					addNodeTemplateToMachineClass(machineClassPool3Zone2, nodeTemplatePool3Zone2)
 
 					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
 						machineClassPool1Zone1,
 						machineClassPool1Zone2,
 						machineClassPool2Zone1,
 						machineClassPool2Zone2,
+						machineClassPool3Zone1,
+						machineClassPool3Zone2,
 					}}
 
 					labelsZone1 := utils.MergeStringMaps(poolLabels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone1})
@@ -566,6 +659,7 @@ var _ = Describe("Machines", func() {
 					machineDeployments = worker.MachineDeployments{
 						{
 							Name:       machineClassNamePool1Zone1,
+							PoolName:   namePool1,
 							ClassName:  machineClassWithHashPool1Zone1,
 							SecretName: machineClassWithHashPool1Zone1,
 							Minimum:    worker.DistributeOverZones(0, minPool1, 2),
@@ -584,6 +678,7 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool1Zone2,
+							PoolName:   namePool1,
 							ClassName:  machineClassWithHashPool1Zone2,
 							SecretName: machineClassWithHashPool1Zone2,
 							Minimum:    worker.DistributeOverZones(1, minPool1, 2),
@@ -602,6 +697,7 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool2Zone1,
+							PoolName:   namePool2,
 							ClassName:  machineClassWithHashPool2Zone1,
 							SecretName: machineClassWithHashPool2Zone1,
 							Minimum:    worker.DistributeOverZones(0, minPool2, 2),
@@ -621,6 +717,7 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool2Zone2,
+							PoolName:   namePool2,
 							ClassName:  machineClassWithHashPool2Zone2,
 							SecretName: machineClassWithHashPool2Zone2,
 							Minimum:    worker.DistributeOverZones(1, minPool2, 2),
@@ -633,6 +730,46 @@ var _ = Describe("Machines", func() {
 										MaxSurge:       ptr.To(worker.DistributePositiveIntOrPercent(1, maxSurgePool2, 2, maxPool2)),
 										MaxUnavailable: ptr.To(worker.DistributePositiveIntOrPercent(1, maxUnavailablePool2, 2, minPool2)),
 									},
+								},
+							},
+							Labels:               labelsZone2,
+							MachineConfiguration: machineConfiguration,
+						},
+						{
+							Name:       machineClassNamePool3Zone1,
+							PoolName:   namePool3,
+							ClassName:  machineClassWithHashPool3Zone1,
+							SecretName: machineClassWithHashPool3Zone1,
+							Minimum:    worker.DistributeOverZones(0, minPool3, 2),
+							Maximum:    worker.DistributeOverZones(0, maxPool3, 2),
+							Strategy: machinev1alpha1.MachineDeploymentStrategy{
+								Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
+								InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
+									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+										MaxSurge:       ptr.To(worker.DistributePositiveIntOrPercent(0, maxSurgePool3, 2, maxPool3)),
+										MaxUnavailable: ptr.To(worker.DistributePositiveIntOrPercent(0, maxUnavailablePool3, 2, minPool3)),
+									},
+									OrchestrationType: machinev1alpha1.OrchestrationTypeAuto,
+								},
+							},
+							Labels:               labelsZone1,
+							MachineConfiguration: machineConfiguration,
+						},
+						{
+							Name:       machineClassNamePool3Zone2,
+							PoolName:   namePool3,
+							ClassName:  machineClassWithHashPool3Zone2,
+							SecretName: machineClassWithHashPool3Zone2,
+							Minimum:    worker.DistributeOverZones(1, minPool3, 2),
+							Maximum:    worker.DistributeOverZones(1, maxPool3, 2),
+							Strategy: machinev1alpha1.MachineDeploymentStrategy{
+								Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
+								InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
+									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+										MaxSurge:       ptr.To(worker.DistributePositiveIntOrPercent(1, maxSurgePool3, 2, maxPool3)),
+										MaxUnavailable: ptr.To(worker.DistributePositiveIntOrPercent(1, maxUnavailablePool3, 2, minPool3)),
+									},
+									OrchestrationType: machinev1alpha1.OrchestrationTypeAuto,
 								},
 							},
 							Labels:               labelsZone2,

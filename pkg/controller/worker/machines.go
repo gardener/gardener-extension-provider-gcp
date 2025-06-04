@@ -17,6 +17,7 @@ import (
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	extensionsv1alpha1helper "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1/helper"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
@@ -261,8 +262,23 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 				},
 			}
 
+			if gardencorev1beta1helper.IsUpdateStrategyInPlace(pool.UpdateStrategy) {
+				machineDeploymentStrategy = machinev1alpha1.MachineDeploymentStrategy{
+					Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
+					InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
+						UpdateConfiguration: updateConfiguration,
+						OrchestrationType:   machinev1alpha1.OrchestrationTypeAuto,
+					},
+				}
+
+				if gardencorev1beta1helper.IsUpdateStrategyManualInPlace(pool.UpdateStrategy) {
+					machineDeploymentStrategy.InPlaceUpdate.OrchestrationType = machinev1alpha1.OrchestrationTypeManual
+				}
+			}
+
 			machineDeployments = append(machineDeployments, worker.MachineDeployment{
 				Name:                         deploymentName,
+				PoolName:                     pool.Name,
 				ClassName:                    className,
 				SecretName:                   className,
 				Minimum:                      worker.DistributeOverZones(zoneIdx, pool.Minimum, zoneLen),
@@ -352,7 +368,7 @@ func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, _ apis
 
 	additionalDataV2 := append(additionalData, workerPoolHashDataV2(pool)...)
 
-	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalDataV2)
+	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalDataV2, []string{})
 }
 
 func workerPoolHashDataV2(pool v1alpha1.WorkerPool) []string {

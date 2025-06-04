@@ -15,6 +15,7 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core/helper"
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -112,6 +113,18 @@ func ValidateWorkersUpdate(oldWorkers, newWorkers []core.Worker, fldPath *field.
 
 		if oldWorker != nil && validationutils.ShouldEnforceImmutability(newWorker.Zones, oldWorker.Zones) {
 			allErrs = append(allErrs, apivalidation.ValidateImmutableField(newWorker.Zones, oldWorker.Zones, workerFldPath.Child("zones"))...)
+		}
+
+		// Changing these fields will cause a change in the calculation of the WorkerPool hash. Currently machine-controller-manager does not provide an UpdateMachine call to update the
+		// data volumes or provider config in-place. gardener-node-agent cannot update the provider config in-place either. So we disallow changing these fields if the update strategy is in-place.
+		if helper.IsUpdateStrategyInPlace(newWorker.UpdateStrategy) {
+			if !apiequality.Semantic.DeepEqual(newWorker.ProviderConfig, oldWorker.ProviderConfig) {
+				allErrs = append(allErrs, field.Invalid(workerFldPath.Child("providerConfig"), newWorker.ProviderConfig, "providerConfig is immutable when update strategy is in-place"))
+			}
+
+			if !apiequality.Semantic.DeepEqual(newWorker.DataVolumes, oldWorker.DataVolumes) {
+				allErrs = append(allErrs, field.Invalid(workerFldPath.Child("dataVolumes"), newWorker.DataVolumes, "dataVolumes are immutable when update strategy is in-place"))
+			}
 		}
 	}
 	return allErrs

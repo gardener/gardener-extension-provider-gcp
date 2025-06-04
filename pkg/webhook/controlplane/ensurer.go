@@ -53,11 +53,16 @@ var ImageVector = imagevector.ImageVector()
 // EnsureMachineControllerManagerDeployment ensures that the machine-controller-manager deployment conforms to the provider requirements.
 func (e *ensurer) EnsureMachineControllerManagerDeployment(
 	ctx context.Context,
-	_ gcontext.GardenContext,
+	gctx gcontext.GardenContext,
 	newDeployment, _ *appsv1.Deployment) error {
 	image, err := ImageVector.FindImage(gcp.MachineControllerManagerProviderGCPImageName)
 	if err != nil {
 		return err
+	}
+
+	cluster, err := gctx.GetCluster(ctx)
+	if err != nil {
+		return fmt.Errorf("failed reading Cluster: %w", err)
 	}
 
 	cloudProviderSecret := &corev1.Secret{
@@ -71,7 +76,7 @@ func (e *ensurer) EnsureMachineControllerManagerDeployment(
 	}
 
 	const volumeName = "workload-identity"
-	container := machinecontrollermanager.ProviderSidecarContainer(newDeployment.Namespace, gcp.Name, image.String())
+	container := machinecontrollermanager.ProviderSidecarContainer(cluster.Shoot, newDeployment.Namespace, gcp.Name, image.String())
 	if cloudProviderSecret.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
 		container.VolumeMounts = extensionswebhook.EnsureVolumeMountWithName(container.VolumeMounts, corev1.VolumeMount{
 			Name:      volumeName,
