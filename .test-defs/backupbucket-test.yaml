@@ -11,8 +11,8 @@ spec:
     - >-
       go test -timeout=0 ./test/integration/backupbucket
       --v -ginkgo.v -ginkgo.show-node-events -ginkgo.no-color
-      --kubeconfig=$TM_KUBECONFIG_PATH/testmachinery.config
-      --service-account="${SERVICEACCOUNT_JSON_BACKUP}"
+      --kubeconfig=${TM_KUBECONFIG_PATH}/testmachinery.config
+      --service-account=${SERVICEACCOUNT_JSON_BACKUP}
       --region=${REGION}
       --use-existing-cluster=${USE_EXISTING_CLUSTER}
       --log-level=${LOG_LEVEL}
