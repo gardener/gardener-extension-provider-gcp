@@ -17,7 +17,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 )
 
@@ -209,23 +209,23 @@ func FirewallEgressDenyAllResourceName(baseName string) string {
 }
 
 // getProviderSpecificImage returns the provider specific MachineImageVersion that matches with the given MachineSpec
-func getProviderSpecificImage(images []api.MachineImages, vm extensionsbastion.MachineSpec) (api.MachineImageVersion, error) {
-	imageIndex := slices.IndexFunc(images, func(image api.MachineImages) bool {
+func getProviderSpecificImage(images []apisgcp.MachineImages, vm extensionsbastion.MachineSpec) (apisgcp.MachineImageVersion, error) {
+	imageIndex := slices.IndexFunc(images, func(image apisgcp.MachineImages) bool {
 		return image.Name == vm.ImageBaseName
 	})
 
 	if imageIndex == -1 {
-		return api.MachineImageVersion{},
+		return apisgcp.MachineImageVersion{},
 			fmt.Errorf("machine image with name %s not found in cloudProfileConfig", vm.ImageBaseName)
 	}
 
 	versions := images[imageIndex].Versions
-	versionIndex := slices.IndexFunc(versions, func(version api.MachineImageVersion) bool {
+	versionIndex := slices.IndexFunc(versions, func(version apisgcp.MachineImageVersion) bool {
 		return version.Version == vm.ImageVersion && version.Architecture != nil && *version.Architecture == vm.Architecture
 	})
 
 	if versionIndex == -1 {
-		return api.MachineImageVersion{},
+		return apisgcp.MachineImageVersion{},
 			fmt.Errorf("version %s for arch %s of image %s not found in cloudProfileConfig",
 				vm.ImageVersion, vm.Architecture, vm.ImageBaseName)
 	}
