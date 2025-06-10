@@ -14,7 +14,6 @@ spec:
     --kubeconfig=$TM_KUBECONFIG_PATH/testmachinery.config
     --service-account="${SERVICEACCOUNT_JSON}"
     --region=$REGION
-    --reconciler=${RECONCILER}
 
   image: golang:1.24
   resources:
