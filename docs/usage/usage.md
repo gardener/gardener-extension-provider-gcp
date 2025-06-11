@@ -14,7 +14,10 @@ Every shoot cluster references a `SecretBinding` or a `CredentialsBinding` which
 > `WorkloadIdentity`s do not directly contain credentials but are rather a representation of the workload that is going to access the user's account.
 > If the user has configured [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation) with Gardener's Workload Identity Issuer then the GCP infrastructure components can access the user's account without the need of preliminary exchange of credentials.
 
-The `SecretBinding`/`CredentialsBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`/`credentialsBindingName`.
+> [!IMPORTANT]
+> The `SecretBinding`/`CredentialsBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`/`credentialsBindingName`.
+> `SecretBinding`s are considered legacy and will be deprecated in the future.
+> It is advised to use `CredentialsBinding`s instead.
 
 ### GCP Service Account Credentials
 
@@ -55,6 +58,14 @@ data:
 Users can choose to trust Gardener's Workload Identity Issuer and eliminate the need for providing GCP Service Account credentials.
 
 As a first step users should configure [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation-with-kubernetes#kubernetes) with Gardener's Workload Identity Issuer.
+
+> [!TIP]
+> You can retrieve Gardener's Workload Identity Issuer URL directly from the Garden cluster by reading the contents of the [Gardener Info ConfigMap](https://gardener.cloud/docs/gardener/gardener/gardener_info_configmap/).
+>
+> ```bash
+> kubectl -n gardener-system-public get configmap -o yaml
+> ```
+
 In the example attribute mapping shown below all `WorkloadIdentity`s that are created in the `garden-myproj` namespace will be authenticated.
 Now that the Workload Identity Federation is configured the user should download the credential configuration file.
 
@@ -133,6 +144,17 @@ credentialsRef:
   namespace: garden-myproj
 provider:
   type: gcp
+```
+
+```yaml
+apiVersion: core.gardener.cloud/v1beta1
+kind: Shoot
+metadata:
+  name: gcp
+  namespace: garden-myproj
+spec:
+  credentialsBindingName: gcp
+  ...
 ```
 
 > [!WARNING]
@@ -346,7 +368,7 @@ spec:
   cloudProfile:
     name: gcp
   region: europe-west1
-  secretBindingName: core-gcp
+  credentialsBindingName: core-gcp
   provider:
     type: gcp
     infrastructureConfig:
