@@ -7,7 +7,7 @@ This document describes the configurable options for GCP and provides an example
 ## Accessing GCP APIs
 
 In order for Gardener to create a Kubernetes cluster using GCP infrastructure components, a Shoot has to provide an authentication mechanism giving sufficient permissions to the desired GCP project.
-Every shoot cluster references a `SecretBinding` or a `CredentialsBinding` which itself references a `Secret` which contains the provider credentials of the GCP project.
+Every shoot cluster references a `SecretBinding` or a [`CredentialsBinding`](https://gardener.cloud/docs/gardener/api-reference/security/#security.gardener.cloud/v1alpha1.CredentialsBinding).
 
 > [!IMPORTANT]
 > While `SecretBinding`s can only reference `Secret`s, `CredentialsBinding`s can also reference `WorkloadIdentity`s which provide an alternative authentication method.
