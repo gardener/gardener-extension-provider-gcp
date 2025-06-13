@@ -1,0 +1,145 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: csi-driver-filestore-node
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      node.gardener.cloud/critical-component: "true"
+      app: csi
+      role: filestore-driver
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        node.gardener.cloud/wait-for-csi-node-gcp: {{ include "csi-driver-filestore-node.provisioner" . }}
+      labels:
+        node.gardener.cloud/critical-component: "true"
+        app: csi
+        role: filestore-driver
+    spec:
+      # Host network must be used for interaction with Workload Identity in GKE
+      # since it replaces GCE Metadata Server with GKE Metadata Server. Remove
+      # this requirement when issue is resolved and before any exposure of
+      # metrics ports.
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      serviceAccountName: csi-driver-filestore-node-sa
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+        - key: CriticalAddonsOnly
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+
+      - name: csi-driver-filestore
+        image: {{ index .Values.images "csi-driver-filestore" }}
+        args:
+          - "--v=5"
+          - "--logtostderr"
+          - "--endpoint=$(CSI_ENDPOINT)"
+          - "--nodeid=$(KUBE_NODE_NAME)"
+          - "--node=true"
+        env:
+          - name: KUBE_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: CSI_ENDPOINT
+            value: "unix:{{ .Values.socketPath }}"
+  {{- if .Values.resources.driver }}
+        resources:
+  {{ toYaml .Values.resources.driver | indent 10 }}
+  {{- end }}
+        securityContext:
+          privileged: true
+        {{/*      readOnlyRootFilesystem: true TODO */}}
+        ports:
+          - name: healthz
+            containerPort: {{ .Values.livenessProbe.healthPort }}
+            protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: healthz
+          initialDelaySeconds: 10
+          timeoutSeconds: 3
+          periodSeconds: 10
+          failureThreshold: 5
+        volumeMounts:
+          - name: kubelet-dir
+            mountPath: /var/lib/kubelet
+            mountPropagation: "Bidirectional"
+          - name: plugin-dir
+            mountPath: /csi
+
+      - name: nfs-services
+        image: {{ index .Values.images "csi-driver-filestore" }}
+        command: [ "/nfs_services_start.sh" ]
+
+      - name: csi-node-driver-registrar
+        image: {{ index .Values.images "csi-node-driver-registrar" }}
+        args:
+          - --csi-address=$(ADDRESS)
+          - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+          - --v=5
+        env:
+          - name: ADDRESS
+            value: {{ .Values.socketPath }}
+          - name: DRIVER_REG_SOCK_PATH
+            value: /var/lib/kubelet/plugins/{{ include "csi-driver-filestore-node.provisioner" . }}/csi.sock
+          - name: GOMAXPROCS
+            value: "2"
+{{- if .Values.resources.nodeDriverRegistrar }}
+        resources:
+{{ toYaml .Values.resources.nodeDriverRegistrar | indent 10 }}
+{{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - name: plugin-dir
+          mountPath: /csi
+        - name: registration-dir
+          mountPath: /registration
+
+      - name: csi-liveness-probe
+        image: {{ index .Values.images "csi-liveness-probe" }}
+        args:
+          - --csi-address={{ .Values.socketPath }}
+          - --health-port={{ .Values.livenessProbe.healthPort }}
+        env:
+          - name: GOMAXPROCS
+            value: "2"
+{{- if .Values.resources.livenessProbe }}
+        resources:
+{{ toYaml .Values.resources.livenessProbe | indent 10 }}
+{{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: plugin-dir
+            mountPath: /csi
+
+      volumes:
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: Directory
+        - name: kubelet-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/{{ include "csi-driver-filestore-node.provisioner" . }}/
+            type: DirectoryOrCreate

@@ -43,4 +43,12 @@ type Storage struct {
 	// not managed by Gardener to be set as default by the user.
 	// Defaults to true.
 	ManagedDefaultVolumeSnapshotClass *bool
+	// CSIFilestore contains configuration for CSI Filestore driver (support for NFS volumes)
+	CSIFilestore *CSIFilestore
+}
+
+// CSIFilestore contains configuration for CSI Filestore driver
+type CSIFilestore struct {
+	// Enabled is the switch to enable the CSI Manila driver support
+	Enabled bool
 }

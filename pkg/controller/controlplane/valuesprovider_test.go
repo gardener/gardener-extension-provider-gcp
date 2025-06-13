@@ -266,6 +266,15 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					"useWorkloadIdentity": false,
 				}),
+				gcp.CSIFilestoreControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"replicas":  1,
+					"projectID": projectID,
+					"zone":      zone,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+					},
+					"useWorkloadIdentity": false,
+				}),
 				gcp.IngressGCEName: map[string]interface{}{
 					"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking),
 					"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, false, 1),
@@ -365,6 +374,9 @@ var _ = Describe("ValuesProvider", func() {
 				gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"kubernetesVersion": "1.28.2",
 					"enabled":           true,
+				}),
+				gcp.CSIFilestoreNodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"enabled": true,
 				}),
 				"default-http-backend": map[string]interface{}{
 					"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),

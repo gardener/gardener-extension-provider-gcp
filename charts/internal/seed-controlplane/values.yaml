@@ -5,5 +5,7 @@ cloud-controller-manager:
   enabled: true
 csi-driver-controller:
   enabled: true
+csi-driver-filestore-controller:
+  enabled: false
 ingress-gce:
   enabled: false
