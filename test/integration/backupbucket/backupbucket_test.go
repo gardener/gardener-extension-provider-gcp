@@ -100,7 +100,7 @@ var _ = BeforeSuite(func() {
 	validateFlags()
 
 	logf.SetLogger(logger.MustNewZapLogger(*logLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
-	log := logf.Log.WithName("backupbucket-test")
+	log = logf.Log.WithName("backupbucket-test")
 	log.Info("Starting BackupBucket test", "logLevel", *logLevel)
 
 	DeferCleanup(func() {
