@@ -63,7 +63,7 @@ As a first step users should configure [Workload Identity Federation](https://cl
 > You can retrieve Gardener's Workload Identity Issuer URL directly from the Garden cluster by reading the contents of the [Gardener Info ConfigMap](https://gardener.cloud/docs/gardener/gardener/gardener_info_configmap/).
 >
 > ```bash
-> kubectl -n gardener-system-public get configmap -o yaml
+> kubectl -n gardener-system-public get configmap gardener-info -o yaml
 > ```
 
 In the example attribute mapping shown below all `WorkloadIdentity`s that are created in the `garden-myproj` namespace will be authenticated.
