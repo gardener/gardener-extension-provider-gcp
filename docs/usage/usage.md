@@ -254,7 +254,10 @@ If `storage.managedDefaultStorageClass` is enabled (the default), the `default` 
 Similarly, if `storage.managedDefaultVolumeSnapshotClass` is enabled (the default), the `default` VolumeSnapshotClass deployed will be marked as default.
 In case you want to set a different StorageClass or VolumeSnapshotClass as default you need to set the corresponding option to `false` as at most one class should be marked as default in each case and the ResourceManager will prevent any changes from the Gardener managed classes to take effect.
 
-Furthermore, the `storage.csiFilestore.enabled` field can be set to `true` to enable the [GCP Filestore CSI driver](https://cloud.google.com/filestore/docs/csi-driver).
+Furthermore, the `storage.csiFilestore.enabled` field can be set to `true` to 
+enable the [GCP Filestore CSI driver](https://cloud.google.com/filestore/docs/csi-driver).
+Additionally, you have to make sure that your IAM user has the permission `roles/file.editor` and
+that the filestore API is enabled in your GCP project.
 
 ## WorkerConfig
 
