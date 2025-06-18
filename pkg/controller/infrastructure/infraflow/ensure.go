@@ -498,7 +498,7 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 		firewallRuleAllowHealthChecks(FirewallRuleAllowHealthChecksName(fctx.clusterName), vpc.SelfLink, healthCheckSourceRangesIPv4),
 	}
 
-	cidrsIPv6 := []*string{}
+	var cidrsIPv6 []*string
 	if nodesIPv6 := fctx.whiteboard.Get(NodesSubnetIPv6CIDR); ptr.Deref(nodesIPv6, "") != "" {
 		cidrsIPv6 = append(cidrsIPv6, nodesIPv6)
 	}

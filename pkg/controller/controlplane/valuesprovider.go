@@ -622,10 +622,6 @@ func getCSIFilestoreControllerChartValues(
 	return values, nil
 }
 
-func isCSIFilestoreEnabled(cpConfig *apisgcp.ControlPlaneConfig) bool {
-	return cpConfig.Storage != nil && cpConfig.Storage.CSIFilestore != nil && cpConfig.Storage.CSIFilestore.Enabled
-}
-
 // GetStorageClassesChartValues collects and returns the shoot storage-class chart values.
 func (vp *valuesProvider) GetStorageClassesChartValues(
 	_ context.Context,
@@ -643,6 +639,12 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 		}
 	}
 
+	// Decode infrastructureProviderStatus
+	infraStatus := &apisgcp.InfrastructureStatus{}
+	if _, _, err := vp.decoder.Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
+		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
+	}
+
 	if cpConfig.Storage != nil {
 		managedDefaultStorageClass = ptr.Deref(cpConfig.Storage.ManagedDefaultStorageClass, true)
 		managedDefaultVolumeSnapshotClass = ptr.Deref(cpConfig.Storage.ManagedDefaultVolumeSnapshotClass, true)
@@ -651,7 +653,15 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 	return map[string]interface{}{
 		"managedDefaultStorageClass":        managedDefaultStorageClass,
 		"managedDefaultVolumeSnapshotClass": managedDefaultVolumeSnapshotClass,
+		"filestore": map[string]interface{}{
+			"enabled": isCSIFilestoreEnabled(cpConfig),
+			"network": infraStatus.Networks.VPC.Name,
+		},
 	}, nil
+}
+
+func isCSIFilestoreEnabled(cpConfig *apisgcp.ControlPlaneConfig) bool {
+	return cpConfig != nil && cpConfig.Storage != nil && cpConfig.Storage.CSIFilestore != nil && cpConfig.Storage.CSIFilestore.Enabled
 }
 
 // getNetworkNames determines the network and subnetwork names from the given infrastructure status and controlplane.
