@@ -89,26 +89,12 @@ images:
       integrity_requirement: 'high'
       availability_requirement: 'low'
 
+  # TODO(plkokanov,AndreasBurger,kon-angelo,hebelsan): Add entry for v33.x.y image of the cloud-controller-manager when it's available.
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
   tag: "v32.2.4"
-  targetVersion: "1.32.x"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'high'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-
-- name: cloud-controller-manager
-  sourceRepository: github.com/kubernetes/cloud-provider-gcp
-  repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-  tag: "v33.0.0"
-  targetVersion: ">= 1.33"
+  targetVersion: ">= 1.32"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
