@@ -1,0 +1,266 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: csi-driver-filestore-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: csi
+    role: controller
+    high-availability-config.resources.gardener.cloud/type: controller
+spec:
+  replicas: {{ .Values.replicas }}
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: csi
+      role: controller
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/configmap-csi-driver-controller: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+{{- if .Values.podAnnotations }}
+{{ toYaml .Values.podAnnotations | indent 8 }}
+{{- end }}
+      labels:
+        app: csi
+        role: controller
+        gardener.cloud/role: controlplane
+        networking.gardener.cloud/to-dns: allowed
+        networking.gardener.cloud/to-public-networks: allowed
+        networking.resources.gardener.cloud/to-kube-apiserver-tcp-443: allowed
+    spec:
+      automountServiceAccountToken: false
+      priorityClassName: gardener-system-300
+      containers:
+        - name: gcp-filestore-driver
+          image: {{ index .Values.images "csi-driver-filestore" }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--v=3"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--nodeid=$(KUBE_NODE_NAME)"
+            - "--controller=true"
+            - "--cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf"
+            - "--extra-labels=k8s-cluster-name={{ .Release.Namespace }}"
+            - "--logtostderr"
+          env:
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix://{{ .Values.socketPath }}/csi.sock
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+                    {{- if .Values.useWorkloadIdentity }}
+              value: /var/run/secrets/gardener.cloud/workload-identity/credentialsConfig
+                    {{- else }}
+              value: /srv/cloudprovider/credentialsConfig
+                    {{- end }}
+{{- if .Values.resources.driver }}
+          resources:
+{{ toYaml .Values.resources.driver | indent 10 }}
+{{- end }}
+          ports:
+            - name: healthz
+              containerPort: 9808
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 5
+          volumeMounts:
+          - name: socket-dir
+            mountPath: {{ .Values.socketPath }}
+          - name: csi-filestore-controller-config
+            mountPath: /etc/kubernetes/cloudprovider
+          {{- if .Values.useWorkloadIdentity }}
+          - name: cloudprovider
+            mountPath: /var/run/secrets/gardener.cloud/workload-identity
+            readOnly: true
+          {{- else }}
+          - name: cloudprovider
+            mountPath: /srv/cloudprovider
+            readOnly: true
+          {{- end }}
+
+        - name: gcp-filestore-provisioner
+          image: {{ index .Values.images "csi-provisioner" }}
+          imagePullPolicy: IfNotPresent
+          args:
+          - --csi-address=$(ADDRESS)
+          - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
+          {{- if ((.Values.csiProvisioner).featureGates) }}
+          - --feature-gates={{ range $feature, $enabled := .Values.csiProvisioner.featureGates }}{{ $feature }}={{ $enabled }},{{ end }}
+          {{- end }}
+          - --volume-name-prefix=pv-
+          - --default-fstype=ext4
+          - --extra-create-metadata=true
+          - --leader-election=true
+          - --leader-election-namespace=kube-system
+          - --v=5
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+          - name: ADDRESS
+            value: {{ .Values.socketPath }}/csi.sock
+{{- if .Values.resources.provisioner }}
+          resources:
+{{ toYaml .Values.resources.provisioner | indent 10 }}
+{{- end }}
+          volumeMounts:
+          - name: socket-dir
+            mountPath: {{ .Values.socketPath }}
+          - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+            name: kubeconfig-csi-provisioner
+            readOnly: true
+
+        - name: gcp-filestore-resizer
+          image: {{ index .Values.images "csi-resizer" }}
+          imagePullPolicy: IfNotPresent
+          args:
+          - --csi-address=$(ADDRESS)
+          - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
+          - --leader-election=true
+          - --leader-election-namespace=kube-system
+          - --handle-volume-inuse-error=false
+          {{- if ((.Values.csiResizer).featureGates) }}
+          - --feature-gates={{ range $feature, $enabled := .Values.csiResizer.featureGates }}{{ $feature }}={{ $enabled }},{{ end }}
+          {{- end }}
+          - --v=5
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+          - name: ADDRESS
+            value: {{ .Values.socketPath }}/csi.sock
+{{- if .Values.resources.resizer }}
+          resources:
+{{ toYaml .Values.resources.resizer | indent 10 }}
+{{- end }}
+          volumeMounts:
+          - name: socket-dir
+            mountPath: {{ .Values.socketPath }}
+          - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+            name: kubeconfig-csi-resizer
+            readOnly: true
+
+        - name: gcp-filestore-liveness-probe
+          image: {{ index .Values.images "csi-liveness-probe" }}
+          args:
+          - --csi-address=/csi/csi.sock
+{{- if .Values.resources.livenessProbe }}
+          resources:
+{{ toYaml .Values.resources.livenessProbe | indent 10 }}
+{{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+          - name: socket-dir
+            mountPath: /csi
+
+        - name: gcp-filestore-snapshotter
+          image: {{ index .Values.images "csi-snapshotter" }}
+          imagePullPolicy: IfNotPresent
+          args:
+          - --csi-address=$(CSI_ENDPOINT)
+          - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
+          - --leader-election
+          - --leader-election-namespace=kube-system
+          - --snapshot-name-prefix=snapshot
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+          - name: CSI_ENDPOINT
+            value: {{ .Values.socketPath }}/csi.sock
+{{- if .Values.resources.snapshotter }}
+          resources:
+{{ toYaml .Values.resources.snapshotter | indent 10 }}
+{{- end }}
+          volumeMounts:
+          - name: socket-dir
+            mountPath: {{ .Values.socketPath }}
+          - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+            name: kubeconfig-csi-snapshotter
+            readOnly: true
+
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+        - name: kubeconfig-csi-provisioner
+          projected:
+            defaultMode: 420
+            sources:
+              - secret:
+                  items:
+                    - key: kubeconfig
+                      path: kubeconfig
+                  name: {{ .Values.global.genericTokenKubeconfigSecretName }}
+                  optional: false
+              - secret:
+                  items:
+                    - key: token
+                      path: token
+                  name: shoot-access-csi-provisioner
+                  optional: false
+        - name: kubeconfig-csi-snapshotter
+          projected:
+            defaultMode: 420
+            sources:
+              - secret:
+                  items:
+                    - key: kubeconfig
+                      path: kubeconfig
+                  name: {{ .Values.global.genericTokenKubeconfigSecretName }}
+                  optional: false
+              - secret:
+                  items:
+                    - key: token
+                      path: token
+                  name: shoot-access-csi-snapshotter
+                  optional: false
+        - name: kubeconfig-csi-resizer
+          projected:
+            defaultMode: 420
+            sources:
+              - secret:
+                  items:
+                    - key: kubeconfig
+                      path: kubeconfig
+                  name: {{ .Values.global.genericTokenKubeconfigSecretName }}
+                  optional: false
+              - secret:
+                  items:
+                    - key: token
+                      path: token
+                  name: shoot-access-csi-resizer
+                  optional: false
+        - name: cloudprovider
+          projected:
+            defaultMode: 420
+            sources:
+              - secret:
+                  items:
+                {{- if .Values.useWorkloadIdentity }}
+                    - key: credentialsConfig
+                      path: credentialsConfig
+                    - key: token
+                      path: token
+                {{- else }}
+                    - key: serviceaccount.json
+                      path: credentialsConfig
+                {{- end }}
+                  name: cloudprovider
+                  optional: false
+        - name: csi-filestore-controller-config
+          configMap:
+            name: csi-filestore-controller-config

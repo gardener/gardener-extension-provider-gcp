@@ -51,3 +51,18 @@ metadata:
   name: default
 driver: pd.csi.storage.gke.io
 deletionPolicy: Delete
+
+{{- if .Values.filestore.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-filestore
+provisioner: filestore.csi.storage.gke.io
+parameters:
+  # Name of the VPC. Note that non-default VPCs require special firewall rules to be setup
+  network: {{ .Values.filestore.network }}
+  # standard (default) or premier or enterprise
+  tier: standard
+allowVolumeExpansion: true
+{{- end }}

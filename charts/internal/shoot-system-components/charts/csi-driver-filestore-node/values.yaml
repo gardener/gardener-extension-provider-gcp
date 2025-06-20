@@ -1,0 +1,23 @@
+images:
+  csi-driver-filestore: image-repository:image-tag
+  csi-node-driver-registrar: image-repository:image-tag
+  csi-liveness-probe: image-repository:image-tag
+
+socketPath: /csi/csi.sock
+
+livenessProbe:
+  healthPort: 24913
+
+resources:
+  driver:
+    requests:
+      cpu: 20m
+      memory: 50Mi
+  nodeDriverRegistrar:
+    requests:
+      cpu: 11m
+      memory: 32Mi
+  livenessProbe:
+    requests:
+      cpu: 11m
+      memory: 32Mi

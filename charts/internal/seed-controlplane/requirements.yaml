@@ -7,6 +7,10 @@ dependencies:
   repository: http://localhost:10191
   version: 0.1.0
   condition: csi-driver-controller.enabled
+- name: csi-driver-filestore-controller
+  repository: http://localhost:10191
+  version: 0.1.0
+  condition: csi-driver-filestore-controller.enabled
 - name: ingress-gce
   repository: http://localhost:10191
   version: 0.1.0

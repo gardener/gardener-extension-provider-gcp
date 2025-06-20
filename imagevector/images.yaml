@@ -132,6 +132,20 @@ images:
       integrity_requirement: 'high'
       availability_requirement: 'low'
 
+- name: csi-driver-filestore
+  sourceRepository: github.com/kubernetes-sigs/gcp-filestore-csi-driver
+  repository: registry.k8s.io/cloud-provider-gcp/gcp-filestore-csi-driver
+  tag: "v1.10.1"
+  labels:
+    - name: 'gardener.cloud/cve-categorisation'
+      value:
+        network_exposure: 'protected'
+        authentication_enforced: false
+        user_interaction: 'end-user'
+        confidentiality_requirement: 'high'
+        integrity_requirement: 'high'
+        availability_requirement: 'low'
+
 - name: csi-provisioner
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: registry.k8s.io/sig-storage/csi-provisioner
