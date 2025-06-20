@@ -41,3 +41,10 @@ spec:
       - name: REGION
         type: env
         value: europe-west1
+  - name: dnsrecord-test
+    definition:
+      name: dnsrecord-test
+      config:
+      - name: USE_EXISTING_CLUSTER
+        type: env
+        value: "true"
