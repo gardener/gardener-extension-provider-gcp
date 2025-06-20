@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/gardener/gardener/extensions/pkg/util"
 	"github.com/gardener/gardener/pkg/apis/core"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/utils"
+	"github.com/gardener/gardener/pkg/utils/gardener"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 
@@ -85,8 +85,8 @@ func ValidateCloudProfileConfig(cpConfig *apisgcp.CloudProfileConfig, machineIma
 }
 
 // NewProviderImagesContext creates a new ImagesContext for provider images.
-func NewProviderImagesContext(providerImages []apisgcp.MachineImages) *util.ImagesContext[apisgcp.MachineImages, apisgcp.MachineImageVersion] {
-	return util.NewImagesContext(
+func NewProviderImagesContext(providerImages []apisgcp.MachineImages) *gardener.ImagesContext[apisgcp.MachineImages, apisgcp.MachineImageVersion] {
+	return gardener.NewImagesContext(
 		utils.CreateMapFromSlice(providerImages, func(mi apisgcp.MachineImages) string { return mi.Name }),
 		func(mi apisgcp.MachineImages) map[string]apisgcp.MachineImageVersion {
 			return utils.CreateMapFromSlice(mi.Versions, func(v apisgcp.MachineImageVersion) string { return providerMachineImageKey(v) })
