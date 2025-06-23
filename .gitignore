@@ -8,6 +8,7 @@ hack/tools/bin
 
 *.coverprofile
 *.html
+*.swp
 .vscode
 .idea
 .DS_Store

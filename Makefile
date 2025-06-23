@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 ENSURE_GARDENER_MOD         := $(shell go get github.com/gardener/gardener@$$(go list -m -f "{{.Version}}" github.com/gardener/gardener))
-GARDENER_HACK_DIR    		:= $(shell go list -m -f "{{.Dir}}" github.com/gardener/gardener)/hack
+GARDENER_HACK_DIR           := $(shell go list -m -f "{{.Dir}}" github.com/gardener/gardener)/hack
 EXTENSION_PREFIX            := gardener-extension
 NAME                        := provider-gcp
 REGISTRY                    := europe-docker.pkg.dev/gardener-project/public/gardener
@@ -30,6 +30,9 @@ endif
 
 REGION               := europe-west1
 SERVICE_ACCOUNT_FILE := .kube-secrets/gcp/serviceaccount.json
+
+TEST_LOGLEVEL             := info
+TEST_USE_EXISTING_CLUSTER := false # set to true if you want to use an existing cluster for backupbucket integration tests
 
 ifneq ($(strip $(shell git status --porcelain 2>/dev/null)),)
 	EFFECTIVE_VERSION := $(EFFECTIVE_VERSION)-dirty
@@ -180,3 +183,13 @@ integration-test-bastion:
 		--kubeconfig=${KUBECONFIG} \
 		--service-account='$(shell cat $(SERVICE_ACCOUNT_FILE))' \
 		--region=$(REGION)
+
+.PHONY: integration-test-backupbucket
+integration-test-backupbucket:
+	@go test -timeout=0 ./test/integration/backupbucket \
+		--v -ginkgo.v -ginkgo.show-node-events \
+		--kubeconfig=${KUBECONFIG} \
+		--service-account='$(shell cat $(SERVICE_ACCOUNT_FILE))' \
+		--region=$(REGION) \
+		--use-existing-cluster=$(TEST_USE_EXISTING_CLUSTER) \
+		--log-level=$(TEST_LOGLEVEL)
