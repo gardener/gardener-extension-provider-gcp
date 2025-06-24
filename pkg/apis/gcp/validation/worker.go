@@ -152,7 +152,7 @@ func validateScratchDisk(volumeType string, workerConfig *gcp.WorkerConfig) fiel
 	} else {
 		// LocalSSDInterface only allowed for type SCRATCH
 		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
-			allErrs = append(allErrs, field.Invalid(encryptionPath, *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", worker.VolumeTypeScratch)))
+			allErrs = append(allErrs, field.Invalid(interfacePath, *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", worker.VolumeTypeScratch)))
 		}
 	}
 	return allErrs
