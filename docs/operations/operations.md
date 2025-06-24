@@ -107,7 +107,9 @@ spec:
   backup:
     provider: gcp
     region: europe-west1 # default region
-    secretRef:
+    credentialsRef:
+      apiVersion: v1
+      kind: Secret
       name: backup-credentials
       namespace: garden
   ...
@@ -122,7 +124,7 @@ Please make sure the service account associated with the provided credentials ha
 ### Rolling Update Triggers
 
 Changes to the `Shoot` worker-pools are applied in-place where possible.
-In case this is not possible a rolling update of the workers will be performed to apply the new configuration, 
+In case this is not possible a rolling update of the workers will be performed to apply the new configuration,
 as outlined in [the Gardener documentation](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#in-place-vs-rolling-updates).
 The exact fields that trigger this behaviour depend on whether the feature gate `NewWorkerPoolHash` is enabled.
 If it is not enabled, only the fields mentioned in the [Gardener doc](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#rolling-update-triggers) plus the providerConfig are used.
@@ -132,6 +134,6 @@ If the feature gate _is_ enabled, it's the same with a few additions:
 - `.spec.provider.workers[].dataVolumes[].size`
 - `.spec.provider.workers[].dataVolumes[].type`
 
-We exclude `.spec.provider.workers[].dataVolumes[].encrypted` from the hash calculation because GCP disks are encrypted by default, 
+We exclude `.spec.provider.workers[].dataVolumes[].encrypted` from the hash calculation because GCP disks are encrypted by default,
 and the field does not influence disk encryption behavior.
 Everything related to disk encryption is handled by the providerConfig.
