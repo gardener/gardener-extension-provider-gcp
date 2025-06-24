@@ -265,6 +265,7 @@ var _ = Describe("ValuesProvider", func() {
 						"replicas": 1,
 					},
 					"useWorkloadIdentity": false,
+					"enableDataCache":     false,
 				}),
 				gcp.IngressGCEName: map[string]interface{}{
 					"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking),
@@ -365,6 +366,7 @@ var _ = Describe("ValuesProvider", func() {
 				gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"kubernetesVersion": "1.28.2",
 					"enabled":           true,
+					"enableDataCache":   false,
 				}),
 				"default-http-backend": map[string]interface{}{
 					"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
