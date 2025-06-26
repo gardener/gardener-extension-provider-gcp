@@ -1,2 +1,5 @@
 managedDefaultStorageClass: true
 managedDefaultVolumeSnapshotClass: true
+filestore:
+  enabled: false
+  network: default

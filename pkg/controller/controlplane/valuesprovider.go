@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
@@ -135,6 +136,22 @@ var (
 				},
 			},
 			{
+				Name: gcp.CSIFilestoreControllerName,
+				Images: []string{
+					gcp.CSIFilestoreDriverImageName,
+					gcp.CSIProvisionerImageName,
+					gcp.CSISnapshotterImageName,
+					gcp.CSIResizerImageName,
+					gcp.CSILivenessProbeImageName,
+				},
+				Objects: []*chart.Object{
+					// csi-driver-controller
+					{Type: &appsv1.Deployment{}, Name: gcp.CSIFilestoreControllerName},
+					{Type: &corev1.ConfigMap{}, Name: gcp.CSIFilestoreControllerConfigName},
+					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: gcp.CSIFilestoreControllerName + "-vpa"},
+				},
+			},
+			{
 				Name: gcp.IngressGCEName,
 				Images: []string{
 					gcp.IngressGCEImageName,
@@ -201,6 +218,22 @@ var (
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
 					{Type: &rbacv1.Role{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
 					{Type: &rbacv1.RoleBinding{}, Name: gcp.UsernamePrefix + gcp.CSIResizerName},
+				},
+			},
+			{
+				Name: gcp.CSIFilestoreNodeName,
+				Images: []string{
+					gcp.CSIFilestoreDriverImageName,
+					gcp.CSINodeDriverRegistrarImageName,
+					gcp.CSILivenessProbeImageName,
+				},
+				Objects: []*chart.Object{
+					// csi-driver
+					{Type: &appsv1.DaemonSet{}, Name: gcp.CSIFilestoreNodeName},
+					{Type: &storagev1.CSIDriver{}, Name: "filestore.csi.storage.gke.io"},
+					{Type: &corev1.ServiceAccount{}, Name: gcp.CSIFilestoreNodeName},
+					{Type: &rbacv1.ClusterRole{}, Name: gcp.UsernamePrefix + "csi-driver-filestore"},
+					{Type: &rbacv1.ClusterRoleBinding{}, Name: gcp.UsernamePrefix + "csi-driver-filestore"},
 				},
 			},
 			{
@@ -307,11 +340,9 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	map[string]interface{},
 	error,
 ) {
-	cpConfig := &apisgcp.ControlPlaneConfig{}
-	if cp.Spec.ProviderConfig != nil {
-		if _, _, err := vp.decoder.Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
-			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
-		}
+	cpConfig, err := admission.DecodeControlPlaneConfig(vp.decoder, cp.Spec.ProviderConfig)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 	}
 
 	// Get credentials configuration
@@ -331,7 +362,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
 func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	_ context.Context,
-	_ *extensionsv1alpha1.ControlPlane,
+	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 	_ secretsmanager.Reader,
 	_ map[string]string,
@@ -339,11 +370,20 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	map[string]interface{},
 	error,
 ) {
+	cpConfig, err := admission.DecodeControlPlaneConfig(vp.decoder, cp.Spec.ProviderConfig)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w",
+			k8sclient.ObjectKeyFromObject(cp), err)
+	}
+
 	return map[string]interface{}{
 		gcp.CloudControllerManagerName: map[string]interface{}{"enabled": true},
 		gcp.CSINodeName: map[string]interface{}{
 			"enabled":           true,
 			"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
+		},
+		gcp.CSIFilestoreNodeName: map[string]interface{}{
+			"enabled": isCSIFilestoreEnabled(cpConfig),
 		},
 		"default-http-backend": map[string]interface{}{
 			"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
@@ -399,12 +439,18 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 		return nil, err
 	}
 
+	csiFilestore, err := getCSIFilestoreControllerChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
+	if err != nil {
+		return nil, err
+	}
+
 	return map[string]interface{}{
 		"global": map[string]interface{}{
 			"genericTokenKubeconfigSecretName": extensionscontroller.GenericTokenKubeconfigSecretNameFromCluster(cluster),
 		},
 		gcp.CloudControllerManagerName: ccm,
 		gcp.CSIControllerName:          csi,
+		gcp.CSIFilestoreControllerName: csiFilestore,
 		gcp.IngressGCEName: map[string]interface{}{
 			"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking),
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
@@ -533,7 +579,50 @@ func getCSIControllerChartValues(
 	return values, nil
 }
 
-// getStorageClassChartValues collects and returns the shoot storage-class chart values.
+// getCSIFilestoreControllerChartValues collects and returns the CSIFilestoreController chart values.
+func getCSIFilestoreControllerChartValues(
+	cpConfig *apisgcp.ControlPlaneConfig,
+	_ *extensionsv1alpha1.ControlPlane,
+	cluster *extensionscontroller.Cluster,
+	_ secretsmanager.Reader,
+	credentialsConfig *gcp.CredentialsConfig,
+	checksums map[string]string,
+	scaledDown bool,
+) (map[string]interface{}, error) {
+	values := map[string]interface{}{
+		"enabled":   isCSIFilestoreEnabled(cpConfig),
+		"replicas":  extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
+		"projectID": credentialsConfig.ProjectID,
+		"zone":      cpConfig.Zone,
+		"podAnnotations": map[string]interface{}{
+			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+		},
+		"useWorkloadIdentity": shouldUseWorkloadIdentity(credentialsConfig),
+	}
+
+	k8sVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
+	if err != nil {
+		return nil, err
+	}
+	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) {
+		if _, ok := cluster.Shoot.Annotations[gcp.AnnotationEnableVolumeAttributesClass]; ok {
+			values["csiResizer"] = map[string]interface{}{
+				"featureGates": map[string]string{
+					"VolumeAttributesClass": "true",
+				},
+			}
+			values["csiProvisioner"] = map[string]interface{}{
+				"featureGates": map[string]string{
+					"VolumeAttributesClass": "true",
+				},
+			}
+		}
+	}
+
+	return values, nil
+}
+
+// GetStorageClassesChartValues collects and returns the shoot storage-class chart values.
 func (vp *valuesProvider) GetStorageClassesChartValues(
 	_ context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
@@ -550,6 +639,12 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 		}
 	}
 
+	// Decode infrastructureProviderStatus
+	infraStatus := &apisgcp.InfrastructureStatus{}
+	if _, _, err := vp.decoder.Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
+		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
+	}
+
 	if cpConfig.Storage != nil {
 		managedDefaultStorageClass = ptr.Deref(cpConfig.Storage.ManagedDefaultStorageClass, true)
 		managedDefaultVolumeSnapshotClass = ptr.Deref(cpConfig.Storage.ManagedDefaultVolumeSnapshotClass, true)
@@ -558,7 +653,15 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 	return map[string]interface{}{
 		"managedDefaultStorageClass":        managedDefaultStorageClass,
 		"managedDefaultVolumeSnapshotClass": managedDefaultVolumeSnapshotClass,
+		"filestore": map[string]interface{}{
+			"enabled": isCSIFilestoreEnabled(cpConfig),
+			"network": infraStatus.Networks.VPC.Name,
+		},
 	}, nil
+}
+
+func isCSIFilestoreEnabled(cpConfig *apisgcp.ControlPlaneConfig) bool {
+	return cpConfig != nil && cpConfig.Storage != nil && cpConfig.Storage.CSIFilestore != nil && cpConfig.Storage.CSIFilestore.Enabled
 }
 
 // getNetworkNames determines the network and subnetwork names from the given infrastructure status and controlplane.

@@ -399,6 +399,36 @@ k8s.io/apimachinery/pkg/runtime.RawExtension
 </tr>
 </tbody>
 </table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CSIFilestore">CSIFilestore
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Storage">Storage</a>)
+</p>
+<p>
+<p>CSIFilestore contains configuration for CSI Filestore driver</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Enabled is the switch to enable the CSI Manila driver support</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CloudControllerManagerConfig">CloudControllerManagerConfig
 </h3>
 <p>
@@ -1523,6 +1553,20 @@ bool
 Set to false to suppress marking the &lsquo;default&rsquo; VolumeSnapshotClass as default, allowing another VolumeSnapshotClass
 not managed by Gardener to be set as default by the user.
 Defaults to true.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>csiFilestore</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CSIFilestore">
+CSIFilestore
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CSIFilestore contains configuration for CSI Filestore driver (support for NFS volumes)</p>
 </td>
 </tr>
 </tbody>
