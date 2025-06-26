@@ -28,3 +28,7 @@ data:
     featureGates:
 {{ toYaml .Values.config.featureGates | indent 6 }}
 {{- end }}
+{{- if .Values.config.debugging }}
+    debugging:
+{{ toYaml .Values.config.debugging | indent 6 }}
+{{- end }}
