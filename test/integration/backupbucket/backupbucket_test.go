@@ -103,10 +103,14 @@ var _ = BeforeSuite(func() {
 		mgrCancel()
 
 		By("deleting gcp provider secret")
-		deleteBackupBucketSecret(tc.ctx, tc.client, tc.secret)
+		if tc != nil && tc.client != nil && tc.secret != nil {
+			deleteBackupBucketSecret(tc.ctx, tc.client, tc.secret)
+		}
 
 		By("deleting test namespace")
-		deleteNamespace(tc.ctx, tc.client, tc.testNamespace)
+		if tc != nil && tc.client != nil && tc.testNamespace != nil {
+			deleteNamespace(tc.ctx, tc.client, tc.testNamespace)
+		}
 
 		By("stopping test environment")
 		Expect(testEnv.Stop()).To(Succeed())
