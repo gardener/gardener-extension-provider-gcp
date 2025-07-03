@@ -240,7 +240,7 @@ var _ = Describe("BackupBucket tests", func() {
 			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
 			runTest(tc, backupBucket, func() {
 				By("writing an object to the bucket and verifying immutability")
-				verifyBucketImmutability(tc.ctx, tc.storageClient, backupBucket)
+				verifyBucketImmutability(tc.ctx, tc.client, tc.storageClient, backupBucket)
 			})
 		})
 

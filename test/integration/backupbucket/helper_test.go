@@ -85,6 +85,11 @@ func createBackupBucket(ctx context.Context, c client.Client, backupBucket *exte
 	Expect(c.Create(ctx, backupBucket)).To(Succeed(), "Failed to create backupBucket: %s", backupBucket.Name)
 }
 
+func updateBackupBucket(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
+	log.Info("Updating backupBucket", "backupBucket", backupBucket)
+	Expect(c.Update(ctx, backupBucket)).To(Succeed(), "Failed to update backupBucket: %s", backupBucket.Name)
+}
+
 func fetchBackupBucket(ctx context.Context, c client.Client, name string) *extensionsv1alpha1.BackupBucket {
 	backupBucket := &extensionsv1alpha1.BackupBucket{}
 	err := c.Get(ctx, client.ObjectKey{Name: name}, backupBucket)
@@ -227,16 +232,22 @@ func verifyImmutabilityPolicy(ctx context.Context, storageClient *storage.Client
 	Expect(attrs.RetentionPolicy.IsLocked).To(BeFalse(), "Immutability policy state mismatch")
 }
 
-func verifyBucketImmutability(ctx context.Context, storageClient *storage.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
+func verifyBucketImmutability(ctx context.Context, c client.Client, storageClient *storage.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
 	bucketName := backupBucket.Name
 	objectName := bucketName + "-test-object"
 
 	defer func() {
 		By("deleting immutability policy on GCS bucket")
+
 		_, err := storageClient.Bucket(bucketName).Update(ctx, storage.BucketAttrsToUpdate{
 			RetentionPolicy: &storage.RetentionPolicy{},
 		})
 		Expect(err).NotTo(HaveOccurred(), "Failed to delete immutability policy on GCS bucket")
+
+		By("deleting immutability policy on backupBucket")
+		backupBucket = fetchBackupBucket(ctx, c, backupBucket.Name)
+		backupBucket.Spec.ProviderConfig = nil
+		updateBackupBucket(ctx, c, backupBucket)
 
 		By("deleting test object from GCS bucket")
 		err = storageClient.Bucket(bucketName).Object(objectName).Delete(ctx)
