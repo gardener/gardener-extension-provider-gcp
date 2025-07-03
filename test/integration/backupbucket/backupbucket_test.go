@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/logger"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
@@ -28,6 +28,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
+	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	backupbucketctrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/backupbucket"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
@@ -54,9 +55,12 @@ var (
 	useExistingCluster = flag.Bool("use-existing-cluster", true, "Set to true to use an existing cluster for the test")
 )
 
-const backupBucketSecretName = "backupbucket"
+const (
+	backupBucketSecretName = "backupbucket"
+	retentionType          = "bucket"
+)
 
-var runTest = func(tc *TestContext, backupBucket *v1alpha1.BackupBucket) {
+var runTest = func(tc *TestContext, backupBucket *extensionsv1alpha1.BackupBucket, verifyFuncs ...func()) {
 	log.Info("Running BackupBucket test", "backupBucketName", backupBucket.Name)
 
 	By("creating backupbucket")
@@ -76,11 +80,10 @@ var runTest = func(tc *TestContext, backupBucket *v1alpha1.BackupBucket) {
 	By("waiting until backupbucket is ready")
 	waitUntilBackupBucketReady(tc.ctx, tc.client, backupBucket)
 
-	By("getting backupbucket and verifying its status")
-	getBackupBucketAndVerifyStatus(tc.ctx, tc.client, backupBucket)
-
-	By("verifying that the GCS bucket exists and matches backupbucket")
-	verifyBackupBucket(tc.ctx, tc.storageClient, backupBucket)
+	// Execute any additional verification functions passed to the test
+	for _, verifyFunc := range verifyFuncs {
+		verifyFunc()
+	}
 
 	log.Info("BackupBucket test completed successfully", "backupBucketName", backupBucket.Name)
 }
@@ -143,7 +146,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred(), "Failed to create manager for the test environment")
 
-	Expect(v1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed(), "Failed to add v1alpha1 scheme to manager")
+	Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed(), "Failed to add extensionsv1alpha1 scheme to manager")
 	Expect(gcpinstall.AddToScheme(mgr.GetScheme())).To(Succeed(), "Failed to add GCP scheme to manager")
 
 	Expect(backupbucketctrl.AddToManagerWithOptions(ctx, mgr, backupbucketctrl.AddOptions{})).To(Succeed(), "Failed to add BackupBucket controller to manager")
@@ -163,8 +166,8 @@ var _ = BeforeSuite(func() {
 		Scheme: mgr.GetScheme(),
 		Mapper: mgr.GetRESTMapper(),
 	})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(c).NotTo(BeNil())
+	Expect(err).NotTo(HaveOccurred(), "Failed to create client for the test environment")
+	Expect(c).NotTo(BeNil(), "Client for the test environment is nil")
 
 	storageClient := getStorageClient(ctx, *serviceAccount)
 
@@ -202,8 +205,58 @@ var _ = BeforeSuite(func() {
 var _ = Describe("BackupBucket tests", func() {
 	Context("when a BackupBucket is created with basic configuration", func() {
 		It("should successfully create and delete a backupbucket", func() {
-			backupBucket := newBackupBucket(tc.testName, *region)
-			runTest(tc, backupBucket)
+			providerConfig := &gcpv1alpha1.BackupBucketConfig{}
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket, func() {
+				verifyBackupBucketAndStatus(tc.ctx, tc.client, tc.storageClient, backupBucket)
+			})
+		})
+	})
+
+	Context("when a BackupBucket is created with immutability configuration", func() {
+		It("should successfully create and delete a backupbucket with immutability enabled", func() {
+			providerConfig := &gcpv1alpha1.BackupBucketConfig{
+				Immutability: &gcpv1alpha1.ImmutableConfig{
+					RetentionType:   retentionType,
+					RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
+					Locked:          false,
+				},
+			}
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket, func() {
+				By("verifying immutability policy on Azure")
+				verifyImmutabilityPolicy(tc.ctx, tc.storageClient, backupBucket, providerConfig.Immutability)
+			})
+		})
+
+		It("should ensure immutability of objects stored in the bucket", func() {
+			providerConfig := &gcpv1alpha1.BackupBucketConfig{
+				Immutability: &gcpv1alpha1.ImmutableConfig{
+					RetentionType:   retentionType,
+					RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
+					Locked:          false,
+				},
+			}
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket, func() {
+				By("writing an object to the bucket and verifying immutability")
+				verifyBucketImmutability(tc.ctx, tc.storageClient, backupBucket)
+			})
+		})
+
+		It("should fail to modify or remove a locked immutability policy", func() {
+			providerConfig := &gcpv1alpha1.BackupBucketConfig{
+				Immutability: &gcpv1alpha1.ImmutableConfig{
+					RetentionType:   retentionType,
+					RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
+					Locked:          true,
+				},
+			}
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket, func() {
+				By("verifying error when attempting to delete or modify locked immutability policy")
+				verifyLockedImmutabilityPolicy(tc.ctx, tc.storageClient, backupBucket)
+			})
 		})
 	})
 })
