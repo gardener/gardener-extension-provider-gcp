@@ -258,5 +258,20 @@ var _ = Describe("BackupBucket tests", func() {
 				verifyLockedImmutabilityPolicy(tc.ctx, tc.storageClient, backupBucket)
 			})
 		})
+
+		It("should succeed to modify and delete an object once the retentionPeriod is passed", func() {
+			providerConfig := &gcpv1alpha1.BackupBucketConfig{
+				Immutability: &gcpv1alpha1.ImmutableConfig{
+					RetentionType:   retentionType,
+					RetentionPeriod: metav1.Duration{Duration: 10 * time.Second},
+					Locked:          false,
+				},
+			}
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket, func() {
+				By("verifying that an object can be overwritten and deleted after retention period")
+				verifyRetentionPeriod(tc.ctx, tc.storageClient, backupBucket, providerConfig.Immutability.RetentionPeriod.Duration)
+			})
+		})
 	})
 })

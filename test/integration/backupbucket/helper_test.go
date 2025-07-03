@@ -299,3 +299,60 @@ func verifyLockedImmutabilityPolicy(ctx context.Context, storageClient *storage.
 	Expect(err).To(HaveOccurred(), "Expected an error when trying to delete a bucket's locked immutability policy")
 	log.Info("Expected error occurred when trying to delete a locked immutability policy", "error", err)
 }
+
+func verifyRetentionPeriod(ctx context.Context, storageClient *storage.Client, backupBucket *extensionsv1alpha1.BackupBucket, retentionPeriod time.Duration) {
+	bucketName := backupBucket.Name
+	objectName := bucketName + "-test-object"
+
+	By("creating a test object in the GCS bucket to verify the retention period")
+	storageWriter := storageClient.Bucket(bucketName).Object(objectName).NewWriter(ctx)
+	storageWriter.ContentType = "text/plain"
+	_, err := storageWriter.Write([]byte("This is a test object for retention period verification."))
+	Expect(err).NotTo(HaveOccurred(), "Failed to write test object to GCS bucket")
+	err = storageWriter.Close()
+	Expect(err).NotTo(HaveOccurred(), "Failed to close storage writer after writing test object")
+	startTime := time.Now()
+
+	By("attempting to delete the test object to verify immutability")
+	err = storageClient.Bucket(bucketName).Object(objectName).Delete(ctx)
+	Expect(err).To(HaveOccurred(), "Expected an error when trying to delete the test object due retention period not passed")
+	log.Info("Expected error occurred when trying to delete the test object", "error", err)
+
+	By("waiting for the retention period to pass before overwriting the test object")
+	passedTime := time.Since(startTime)
+	if passedTime < retentionPeriod {
+		waitTime := retentionPeriod - passedTime
+		log.Info("time to wait", "waitTime", waitTime)
+		time.Sleep(waitTime)
+	}
+
+	By("verifying that the object can be overwritten after retention period has passed")
+	storageWriter = storageClient.Bucket(bucketName).Object(objectName).NewWriter(ctx)
+	storageWriter.ContentType = "text/plain"
+	newContent := "This should be the new content after retention period."
+	_, err = storageWriter.Write([]byte(newContent))
+	Expect(err).NotTo(HaveOccurred(), "Failed to write new content to test object after retention period")
+	err = storageWriter.Close()
+	Expect(err).NotTo(HaveOccurred(), "Failed to close storage writer after writing new content to test object")
+	log.Info("Expected error occurred when trying to overwrite the test object", "error", err)
+	storageReader, err := storageClient.Bucket(bucketName).Object(objectName).NewReader(ctx)
+	Expect(err).NotTo(HaveOccurred(), "Failed to create storage reader for test object with new content")
+	readContent := make([]byte, len(newContent))
+	_, err = storageReader.Read(readContent)
+	storageReader.Close()
+	Expect(err).NotTo(HaveOccurred(), "Failed to read content from test object with new content")
+	Expect(string(readContent)).To(Equal(newContent), "Content of the test object after retention period does not match expected new content")
+	startTime = time.Now()
+
+	By("waiting for the retention period to pass before deleting the test object")
+	passedTime = time.Since(startTime)
+	if passedTime < retentionPeriod {
+		waitTime := retentionPeriod - passedTime
+		log.Info("time to wait", "waitTime", waitTime)
+		time.Sleep(waitTime)
+	}
+
+	By("deleting the test object after retention period has passed")
+	err = storageClient.Bucket(bucketName).Object(objectName).Delete(ctx)
+	Expect(err).NotTo(HaveOccurred(), "Failed to delete test object from GCS bucket after retention period")
+}
