@@ -356,7 +356,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			Expect(errorList).To(BeEmpty())
 		})
 
-		It("should forbid changing infrastructure network details", func() {
+		It("should forbid changing existing infrastructure network details", func() {
 			newInfrastructureConfig := infrastructureConfig.DeepCopy()
 			newInfrastructureConfig.Networks.VPC = &apisgcp.VPC{
 				Name: "not-hugo",
@@ -382,6 +382,16 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				"Type":  Equal(field.ErrorTypeInvalid),
 				"Field": Equal("networks.workers"),
 			}))
+		})
+
+		It("should allow adding an internal subnet if it was not set before", func() {
+			newInfrastructureConfig := infrastructureConfig.DeepCopy()
+			// delete the internal subnet to simulate it was not set before
+			infrastructureConfig.Networks.Internal = nil
+			newInfrastructureConfig.Networks.Internal = ptr.To("10.96.0.0/16")
+
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+			Expect(errorList).To(BeEmpty())
 		})
 
 		It("should forbid updating VPC value to nil", func() {
