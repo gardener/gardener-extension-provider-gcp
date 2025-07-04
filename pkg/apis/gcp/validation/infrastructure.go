@@ -180,7 +180,11 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.Infrastruc
 	if oldVPC != nil && newVPC != nil {
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newVPC.Name, oldVPC.Name, vpcPath.Child("name"))...)
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newVPC.CloudRouter, oldVPC.CloudRouter, vpcPath.Child("cloudRouter"))...)
-		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Internal, oldConfig.Networks.Internal, networksPath.Child("internal"))...)
+
+		// Allow adding an internal subnet if it didn't exist before, but prevent changing an existing one.
+		if oldConfig.Networks.Internal != nil {
+			allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Internal, oldConfig.Networks.Internal, networksPath.Child("internal"))...)
+		}
 	}
 
 	newWorkerCIDR := newConfig.Networks.Worker
