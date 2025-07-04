@@ -20,6 +20,8 @@ const (
 	DefaultHTTPBackendImageName = "ingress-default-backend"
 	// CSIDriverImageName is the name of the csi-driver image.
 	CSIDriverImageName = "csi-driver"
+	// CSIFilestoreDriverImageName is the name of the csi-filestore-driver image.
+	CSIFilestoreDriverImageName = "csi-driver-filestore"
 	// CSIProvisionerImageName is the name of the csi-provisioner image.
 	CSIProvisionerImageName = "csi-provisioner"
 	// CSIAttacherImageName is the name of the csi-attacher image.
@@ -75,6 +77,12 @@ const (
 	CSINodeDriverRegistrarName = "csi-node-driver-registrar"
 	// CSILivenessProbeName is a constant for the name of the csi-liveness-probe component.
 	CSILivenessProbeName = "csi-liveness-probe"
+	// CSIFilestoreControllerConfigName is a constant for the name of the CSI filestore controller config in the seed.
+	CSIFilestoreControllerConfigName = "csi-filestore-controller-config"
+	// CSIFilestoreControllerName is a constant for the name of the CSI filestore controller deployment in the seed.
+	CSIFilestoreControllerName = "csi-driver-filestore-controller"
+	// CSIFilestoreNodeName is a constant for the name of the CSI node deployment in the shoot.
+	CSIFilestoreNodeName = "csi-driver-filestore-node"
 
 	// AnnotationEnableVolumeAttributesClass is the annotation to use on shoots to enable VolumeAttributesClasses
 	AnnotationEnableVolumeAttributesClass = "gcp.provider.extensions.gardener.cloud/enable-volume-attributes-class"

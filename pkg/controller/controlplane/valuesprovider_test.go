@@ -66,6 +66,10 @@ var _ = Describe("ValuesProvider", func() {
 				DefaultSpec: extensionsv1alpha1.DefaultSpec{
 					ProviderConfig: &runtime.RawExtension{
 						Raw: encode(&apisgcp.ControlPlaneConfig{
+							TypeMeta: metav1.TypeMeta{
+								Kind:       "ControlPlaneConfig",
+								APIVersion: apisgcp.SchemeGroupVersion.String(),
+							},
 							Zone: "europe-west1a",
 							CloudControllerManager: &apisgcp.CloudControllerManagerConfig{
 								FeatureGates: map[string]bool{
@@ -266,6 +270,16 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					"useWorkloadIdentity": false,
 				}),
+				gcp.CSIFilestoreControllerName: map[string]interface{}{
+					"enabled":   false,
+					"replicas":  1,
+					"projectID": projectID,
+					"zone":      zone,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+					},
+					"useWorkloadIdentity": false,
+				},
 				gcp.IngressGCEName: map[string]interface{}{
 					"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking),
 					"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, false, 1),
@@ -366,6 +380,9 @@ var _ = Describe("ValuesProvider", func() {
 					"kubernetesVersion": "1.28.2",
 					"enabled":           true,
 				}),
+				gcp.CSIFilestoreNodeName: map[string]interface{}{
+					"enabled": false,
+				},
 				"default-http-backend": map[string]interface{}{
 					"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
 				},
@@ -379,6 +396,10 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values).To(Equal(map[string]interface{}{
 				"managedDefaultStorageClass":        true,
 				"managedDefaultVolumeSnapshotClass": true,
+				"filestore": map[string]interface{}{
+					"enabled": false,
+					"network": "vpc-1234",
+				},
 			}))
 		})
 
@@ -395,6 +416,10 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values).To(Equal(map[string]interface{}{
 				"managedDefaultStorageClass":        false,
 				"managedDefaultVolumeSnapshotClass": false,
+				"filestore": map[string]interface{}{
+					"enabled": false,
+					"network": "vpc-1234",
+				},
 			}))
 		})
 	})

@@ -2,5 +2,7 @@ cloud-controller-manager:
   enabled: true
 csi-driver-node:
   enabled: true
+csi-driver-filestore-node:
+  enabled: false
 default-http-backend:
   enabled: false

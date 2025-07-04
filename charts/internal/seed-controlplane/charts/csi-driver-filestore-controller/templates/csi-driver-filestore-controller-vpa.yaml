@@ -1,0 +1,25 @@
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: csi-driver-filestore-controller-vpa
+  namespace: {{ .Release.Namespace }}
+spec:
+  resourcePolicy:
+    containerPolicies:
+    - containerName: gcp-filestore-driver
+      controlledValues: RequestsOnly
+    - containerName: gcp-filestore-provisioner
+      controlledValues: RequestsOnly
+    - containerName: gcp-filestore-resizer
+      controlledValues: RequestsOnly
+    - containerName: gcp-filestore-liveness-probe
+      controlledValues: RequestsOnly
+    - containerName: gcp-filestore-snapshotter
+      controlledValues: RequestsOnly
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: csi-driver-filestore-controller
+  updatePolicy:
+    updateMode: Auto
