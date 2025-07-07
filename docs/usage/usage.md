@@ -458,7 +458,7 @@ immutability:
 - **`retentionPeriod`**: Defines the duration for which objects in the bucket will remain immutable. The value should follow GCP-supported formats, such as `"24h"` for 24 hours. Refer to [retention period formats](https://cloud.google.com/storage/docs/bucket-lock#retention-periods) for more information. The minimum retention period is **24 hours**.
 - **`locked`**: A boolean indicating whether the retention policy is locked. Once locked, the policy cannot be removed or shortened, ensuring immutability. Learn more about locking policies [here](https://cloud.google.com/storage/docs/bucket-lock#policy-locks).
 
-To configure a `BackupBucket` with immutability, include the `BackupBucketConfig` in the `ProviderConfig` of the `BackupBucket` resource. If the `locked` field is set to `true`, the retention policy will be locked, preventing further changes.
+To configure a `BackupBucket` with immutability, include the `BackupBucketConfig` in the `ProviderConfig` of the `BackupBucket` resource. If the `locked` field is set to `true`, the retention policy will be locked, preventing the retention policy from being removed and the retention period from being reduced. However, it's still possible to increase the retention period.
 
 Here is an example of configuring a `BackupBucket` with immutability:
 
