@@ -28,6 +28,9 @@ func DecodeWorkerConfig(decoder runtime.Decoder, worker *runtime.RawExtension) (
 // DecodeControlPlaneConfig decodes the `ControlPlaneConfig` from the given `RawExtension`.
 func DecodeControlPlaneConfig(decoder runtime.Decoder, cp *runtime.RawExtension) (*gcp.ControlPlaneConfig, error) {
 	controlPlaneConfig := &gcp.ControlPlaneConfig{}
+	if cp == nil {
+		return controlPlaneConfig, nil
+	}
 	if err := util.Decode(decoder, cp.Raw, controlPlaneConfig); err != nil {
 		return nil, err
 	}

@@ -1,0 +1,7 @@
+apiVersion: {{ include "csi-driver-filestore-node.storageversion" . }}
+kind: CSIDriver
+metadata:
+  name: {{ include "csi-driver-filestore-node.provisioner" . }}
+spec:
+  attachRequired: false
+  podInfoOnMount: true

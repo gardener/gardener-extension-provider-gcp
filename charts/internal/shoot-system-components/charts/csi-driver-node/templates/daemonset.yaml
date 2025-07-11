@@ -24,7 +24,7 @@ spec:
     spec:
       hostNetwork: true
       priorityClassName: system-node-critical
-      serviceAccount: csi-driver-node
+      serviceAccountName: csi-driver-node
       tolerations:
       - effect: NoSchedule
         operator: Exists
@@ -46,7 +46,7 @@ spec:
         - --v=5
         env:
         - name: CSI_ENDPOINT
-          value: unix:{{ .Values.socketPath }}
+          value: "unix:{{ .Values.socketPath }}"
 {{- if .Values.resources.driver }}
         resources:
 {{ toYaml .Values.resources.driver | indent 10 }}

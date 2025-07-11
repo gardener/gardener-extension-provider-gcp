@@ -47,4 +47,13 @@ type Storage struct {
 	// Defaults to true.
 	// +optional
 	ManagedDefaultVolumeSnapshotClass *bool `json:"managedDefaultVolumeSnapshotClass,omitempty"`
+	// CSIFilestore contains configuration for CSI Filestore driver (support for NFS volumes)
+	// +optional
+	CSIFilestore *CSIFilestore `json:"csiFilestore,omitempty"`
+}
+
+// CSIFilestore contains configuration for CSI Filestore driver
+type CSIFilestore struct {
+	// Enabled is the switch to enable the CSI Manila driver support
+	Enabled bool `json:"enabled"`
 }
