@@ -33,12 +33,12 @@ type iamClient struct {
 
 // NewIAMClient returns a new IAM client.
 func NewIAMClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (IAMClient, error) {
-	conn, err := clientOptions(ctx, credentialsConfig, []string{iam.CloudPlatformScope})
+	opts, err := clientOptions(ctx, credentialsConfig, []string{iam.CloudPlatformScope})
 	if err != nil {
 		return nil, err
 	}
 
-	service, err := iam.NewService(ctx, conn)
+	service, err := iam.NewService(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}

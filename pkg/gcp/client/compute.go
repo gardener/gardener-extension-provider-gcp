@@ -115,12 +115,12 @@ type computeClient struct {
 // Delete operations will ignore errors when the respective resource can not be found, meaning that the Delete operations will never return HTTP 404 errors.
 // Update operations will ignore errors when the update operation is a no-op, meaning that Update operations will ignore HTTP 304 errors.
 func NewComputeClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (ComputeClient, error) {
-	conn, err := clientOptions(ctx, credentialsConfig, []string{compute.ComputeScope})
+	opts, err := clientOptions(ctx, credentialsConfig, []string{compute.ComputeScope})
 	if err != nil {
 		return nil, err
 	}
 
-	service, err := compute.NewService(ctx, conn)
+	service, err := compute.NewService(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}

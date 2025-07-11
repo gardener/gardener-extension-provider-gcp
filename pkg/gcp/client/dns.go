@@ -28,12 +28,12 @@ type dnsClient struct {
 
 // NewDNSClient returns a client for GCP's CloudDNS service.
 func NewDNSClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (DNSClient, error) {
-	conn, err := clientOptions(ctx, credentialsConfig, []string{googledns.NdevClouddnsReadwriteScope})
+	opts, err := clientOptions(ctx, credentialsConfig, []string{googledns.NdevClouddnsReadwriteScope})
 	if err != nil {
 		return nil, err
 	}
 
-	service, err := googledns.NewService(ctx, conn)
+	service, err := googledns.NewService(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}

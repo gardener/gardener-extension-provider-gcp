@@ -36,12 +36,12 @@ type storageClient struct {
 
 // NewStorageClient creates a new storage client from the given credential's configuration.
 func NewStorageClient(ctx context.Context, credentialsConfig *gcp.CredentialsConfig) (StorageClient, error) {
-	conn, err := clientOptions(ctx, credentialsConfig, []string{storage.ScopeFullControl})
+	opts, err := clientOptions(ctx, credentialsConfig, []string{storage.ScopeFullControl})
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := storage.NewClient(ctx, conn)
+	client, err := storage.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
