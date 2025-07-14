@@ -83,7 +83,7 @@ func (f factory) IAM(ctx context.Context, c client.Client, sr corev1.SecretRefer
 
 func clientOptions(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) ([]option.ClientOption, error) {
 	// Note: Incompatible with "WithHTTPClient"
-	UAOption := option.WithUserAgent("Gardener Extension for GCP provider")
+	UAOption := option.WithUserAgent("Gardener-Extension-GCP-provider")
 
 	switch {
 	case credentialsConfig.TokenRetriever != nil && credentialsConfig.Type == gcp.ExternalAccountCredentialType:
