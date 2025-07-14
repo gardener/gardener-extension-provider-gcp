@@ -81,7 +81,10 @@ func (f factory) IAM(ctx context.Context, c client.Client, sr corev1.SecretRefer
 	return NewIAMClient(ctx, credentialsConfig)
 }
 
-func clientOptions(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) (option.ClientOption, error) {
+func clientOptions(ctx context.Context, credentialsConfig *gcp.CredentialsConfig, scopes []string) ([]option.ClientOption, error) {
+	// Note: Incompatible with "WithHTTPClient"
+	UAOption := option.WithUserAgent("gardener-extension-provider-gcp")
+
 	switch {
 	case credentialsConfig.TokenRetriever != nil && credentialsConfig.Type == gcp.ExternalAccountCredentialType:
 		conf := externalaccount.Config{
@@ -98,15 +101,15 @@ func clientOptions(ctx context.Context, credentialsConfig *gcp.CredentialsConfig
 		if err != nil {
 			return nil, err
 		}
+		return []option.ClientOption{option.WithTokenSource(ts), UAOption}, nil
 
-		return option.WithTokenSource(ts), nil
 	case credentialsConfig.Type == gcp.ServiceAccountCredentialType:
 		jwt, err := google.JWTConfigFromJSON(credentialsConfig.Raw, scopes...)
 		if err != nil {
 			return nil, err
 		}
+		return []option.ClientOption{option.WithTokenSource(jwt.TokenSource(ctx)), UAOption}, nil
 
-		return option.WithTokenSource(jwt.TokenSource(ctx)), nil
 	default:
 		return nil, fmt.Errorf("unknow credential type: %s", credentialsConfig.Type)
 	}
