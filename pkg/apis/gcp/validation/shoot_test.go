@@ -105,7 +105,7 @@ var _ = Describe("Shoot validation", func() {
 					Zones: []string{"zone1"},
 				},
 			}
-			workers[0].Kubernetes = &core.WorkerKubernetes{Version: ptr.To("1.28.0")}
+			workers[0].Kubernetes = &core.WorkerKubernetes{Version: ptr.To("1.30.1")}
 
 			errorList := ValidateWorkers(workers, field.NewPath(""))
 
@@ -123,7 +123,7 @@ var _ = Describe("Shoot validation", func() {
 					Zones: []string{},
 				},
 			}
-			workers[0].Kubernetes = &core.WorkerKubernetes{Version: ptr.To("1.28.0")}
+			workers[0].Kubernetes = &core.WorkerKubernetes{Version: ptr.To("1.29.13")}
 
 			errorList := ValidateWorkers(workers, field.NewPath("workers"))
 
