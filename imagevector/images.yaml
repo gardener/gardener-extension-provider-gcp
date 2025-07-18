@@ -159,7 +159,7 @@ images:
 - name: csi-driver-filestore
   sourceRepository: github.com/kubernetes-sigs/gcp-filestore-csi-driver
   repository: registry.k8s.io/cloud-provider-gcp/gcp-filestore-csi-driver
-  tag: "v1.10.1"
+  tag: "v1.11.0"
   labels:
     - name: 'gardener.cloud/cve-categorisation'
       value:
