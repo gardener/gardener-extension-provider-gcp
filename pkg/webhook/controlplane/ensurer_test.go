@@ -23,6 +23,7 @@ import (
 	"github.com/gardener/gardener/pkg/utils/version"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/format"
 	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -51,22 +52,6 @@ var _ = Describe("Ensurer", func() {
 
 		dummyContext = gcontext.NewGardenContext(nil, nil)
 
-		eContextK8s128 = gcontext.NewInternalGardenContext(
-			&extensionscontroller.Cluster{
-				Shoot: &gardencorev1beta1.Shoot{
-					Spec: gardencorev1beta1.ShootSpec{
-						Kubernetes: gardencorev1beta1.Kubernetes{
-							Version: "1.28.2",
-						},
-					},
-					Status: gardencorev1beta1.ShootStatus{
-						Networking: &gardencorev1beta1.NetworkingStatus{
-							Services: serviceRange,
-						},
-					},
-				},
-			},
-		)
 		eContextK8s130 = gcontext.NewInternalGardenContext(
 			&extensionscontroller.Cluster{
 				Shoot: &gardencorev1beta1.Shoot{
@@ -102,6 +87,7 @@ var _ = Describe("Ensurer", func() {
 	)
 
 	BeforeEach(func() {
+		format.MaxLength = -1
 		ctrl = gomock.NewController(GinkgoT())
 		fakeClient = fakeclient.NewClientBuilder().Build()
 	})
@@ -135,11 +121,11 @@ var _ = Describe("Ensurer", func() {
 			ensurer = NewEnsurer(fakeClient, logger)
 		})
 
-		It("should add missing elements to kube-apiserver deployment (k8s >= 1.28, < 1.31)", func() {
+		It("should add missing elements to kube-apiserver deployment (k8s < 1.31)", func() {
 			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s130, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeAPIServerDeployment(dep, "1.28.2")
+			checkKubeAPIServerDeployment(dep, "1.30.1")
 		})
 
 		It("should add missing elements to kube-apiserver deployment (k8s >= 1.31)", func() {
@@ -211,11 +197,11 @@ var _ = Describe("Ensurer", func() {
 			ensurer = NewEnsurer(fakeClient, logger)
 		})
 
-		It("should add missing elements to kube-controller-manager deployment (k8s >= 1.28, < 1.31)", func() {
-			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s128, dep, nil)
+		It("should add missing elements to kube-controller-manager deployment (k8s < 1.31)", func() {
+			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s130, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeControllerManagerDeployment(dep, "1.28.2")
+			checkKubeControllerManagerDeployment(dep, "1.30.1")
 		})
 
 		It("should add missing elements to kube-controller-manager deployment (k8s >= 1.31)", func() {
@@ -292,11 +278,11 @@ var _ = Describe("Ensurer", func() {
 			ensurer = NewEnsurer(fakeClient, logger)
 		})
 
-		It("should add missing elements to kube-scheduler deployment (k8s >= 1.28, < 1.31)", func() {
-			err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s128, dep, nil)
+		It("should add missing elements to kube-scheduler deployment (k8s < 1.31)", func() {
+			err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s130, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeSchedulerDeployment(dep, "1.28.2")
+			checkKubeSchedulerDeployment(dep, "1.30.1")
 		})
 
 		It("should add missing elements to kube-scheduler deployment (k8s >= 1.31)", func() {
@@ -332,11 +318,11 @@ var _ = Describe("Ensurer", func() {
 			ensurer = NewEnsurer(fakeClient, logger)
 		})
 
-		It("should add missing elements to cluster-autoscaler deployment (k8s >= 1.28, < 1.31)", func() {
-			err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s128, dep, nil)
+		It("should add missing elements to cluster-autoscaler deployment (k8s < 1.31)", func() {
+			err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s130, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkClusterAutoscalerDeployment(dep, "1.28.2")
+			checkClusterAutoscalerDeployment(dep, "1.30.1")
 		})
 
 		It("should add missing elements to cluster-autoscaler deployment (k8s >= 1.31)", func() {
@@ -423,7 +409,7 @@ var _ = Describe("Ensurer", func() {
 				Expect(err).To(Not(HaveOccurred()))
 				Expect(&kubeletConfig).To(Equal(newKubeletConfig))
 			},
-			Entry("kubelet >= 1.28, < 1.31", eContextK8s128, semver.MustParse("1.28.2"), map[string]bool{"InTreePluginGCEUnregister": true}),
+			Entry("kubelet >= 1.30, < 1.31", eContextK8s130, semver.MustParse("1.30.1"), map[string]bool{"InTreePluginGCEUnregister": true}),
 			Entry("kubelet >= 1.31", eContextK8s131, semver.MustParse("1.31.1"), map[string]bool{}),
 		)
 	})

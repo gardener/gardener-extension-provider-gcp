@@ -172,7 +172,7 @@ var _ = Describe("ValuesProvider", func() {
 						Services: &cidr,
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
-						Version: "1.28.2",
+						Version: "1.29.13",
 					},
 				},
 			},
@@ -377,7 +377,7 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values).To(Equal(map[string]interface{}{
 				gcp.CloudControllerManagerName: enabledTrue,
 				gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-					"kubernetesVersion": "1.28.2",
+					"kubernetesVersion": "1.29.13",
 					"enabled":           true,
 				}),
 				gcp.CSIFilestoreNodeName: map[string]interface{}{
