@@ -23,7 +23,6 @@ import (
 	"github.com/gardener/gardener/pkg/utils/version"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/format"
 	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -87,7 +86,6 @@ var _ = Describe("Ensurer", func() {
 	)
 
 	BeforeEach(func() {
-		format.MaxLength = -1
 		ctrl = gomock.NewController(GinkgoT())
 		fakeClient = fakeclient.NewClientBuilder().Build()
 	})
@@ -565,10 +563,9 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, k8sVersion string) {
 	c := extensionswebhook.ContainerWithName(dep.Spec.Template.Spec.Containers, "kube-apiserver")
 	Expect(c).To(Not(BeNil()))
 
-	switch {
-	case k8sVersionAtLeast131:
+	if k8sVersionAtLeast131 {
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
-	default:
+	} else {
 		Expect(c.Command).To(ContainElement("--feature-gates=InTreePluginGCEUnregister=true"))
 	}
 
@@ -588,11 +585,10 @@ func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, k8sVersion str
 	c := extensionswebhook.ContainerWithName(dep.Spec.Template.Spec.Containers, "kube-controller-manager")
 	Expect(c).To(Not(BeNil()))
 
-	switch {
-	case k8sVersionAtLeast131:
+	if k8sVersionAtLeast131 {
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
 		Expect(c.Command).To(ContainElement("--allocate-node-cidrs=false"))
-	default:
+	} else {
 		Expect(c.Command).To(ContainElement("--feature-gates=InTreePluginGCEUnregister=true"))
 		Expect(c.Command).To(ContainElement("--allocate-node-cidrs=true"))
 	}
@@ -615,10 +611,9 @@ func checkKubeSchedulerDeployment(dep *appsv1.Deployment, k8sVersion string) {
 	c := extensionswebhook.ContainerWithName(dep.Spec.Template.Spec.Containers, "kube-scheduler")
 	Expect(c).To(Not(BeNil()))
 
-	switch {
-	case k8sVersionAtLeast131:
+	if k8sVersionAtLeast131 {
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
-	default:
+	} else {
 		Expect(c.Command).To(ContainElement("--feature-gates=InTreePluginGCEUnregister=true"))
 	}
 }
@@ -630,10 +625,9 @@ func checkClusterAutoscalerDeployment(dep *appsv1.Deployment, k8sVersion string)
 	c := extensionswebhook.ContainerWithName(dep.Spec.Template.Spec.Containers, "cluster-autoscaler")
 	Expect(c).To(Not(BeNil()))
 
-	switch {
-	case k8sVersionAtLeast131:
+	if k8sVersionAtLeast131 {
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
-	default:
+	} else {
 		Expect(c.Command).To(ContainElement("--feature-gates=InTreePluginGCEUnregister=true"))
 	}
 }
