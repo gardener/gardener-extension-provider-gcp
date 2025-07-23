@@ -5,7 +5,7 @@
 package validation
 
 import (
-	"reflect"
+	"slices"
 
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
@@ -14,16 +14,31 @@ import (
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
+var (
+	// validSubnetLogConfigIntervals contain the valid SubnetworkLogConfig AggregationIntervals
+	validSubnetLogConfigIntervals = []string{
+		"INTERVAL_5_SEC",
+		"INTERVAL_30_SEC",
+		"INTERVAL_1_MIN",
+		"INTERVAL_5_MIN",
+		"INTERVAL_10_MIN",
+		"INTERVAL_15_MIN",
+	}
+	validSubnetLogConfigMetadata = []string{
+		"CUSTOM_METADATA",
+		"EXCLUDE_ALL_METADATA",
+		"INCLUDE_ALL_METADATA",
+	}
+)
+
 // ValidateInfrastructureConfig validates a InfrastructureConfig object.
 func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	var (
-		nodes                    cidrvalidation.CIDR
-		pods                     cidrvalidation.CIDR
-		services                 cidrvalidation.CIDR
-		aggregationIntervalArray = []string{"INTERVAL_5_SEC", "INTERVAL_30_SEC", "INTERVAL_1_MIN", "INTERVAL_5_MIN", "INTERVAL_15_MIN"}
-		metadata                 = []string{"INCLUDE_ALL_METADATA"}
+		nodes    cidrvalidation.CIDR
+		pods     cidrvalidation.CIDR
+		services cidrvalidation.CIDR
 	)
 
 	networkingPath := field.NewPath("networking")
@@ -83,40 +98,49 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 	}
 
 	if infra.Networks.VPC != nil && len(infra.Networks.VPC.Name) > 0 {
+		allErrs = append(allErrs, validateGcpResourceName(infra.Networks.VPC.Name, networksPath.Child("vpc", "name"))...)
+
 		if infra.Networks.VPC.CloudRouter == nil {
 			allErrs = append(allErrs, field.Invalid(networksPath.Child("vpc", "cloudRouter"), infra.Networks.VPC.CloudRouter, "cloud router must be defined when reusing a VPC"))
 		}
 
-		if infra.Networks.VPC.CloudRouter != nil && len(infra.Networks.VPC.CloudRouter.Name) == 0 {
-			allErrs = append(allErrs, field.Invalid(networksPath.Child("vpc", "cloudRouter", "name"), infra.Networks.VPC.CloudRouter, "cloud router name must be specified when reusing a VPC"))
+		if infra.Networks.VPC.CloudRouter != nil {
+			if len(infra.Networks.VPC.CloudRouter.Name) == 0 {
+				allErrs = append(allErrs, field.Invalid(networksPath.Child("vpc", "cloudRouter", "name"), infra.Networks.VPC.CloudRouter, "cloud router name must be specified when reusing a VPC"))
+			} else {
+				allErrs = append(allErrs, validateGcpResourceName(infra.Networks.VPC.CloudRouter.Name, networksPath.Child("vpc", "cloudRouter", "name"))...)
+			}
 		}
 	}
 
 	if infra.Networks.FlowLogs != nil {
-		if infra.Networks.FlowLogs.AggregationInterval == nil && infra.Networks.FlowLogs.FlowSampling == nil && infra.Networks.FlowLogs.Metadata == nil {
-			allErrs = append(allErrs, field.Required(networksPath.Child("flowLogs"), "at least one VPC flow log parameter must be specified when VPC flow log section is provided"))
-		}
-		if infra.Networks.FlowLogs.AggregationInterval != nil {
-			validValue := findElement(aggregationIntervalArray, *infra.Networks.FlowLogs.AggregationInterval)
-			if !validValue {
-				allErrs = append(allErrs, field.NotSupported(networksPath.Child("flowLogs", "aggregationInterval"), infra.Networks.FlowLogs.AggregationInterval, aggregationIntervalArray))
-			}
-		}
-		if infra.Networks.FlowLogs.Metadata != nil {
-			validValue := findElement(metadata, *infra.Networks.FlowLogs.Metadata)
-			if !validValue {
-				allErrs = append(allErrs, field.NotSupported(networksPath.Child("flowLogs", "metadata"), infra.Networks.FlowLogs.Metadata, metadata))
-			}
-		}
-		if infra.Networks.FlowLogs.FlowSampling != nil {
-			if *infra.Networks.FlowLogs.FlowSampling < 0 || *infra.Networks.FlowLogs.FlowSampling > 1 {
-				allErrs = append(allErrs, field.Invalid(networksPath.Child("flowLogs", "flowSampling"), infra.Networks.FlowLogs.FlowSampling, "must contain a valid value"))
-			}
-		}
+		allErrs = append(allErrs, validateNetworkFlowLogs(*infra.Networks.FlowLogs, networksPath.Child("flowLogs"))...)
 	}
 
 	if infra.Networks.CloudNAT != nil {
 		allErrs = append(allErrs, ValidateCloudNatConfig(infra.Networks.CloudNAT, networksPath)...)
+	}
+
+	return allErrs
+}
+
+func validateNetworkFlowLogs(flowLogs apisgcp.FlowLogs, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if flowLogs.AggregationInterval == nil && flowLogs.FlowSampling == nil && flowLogs.Metadata == nil {
+		allErrs = append(allErrs, field.Required(fldPath, "at least one VPC flow log parameter must be specified when VPC flow log section is provided"))
+	}
+
+	if flowLogs.AggregationInterval != nil && !slices.Contains(validSubnetLogConfigIntervals, *flowLogs.AggregationInterval) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("aggregationInterval"), *flowLogs.AggregationInterval, validSubnetLogConfigIntervals))
+	}
+
+	if flowLogs.Metadata != nil && !slices.Contains(validSubnetLogConfigMetadata, *flowLogs.Metadata) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("metadata"), flowLogs.Metadata, validSubnetLogConfigMetadata))
+	}
+
+	if flowLogs.FlowSampling != nil && (*flowLogs.FlowSampling < 0 || *flowLogs.FlowSampling > 1) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("flowSampling"), flowLogs.FlowSampling, "must be between 0 and 1"))
 	}
 
 	return allErrs
@@ -130,6 +154,10 @@ func ValidateCloudNatConfig(config *apisgcp.CloudNAT, fldPath *field.Path) field
 
 	if config != nil && config.NatIPNames != nil && len(config.NatIPNames) == 0 {
 		allErrs = append(allErrs, field.Invalid(cloudNatPath.Child("natIPNames"), config.NatIPNames, "nat IP names cannot be empty."))
+	}
+
+	for idx, natIPName := range config.NatIPNames {
+		allErrs = append(allErrs, validateGcpResourceName(natIPName.Name, cloudNatPath.Child("natIPNames").Index(idx).Child("name"))...)
 	}
 
 	if config.EnableDynamicPortAllocation {
@@ -205,19 +233,4 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.Infrastruc
 	}
 
 	return allErrs
-}
-
-// FindElement takes a slice and an item and tries to find the item in the slice.
-// if item is found, true is returned.
-func findElement(slice interface{}, item interface{}) bool {
-	s := reflect.ValueOf(slice)
-	if s.Kind() != reflect.Slice {
-		panic("Invalid data type")
-	}
-	for i := 0; i < s.Len(); i++ {
-		if s.Index(i).Interface() == item {
-			return true
-		}
-	}
-	return false
 }
