@@ -1,3 +1,4 @@
+name: github.com/gardener/gardener-extension-provider-gcp
 labels:
   - name: cloud.gardener.cnudie/responsibles
     value:
