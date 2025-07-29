@@ -407,7 +407,7 @@ var _ = Describe("Ensurer", func() {
 				Expect(err).To(Not(HaveOccurred()))
 				Expect(&kubeletConfig).To(Equal(newKubeletConfig))
 			},
-			Entry("kubelet >= 1.30, < 1.31", eContextK8s130, semver.MustParse("1.30.1"), map[string]bool{"InTreePluginGCEUnregister": true}),
+			Entry("kubelet < 1.31", eContextK8s130, semver.MustParse("1.30.1"), map[string]bool{"InTreePluginGCEUnregister": true}),
 			Entry("kubelet >= 1.31", eContextK8s131, semver.MustParse("1.31.1"), map[string]bool{}),
 		)
 	})
