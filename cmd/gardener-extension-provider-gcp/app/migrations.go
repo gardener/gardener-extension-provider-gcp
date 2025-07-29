@@ -98,6 +98,7 @@ func purgeTerraformerRBACResources(ctx context.Context, c client.Client, log log
 			}
 		}
 	}
+	log.Info("Successfully deleted the obsolete RoleBindings for terraformer")
 
 	if err := c.List(ctx, roleList); err != nil {
 		return fmt.Errorf("failed to list roles: %w", err)
@@ -115,6 +116,8 @@ func purgeTerraformerRBACResources(ctx context.Context, c client.Client, log log
 			}
 		}
 	}
+	log.Info("Successfully deleted the obsolete Roles for terraformer")
+
 	if err := c.List(ctx, serviceAccountList); err != nil {
 		return fmt.Errorf("failed to list roles: %w", err)
 	}
@@ -131,7 +134,7 @@ func purgeTerraformerRBACResources(ctx context.Context, c client.Client, log log
 			}
 		}
 	}
+	log.Info("Successfully deleted the obsolete ServiceAccounts for terraformer")
 
-	log.Info("Successfully deleted the obsolete ServiceAccount, Role and RoleBinding for terraformer")
 	return nil
 }
