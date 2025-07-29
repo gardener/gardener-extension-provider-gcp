@@ -262,8 +262,15 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 				if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 					return purgeMachineControllerManagerRBACResources(ctx, mgr.GetClient(), log)
 				})); err != nil {
-					return fmt.Errorf("error adding migrations: %w", err)
+					return fmt.Errorf("error adding mcm migrations: %w", err)
 				}
+			}
+
+			// TODO (kon-angelo): Remove after the release of version 1.46.0
+			if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+				return purgeTerraformerRBACResources(ctx, mgr.GetClient(), log)
+			})); err != nil {
+				return fmt.Errorf("error adding terraformer migrations: %w", err)
 			}
 
 			if err := mgr.Start(ctx); err != nil {
