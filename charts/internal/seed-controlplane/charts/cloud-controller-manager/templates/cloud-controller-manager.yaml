@@ -54,6 +54,7 @@ spec:
         - --cluster-name={{ .Values.clusterName }}
         - --cidr-allocator-type={{ .Values.allocatorType }}
         - --concurrent-service-syncs=10
+        - --concurrent-node-syncs=10
         - --configure-cloud-routes={{ .Values.configureCloudRoutes }}
         {{- include "cloud-controller-manager.featureGates" . | trimSuffix "," | indent 8 }}
         - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
