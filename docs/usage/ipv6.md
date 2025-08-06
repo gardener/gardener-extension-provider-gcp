@@ -125,7 +125,7 @@ Once all nodes are migrated, the remaining control plane components and the Cont
 To create a dual-stack LoadBalancer the `spec.ipFamilies` and `spec.ipFamilyPolicy` field needs to be specified in the Kubernetes service.
 An example configuration is shown below:
 
-```
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
