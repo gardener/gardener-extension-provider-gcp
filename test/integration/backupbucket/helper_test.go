@@ -237,17 +237,16 @@ func verifyBucketImmutability(ctx context.Context, c client.Client, storageClien
 	objectName := bucketName + "-test-object"
 
 	defer func() {
-		By("deleting immutability policy on GCS bucket")
-
-		_, err := storageClient.Bucket(bucketName).Update(ctx, storage.BucketAttrsToUpdate{
-			RetentionPolicy: &storage.RetentionPolicy{},
-		})
-		Expect(err).NotTo(HaveOccurred(), "Failed to delete immutability policy on GCS bucket")
-
 		By("deleting immutability policy on backupBucket")
 		backupBucket = fetchBackupBucket(ctx, c, backupBucket.Name)
 		backupBucket.Spec.ProviderConfig = nil
 		updateBackupBucket(ctx, c, backupBucket)
+
+		By("deleting immutability policy on GCS bucket")
+		_, err := storageClient.Bucket(bucketName).Update(ctx, storage.BucketAttrsToUpdate{
+			RetentionPolicy: &storage.RetentionPolicy{},
+		})
+		Expect(err).NotTo(HaveOccurred(), "Failed to delete immutability policy on GCS bucket")
 
 		By("deleting test object from GCS bucket")
 		err = storageClient.Bucket(bucketName).Object(objectName).Delete(ctx)
