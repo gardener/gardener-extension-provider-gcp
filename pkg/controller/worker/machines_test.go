@@ -25,6 +25,7 @@ import (
 	"github.com/gardener/gardener/pkg/utils"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -654,6 +655,14 @@ var _ = Describe("Machines", func() {
 						machineClassPool3Zone2,
 					}}
 
+					emptyClusterAutoscalerAnnotations := map[string]string{
+						"autoscaler.gardener.cloud/max-node-provision-time":              "",
+						"autoscaler.gardener.cloud/scale-down-gpu-utilization-threshold": "",
+						"autoscaler.gardener.cloud/scale-down-unneeded-time":             "",
+						"autoscaler.gardener.cloud/scale-down-unready-time":              "",
+						"autoscaler.gardener.cloud/scale-down-utilization-threshold":     "",
+					}
+
 					labelsZone1 := utils.MergeStringMaps(poolLabels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone1})
 					labelsZone2 := utils.MergeStringMaps(poolLabels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone2})
 					machineDeployments = worker.MachineDeployments{
@@ -673,8 +682,9 @@ var _ = Describe("Machines", func() {
 									},
 								},
 							},
-							Labels:               labelsZone1,
-							MachineConfiguration: machineConfiguration,
+							Labels:                       labelsZone1,
+							MachineConfiguration:         machineConfiguration,
+							ClusterAutoscalerAnnotations: emptyClusterAutoscalerAnnotations,
 						},
 						{
 							Name:       machineClassNamePool1Zone2,
@@ -692,8 +702,9 @@ var _ = Describe("Machines", func() {
 									},
 								},
 							},
-							Labels:               labelsZone2,
-							MachineConfiguration: machineConfiguration,
+							Labels:                       labelsZone2,
+							MachineConfiguration:         machineConfiguration,
+							ClusterAutoscalerAnnotations: emptyClusterAutoscalerAnnotations,
 						},
 						{
 							Name:       machineClassNamePool2Zone1,
@@ -712,8 +723,9 @@ var _ = Describe("Machines", func() {
 									},
 								},
 							},
-							Labels:               labelsZone1,
-							MachineConfiguration: machineConfiguration,
+							Labels:                       labelsZone1,
+							MachineConfiguration:         machineConfiguration,
+							ClusterAutoscalerAnnotations: emptyClusterAutoscalerAnnotations,
 						},
 						{
 							Name:       machineClassNamePool2Zone2,
@@ -732,8 +744,9 @@ var _ = Describe("Machines", func() {
 									},
 								},
 							},
-							Labels:               labelsZone2,
-							MachineConfiguration: machineConfiguration,
+							Labels:                       labelsZone2,
+							MachineConfiguration:         machineConfiguration,
+							ClusterAutoscalerAnnotations: emptyClusterAutoscalerAnnotations,
 						},
 						{
 							Name:       machineClassNamePool3Zone1,
@@ -752,8 +765,9 @@ var _ = Describe("Machines", func() {
 									OrchestrationType: machinev1alpha1.OrchestrationTypeAuto,
 								},
 							},
-							Labels:               labelsZone1,
-							MachineConfiguration: machineConfiguration,
+							Labels:                       labelsZone1,
+							MachineConfiguration:         machineConfiguration,
+							ClusterAutoscalerAnnotations: emptyClusterAutoscalerAnnotations,
 						},
 						{
 							Name:       machineClassNamePool3Zone2,
@@ -772,8 +786,9 @@ var _ = Describe("Machines", func() {
 									OrchestrationType: machinev1alpha1.OrchestrationTypeAuto,
 								},
 							},
-							Labels:               labelsZone2,
-							MachineConfiguration: machineConfiguration,
+							Labels:                       labelsZone2,
+							MachineConfiguration:         machineConfiguration,
+							ClusterAutoscalerAnnotations: emptyClusterAutoscalerAnnotations,
 						},
 					}
 				}
@@ -849,7 +864,7 @@ var _ = Describe("Machines", func() {
 					// Test WorkerDelegate.GenerateMachineDeployments()
 					result, err := workerDelegateCloudRouter.GenerateMachineDeployments(ctx)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(result).To(Equal(machineDeployments))
+					Expect(result).To(Equal(machineDeployments), "diff: %s", cmp.Diff(machineDeployments, result))
 				})
 			})
 
@@ -1048,8 +1063,13 @@ var _ = Describe("Machines", func() {
 
 				Expect(result[0].ClusterAutoscalerAnnotations).NotTo(BeNil())
 				Expect(result[1].ClusterAutoscalerAnnotations).NotTo(BeNil())
-				Expect(result[2].ClusterAutoscalerAnnotations).To(BeNil())
-				Expect(result[3].ClusterAutoscalerAnnotations).To(BeNil())
+
+				for k, v := range result[2].ClusterAutoscalerAnnotations {
+					Expect(v).To(BeEmpty(), "entry for key %v is not empty", k)
+				}
+				for k, v := range result[3].ClusterAutoscalerAnnotations {
+					Expect(v).To(BeEmpty(), "entry for key %v is not empty", k)
+				}
 
 				Expect(result[0].ClusterAutoscalerAnnotations[extensionsv1alpha1.MaxNodeProvisionTimeAnnotation]).To(Equal("1m0s"))
 				Expect(result[0].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownGpuUtilizationThresholdAnnotation]).To(Equal("0.4"))
