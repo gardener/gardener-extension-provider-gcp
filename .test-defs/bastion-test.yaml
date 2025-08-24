@@ -15,7 +15,7 @@ spec:
     --service-account="${SERVICEACCOUNT_JSON}"
     --region=$REGION
 
-  image: golang:1.24
+  image: golang:1.25
   resources:
     requests:
       memory: "1Gi"
