@@ -9,8 +9,6 @@ import (
 	"slices"
 
 	"github.com/gardener/gardener/extensions/pkg/webhook/cloudprovider"
-	"github.com/gardener/gardener/pkg/client/kubernetes"
-	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -18,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/webhook/cloudprovider"
 )
 
@@ -34,16 +31,10 @@ var _ = Describe("Ensurer", func() {
 		expectedCredentialsConfig []byte
 
 		ctrl *gomock.Controller
-		mgr  *mockmanager.MockManager
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-		mgr = mockmanager.NewMockManager(ctrl)
-
-		scheme := kubernetes.SeedScheme
-		Expect(install.AddToScheme(scheme)).To(Succeed())
-		mgr.EXPECT().GetScheme().Return(scheme)
 
 		secret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -66,13 +57,13 @@ credentialsConfig:
   service_account_impersonation_url: "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/SERVICE_ACCOUNT_EMAIL:generateAccessToken"
   credential_source:
     file: "/abc/cloudprovider/xyz"
-    abc: 
+    abc:
       foo: "text"
 `),
 			},
 		}
 
-		ensurer = NewEnsurer(mgr, logger)
+		ensurer = NewEnsurer(logger)
 
 		expectedCredentialsConfig = []byte(`{"audience":"//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider","credential_source":{"file":"/var/run/secrets/gardener.cloud/workload-identity/token","format":{"type":"text"}},"service_account_impersonation_url":"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/SERVICE_ACCOUNT_EMAIL:generateAccessToken","subject_token_type":"urn:ietf:params:oauth:token-type:jwt","token_url":"https://sts.googleapis.com/v1/token","type":"external_account","universe_domain":"googleapis.com"}`)
 	})
@@ -102,7 +93,7 @@ credentialsConfig:
 			err := ensurer.EnsureCloudProviderSecret(ctx, nil, secret, nil)
 			Expect(err).To(HaveOccurred())
 
-			Expect(err).To(MatchError("cloudprovider secret is missing a 'config' data key"))
+			Expect(err).To(MatchError(ContainSubstring("failed to set WorkloadIdentity features in the cloudprovider secret")))
 		})
 
 		It("should error if cloudprovider secret does not contain a valid providerConfig", func() {

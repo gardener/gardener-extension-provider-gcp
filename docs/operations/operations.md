@@ -114,12 +114,12 @@ spec:
       namespace: garden
   ...
 ```
+
 An example of the referenced secret containing the credentials for the GCP Cloud storage can be found in the [example folder](../../example/30-etcd-backup-secret.yaml).
 
 #### Permissions for GCP Cloud Storage
 
-Please make sure the service account associated with the provided credentials has the following IAM roles.
-- [Storage Admin](https://cloud.google.com/storage/docs/access-control/iam-roles)
+Please make sure the service account associated with the provided credentials has the IAM role [Storage Admin](https://cloud.google.com/storage/docs/access-control/iam-roles).
 
 ### Rolling Update Triggers
 
@@ -137,3 +137,78 @@ If the feature gate _is_ enabled, it's the same with a few additions:
 We exclude `.spec.provider.workers[].dataVolumes[].encrypted` from the hash calculation because GCP disks are encrypted by default,
 and the field does not influence disk encryption behavior.
 Everything related to disk encryption is handled by the providerConfig.
+
+## BackupBucket
+
+Gardener manages `etcd` backups for Shoot clusters using provider-specific backup storage solutions.
+On GCP, this storage is implemented through [Google Cloud Storage (GCS) buckets](https://cloud.google.com/storage/docs/buckets#buckets), which store snapshots of the cluster’s `etcd` data.
+
+The `BackupBucket` resource abstracts the backup infrastructure, enabling Gardener and its extension controllers to manage it seamlessly.
+This abstraction allows Gardener to create, delete, and maintain backup buckets across various cloud providers in a standardized manner.
+
+The `BackupBucket` resource includes a `spec` field, which defines the configuration details for the backup bucket.
+These details include:
+
+- The region where the bucket should be created.
+- A reference to the secret containing credentials for accessing the cloud provider.
+- A `providerConfig` field for provider-specific configurations.
+
+### BackupBucketConfig
+
+The `BackupBucketConfig` represents the configuration for a backup bucket.
+It includes an optional immutability configuration that enforces retention policies on the backup bucket.
+
+The Gardener extension provider for GCP supports creating and managing immutable backup buckets by leveraging the [bucket lock](https://cloud.google.com/storage/docs/bucket-lock) feature.
+Immutability ensures that once data is written to the bucket, it cannot be modified or deleted for a specified period.
+This feature is crucial for protecting backups from accidental or malicious deletion, ensuring data safety and availability for restoration.
+
+Here is an example configuration for `BackupBucketConfig`:
+
+```yaml
+apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+kind: BackupBucketConfig
+immutability:
+  retentionType: bucket
+  retentionPeriod: "24h"
+  locked: false
+```
+
+- **`retentionType`**: Specifies the type of retention policy.
+  The allowed value is `bucket`, which applies the retention policy to the entire bucket.
+  For more details, refer to the [documentation](https://cloud.google.com/storage/docs/bucket-lock).
+- **`retentionPeriod`**: Defines the duration for which objects in the bucket will remain immutable.
+  The value should follow GCP-supported formats, such as `"24h"` for 24 hours.
+  Refer to [retention period formats](https://cloud.google.com/storage/docs/bucket-lock#retention-periods) for more information.
+  The minimum retention period is **24 hours**.
+- **`locked`**: A boolean indicating whether the retention policy is locked.
+  Once locked, the policy cannot be removed or shortened, ensuring immutability.
+  Learn more about locking policies [here](https://cloud.google.com/storage/docs/bucket-lock#policy-locks).
+
+To configure a `BackupBucket` with immutability, include the `BackupBucketConfig` in the `providerConfig` of the `BackupBucket` resource.
+If the `locked` field is set to `true`, the retention policy will be locked, preventing the retention policy from being removed and the retention period from being reduced.
+However, it's still possible to increase the retention period.
+
+Here is an example of configuring a `BackupBucket` with immutability:
+
+```yaml
+apiVersion: core.gardener.cloud/v1beta1
+kind: BackupBucket
+metadata:
+  name: my-backup-bucket
+spec:
+  provider:
+    type: gcp
+    region: europe-west1
+  credentialsRef:
+    apiVersion: v1
+    kind: Secret
+    name: my-gcp-secret
+    namespace: my-namespace
+  providerConfig:
+    apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+    kind: BackupBucketConfig
+    immutability:
+      retentionType: bucket
+      retentionPeriod: 24h
+      locked: true
+```

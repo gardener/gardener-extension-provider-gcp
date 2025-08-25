@@ -33,7 +33,6 @@ type credConfig struct {
 
 type credentialSource struct {
 	File   string            `json:"file"`
-	URL    string            `json:"url"`
 	Format credentialsFormat `json:"format"`
 }
 
@@ -105,9 +104,17 @@ func getCredentialsConfigFromSecret(secret *corev1.Secret) (*CredentialsConfig, 
 			return nil, fmt.Errorf("could not get credentials config from %q field: %w", ServiceAccountJSONField, err)
 		}
 		if credentialsConfig.ProjectID == "" {
-			credentialsConfig.ProjectID = string(secret.Data["projectID"])
+			credentialsConfig.ProjectID = string(secret.Data[ProjectIDField])
 		}
 		return credentialsConfig, nil
+	}
+
+	// Secrets other than shoot's cloudprovider does not have the `credentialsConfig` field set.
+	// Let's try to set it from the `config` key.
+	if _, ok := secret.Data[CredentialsConfigField]; !ok {
+		if err := SetWorkloadIdentityFeatures(secret.Data, WorkloadIdentityMountPath); err != nil {
+			return nil, fmt.Errorf("could not set workload identity features: %w", err)
+		}
 	}
 
 	if data, ok := secret.Data[CredentialsConfigField]; ok {
@@ -116,7 +123,7 @@ func getCredentialsConfigFromSecret(secret *corev1.Secret) (*CredentialsConfig, 
 			return nil, fmt.Errorf("could not get credentials config from %q field: %w", CredentialsConfigField, err)
 		}
 		if credentialsConfig.ProjectID == "" {
-			credentialsConfig.ProjectID = string(secret.Data["projectID"])
+			credentialsConfig.ProjectID = string(secret.Data[ProjectIDField])
 		}
 		return credentialsConfig, nil
 	}

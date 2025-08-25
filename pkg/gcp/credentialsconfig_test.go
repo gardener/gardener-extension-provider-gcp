@@ -105,6 +105,38 @@ var _ = Describe("Service Account", func() {
 				ServiceAccountImpersonationURL: "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/SERVICE_ACCOUNT_EMAIL:generateAccessToken",
 			}))
 		})
+
+		It("should fall back and read the credentials config from the config field", func() {
+			config := []byte(`apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+kind: WorkloadIdentityConfig
+projectID: test-proj
+credentialsConfig:
+  universe_domain: "googleapis.com"
+  type: "external_account"
+  audience: "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
+  subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
+  token_url: "https://sts.googleapis.com/v1/token"
+  service_account_impersonation_url: "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/SERVICE_ACCOUNT_EMAIL:generateAccessToken"
+`)
+			secret := &corev1.Secret{Data: map[string][]byte{
+				"config": config,
+			}}
+			expectedRawData := []byte(`{"audience":"//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider","credential_source":{"file":"/var/run/secrets/gardener.cloud/workload-identity/token","format":{"type":"text"}},"service_account_impersonation_url":"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/SERVICE_ACCOUNT_EMAIL:generateAccessToken","subject_token_type":"urn:ietf:params:oauth:token-type:jwt","token_url":"https://sts.googleapis.com/v1/token","type":"external_account","universe_domain":"googleapis.com"}`)
+
+			actual, err := getCredentialsConfigFromSecret(secret)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual).To(Equal(&CredentialsConfig{
+				Raw:                            expectedRawData,
+				Type:                           "external_account",
+				TokenFilePath:                  "/var/run/secrets/gardener.cloud/workload-identity/token",
+				Audience:                       "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
+				UniverseDomain:                 "googleapis.com",
+				SubjectTokenType:               "urn:ietf:params:oauth:token-type:jwt",
+				TokenURL:                       "https://sts.googleapis.com/v1/token",
+				ServiceAccountImpersonationURL: "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/SERVICE_ACCOUNT_EMAIL:generateAccessToken",
+				ProjectID:                      "test-proj",
+			}))
+		})
 	})
 
 	Describe("#GetCredentialsConfigData", func() {
