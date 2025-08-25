@@ -13,13 +13,12 @@ import (
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 // NewEnsurer creates cloudprovider ensurer.
-func NewEnsurer(mgr manager.Manager, logger logr.Logger) cloudprovider.Ensurer {
+func NewEnsurer(logger logr.Logger) cloudprovider.Ensurer {
 	return &ensurer{logger: logger}
 }
 
