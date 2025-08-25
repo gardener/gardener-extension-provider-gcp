@@ -102,7 +102,7 @@ credentialsConfig:
 			err := ensurer.EnsureCloudProviderSecret(ctx, nil, secret, nil)
 			Expect(err).To(HaveOccurred())
 
-			Expect(err).To(MatchError("cloudprovider secret is missing a 'config' data key"))
+			Expect(err).To(MatchError(ContainSubstring("failed to set WorkloadIdentity features in the cloudprovider secret")))
 		})
 
 		It("should error if cloudprovider secret does not contain a valid providerConfig", func() {
