@@ -62,6 +62,6 @@ func SetWorkloadIdentityFeatures(data map[string][]byte, tokenMountDir string) e
 	}
 
 	data[CredentialsConfigField] = newConfig
-	data["projectID"] = []byte(workloadIdentityConfig.ProjectID)
+	data[ProjectIDField] = []byte(workloadIdentityConfig.ProjectID)
 	return nil
 }

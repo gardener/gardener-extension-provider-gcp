@@ -104,7 +104,7 @@ func getCredentialsConfigFromSecret(secret *corev1.Secret) (*CredentialsConfig, 
 			return nil, fmt.Errorf("could not get credentials config from %q field: %w", ServiceAccountJSONField, err)
 		}
 		if credentialsConfig.ProjectID == "" {
-			credentialsConfig.ProjectID = string(secret.Data["projectID"])
+			credentialsConfig.ProjectID = string(secret.Data[ProjectIDField])
 		}
 		return credentialsConfig, nil
 	}
@@ -123,7 +123,7 @@ func getCredentialsConfigFromSecret(secret *corev1.Secret) (*CredentialsConfig, 
 			return nil, fmt.Errorf("could not get credentials config from %q field: %w", CredentialsConfigField, err)
 		}
 		if credentialsConfig.ProjectID == "" {
-			credentialsConfig.ProjectID = string(secret.Data["projectID"])
+			credentialsConfig.ProjectID = string(secret.Data[ProjectIDField])
 		}
 		return credentialsConfig, nil
 	}

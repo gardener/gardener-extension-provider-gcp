@@ -45,6 +45,8 @@ const (
 	ServiceAccountJSONField = "serviceaccount.json"
 	// CredentialsConfigField is the field in a secret where the credentials config JSON is stored at.
 	CredentialsConfigField = "credentialsConfig"
+	// ProjectIDField is the field in a secret where the project ID is stored at.
+	ProjectIDField = "projectID"
 
 	// ServiceAccountCredentialType is the type of the credentials contained in the serviceaccount.json file.
 	ServiceAccountCredentialType = "service_account"
