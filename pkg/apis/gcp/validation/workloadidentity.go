@@ -88,7 +88,7 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 		}
 
 		if !slices.Contains(allowedTokenURLs, rawTokenURL) {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be one of the allowed URLs: "+strings.Join(allowedTokenURLs, ", ")))
+			allErrs = append(allErrs, field.NotSupported(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], allowedTokenURLs))
 		}
 
 		tokenURL, err := url.Parse(rawTokenURL)

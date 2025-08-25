@@ -5,9 +5,10 @@
 package gcp_test
 
 import (
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 var _ = Describe("WorkloadIdentity", func() {

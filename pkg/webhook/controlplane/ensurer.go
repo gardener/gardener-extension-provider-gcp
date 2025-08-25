@@ -54,7 +54,8 @@ var ImageVector = imagevector.ImageVector()
 func (e *ensurer) EnsureMachineControllerManagerDeployment(
 	ctx context.Context,
 	gctx gcontext.GardenContext,
-	newDeployment, _ *appsv1.Deployment) error {
+	newDeployment, _ *appsv1.Deployment,
+) error {
 	image, err := ImageVector.FindImage(gcp.MachineControllerManagerProviderGCPImageName)
 	if err != nil {
 		return err
