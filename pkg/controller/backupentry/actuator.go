@@ -13,11 +13,15 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/util"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
@@ -25,13 +29,18 @@ type actuator struct {
 	client client.Client
 }
 
+var _ genericactuator.BackupEntryDelegate = (*actuator)(nil)
+
 func newActuator(mgr manager.Manager) genericactuator.BackupEntryDelegate {
 	return &actuator{
 		client: mgr.GetClient(),
 	}
 }
 
-func (a *actuator) GetETCDSecretData(_ context.Context, _ logr.Logger, _ *extensionsv1alpha1.BackupEntry, backupSecretData map[string][]byte) (map[string][]byte, error) {
+func (a *actuator) GetETCDSecretData(ctx context.Context, _ logr.Logger, be *extensionsv1alpha1.BackupEntry, backupSecretData map[string][]byte) (map[string][]byte, error) {
+	if err := a.injectWorkloadIdentityData(ctx, be, backupSecretData); err != nil {
+		return nil, err
+	}
 	return backupSecretData, nil
 }
 
@@ -42,4 +51,39 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, be *extensionsv1al
 	}
 	entryName := strings.TrimPrefix(be.Name, v1beta1constants.BackupSourcePrefix+"-")
 	return util.DetermineError(storageClient.DeleteObjectsWithPrefix(ctx, be.Spec.BucketName, fmt.Sprintf("%s/", entryName)), helper.KnownCodes)
+}
+
+func (a *actuator) injectWorkloadIdentityData(ctx context.Context, be *extensionsv1alpha1.BackupEntry, data map[string][]byte) error {
+	backupEntrySecret := &corev1.Secret{}
+	if err := a.client.Get(ctx, kutil.ObjectKeyFromSecretRef(be.Spec.SecretRef), backupEntrySecret); err != nil {
+		return err
+	}
+
+	if backupEntrySecret.Labels == nil {
+		return nil
+	}
+
+	if backupEntrySecret.Labels[securityv1alpha1constants.LabelPurpose] != securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+		return nil
+	}
+
+	if backupEntrySecret.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] != gcp.Type {
+		return nil
+	}
+
+	backupEntrySecretConfig := map[string][]byte{securityv1alpha1constants.DataKeyConfig: backupEntrySecret.Data[securityv1alpha1constants.DataKeyConfig]}
+	if err := gcp.SetWorkloadIdentityFeatures(backupEntrySecretConfig, "/var/.gcp"); err != nil {
+		return err
+	}
+
+	data[gcp.ProjectIDField] = backupEntrySecretConfig[gcp.ProjectIDField]
+	data[gcp.CredentialsConfigField] = backupEntrySecretConfig[gcp.CredentialsConfigField]
+
+	// Etcd druid always sets configuration environment variable to point to `serviceaccount.json` file and then etcd-backup-restore must use it,
+	// therefore it cannot make use of the `credentialsConfig` file.
+	// Instead, let's ensure that `serviceaccount.json` file exist and it has the content of the `credentialsConfig` here.
+	// ref: https://github.com/gardener/etcd-druid/blob/afa2483c78867b29a7c0b44d73aa6c976d0c0773/internal/controller/etcdcopybackupstask/reconciler.go#L525-L526
+	data[gcp.ServiceAccountJSONField] = data[gcp.CredentialsConfigField]
+
+	return nil
 }
