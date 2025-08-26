@@ -1,0 +1,35 @@
+apiVersion: operator.gardener.cloud/v1alpha1
+kind: Extension
+metadata:
+  name: provider-gcp
+spec:
+  deployment:
+    admission:
+      runtimeCluster:
+        helm:
+          ociRepository:
+            ref: europe-docker.pkg.dev/gardener-project/public/charts/gardener/extensions/admission-gcp-runtime:v1.46.0-dev
+      virtualCluster:
+        helm:
+          ociRepository:
+            ref: europe-docker.pkg.dev/gardener-project/public/charts/gardener/extensions/admission-gcp-application:v1.46.0-dev
+    extension:
+      helm:
+        ociRepository:
+          ref: europe-docker.pkg.dev/gardener-project/public/charts/gardener/extensions/provider-gcp:v1.46.0-dev
+      injectGardenKubeconfig: true
+  resources:
+  - kind: BackupBucket
+    type: gcp
+  - kind: BackupEntry
+    type: gcp
+  - kind: Bastion
+    type: gcp
+  - kind: ControlPlane
+    type: gcp
+  - kind: DNSRecord
+    type: gcp
+  - kind: Infrastructure
+    type: gcp
+  - kind: Worker
+    type: gcp
