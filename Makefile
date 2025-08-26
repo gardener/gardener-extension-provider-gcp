@@ -51,7 +51,9 @@ include $(GARDENER_HACK_DIR)/tools.mk
 
 .PHONY: start
 start:
-	@LEADER_ELECTION_NAMESPACE=$(EXTENSION_NAMESPACE) go run \
+	@LEADER_ELECTION_NAMESPACE=$(EXTENSION_NAMESPACE) \
+		GARDENER_SHOOT_CLIENT="external" \
+		go run \
 		-ldflags $(LD_FLAGS) \
 		./cmd/$(EXTENSION_PREFIX)-$(NAME) \
 		--config-file=./example/00-componentconfig.yaml \
