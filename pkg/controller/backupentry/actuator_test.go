@@ -129,6 +129,16 @@ credentialsConfig:
 
 			data := map[string][]byte{}
 			injectedData, err := actuator.GetETCDSecretData(ctx, log, backupEntry, data)
+			Expect(err).To(MatchError(ContainSubstring("backupEntrySecret secret \"shoot--foo--bar/secret-1\" is missing a 'config' data key")))
+			Expect(injectedData).To(BeNil())
+		})
+
+		It("should fail to inject any data because secret has invalid data field 'config'", func() {
+			secret.Data["config"] = []byte("invalid-config")
+			Expect(fakeClient.Update(ctx, secret)).To(Succeed())
+
+			data := map[string][]byte{}
+			injectedData, err := actuator.GetETCDSecretData(ctx, log, backupEntry, data)
 			Expect(err).To(MatchError(ContainSubstring("could not decode 'config' as WorkloadIdentityConfig")))
 			Expect(injectedData).To(BeNil())
 		})

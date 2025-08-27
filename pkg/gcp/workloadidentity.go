@@ -11,6 +11,7 @@ import (
 	"maps"
 
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 )
@@ -64,4 +65,22 @@ func SetWorkloadIdentityFeatures(data map[string][]byte, tokenMountDir string) e
 	data[CredentialsConfigField] = newConfig
 	data[ProjectIDField] = []byte(workloadIdentityConfig.ProjectID)
 	return nil
+}
+
+// IsWorkloadIdentitySecret checks if the secret has the required features to be
+// classified as secret bearing GCP workload identity tokens.
+func IsWorkloadIdentitySecret(secret *corev1.Secret) bool {
+	if secret.Labels == nil {
+		return false
+	}
+
+	if secret.Labels[securityv1alpha1constants.LabelPurpose] != securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+		return false
+	}
+
+	if secret.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] != Type {
+		return false
+	}
+
+	return true
 }

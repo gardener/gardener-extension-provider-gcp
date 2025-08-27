@@ -78,7 +78,7 @@ func (e *ensurer) EnsureMachineControllerManagerDeployment(
 
 	const volumeName = "workload-identity"
 	container := machinecontrollermanager.ProviderSidecarContainer(cluster.Shoot, newDeployment.Namespace, gcp.Name, image.String())
-	if cloudProviderSecret.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+	if gcp.IsWorkloadIdentitySecret(cloudProviderSecret) {
 		container.VolumeMounts = extensionswebhook.EnsureVolumeMountWithName(container.VolumeMounts, corev1.VolumeMount{
 			Name:      volumeName,
 			MountPath: gcp.WorkloadIdentityMountPath,

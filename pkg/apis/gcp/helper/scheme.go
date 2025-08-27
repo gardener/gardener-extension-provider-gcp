@@ -5,6 +5,7 @@
 package helper
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -46,7 +47,7 @@ func InfrastructureConfigFromInfrastructure(infra *extensionsv1alpha1.Infrastruc
 		}
 		return config, nil
 	}
-	return nil, fmt.Errorf("provider config is not set on the infrastructure resource")
+	return nil, errors.New("provider config is not set on the infrastructure resource")
 }
 
 // InfrastructureStatusFromRaw extracts the InfrastructureStatus from the
@@ -59,7 +60,7 @@ func InfrastructureStatusFromRaw(raw *runtime.RawExtension) (*api.Infrastructure
 		}
 		return status, nil
 	}
-	return nil, fmt.Errorf("provider status is not set on the infrastructure resource")
+	return nil, errors.New("provider status is not set on the infrastructure resource")
 }
 
 // CloudProfileConfigFromCluster decodes the provider specific cloud profile configuration for a cluster
@@ -81,7 +82,7 @@ func CloudProfileConfigFromCluster(cluster *controller.Cluster) (*api.CloudProfi
 // WorkloadIdentityConfigFromBytes extracts WorkloadIdentityConfig from the provided byte array.
 func WorkloadIdentityConfigFromBytes(config []byte) (*api.WorkloadIdentityConfig, error) {
 	if len(config) == 0 {
-		return nil, fmt.Errorf("cannot parse WorkloadIdentityConfig from empty config")
+		return nil, errors.New("cannot parse WorkloadIdentityConfig from empty config")
 	}
 	workloadIdentityConfig := &api.WorkloadIdentityConfig{}
 	if _, _, err := decoder.Decode(config, nil, workloadIdentityConfig); err != nil {

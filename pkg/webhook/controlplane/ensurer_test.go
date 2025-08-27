@@ -495,7 +495,8 @@ var _ = Describe("Ensurer", func() {
 
 		It("should inject the sidecar container with workload identity mount", func() {
 			secret.Labels = map[string]string{
-				"security.gardener.cloud/purpose": "workload-identity-token-requestor",
+				"security.gardener.cloud/purpose":                   "workload-identity-token-requestor",
+				"workloadidentity.security.gardener.cloud/provider": "gcp",
 			}
 			Expect(fakeClient.Create(ctx, secret)).To(Succeed())
 			Expect(deployment.Spec.Template.Spec.Containers).To(BeEmpty())

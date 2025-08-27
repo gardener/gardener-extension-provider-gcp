@@ -59,16 +59,12 @@ func (a *actuator) injectWorkloadIdentityData(ctx context.Context, be *extension
 		return err
 	}
 
-	if backupEntrySecret.Labels == nil {
+	if !gcp.IsWorkloadIdentitySecret(backupEntrySecret) {
 		return nil
 	}
 
-	if backupEntrySecret.Labels[securityv1alpha1constants.LabelPurpose] != securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
-		return nil
-	}
-
-	if backupEntrySecret.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] != gcp.Type {
-		return nil
+	if _, ok := backupEntrySecret.Data[securityv1alpha1constants.DataKeyConfig]; !ok {
+		return fmt.Errorf("backupEntrySecret secret %q is missing a 'config' data key", kutil.ObjectKeyFromSecretRef(be.Spec.SecretRef))
 	}
 
 	backupEntrySecretConfig := map[string][]byte{securityv1alpha1constants.DataKeyConfig: backupEntrySecret.Data[securityv1alpha1constants.DataKeyConfig]}
@@ -79,8 +75,8 @@ func (a *actuator) injectWorkloadIdentityData(ctx context.Context, be *extension
 	data[gcp.ProjectIDField] = backupEntrySecretConfig[gcp.ProjectIDField]
 	data[gcp.CredentialsConfigField] = backupEntrySecretConfig[gcp.CredentialsConfigField]
 
-	// Etcd druid always sets configuration environment variable to point to `serviceaccount.json` file and then etcd-backup-restore must use it,
-	// therefore it cannot make use of the `credentialsConfig` file.
+	// Etcd druid always sets the configuration environment variable `(SOURCE_)GOOGLE_APPLICATION_CREDENTIALS` to point to
+	// `serviceaccount.json` file and then etcd-backup-restore must use it, therefore it cannot make use of the `credentialsConfig` file.
 	// Instead, let's ensure that `serviceaccount.json` file exist and it has the content of the `credentialsConfig` here.
 	// ref: https://github.com/gardener/etcd-druid/blob/afa2483c78867b29a7c0b44d73aa6c976d0c0773/internal/controller/etcdcopybackupstask/reconciler.go#L525-L526
 	data[gcp.ServiceAccountJSONField] = data[gcp.CredentialsConfigField]
