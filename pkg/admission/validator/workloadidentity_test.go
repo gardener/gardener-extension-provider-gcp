@@ -121,7 +121,7 @@ credentialsConfig:
 `)
 			err := workloadIdentityValidator.Validate(ctx, newWorkloadIdentity, workloadIdentity)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(`validation of target system's configuration failed: spec.targetSystem.providerConfig.credentialsConfig.token_url: Unsupported value: "https://sts.googleapis.com/v1/token-forbidden": supported values: "https://sts.googleapis.com/v1/token", "https://sts.googleapis.com/v1/token/new"`))
+			Expect(err.Error()).To(Equal(`validation of target system's configuration failed: spec.targetSystem.providerConfig.credentialsConfig.token_url: Forbidden: allowed values are ["https://sts.googleapis.com/v1/token" "https://sts.googleapis.com/v1/token/new"]`))
 		})
 
 		It("should not allow changing forbidden service_account_impersonation_url", func() {
