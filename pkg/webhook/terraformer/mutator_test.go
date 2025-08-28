@@ -51,7 +51,8 @@ var _ = Describe("Mutator", func() {
 				Name:      "cloudprovider",
 				Namespace: "foo",
 				Labels: map[string]string{
-					"security.gardener.cloud/purpose": "workload-identity-token-requestor",
+					"security.gardener.cloud/purpose":                   "workload-identity-token-requestor",
+					"workloadidentity.security.gardener.cloud/provider": "gcp",
 				},
 			},
 		}

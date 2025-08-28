@@ -25,10 +25,11 @@ import (
 )
 
 type actuator struct {
-	backupbucket.Actuator
 	client           client.Client
 	gcpClientFactory gcpclient.Factory
 }
+
+var _ backupbucket.Actuator = (*actuator)(nil)
 
 // NewActuator creates a new Actuator that manages BackupBucket resources.
 func NewActuator(mgr manager.Manager, gcpClientFactory gcpclient.Factory) backupbucket.Actuator {
@@ -174,6 +175,7 @@ func updateBucket(ctx context.Context, storageClient gcpclient.StorageClient, bu
 	logger.Info("Bucket updated successfully", "name", bucketName)
 	return attrs, nil
 }
+
 func lockBucket(ctx context.Context, storageClient gcpclient.StorageClient, bucketName string, logger logr.Logger) error {
 	logger.Info("Locking bucket", "name", bucketName)
 	if err := storageClient.LockBucket(ctx, bucketName); err != nil {

@@ -33,8 +33,7 @@ type Factory interface {
 	IAM(context.Context, client.Client, corev1.SecretReference) (IAMClient, error)
 }
 
-type factory struct {
-}
+type factory struct{}
 
 // New returns a new instance of Factory.
 func New() Factory {
@@ -111,6 +110,6 @@ func clientOptions(ctx context.Context, credentialsConfig *gcp.CredentialsConfig
 		return []option.ClientOption{option.WithTokenSource(jwt.TokenSource(ctx)), UAOption}, nil
 
 	default:
-		return nil, fmt.Errorf("unknow credential type: %s", credentialsConfig.Type)
+		return nil, fmt.Errorf("unknown credential type: %s", credentialsConfig.Type)
 	}
 }

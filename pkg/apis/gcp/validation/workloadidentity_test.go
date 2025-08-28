@@ -99,10 +99,9 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 				"Detail":   Equal("should start with https://"),
 			},
 			Fields{
-				"Type":     Equal(field.ErrorTypeInvalid),
-				"Field":    Equal("providerConfig.credentialsConfig.token_url"),
-				"BadValue": Equal("http://insecure"),
-				"Detail":   Equal("should be one of the allowed URLs: https://foo.bar.real.api/token"),
+				"Type":   Equal(field.ErrorTypeForbidden),
+				"Field":  Equal("providerConfig.credentialsConfig.token_url"),
+				"Detail": Equal("allowed values are [\"https://foo.bar.real.api/token\"]"),
 			},
 			Fields{
 				"Type":     Equal(field.ErrorTypeInvalid),

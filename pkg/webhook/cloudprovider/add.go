@@ -25,6 +25,6 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	logger.Info("adding webhook to manager")
 	return cloudprovider.New(mgr, cloudprovider.Args{
 		Provider: gcp.Type,
-		Mutator:  cloudprovider.NewMutator(mgr, logger, NewEnsurer(mgr, logger)),
+		Mutator:  cloudprovider.NewMutator(mgr, logger, NewEnsurer(logger)),
 	})
 }

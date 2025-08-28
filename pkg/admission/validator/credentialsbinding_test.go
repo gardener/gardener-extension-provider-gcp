@@ -304,7 +304,7 @@ credentialsConfig:
 				})
 
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingWorkloadIdentity, nil)
-			Expect(err.Error()).To(ContainSubstring(`spec.targetSystem.providerConfig.credentialsConfig.token_url: Invalid value: "https://sts.googleapis.com/v1/token/forbidden": should be one of the allowed URLs: https://sts.googleapis.com/v1/token, https://sts.googleapis.com/v1/token/new`))
+			Expect(err.Error()).To(ContainSubstring(`spec.targetSystem.providerConfig.credentialsConfig.token_url: Forbidden: allowed values are ["https://sts.googleapis.com/v1/token" "https://sts.googleapis.com/v1/token/new"]`))
 		})
 	})
 })

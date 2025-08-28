@@ -54,7 +54,8 @@ var ImageVector = imagevector.ImageVector()
 func (e *ensurer) EnsureMachineControllerManagerDeployment(
 	ctx context.Context,
 	gctx gcontext.GardenContext,
-	newDeployment, _ *appsv1.Deployment) error {
+	newDeployment, _ *appsv1.Deployment,
+) error {
 	image, err := ImageVector.FindImage(gcp.MachineControllerManagerProviderGCPImageName)
 	if err != nil {
 		return err
@@ -77,7 +78,7 @@ func (e *ensurer) EnsureMachineControllerManagerDeployment(
 
 	const volumeName = "workload-identity"
 	container := machinecontrollermanager.ProviderSidecarContainer(cluster.Shoot, newDeployment.Namespace, gcp.Name, image.String())
-	if cloudProviderSecret.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+	if gcp.IsWorkloadIdentitySecret(cloudProviderSecret) {
 		container.VolumeMounts = extensionswebhook.EnsureVolumeMountWithName(container.VolumeMounts, corev1.VolumeMount{
 			Name:      volumeName,
 			MountPath: gcp.WorkloadIdentityMountPath,
