@@ -7,6 +7,9 @@ package validation
 import (
 	"time"
 
+	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -27,6 +30,29 @@ func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, fldPath *fie
 		if config.Immutability.RetentionPeriod.Duration < 24*time.Hour {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("immutability", "retentionPeriod"), config.Immutability.RetentionPeriod.Duration.String(), "must be a positive duration greater than 24h"))
 		}
+	}
+
+	return allErrs
+}
+
+// ValidateBackupBucketCredentialsRef validates credentialsRef is set to supported kind of credentials.
+func ValidateBackupBucketCredentialsRef(credentialsRef *corev1.ObjectReference, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if credentialsRef == nil {
+		return append(allErrs, field.Required(fldPath, "must be set"))
+	}
+
+	var (
+		secretGVK           = corev1.SchemeGroupVersion.WithKind("Secret")
+		workloadIdentityGVK = securityv1alpha1.SchemeGroupVersion.WithKind("WorkloadIdentity")
+
+		allowedGVKs = sets.New(secretGVK, workloadIdentityGVK)
+		validGVKs   = []string{secretGVK.String(), workloadIdentityGVK.String()}
+	)
+
+	if !allowedGVKs.Has(credentialsRef.GroupVersionKind()) {
+		allErrs = append(allErrs, field.NotSupported(fldPath, credentialsRef.String(), validGVKs))
 	}
 
 	return allErrs
