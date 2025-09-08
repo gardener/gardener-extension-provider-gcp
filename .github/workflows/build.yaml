@@ -50,7 +50,7 @@ jobs:
                 integrity_requirement: high
                 availability_requirement: high
           - name: gardener-extension-admission-gcp
-            target: gardener-extension-provider-gcp
+            target: gardener-extension-admission-gcp
             oci-repository: gardener/extensions/admission-gcp
             ocm-labels:
               name: gardener.cloud/cve-categorisation
