@@ -1,7 +1,16 @@
 name: Build
 on:
-  push:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
   pull_request_target:
+    types:
+      - labeled
+  merge_group:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,6 +22,7 @@ jobs:
       contents: write
       packages: write
       id-token: write
+      pull-requests: write
 
   component-descriptor:
     uses: gardener/cc-utils/.github/workflows/post-build.yaml@master
