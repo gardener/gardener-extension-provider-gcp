@@ -10,6 +10,7 @@ import (
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/apis/security"
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -79,6 +80,7 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 				allowedTokenURLs,
 				allowedServiceAccountImpersonationURLRegExps,
 			): {{Obj: &securityv1alpha1.WorkloadIdentity{}}},
+			NewBackupBucketValidator(mgr): {{Obj: &gardencorev1beta1.BackupBucket{}}},
 		},
 		Target: extensionswebhook.TargetSeed,
 		ObjectSelector: &metav1.LabelSelector{
