@@ -13,18 +13,19 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 var _ = Describe("BackupBucket", func() {
+	var fldPath *field.Path
+
+	BeforeEach(func() {
+		fldPath = field.NewPath("spec")
+	})
+
 	Describe("ValidateBackupBucketConfig", func() {
-		var fldPath *field.Path
-
-		BeforeEach(func() {
-			fldPath = field.NewPath("spec")
-		})
-
 		DescribeTable("validation cases",
 			func(config *apisgcp.BackupBucketConfig, wantErr bool, errMsg string) {
 				errs := ValidateBackupBucketConfig(config, fldPath)
@@ -87,6 +88,61 @@ var _ = Describe("BackupBucket", func() {
 		)
 	})
 
+	Describe("ValidateBackupBucketConfigUpdate", func() {
+		DescribeTable("Valid update scenarios",
+			func(oldConfig, newConfig apisgcp.BackupBucketConfig) {
+				Expect(ValidateBackupBucketConfigUpdate(&oldConfig, &newConfig, fldPath).ToAggregate()).To(Succeed())
+			},
+			Entry("Immutable settings unchanged",
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*96), false, true),
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*96), false, true),
+			),
+			Entry("Retention period increased while locked",
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*96), true, true),
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*120), true, true),
+			),
+			Entry("Retention period decreased when not locked",
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*96), false, true),
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*48), false, true),
+			),
+			Entry("Retention period exactly at minimum (24h)",
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*24), false, true),
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*24), false, true),
+			),
+			Entry("Transitioning from locked=false to locked=true",
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*96), false, true),
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*96), true, true),
+			),
+			Entry("Disabling immutability when not locked",
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*96), false, true),
+				generateBackupBucketConfig("", nil, false, false),
+			),
+		)
+
+		DescribeTable("Invalid update scenarios",
+			func(oldConfig, newConfig apisgcp.BackupBucketConfig, expectedError string) {
+				err := ValidateBackupBucketConfigUpdate(&oldConfig, &newConfig, fldPath).ToAggregate()
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring(expectedError)))
+			},
+			Entry("Disabling immutable settings is not allowed if locked",
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*96), true, true),
+				generateBackupBucketConfig("", nil, false, true),
+				"immutability cannot be disabled once it is locked",
+			),
+			Entry("Unlocking a locked retention policy is not allowed",
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*96), true, true),
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*96), false, true),
+				"immutable retention policy lock cannot be unlocked once it is locked",
+			),
+			Entry("Reducing retention period when locked is not allowed",
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*96), true, true),
+				generateBackupBucketConfig("bucket", ptr.To(time.Hour*48), true, true),
+				"reducing the retention period from",
+			),
+		)
+	})
+
 	Describe("ValidateBackupBucketCredentialsRef", func() {
 		var fldPath *field.Path
 
@@ -141,3 +197,22 @@ var _ = Describe("BackupBucket", func() {
 		})
 	})
 })
+
+func generateBackupBucketConfig(retentionType string, retentionPeriod *time.Duration, locked bool, isImmutableConfigured bool) apisgcp.BackupBucketConfig {
+	if !isImmutableConfigured {
+		return apisgcp.BackupBucketConfig{}
+	}
+
+	config := apisgcp.BackupBucketConfig{Immutability: &apisgcp.ImmutableConfig{}}
+
+	if retentionType != "" {
+		config.Immutability.RetentionType = retentionType
+	}
+
+	if retentionPeriod != nil {
+		config.Immutability.RetentionPeriod = metav1.Duration{Duration: *retentionPeriod}
+		config.Immutability.Locked = locked
+	}
+
+	return config
+}
