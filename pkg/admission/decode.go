@@ -5,7 +5,7 @@
 package admission
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/gardener/gardener/extensions/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -63,7 +63,7 @@ func DecodeCloudProfileConfig(decoder runtime.Decoder, config *runtime.RawExtens
 // DecodeBackupBucketConfig decodes the `BackupBucketConfig` from the given `RawExtension`.
 func DecodeBackupBucketConfig(decoder runtime.Decoder, config *runtime.RawExtension) (*gcp.BackupBucketConfig, error) {
 	if config == nil || config.Raw == nil {
-		return nil, fmt.Errorf("cannot parse BackupBucketConfig from empty RawExtension")
+		return nil, errors.New("cannot parse BackupBucketConfig from empty RawExtension")
 	}
 
 	backupBucketConfig := &gcp.BackupBucketConfig{}
