@@ -24,7 +24,6 @@ import (
 // ensuring backup configuration immutability according to policy.
 func NewSeedValidator(mgr manager.Manager) extensionswebhook.Validator {
 	return &seedValidator{
-		client:         mgr.GetClient(),
 		decoder:        serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 		lenientDecoder: serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
 	}
@@ -33,7 +32,6 @@ func NewSeedValidator(mgr manager.Manager) extensionswebhook.Validator {
 // seedValidator validates create and update operations on Seed resources,
 // enforcing immutability of backup configurations.
 type seedValidator struct {
-	client         client.Client
 	decoder        runtime.Decoder
 	lenientDecoder runtime.Decoder
 }

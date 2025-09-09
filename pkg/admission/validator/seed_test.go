@@ -10,7 +10,6 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -30,7 +29,6 @@ var _ = Describe("Seed Validator", func() {
 			credentialsRef *corev1.ObjectReference
 			ctrl           *gomock.Controller
 			mgr            *mockmanager.MockManager
-			c              *mockclient.MockClient
 			seedValidator  extensionswebhook.Validator
 			scheme         *runtime.Scheme
 		)
@@ -51,11 +49,9 @@ var _ = Describe("Seed Validator", func() {
 			Expect(apisgcp.AddToScheme(scheme)).To(Succeed())
 			Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
 			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
-			c = mockclient.NewMockClient(ctrl)
 
 			mgr = mockmanager.NewMockManager(ctrl)
 			mgr.EXPECT().GetScheme().Return(scheme).AnyTimes()
-			mgr.EXPECT().GetClient().Return(c).AnyTimes()
 			seedValidator = validator.NewSeedValidator(mgr)
 		})
 
