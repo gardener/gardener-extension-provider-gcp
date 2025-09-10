@@ -8,7 +8,7 @@ import (
 	"context"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -43,7 +43,7 @@ var _ = Describe("BackupBucket Validator", func() {
 
 			ctrl = gomock.NewController(GinkgoT())
 			scheme = runtime.NewScheme()
-			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
+			Expect(gardencore.AddToScheme(scheme)).To(Succeed())
 			Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
 			Expect(apisgcp.AddToScheme(scheme)).To(Succeed())
 
@@ -53,22 +53,22 @@ var _ = Describe("BackupBucket Validator", func() {
 			backupBucketValidator = validator.NewBackupBucketValidator(mgr)
 		})
 
-		It("should return err when obj is not a core.gardener.cloud/v1beta1.BackupBucket", func() {
+		It("should return err when obj is not a core.gardener.cloud/.BackupBucket", func() {
 			err := backupBucketValidator.Validate(ctx, &corev1.Secret{}, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("wrong object type *v1.Secret for new object"))
 		})
 
-		It("should return err when oldObj is not a core.gardener.cloud/v1beta1.BackupBucket", func() {
-			err := backupBucketValidator.Validate(ctx, &gardencorev1beta1.BackupBucket{}, &corev1.Secret{})
+		It("should return err when oldObj is not a core.gardener.cloud/.BackupBucket", func() {
+			err := backupBucketValidator.Validate(ctx, &gardencore.BackupBucket{}, &corev1.Secret{})
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("wrong object type *v1.Secret for old object"))
 		})
 
 		Context("Create", func() {
 			It("should return error when BackupBucket provider config cannot be decoded", func() {
-				backupBucket := &gardencorev1beta1.BackupBucket{
-					Spec: gardencorev1beta1.BackupBucketSpec{
+				backupBucket := &gardencore.BackupBucket{
+					Spec: gardencore.BackupBucketSpec{
 						CredentialsRef: credentialsRef,
 						ProviderConfig: &runtime.RawExtension{
 							Raw: []byte(`invalid`),
@@ -82,8 +82,8 @@ var _ = Describe("BackupBucket Validator", func() {
 			})
 
 			It("should succeed when BackupBucket is created with valid spec", func() {
-				backupBucket := &gardencorev1beta1.BackupBucket{
-					Spec: gardencorev1beta1.BackupBucketSpec{
+				backupBucket := &gardencore.BackupBucket{
+					Spec: gardencore.BackupBucketSpec{
 						CredentialsRef: credentialsRef,
 						ProviderConfig: &runtime.RawExtension{
 							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`),
@@ -97,8 +97,8 @@ var _ = Describe("BackupBucket Validator", func() {
 
 		Context("Update", func() {
 			It("should return error when BackupBucket is updated with invalid spec and old had unset providerConfig", func() {
-				backupBucket := &gardencorev1beta1.BackupBucket{
-					Spec: gardencorev1beta1.BackupBucketSpec{
+				backupBucket := &gardencore.BackupBucket{
+					Spec: gardencore.BackupBucketSpec{
 						CredentialsRef: credentialsRef,
 						ProviderConfig: nil,
 					},
@@ -115,8 +115,8 @@ var _ = Describe("BackupBucket Validator", func() {
 			})
 
 			It("should succeed when BackupBucket is updated with valid spec and old had unset providerConfig", func() {
-				backupBucket := &gardencorev1beta1.BackupBucket{
-					Spec: gardencorev1beta1.BackupBucketSpec{
+				backupBucket := &gardencore.BackupBucket{
+					Spec: gardencore.BackupBucketSpec{
 						CredentialsRef: credentialsRef,
 						ProviderConfig: nil,
 					},
@@ -131,8 +131,8 @@ var _ = Describe("BackupBucket Validator", func() {
 			})
 
 			It("should return error when BackupBucket is updated and old had invalid providerConfig set", func() {
-				backupBucket := &gardencorev1beta1.BackupBucket{
-					Spec: gardencorev1beta1.BackupBucketSpec{
+				backupBucket := &gardencore.BackupBucket{
+					Spec: gardencore.BackupBucketSpec{
 						CredentialsRef: credentialsRef,
 						ProviderConfig: &runtime.RawExtension{
 							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "invalid"}`),
@@ -149,8 +149,8 @@ var _ = Describe("BackupBucket Validator", func() {
 			})
 
 			It("should return error when BackupBucket is updated with invalid providerConfig and old had valid providerConfig set", func() {
-				backupBucket := &gardencorev1beta1.BackupBucket{
-					Spec: gardencorev1beta1.BackupBucketSpec{
+				backupBucket := &gardencore.BackupBucket{
+					Spec: gardencore.BackupBucketSpec{
 						CredentialsRef: credentialsRef,
 						ProviderConfig: &runtime.RawExtension{
 							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`),
@@ -169,8 +169,8 @@ var _ = Describe("BackupBucket Validator", func() {
 			})
 
 			It("should succeed when BackupBucket is updated with valid spec and old had valid providerConfig set", func() {
-				backupBucket := &gardencorev1beta1.BackupBucket{
-					Spec: gardencorev1beta1.BackupBucketSpec{
+				backupBucket := &gardencore.BackupBucket{
+					Spec: gardencore.BackupBucketSpec{
 						CredentialsRef: credentialsRef,
 						ProviderConfig: &runtime.RawExtension{
 							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "immutability": {"retentionPeriod": "96h", "retentionType": "bucket"}}`),
