@@ -12,7 +12,6 @@ import (
 
 var _ = Describe("Helper", func() {
 	Describe("#rawExtensionToString", func() {
-
 		It("should return <nil> for nil RawExtension", func() {
 			Expect(rawExtensionToString(nil)).To(Equal("<nil>"))
 		})
@@ -31,6 +30,5 @@ var _ = Describe("Helper", func() {
 			raw := &runtime.RawExtension{Raw: []byte(`{"key":"value"}`)}
 			Expect(rawExtensionToString(raw)).To(Equal(`{"key":"value"}`))
 		})
-
 	})
 })

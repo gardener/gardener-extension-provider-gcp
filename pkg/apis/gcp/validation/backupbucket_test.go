@@ -144,8 +144,6 @@ var _ = Describe("BackupBucket", func() {
 	})
 
 	Describe("ValidateBackupBucketCredentialsRef", func() {
-		var fldPath *field.Path
-
 		BeforeEach(func() {
 			fldPath = field.NewPath("spec", "credentialsRef")
 		})

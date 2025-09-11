@@ -42,7 +42,6 @@ var _ = Describe("Decode", func() {
 		Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
 
 		decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
-
 	})
 
 	Describe("#DecodeBackupBucketConfig", func() {
