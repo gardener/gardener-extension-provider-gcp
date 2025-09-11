@@ -87,8 +87,8 @@ var _ = Describe("Decode", func() {
 				nil,
 				true,
 			),
-			Entry("nil RawExtension", nil, nil, true),
-			Entry("nil RawExtension.Raw", &runtime.RawExtension{}, nil, true),
+			Entry("nil RawExtension", nil, &apisgcp.BackupBucketConfig{}, false),
+			Entry("nil RawExtension.Raw", &runtime.RawExtension{}, &apisgcp.BackupBucketConfig{}, false),
 		)
 	})
 })

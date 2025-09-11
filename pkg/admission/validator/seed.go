@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
 
@@ -75,12 +76,15 @@ func (s *seedValidator) validateUpdate(oldSeed, newSeed *core.Seed) field.ErrorL
 	if oldSeed.Spec.Backup != nil && oldSeed.Spec.Backup.ProviderConfig != nil {
 		oldBackupBucketConfig, err := admission.DecodeBackupBucketConfig(s.lenientDecoder, oldSeed.Spec.Backup.ProviderConfig)
 		if err != nil {
-			return append(allErrs, field.Invalid(providerConfigPath, oldSeed.Spec.Backup.ProviderConfig.String, fmt.Sprintf("failed to decode old provider config: %v", err.Error())))
+			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(oldSeed.Spec.Backup.ProviderConfig), fmt.Sprintf("failed to decode old provider config: %v", err.Error())))
 		}
 
-		newBackupBucketConfig, err := admission.DecodeBackupBucketConfig(s.decoder, newSeed.Spec.Backup.ProviderConfig)
-		if err != nil {
-			return append(allErrs, field.Invalid(providerConfigPath, newSeed.Spec.Backup.ProviderConfig, fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
+		var newBackupBucketConfig *gcp.BackupBucketConfig = nil
+		if newSeed.Spec.Backup != nil && newSeed.Spec.Backup.ProviderConfig != nil {
+			newBackupBucketConfig, err = admission.DecodeBackupBucketConfig(s.decoder, newSeed.Spec.Backup.ProviderConfig)
+			if err != nil {
+				return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(newSeed.Spec.Backup.ProviderConfig), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
+			}
 		}
 
 		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfigUpdate(oldBackupBucketConfig, newBackupBucketConfig, providerConfigPath)...)
@@ -102,7 +106,7 @@ func (s *seedValidator) validateSeed(seed *core.Seed) field.ErrorList {
 			providerConfigPath := backupPath.Child("providerConfig")
 			backupBucketConfig, err := admission.DecodeBackupBucketConfig(s.decoder, seed.Spec.Backup.ProviderConfig)
 			if err != nil {
-				return append(allErrs, field.Invalid(providerConfigPath, seed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode provider config: %w", err).Error()))
+				return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(seed.Spec.Backup.ProviderConfig), fmt.Errorf("failed to decode provider config: %w", err).Error()))
 			}
 
 			allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(backupBucketConfig, providerConfigPath)...)

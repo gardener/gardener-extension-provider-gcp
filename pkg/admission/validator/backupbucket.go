@@ -67,12 +67,12 @@ func (b *backupBucketValidator) validateUpdate(oldBackupBucket, backupBucket *ga
 	if oldBackupBucket.Spec.ProviderConfig != nil {
 		oldConfig, err := admission.DecodeBackupBucketConfig(b.lenientDecoder, oldBackupBucket.Spec.ProviderConfig)
 		if err != nil {
-			return append(allErrs, field.Invalid(providerConfigPath, oldBackupBucket.Spec.ProviderConfig.String(), fmt.Sprintf("failed to decode old provider config: %s", err.Error())))
+			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(oldBackupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode old provider config: %s", err.Error())))
 		}
 
 		config, err := admission.DecodeBackupBucketConfig(b.decoder, backupBucket.Spec.ProviderConfig)
 		if err != nil {
-			return append(allErrs, field.Invalid(providerConfigPath, backupBucket.Spec.ProviderConfig.String(), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
+			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
 		}
 
 		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfigUpdate(oldConfig, config, providerConfigPath)...)
@@ -91,7 +91,7 @@ func (b *backupBucketValidator) validateBackupBucket(backupBucket *gardencore.Ba
 
 	config, err := admission.DecodeBackupBucketConfig(b.decoder, backupBucket.Spec.ProviderConfig)
 	if err != nil {
-		return append(allErrs, field.Invalid(providerConfigPath, backupBucket.Spec.ProviderConfig.String(), fmt.Sprintf("failed to decode provider config: %s", err.Error())))
+		return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode provider config: %s", err.Error())))
 	}
 
 	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(config, providerConfigPath)...)

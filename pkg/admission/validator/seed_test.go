@@ -113,7 +113,7 @@ var _ = Describe("Seed Validator", func() {
 
 				err := seedValidator.Validate(ctx, seed, nil)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(ContainSubstring("failed to decode provider config: ")))
+				Expect(err).To(MatchError(ContainSubstring("failed to decode provider config: no kind \"invalid\" is registered for version \"gcp.provider.extensions.gardener.cloud/v0\" in scheme")))
 			})
 
 			It("should succeed to create seed when backup has valid providerConfig", func() {
@@ -162,11 +162,13 @@ var _ = Describe("Seed Validator", func() {
 				newSeed.Spec.Backup = &gardencore.Backup{
 					CredentialsRef: credentialsRef,
 					ProviderConfig: &runtime.RawExtension{
-						Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "invalid"`),
+						Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "invalid"}`),
 					},
 				}
 
-				Expect(seedValidator.Validate(ctx, newSeed, seed)).To(HaveOccurred())
+				err := seedValidator.Validate(ctx, newSeed, seed)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("failed to decode provider config: no kind \"invalid\" is registered for version \"gcp.provider.extensions.gardener.cloud/v1alpha1\" in scheme")))
 			})
 
 			It("should fail when seed had set invalid backup config and is now updated with valid providerConfig", func() {
@@ -188,7 +190,7 @@ var _ = Describe("Seed Validator", func() {
 
 				err := seedValidator.Validate(ctx, newseed, seed)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(ContainSubstring("failed to decode old provider config: ")))
+				Expect(err).To(MatchError(ContainSubstring("failed to decode old provider config: no kind \"invalid\" is registered for version \"gcp.provider.extensions.gardener.cloud/v1alpha1\" in scheme")))
 			})
 
 			It("should fail when seed had set valid backup config and is now updated with invalid providerConfig", func() {
@@ -210,7 +212,7 @@ var _ = Describe("Seed Validator", func() {
 
 				err := seedValidator.Validate(ctx, newseed, seed)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(ContainSubstring("failed to decode new provider config: ")))
+				Expect(err).To(MatchError(ContainSubstring("failed to decode new provider config: no kind \"invalid\" is registered for version \"gcp.provider.extensions.gardener.cloud/v1alpha1\" in scheme")))
 			})
 
 			It("should succeed when seed had set backup config and is now updated with valid providerConfig", func() {

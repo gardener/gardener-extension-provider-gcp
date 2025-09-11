@@ -78,7 +78,7 @@ var _ = Describe("BackupBucket Validator", func() {
 
 				err := backupBucketValidator.Validate(ctx, backupBucket, nil)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(ContainSubstring(`failed to decode provider config: `)))
+				Expect(err).To(MatchError(ContainSubstring(`failed to decode provider config:`)))
 			})
 
 			It("should succeed when BackupBucket is created with valid spec", func() {
@@ -111,7 +111,7 @@ var _ = Describe("BackupBucket Validator", func() {
 
 				err := backupBucketValidator.Validate(ctx, newBackupBucket, backupBucket)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(ContainSubstring(`failed to decode provider config: `)))
+				Expect(err).To(MatchError(ContainSubstring(`failed to decode provider config: no kind "invalid" is registered for version "gcp.provider.extensions.gardener.cloud/v1alpha1" in scheme`)))
 			})
 
 			It("should succeed when BackupBucket is updated with valid spec and old had unset providerConfig", func() {
@@ -145,7 +145,7 @@ var _ = Describe("BackupBucket Validator", func() {
 
 				err := backupBucketValidator.Validate(ctx, newBackupBucket, backupBucket)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(ContainSubstring("failed to decode old provider config")))
+				Expect(err).To(MatchError(ContainSubstring("failed to decode old provider config: no kind \"invalid\" is registered for version \"gcp.provider.extensions.gardener.cloud/v1alpha1\" in scheme")))
 			})
 
 			It("should return error when BackupBucket is updated with invalid providerConfig and old had valid providerConfig set", func() {
@@ -165,7 +165,7 @@ var _ = Describe("BackupBucket Validator", func() {
 
 				err := backupBucketValidator.Validate(ctx, newBackupBucket, backupBucket)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(ContainSubstring("failed to decode new provider config")))
+				Expect(err).To(MatchError(ContainSubstring("failed to decode new provider config: no kind \"invalid\" is registered for version \"gcp.provider.extensions.gardener.cloud/v1alpha1\" in scheme")))
 			})
 
 			It("should succeed when BackupBucket is updated with valid spec and old had valid providerConfig set", func() {
