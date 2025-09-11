@@ -54,36 +54,6 @@ func (s *backupBucketValidator) Validate(_ context.Context, newObj, oldObj clien
 
 // validateCreate validates the BackupBucket object upon creation.
 func (b *backupBucketValidator) validateCreate(backupBucket *gardencore.BackupBucket) field.ErrorList {
-	return b.validateBackupBucket(backupBucket)
-}
-
-// validateUpdate validates updates to the BackupBucket resource.
-func (b *backupBucketValidator) validateUpdate(oldBackupBucket, backupBucket *gardencore.BackupBucket) field.ErrorList {
-	var (
-		allErrs            = field.ErrorList{}
-		providerConfigPath = field.NewPath("spec", "providerConfig")
-	)
-
-	if oldBackupBucket.Spec.ProviderConfig != nil {
-		oldConfig, err := admission.DecodeBackupBucketConfig(b.lenientDecoder, oldBackupBucket.Spec.ProviderConfig)
-		if err != nil {
-			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(oldBackupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode old provider config: %s", err.Error())))
-		}
-
-		config, err := admission.DecodeBackupBucketConfig(b.decoder, backupBucket.Spec.ProviderConfig)
-		if err != nil {
-			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
-		}
-
-		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfigUpdate(oldConfig, config, providerConfigPath)...)
-	}
-
-	allErrs = append(allErrs, b.validateBackupBucket(backupBucket)...)
-	return allErrs
-}
-
-// validateBackupBucket validates the BackupBucket object.
-func (b *backupBucketValidator) validateBackupBucket(backupBucket *gardencore.BackupBucket) field.ErrorList {
 	var (
 		allErrs            = field.ErrorList{}
 		providerConfigPath = field.NewPath("spec", "providerConfig")
@@ -96,5 +66,32 @@ func (b *backupBucketValidator) validateBackupBucket(backupBucket *gardencore.Ba
 
 	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(config, providerConfigPath)...)
 	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketCredentialsRef(backupBucket.Spec.CredentialsRef, field.NewPath("spec", "credentialsRef"))...)
+	return allErrs
+}
+
+// validateUpdate validates updates to the BackupBucket resource.
+func (b *backupBucketValidator) validateUpdate(oldBackupBucket, backupBucket *gardencore.BackupBucket) field.ErrorList {
+	var (
+		allErrs            = field.ErrorList{}
+		providerConfigPath = field.NewPath("spec", "providerConfig")
+	)
+
+	config, err := admission.DecodeBackupBucketConfig(b.decoder, backupBucket.Spec.ProviderConfig)
+	if err != nil {
+		return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
+	}
+
+	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(config, providerConfigPath)...)
+	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketCredentialsRef(backupBucket.Spec.CredentialsRef, field.NewPath("spec", "credentialsRef"))...)
+
+	if oldBackupBucket.Spec.ProviderConfig != nil {
+		oldConfig, err := admission.DecodeBackupBucketConfig(b.lenientDecoder, oldBackupBucket.Spec.ProviderConfig)
+		if err != nil {
+			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(oldBackupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode old provider config: %s", err.Error())))
+		}
+
+		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfigUpdate(oldConfig, config, providerConfigPath)...)
+	}
+
 	return allErrs
 }

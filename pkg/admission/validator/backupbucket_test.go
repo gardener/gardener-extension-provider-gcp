@@ -111,7 +111,7 @@ var _ = Describe("BackupBucket Validator", func() {
 
 				err := backupBucketValidator.Validate(ctx, newBackupBucket, backupBucket)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(ContainSubstring(`failed to decode provider config: no kind "invalid" is registered for version "gcp.provider.extensions.gardener.cloud/v1alpha1" in scheme`)))
+				Expect(err).To(MatchError(ContainSubstring(`failed to decode new provider config: no kind "invalid" is registered for version "gcp.provider.extensions.gardener.cloud/v1alpha1" in scheme`)))
 			})
 
 			It("should succeed when BackupBucket is updated with valid spec and old had unset providerConfig", func() {
@@ -141,7 +141,7 @@ var _ = Describe("BackupBucket Validator", func() {
 				}
 
 				newBackupBucket := backupBucket.DeepCopy()
-				newBackupBucket.Spec.CredentialsRef = nil
+				newBackupBucket.Spec.ProviderConfig.Raw = []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`)
 
 				err := backupBucketValidator.Validate(ctx, newBackupBucket, backupBucket)
 				Expect(err).To(HaveOccurred())
