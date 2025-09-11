@@ -198,8 +198,8 @@ var _ = Describe("BackupBucket", func() {
 	})
 })
 
-func generateBackupBucketConfig(retentionType string, retentionPeriod *time.Duration, locked bool, isImmutableConfigured bool) apisgcp.BackupBucketConfig {
-	if !isImmutableConfigured {
+func generateBackupBucketConfig(retentionType string, retentionPeriod *time.Duration, locked bool, isImmutabilityConfigured bool) apisgcp.BackupBucketConfig {
+	if !isImmutabilityConfigured {
 		return apisgcp.BackupBucketConfig{}
 	}
 

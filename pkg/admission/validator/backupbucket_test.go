@@ -53,13 +53,13 @@ var _ = Describe("BackupBucket Validator", func() {
 			backupBucketValidator = validator.NewBackupBucketValidator(mgr)
 		})
 
-		It("should return err when obj is not a core.gardener.cloud/.BackupBucket", func() {
+		It("should return err when obj is not a gardencore.BackupBucket", func() {
 			err := backupBucketValidator.Validate(ctx, &corev1.Secret{}, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("wrong object type *v1.Secret for new object"))
 		})
 
-		It("should return err when oldObj is not a core.gardener.cloud/.BackupBucket", func() {
+		It("should return err when oldObj is not a gardencore.BackupBucket", func() {
 			err := backupBucketValidator.Validate(ctx, &gardencore.BackupBucket{}, &corev1.Secret{})
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("wrong object type *v1.Secret for old object"))
