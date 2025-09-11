@@ -15,7 +15,7 @@ patches:
 - patch: |
     - op: replace
       path: /spec/resources/4/type
-      value: gooogle-clouddns
+      value: google-clouddns
   target:
     kind: Extension
     name: provider-gcp

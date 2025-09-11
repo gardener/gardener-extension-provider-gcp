@@ -30,7 +30,7 @@ spec:
   - kind: ControlPlane
     type: gcp
   - kind: DNSRecord
-    type: gooogle-clouddns
+    type: google-clouddns
   - kind: Infrastructure
     type: gcp
   - kind: Worker
