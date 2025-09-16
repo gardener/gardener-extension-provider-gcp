@@ -325,5 +325,13 @@ var _ = Describe("Shoot validation", func() {
 				})),
 			))
 		})
+
+		It("should allow adding in-place workers", func() {
+			newWorkers := append(workers[:0:0], workers...)
+			newWorkers[1].UpdateStrategy = ptr.To(core.AutoInPlaceUpdate)
+			workers = workers[:1]
+			errorList := ValidateWorkersUpdate(workers, newWorkers, field.NewPath("workers"))
+			Expect(errorList).To(BeEmpty())
+		})
 	})
 })
