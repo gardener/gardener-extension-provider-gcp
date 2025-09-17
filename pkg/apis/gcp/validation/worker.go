@@ -22,31 +22,35 @@ import (
 
 var (
 	validVolumeLocalSSDInterfacesTypes = sets.New("NVME", "SCSI")
-
-	providerFldPath   = field.NewPath("providerConfig")
-	volumeFldPath     = providerFldPath.Child("volume")
-	dataVolumeFldPath = providerFldPath.Child("dataVolume")
 )
 
 // ValidateWorkerConfig validates a WorkerConfig object.
-func ValidateWorkerConfig(workerConfig *gcp.WorkerConfig, dataVolumes []core.DataVolume) field.ErrorList {
+func ValidateWorkerConfig(workerConfig gcp.WorkerConfig, dataVolumes []core.DataVolume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	for i, dataVolume := range dataVolumes {
-		dataVolumeFldPath := field.NewPath("dataVolumes").Index(i)
-		allErrs = append(allErrs, validateDataVolume(workerConfig, dataVolume, dataVolumeFldPath)...)
+	for idx, dataVolume := range dataVolumes {
+		if dataVolume.Type == nil {
+			allErrs = append(allErrs, field.Required(field.NewPath("dataVolumes").Index(idx).Child("type"), "must not be empty"))
+			continue
+		}
+
+		allErrs = append(allErrs, validateScratchDisk(*dataVolume.Type, workerConfig, fldPath.Child("volume"))...)
 	}
 
-	if workerConfig != nil {
-		allErrs = append(allErrs, validateGPU(workerConfig.GPU, providerFldPath.Child("gpu"))...)
-		allErrs = append(allErrs, validateServiceAccount(workerConfig.ServiceAccount, providerFldPath.Child("serviceAccount"))...)
-		if workerConfig.Volume != nil {
-			allErrs = append(allErrs, validateDiskEncryption(workerConfig.Volume.Encryption, volumeFldPath.Child("encryption"))...)
-		}
-		allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, providerFldPath.Child("nodeTemplate"))...)
-		if workerConfig.DataVolumes != nil {
-			allErrs = append(allErrs, validateDataVolumeConfigs(dataVolumes, workerConfig.DataVolumes)...)
-		}
+	allErrs = append(allErrs, validateGPU(workerConfig.GPU, fldPath.Child("gpu"))...)
+	if workerConfig.ServiceAccount != nil {
+		allErrs = append(allErrs, validateServiceAccount(*workerConfig.ServiceAccount, fldPath.Child("serviceAccount"))...)
+	}
+	if workerConfig.Volume != nil {
+		allErrs = append(allErrs, validateVolumeConfig(*workerConfig.Volume, fldPath.Child("volume"))...)
+	}
+	allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, fldPath.Child("nodeTemplate"))...)
+	if workerConfig.DataVolumes != nil {
+		allErrs = append(allErrs, validateDataVolumeConfigs(dataVolumes, workerConfig.DataVolumes, fldPath.Child("dataVolumes"))...)
+	}
+
+	if workerConfig.MinCpuPlatform != nil {
+		allErrs = append(allErrs, validateMinCPUsPlatform(*workerConfig.MinCpuPlatform, fldPath.Child("minCpuPlatform"))...)
 	}
 
 	return allErrs
@@ -59,9 +63,7 @@ func validateGPU(gpu *gcp.GPU, fldPath *field.Path) field.ErrorList {
 		return allErrs
 	}
 
-	if gpu.AcceleratorType == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("acceleratorType"), "must be set when providing gpu"))
-	}
+	allErrs = append(allErrs, validateGpuAcceleratorType(gpu.AcceleratorType, fldPath.Child("acceleratorType"))...)
 
 	if gpu.Count <= 0 {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("count"), "must be > 0 when providing gpu"))
@@ -70,16 +72,10 @@ func validateGPU(gpu *gcp.GPU, fldPath *field.Path) field.ErrorList {
 	return allErrs
 }
 
-func validateServiceAccount(sa *gcp.ServiceAccount, fldPath *field.Path) field.ErrorList {
+func validateServiceAccount(sa gcp.ServiceAccount, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if sa == nil {
-		return allErrs
-	}
-
-	if sa.Email == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("email"), "must be set when providing service account"))
-	}
+	allErrs = append(allErrs, validateServiceAccountEmail(sa.Email, fldPath.Child("email"))...)
 
 	if len(sa.Scopes) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("scopes"), "must have at least one scope"))
@@ -87,11 +83,13 @@ func validateServiceAccount(sa *gcp.ServiceAccount, fldPath *field.Path) field.E
 		existingScopes := sets.NewString()
 
 		for i, scope := range sa.Scopes {
+			idxPath := fldPath.Child("scopes").Index(i)
+
+			allErrs = append(allErrs, validateServiceAccountScopeName(scope, idxPath)...)
+
 			switch {
-			case scope == "":
-				allErrs = append(allErrs, field.Required(fldPath.Child("scopes").Index(i), "must not be empty"))
 			case existingScopes.Has(scope):
-				allErrs = append(allErrs, field.Duplicate(fldPath.Child("scopes").Index(i), scope))
+				allErrs = append(allErrs, field.Duplicate(idxPath, scope))
 			default:
 				existingScopes.Insert(scope)
 			}
@@ -101,101 +99,103 @@ func validateServiceAccount(sa *gcp.ServiceAccount, fldPath *field.Path) field.E
 	return allErrs
 }
 
-// validateDiskEncryption validates the provider specific disk encryption configuration for a volume
-func validateDiskEncryption(encryption *gcp.DiskEncryption, fldPath *field.Path) field.ErrorList {
+func validateVolumeConfig(volume gcp.Volume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if encryption == nil {
-		return allErrs
+	if volume.LocalSSDInterface != nil {
+		if err := validVolumeLocalSSDInterfacesTypes.Has(*volume.LocalSSDInterface); !err {
+			allErrs = append(allErrs, field.NotSupported(fldPath.Child("interface"),
+				*volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.UnsortedList()))
+		}
 	}
+
+	if volume.Encryption != nil {
+		allErrs = append(allErrs, validateDiskEncryption(*volume.Encryption, fldPath.Child("encryption"))...)
+	}
+
+	return allErrs
+}
+
+// validateDiskEncryption validates the provider specific disk encryption configuration for a volume
+func validateDiskEncryption(encryption gcp.DiskEncryption, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
 
 	if encryption.KmsKeyName == nil || strings.TrimSpace(*encryption.KmsKeyName) == "" {
 		// Currently DiskEncryption only contains CMEK fields. Hence if not nil, then kmsKeyName is a must
 		// Validation logic will need to be modified when CSEK fields are possibly added to gcp.DiskEncryption in the future.
 		allErrs = append(allErrs, field.Required(fldPath.Child("kmsKeyName"), "must be specified when configuring disk encryption"))
-	}
-
-	return allErrs
-}
-
-func validateDataVolume(workerConfig *gcp.WorkerConfig, volume core.DataVolume, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
-
-	if volume.Type == nil {
-		allErrs = append(allErrs, field.Required(fldPath.Child("type"), "must not be empty"))
 		return allErrs
 	}
 
-	allErrs = append(allErrs, validateScratchDisk(*volume.Type, workerConfig)...)
+	allErrs = append(allErrs, validateVolumeKmsKeyName(*encryption.KmsKeyName, fldPath.Child("kmsKeyName"))...)
+
+	if encryption.KmsKeyServiceAccount != nil {
+		allErrs = append(allErrs, validateVolumeKmsKeyServiceAccount(*encryption.KmsKeyServiceAccount, fldPath.Child("kmsKeyServiceAccount"))...)
+	}
 
 	return allErrs
 }
 
-func validateScratchDisk(volumeType string, workerConfig *gcp.WorkerConfig) field.ErrorList {
+func validateScratchDisk(volumeType string, workerConfig gcp.WorkerConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	interfacePath := volumeFldPath.Child("interface")
-	encryptionPath := volumeFldPath.Child("encryption")
+	interfacePath := fldPath.Child("interface")
+	encryptionPath := fldPath.Child("encryption")
 
 	if volumeType == worker.VolumeTypeScratch {
-		if workerConfig == nil || workerConfig.Volume == nil || workerConfig.Volume.LocalSSDInterface == nil {
+		if workerConfig.Volume == nil || workerConfig.Volume.LocalSSDInterface == nil {
 			allErrs = append(allErrs, field.Required(interfacePath, fmt.Sprintf("must be set when using %s volumes", worker.VolumeTypeScratch)))
-		} else {
-			if !validVolumeLocalSSDInterfacesTypes.Has(*workerConfig.Volume.LocalSSDInterface) {
-				allErrs = append(allErrs, field.NotSupported(interfacePath, *workerConfig.Volume.LocalSSDInterface, validVolumeLocalSSDInterfacesTypes.UnsortedList()))
-			}
 		}
 		// DiskEncryption not allowed for type SCRATCH
-		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.Encryption != nil {
+		if workerConfig.Volume != nil && workerConfig.Volume.Encryption != nil {
 			allErrs = append(allErrs, field.Invalid(encryptionPath, *workerConfig.Volume.Encryption, fmt.Sprintf("must not be set in combination with %s volumes", worker.VolumeTypeScratch)))
 		}
 	} else {
 		// LocalSSDInterface only allowed for type SCRATCH
-		if workerConfig != nil && workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
+		if workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
 			allErrs = append(allErrs, field.Invalid(interfacePath, *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", worker.VolumeTypeScratch)))
 		}
 	}
 	return allErrs
 }
 
-func validateHyperDisk(dataVolume core.DataVolume, config gcp.DataVolume) field.ErrorList {
+func validateDataVolumeConfigs(dataVolumes []core.DataVolume, configs []gcp.DataVolume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-
-	if config.ProvisionedIops != nil && !slices.Contains(worker.AllowedTypesIops, *dataVolume.Type) {
-		allErrs = append(allErrs, field.Forbidden(
-			dataVolumeFldPath.Child("provisionedIops"),
-			fmt.Sprintf("is only allowed for types: %v", worker.AllowedTypesIops)))
-	}
-	if config.ProvisionedThroughput != nil && !slices.Contains(worker.AllowedTypesThroughput, *dataVolume.Type) {
-		allErrs = append(allErrs, field.Forbidden(
-			dataVolumeFldPath.Child("provisionedThroughput"),
-			fmt.Sprintf("is only allowed for types: %v", worker.AllowedTypesThroughput)))
-	}
-	return allErrs
-}
-
-func validateDataVolumeConfigs(dataVolumes []core.DataVolume, configs []gcp.DataVolume) field.ErrorList {
-	allErrs := field.ErrorList{}
-
 	volumeNames := sets.New[string]()
+
 	for i, configDataVolume := range configs {
+		if sourceImage := configDataVolume.SourceImage; sourceImage != nil {
+			allErrs = append(allErrs, validateVolumeSourceImage(*sourceImage, fldPath.Index(i).Child("sourceImage"))...)
+		}
 		idx := slices.IndexFunc(dataVolumes, func(dv core.DataVolume) bool { return dv.Name == configDataVolume.Name })
 		volumeName := configDataVolume.Name
 		if idx == -1 {
-			allErrs = append(allErrs, field.Invalid(
-				dataVolumeFldPath,
-				volumeName,
+			allErrs = append(allErrs, field.Invalid(fldPath, volumeName,
 				fmt.Sprintf("could not find dataVolume with name %s", volumeName)))
 			continue
 		}
 		if volumeNames.Has(volumeName) {
-			allErrs = append(allErrs, field.Duplicate(dataVolumeFldPath.Index(i), volumeName))
+			allErrs = append(allErrs, field.Duplicate(fldPath.Index(i), volumeName))
 			continue
 		}
 		volumeNames.Insert(volumeName)
-		allErrs = append(allErrs, validateHyperDisk(dataVolumes[idx], configDataVolume)...)
+		allErrs = append(allErrs, validateHyperDisk(dataVolumes[idx], configDataVolume, fldPath)...)
 	}
 
+	return allErrs
+}
+
+func validateHyperDisk(dataVolume core.DataVolume, config gcp.DataVolume, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if config.ProvisionedIops != nil && !slices.Contains(worker.AllowedTypesIops, *dataVolume.Type) {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("provisionedIops"),
+			fmt.Sprintf("is only allowed for types: %v", worker.AllowedTypesIops)))
+	}
+	if config.ProvisionedThroughput != nil && !slices.Contains(worker.AllowedTypesThroughput, *dataVolume.Type) {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("provisionedThroughput"),
+			fmt.Sprintf("is only allowed for types: %v", worker.AllowedTypesThroughput)))
+	}
 	return allErrs
 }
 

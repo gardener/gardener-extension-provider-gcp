@@ -132,8 +132,10 @@ func (s *shoot) validateContext(valContext *validationContext) field.ErrorList {
 		workerConfig, err := admission.DecodeWorkerConfig(s.decoder, worker.ProviderConfig)
 		if err != nil {
 			allErrors = append(allErrors, field.Invalid(workerFldPath.Child("providerConfig"), err, "invalid providerConfig"))
-		} else {
-			allErrors = append(allErrors, gcpvalidation.ValidateWorkerConfig(workerConfig, worker.DataVolumes)...)
+			continue
+		}
+		if workerConfig != nil {
+			allErrors = append(allErrors, gcpvalidation.ValidateWorkerConfig(*workerConfig, worker.DataVolumes, providerPath.Child("providerConfig"))...)
 		}
 	}
 
