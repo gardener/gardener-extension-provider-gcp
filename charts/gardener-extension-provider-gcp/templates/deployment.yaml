@@ -46,6 +46,8 @@ spec:
       {{- else }}
       priorityClassName: gardener-system-900
       {{- end }}
+      securityContext:
+        runAsNonRoot: true
       serviceAccountName: {{ include "name" . }}
       containers:
       - name: {{ include "name" . }}
@@ -93,6 +95,8 @@ spec:
         {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
         livenessProbe:
           httpGet:
             path: /healthz
