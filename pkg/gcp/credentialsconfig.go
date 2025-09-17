@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
@@ -33,7 +34,6 @@ type credConfig struct {
 
 type credentialSource struct {
 	File   string            `json:"file"`
-	URL    string            `json:"url"`
 	Format credentialsFormat `json:"format"`
 }
 
@@ -99,24 +99,33 @@ func GetCredentialsConfigFromSecretReference(ctx context.Context, c client.Clien
 
 // getCredentialsConfigFromSecret retrieves the credentials config from the secret.
 func getCredentialsConfigFromSecret(secret *corev1.Secret) (*CredentialsConfig, error) {
-	if data, ok := secret.Data[ServiceAccountJSONField]; ok {
-		credentialsConfig, err := GetCredentialsConfigFromJSON(data)
+	secretData := maps.Clone(secret.Data) // Ensure the secret.Data is not modified in-place
+	if serviceAccountJSON, ok := secretData[ServiceAccountJSONField]; ok {
+		credentialsConfig, err := GetCredentialsConfigFromJSON(serviceAccountJSON)
 		if err != nil {
 			return nil, fmt.Errorf("could not get credentials config from %q field: %w", ServiceAccountJSONField, err)
 		}
 		if credentialsConfig.ProjectID == "" {
-			credentialsConfig.ProjectID = string(secret.Data["projectID"])
+			credentialsConfig.ProjectID = string(secretData[ProjectIDField])
 		}
 		return credentialsConfig, nil
 	}
 
-	if data, ok := secret.Data[CredentialsConfigField]; ok {
+	// Secrets other than shoot's cloudprovider does not have the `credentialsConfig` field set.
+	// Let's try to set it from the `config` key.
+	if _, ok := secretData[CredentialsConfigField]; !ok {
+		if err := SetWorkloadIdentityFeatures(secretData, WorkloadIdentityMountPath); err != nil {
+			return nil, fmt.Errorf("could not set workload identity features: %w", err)
+		}
+	}
+
+	if data, ok := secretData[CredentialsConfigField]; ok {
 		credentialsConfig, err := GetCredentialsConfigFromJSON(data)
 		if err != nil {
 			return nil, fmt.Errorf("could not get credentials config from %q field: %w", CredentialsConfigField, err)
 		}
 		if credentialsConfig.ProjectID == "" {
-			credentialsConfig.ProjectID = string(secret.Data["projectID"])
+			credentialsConfig.ProjectID = string(secretData[ProjectIDField])
 		}
 		return credentialsConfig, nil
 	}
@@ -169,8 +178,8 @@ func (t *tokenRetriever) SubjectToken(ctx context.Context, _ externalaccount.Sup
 		return "", err
 	}
 
-	if secret.Labels[securityv1alpha1constants.LabelPurpose] != securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
-		return "", errors.New("secret is not with purpose " + securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor)
+	if !IsWorkloadIdentitySecret(secret) {
+		return "", errors.New("secret is not a workload identity secret")
 	}
 
 	token, ok := secret.Data[securityv1alpha1constants.DataKeyToken]

@@ -5,6 +5,7 @@
 package helper
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -19,8 +20,8 @@ import (
 )
 
 var (
-	// Scheme is a scheme with the types relevant for GCP actuators.
-	Scheme *runtime.Scheme
+	// scheme is a scheme with the types relevant for GCP actuators.
+	scheme *runtime.Scheme
 
 	decoder runtime.Decoder
 
@@ -29,11 +30,11 @@ var (
 )
 
 func init() {
-	Scheme = runtime.NewScheme()
-	utilruntime.Must(install.AddToScheme(Scheme))
+	scheme = runtime.NewScheme()
+	utilruntime.Must(install.AddToScheme(scheme))
 
-	decoder = serializer.NewCodecFactory(Scheme, serializer.EnableStrict).UniversalDecoder()
-	lenientDecoder = serializer.NewCodecFactory(Scheme).UniversalDecoder()
+	decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
+	lenientDecoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
 }
 
 // InfrastructureConfigFromInfrastructure extracts the InfrastructureConfig from the
@@ -46,7 +47,7 @@ func InfrastructureConfigFromInfrastructure(infra *extensionsv1alpha1.Infrastruc
 		}
 		return config, nil
 	}
-	return nil, fmt.Errorf("provider config is not set on the infrastructure resource")
+	return nil, errors.New("provider config is not set on the infrastructure resource")
 }
 
 // InfrastructureStatusFromRaw extracts the InfrastructureStatus from the
@@ -59,7 +60,7 @@ func InfrastructureStatusFromRaw(raw *runtime.RawExtension) (*api.Infrastructure
 		}
 		return status, nil
 	}
-	return nil, fmt.Errorf("provider status is not set on the infrastructure resource")
+	return nil, errors.New("provider status is not set on the infrastructure resource")
 }
 
 // CloudProfileConfigFromCluster decodes the provider specific cloud profile configuration for a cluster
@@ -76,4 +77,16 @@ func CloudProfileConfigFromCluster(cluster *controller.Cluster) (*api.CloudProfi
 		}
 	}
 	return cloudProfileConfig, nil
+}
+
+// WorkloadIdentityConfigFromBytes extracts WorkloadIdentityConfig from the provided byte array.
+func WorkloadIdentityConfigFromBytes(config []byte) (*api.WorkloadIdentityConfig, error) {
+	if len(config) == 0 {
+		return nil, errors.New("cannot parse WorkloadIdentityConfig from empty config")
+	}
+	workloadIdentityConfig := &api.WorkloadIdentityConfig{}
+	if _, _, err := decoder.Decode(config, nil, workloadIdentityConfig); err != nil {
+		return nil, err
+	}
+	return workloadIdentityConfig, nil
 }

@@ -51,7 +51,9 @@ include $(GARDENER_HACK_DIR)/tools.mk
 
 .PHONY: start
 start:
-	@LEADER_ELECTION_NAMESPACE=$(EXTENSION_NAMESPACE) go run \
+	@LEADER_ELECTION_NAMESPACE=$(EXTENSION_NAMESPACE) \
+		GARDENER_SHOOT_CLIENT="external" \
+		go run \
 		-ldflags $(LD_FLAGS) \
 		./cmd/$(EXTENSION_PREFIX)-$(NAME) \
 		--config-file=./example/00-componentconfig.yaml \
@@ -82,7 +84,10 @@ start-admission:
 
 .PHONY: hook-me
 hook-me: $(KUBECTL)
-	@bash $(GARDENER_HACK_DIR)/hook-me.sh $(EXTENSION_NAMESPACE) $$(kubectl get namespace -o custom-columns=NAME:.metadata.name | grep $(NAME) | head -n1) $(WEBHOOK_CONFIG_PORT)
+	@bash $(GARDENER_HACK_DIR)/hook-me.sh \
+		$(EXTENSION_PREFIX)-$(NAME) \
+		$$(kubectl get namespace -o custom-columns=NAME:.metadata.name | grep $(NAME) | head -n1) \
+		$(WEBHOOK_CONFIG_PORT)
 
 #################################################################
 # Rules related to binary build, Docker image build and release #
@@ -91,7 +96,7 @@ hook-me: $(KUBECTL)
 .PHONY: install
 install:
 	@LD_FLAGS=$(LD_FLAGS) EFFECTIVE_VERSION=$(EFFECTIVE_VERSION) \
-	bash $(GARDENER_HACK_DIR)/install.sh ./...
+		bash $(GARDENER_HACK_DIR)/install.sh ./...
 
 .PHONY: docker-login
 docker-login:

@@ -87,10 +87,6 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be string"))
 		}
 
-		if !slices.Contains(allowedTokenURLs, rawTokenURL) {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be one of the allowed URLs: "+strings.Join(allowedTokenURLs, ", ")))
-		}
-
 		tokenURL, err := url.Parse(rawTokenURL)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be a valid URL"))
@@ -98,6 +94,10 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 
 		if tokenURL.Scheme != "https" {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should start with https://"))
+		}
+
+		if !slices.Contains(allowedTokenURLs, rawTokenURL) {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig").Child(keyTokenURL), fmt.Sprintf("allowed values are %q", allowedTokenURLs)))
 		}
 
 		if retrievedURL, ok := cfg[keyServiceAccountImpersonationURL]; ok {

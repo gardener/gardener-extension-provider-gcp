@@ -60,7 +60,7 @@ func (m *mutator) Mutate(ctx context.Context, newObj, oldObj client.Object) erro
 		return fmt.Errorf("failed getting cloudprovider secret: %w", err)
 	}
 
-	if cloudProviderSecret.Labels[securityv1alpha1constants.LabelPurpose] != securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+	if !gcp.IsWorkloadIdentitySecret(cloudProviderSecret) {
 		return nil
 	}
 
