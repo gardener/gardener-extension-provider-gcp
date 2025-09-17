@@ -236,7 +236,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":  Equal(field.ErrorTypeRequired),
-			"Field": Equal("dataVolume[0].type"),
+			"Field": Equal("dataVolumes[0].type"),
 		}))))
 	})
 

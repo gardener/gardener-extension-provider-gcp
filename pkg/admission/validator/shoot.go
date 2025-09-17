@@ -73,7 +73,6 @@ var (
 
 	infrastructureConfigPath = providerPath.Child("infrastructureConfig")
 	controlPlaneConfigPath   = providerPath.Child("controlPlaneConfig")
-	workerConfigPath         = providerPath.Child("workerConfig")
 	workersPath              = providerPath.Child("workers")
 )
 
@@ -136,7 +135,7 @@ func (s *shoot) validateContext(valContext *validationContext) field.ErrorList {
 			continue
 		}
 		if workerConfig != nil {
-			allErrors = append(allErrors, gcpvalidation.ValidateWorkerConfig(*workerConfig, worker.DataVolumes, workerConfigPath)...)
+			allErrors = append(allErrors, gcpvalidation.ValidateWorkerConfig(*workerConfig, worker.DataVolumes, providerPath.Child("providerConfig"))...)
 		}
 	}
 

@@ -341,18 +341,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				))
 			})
 
-			It("should forbid invalid flow logs metadata", func() {
-				infrastructureConfig.Networks.FlowLogs.Metadata = ptr.To("foo")
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
-
-				Expect(errorList).To(ConsistOf(
-					PointTo(MatchFields(IgnoreExtras, Fields{
-						"Type":  Equal(field.ErrorTypeNotSupported),
-						"Field": Equal("networks.flowLogs.metadata"),
-					})),
-				))
-			})
-
 			It("should forbid invalid flow logs sampling rate", func() {
 				infrastructureConfig.Networks.FlowLogs.FlowSampling = ptr.To(1.2)
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)

@@ -30,8 +30,8 @@ func ValidateWorkerConfig(workerConfig gcp.WorkerConfig, dataVolumes []core.Data
 
 	for idx, dataVolume := range dataVolumes {
 		if dataVolume.Type == nil {
-			allErrs = append(allErrs, field.Required(field.NewPath("dataVolume").Index(idx).Child("type"), "must not be empty"))
-			return allErrs
+			allErrs = append(allErrs, field.Required(field.NewPath("dataVolumes").Index(idx).Child("type"), "must not be empty"))
+			continue
 		}
 
 		allErrs = append(allErrs, validateScratchDisk(*dataVolume.Type, workerConfig, fldPath.Child("volume"))...)
@@ -153,7 +153,7 @@ func validateScratchDisk(volumeType string, workerConfig gcp.WorkerConfig, fldPa
 	} else {
 		// LocalSSDInterface only allowed for type SCRATCH
 		if workerConfig.Volume != nil && workerConfig.Volume.LocalSSDInterface != nil {
-			allErrs = append(allErrs, field.Invalid(encryptionPath, *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", worker.VolumeTypeScratch)))
+			allErrs = append(allErrs, field.Invalid(interfacePath, *workerConfig.Volume.LocalSSDInterface, fmt.Sprintf("is only allowed for type %s", worker.VolumeTypeScratch)))
 		}
 	}
 	return allErrs
