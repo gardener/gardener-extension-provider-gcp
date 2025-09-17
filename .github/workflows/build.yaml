@@ -23,6 +23,7 @@ jobs:
       version-commit-callback-action-path: .github/actions/prepare-release
     permissions:
       contents: read
+      pull-requests: write
 
   oci-images:
     name: Build OCI-Images
@@ -50,7 +51,7 @@ jobs:
                 integrity_requirement: high
                 availability_requirement: high
           - name: gardener-extension-admission-gcp
-            target: gardener-extension-provider-gcp
+            target: gardener-extension-admission-gcp
             oci-repository: gardener/extensions/admission-gcp
             ocm-labels:
               name: gardener.cloud/cve-categorisation
