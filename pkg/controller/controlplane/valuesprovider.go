@@ -386,7 +386,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 			"enabled": isCSIFilestoreEnabled(cpConfig),
 		},
 		"default-http-backend": map[string]interface{}{
-			"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
+			"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking, nil),
 		},
 	}, nil
 }
@@ -452,15 +452,15 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 		gcp.CSIControllerName:          csi,
 		gcp.CSIFilestoreControllerName: csiFilestore,
 		gcp.IngressGCEName: map[string]interface{}{
-			"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking),
+			"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking, nil),
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		},
 	}, nil
 }
 
-func isDualstackEnabled(networking *gardencorev1beta1.Networking) bool {
+func isDualstackEnabled(networking *gardencorev1beta1.Networking, networkingStatus *gardencorev1beta1.NetworkingStatus) bool {
 	if networking != nil {
-		return !gardencorev1beta1.IsIPv4SingleStack(networking.IPFamilies)
+		return !gardencorev1beta1.IsIPv4SingleStack(networking.IPFamilies) || networkingStatus != nil && len(networkingStatus.Nodes) == 2
 	}
 
 	return false
@@ -481,14 +481,23 @@ func (vp *valuesProvider) getCCMChartValues(
 		return nil, fmt.Errorf("secret %q not found", cloudControllerManagerServerName)
 	}
 
+	podNetwork := extensionscontroller.GetPodNetwork(cluster)
+	if len(cluster.Shoot.Spec.Networking.IPFamilies) == 1 && len(podNetwork) == 2 {
+		podNetwork = podNetwork[:1]
+	}
+	serviceNetwork := extensionscontroller.GetServiceNetwork(cluster)
+	if len(cluster.Shoot.Spec.Networking.IPFamilies) == 1 && len(serviceNetwork) == 2 {
+		serviceNetwork = serviceNetwork[:1]
+	}
+
 	values := map[string]interface{}{
 		"enabled":           true,
 		"replicas":          extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		"clusterName":       cp.Namespace,
 		"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-		"podNetwork":        strings.Join(extensionscontroller.GetPodNetwork(cluster), ","),
+		"podNetwork":        strings.Join(podNetwork, ","),
 		"allocatorType":     "RangeAllocator",
-		"serviceNetwork":    strings.Join(extensionscontroller.GetServiceNetwork(cluster), ","),
+		"serviceNetwork":    strings.Join(serviceNetwork, ","),
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
 			"checksum/configmap-" + internal.CloudProviderConfigName:      checksums[internal.CloudProviderConfigName],
@@ -513,7 +522,7 @@ func (vp *valuesProvider) getCCMChartValues(
 	}
 	values["configureCloudRoutes"] = !overlayEnabled
 
-	if isDualstackEnabled(cluster.Shoot.Spec.Networking) {
+	if isDualstackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking) {
 		values["configureCloudRoutes"] = false
 		values["allocatorType"] = "CloudAllocator"
 	}
