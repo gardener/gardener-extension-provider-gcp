@@ -1,0 +1,24 @@
+ocm:
+  component_name: github.com/gardener/ingress-default-backend
+  component_version: 0.24.0
+release_notes:
+- audience: operator
+  author:
+    hostname: github.com
+    type: githubUser
+    username: heldkat
+  category: improvement
+  contents: export testresults as inlined ocm-resource
+  mimetype: text/markdown
+  reference: '[#65](https://github.com/gardener/ingress-default-backend/pull/65)'
+  type: standard
+- audience: developer
+  author:
+    hostname: github.com
+    type: githubUser
+    username: ccwienk
+  category: other
+  contents: migrate pipelines to GitHub-Actions
+  mimetype: text/markdown
+  reference: '[#63](https://github.com/gardener/ingress-default-backend/pull/63)'
+  type: standard
