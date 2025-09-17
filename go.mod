@@ -1,7 +1,7 @@
 module github.com/gardener/gardener-extension-provider-gcp
 
 // minimum version of Go required
-go 1.24.0
+go 1.25.0
 
 require (
 	cloud.google.com/go/storage v1.56.0
