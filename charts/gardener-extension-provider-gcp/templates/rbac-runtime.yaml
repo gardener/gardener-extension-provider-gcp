@@ -50,6 +50,40 @@ rules:
   - watch
   - patch
   - delete
+# TODO (kon-angelo): Remove after the release of version 1.46.0
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - list
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - get
+  - delete
+  resourceNames:
+  - gardener.cloud:system:terraformer
+# TODO (kon-angelo): Remove after the release of version 1.46.0
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - delete
+  resourceNames: 
+  - "terraformer"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
