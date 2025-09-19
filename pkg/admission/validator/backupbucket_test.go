@@ -130,6 +130,22 @@ var _ = Describe("BackupBucket Validator", func() {
 				Expect(backupBucketValidator.Validate(ctx, newBackupBucket, backupBucket)).To(Succeed())
 			})
 
+			It("should succeed when BackupBucket is updated with nil providerConfig and old had valid providerConfig set", func() {
+				backupBucket := &gardencore.BackupBucket{
+					Spec: gardencore.BackupBucketSpec{
+						CredentialsRef: credentialsRef,
+						ProviderConfig: &runtime.RawExtension{
+							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`),
+						},
+					},
+				}
+
+				newBackupBucket := backupBucket.DeepCopy()
+				newBackupBucket.Spec.ProviderConfig = nil
+
+				Expect(backupBucketValidator.Validate(ctx, newBackupBucket, backupBucket)).To(Succeed())
+			})
+
 			It("should return error when BackupBucket is updated and old had invalid providerConfig set", func() {
 				backupBucket := &gardencore.BackupBucket{
 					Spec: gardencore.BackupBucketSpec{
