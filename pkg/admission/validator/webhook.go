@@ -14,7 +14,6 @@ import (
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -77,10 +76,10 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 			): {{Obj: &security.CredentialsBinding{}}},
 			NewSeedValidator(mgr): {{Obj: &core.Seed{}}},
 			NewWorkloadIdentityValidator(
-				serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 				allowedTokenURLs,
 				allowedServiceAccountImpersonationURLRegExps,
 			): {{Obj: &securityv1alpha1.WorkloadIdentity{}}},
+			NewBackupBucketValidator(mgr): {{Obj: &core.BackupBucket{}}},
 		},
 		Target: extensionswebhook.TargetSeed,
 		ObjectSelector: &metav1.LabelSelector{
