@@ -16,8 +16,6 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	"github.com/gardener/gardener-extension-provider-gcp/imagevector"
 )
 
 type actuator struct {
@@ -57,7 +55,7 @@ func NewTerraformer(
 	terraformer.Terraformer,
 	error,
 ) {
-	tf, err := terraformer.NewForConfig(logger, restConfig, purpose, infra.Namespace, infra.Name, imagevector.TerraformerImage())
+	tf, err := terraformer.NewForConfig(logger, restConfig, purpose, infra.Namespace, infra.Name, "")
 	if err != nil {
 		return nil, err
 	}
