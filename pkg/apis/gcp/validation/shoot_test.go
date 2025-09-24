@@ -68,6 +68,10 @@ var _ = Describe("Shoot validation", func() {
 			})
 
 			It("should return an error for dual-stack because kubernetes release is too old", func() {
+				networking.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"overlay":{"enabled":false}}`),
+				}
+
 				errorList := ValidateNetworking(networking, networkingPath, invalidDualStackVersion)
 
 				Expect(errorList).To(ConsistOf(
@@ -79,6 +83,10 @@ var _ = Describe("Shoot validation", func() {
 			})
 
 			It("should pass dual-stack", func() {
+				networking.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"overlay":{"enabled":false}}`),
+				}
+
 				errorList := ValidateNetworking(networking, networkingPath, validDualStackVersion)
 
 				Expect(errorList).To(BeEmpty())
