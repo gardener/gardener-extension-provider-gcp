@@ -14,19 +14,16 @@ import (
 	"github.com/gardener/gardener/pkg/apis/security"
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
 
 type credentialsBinding struct {
 	apiReader                                    client.Reader
-	decoder                                      runtime.Decoder
 	allowedTokenURLs                             []string
 	allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp
 }
@@ -35,7 +32,6 @@ type credentialsBinding struct {
 func NewCredentialsBindingValidator(mgr manager.Manager, allowedTokenURLs []string, allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp) extensionswebhook.Validator {
 	return &credentialsBinding{
 		apiReader:        mgr.GetAPIReader(),
-		decoder:          serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 		allowedTokenURLs: allowedTokenURLs,
 		allowedServiceAccountImpersonationURLRegExps: allowedServiceAccountImpersonationURLRegExps,
 	}
@@ -82,7 +78,7 @@ func (cb *credentialsBinding) Validate(ctx context.Context, newObj, oldObj clien
 			return errors.New("the target system is missing configuration")
 		}
 
-		config, err := admission.DecodeWorkloadIdentityConfig(cb.decoder, workloadIdentity.Spec.TargetSystem.ProviderConfig)
+		config, err := helper.WorkloadIdentityConfigFromRaw(workloadIdentity.Spec.TargetSystem.ProviderConfig)
 		if err != nil {
 			return fmt.Errorf("target system's configuration is not valid: %w", err)
 		}

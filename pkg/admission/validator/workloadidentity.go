@@ -12,24 +12,21 @@ import (
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
 
 type workloadIdentity struct {
-	decoder                                      runtime.Decoder
 	allowedTokenURLs                             []string
 	allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp
 }
 
 // NewWorkloadIdentityValidator returns a new instance of a WorkloadIdentity validator.
-func NewWorkloadIdentityValidator(decoder runtime.Decoder, allowedTokenURLs []string, allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp) extensionswebhook.Validator {
+func NewWorkloadIdentityValidator(allowedTokenURLs []string, allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp) extensionswebhook.Validator {
 	return &workloadIdentity{
-		decoder:          decoder,
 		allowedTokenURLs: allowedTokenURLs,
 		allowedServiceAccountImpersonationURLRegExps: allowedServiceAccountImpersonationURLRegExps,
 	}
@@ -46,7 +43,7 @@ func (wi *workloadIdentity) Validate(_ context.Context, newObj, oldObj client.Ob
 		return errors.New("the new target system is missing configuration")
 	}
 
-	newConfig, err := admission.DecodeWorkloadIdentityConfig(wi.decoder, workloadIdentity.Spec.TargetSystem.ProviderConfig)
+	newConfig, err := helper.WorkloadIdentityConfigFromRaw(workloadIdentity.Spec.TargetSystem.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("cannot decode the new target system's configuration: %w", err)
 	}
@@ -58,7 +55,7 @@ func (wi *workloadIdentity) Validate(_ context.Context, newObj, oldObj client.Ob
 			return fmt.Errorf("wrong object type %T for old object", oldObj)
 		}
 
-		oldConfig, err := admission.DecodeWorkloadIdentityConfig(wi.decoder, oldWorkloadIdentity.Spec.TargetSystem.ProviderConfig)
+		oldConfig, err := helper.WorkloadIdentityConfigFromRaw(oldWorkloadIdentity.Spec.TargetSystem.ProviderConfig)
 		if err != nil {
 			return fmt.Errorf("cannot decode the old target system's configuration: %w", err)
 		}

@@ -61,19 +61,12 @@ func DecodeCloudProfileConfig(decoder runtime.Decoder, config *runtime.RawExtens
 // DecodeBackupBucketConfig decodes the `BackupBucketConfig` from the given `RawExtension`.
 func DecodeBackupBucketConfig(decoder runtime.Decoder, config *runtime.RawExtension) (*gcp.BackupBucketConfig, error) {
 	backupBucketConfig := &gcp.BackupBucketConfig{}
-	if err := util.Decode(decoder, config.Raw, backupBucketConfig); err != nil {
-		return nil, err
+
+	if config != nil && config.Raw != nil {
+		if err := util.Decode(decoder, config.Raw, backupBucketConfig); err != nil {
+			return nil, err
+		}
 	}
 
 	return backupBucketConfig, nil
-}
-
-// DecodeWorkloadIdentityConfig decodes the `WorkloadIdentityConfig` from the given `RawExtension`.
-func DecodeWorkloadIdentityConfig(decoder runtime.Decoder, config *runtime.RawExtension) (*gcp.WorkloadIdentityConfig, error) {
-	workloadIdentityConfig := &gcp.WorkloadIdentityConfig{}
-	if err := util.Decode(decoder, config.Raw, workloadIdentityConfig); err != nil {
-		return nil, err
-	}
-
-	return workloadIdentityConfig, nil
 }
