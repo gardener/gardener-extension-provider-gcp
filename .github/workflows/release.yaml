@@ -5,8 +5,8 @@ on:
       release-version:
         type: choice
         options:
+          - set-prerelease
           - noop
-          - finalize
         description: 'Select whether to modify the release version.'
       next-version:
         type: choice
