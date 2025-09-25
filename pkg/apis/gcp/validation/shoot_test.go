@@ -91,6 +91,29 @@ var _ = Describe("Shoot validation", func() {
 
 				Expect(errorList).To(BeEmpty())
 			})
+
+			It("should deny with dual-stack networking and overlay explicitly enabled", func() {
+				networking.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"overlay":{"enabled":true}}`),
+				}
+
+				errorList := ValidateNetworking(networking, networkingPath, validDualStackVersion)
+				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("spec.networking.providerConfig.overlay.enabled"),
+				}))))
+			})
+
+			It("should deny with dual-stack networking and overlay implicitly enabled", func() {
+				networking.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{}`),
+				}
+				errorList := ValidateNetworking(networking, networkingPath, validDualStackVersion)
+				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("spec.networking.ipFamilies"),
+				}))))
+			})
 		})
 	})
 	Describe("#ValidateWorkers", func() {
