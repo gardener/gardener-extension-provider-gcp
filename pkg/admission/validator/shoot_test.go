@@ -158,30 +158,33 @@ var _ = Describe("Shoot validator", func() {
 				shoot.Spec.Networking.Nodes = nil
 				shoot.Spec.Networking.IPFamilies = []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}
 				err := shootValidator.Validate(ctx, shoot, nil)
-				Expect(err).To(
-					ConsistOf(
-						PointTo(MatchFields(IgnoreExtras, Fields{
-							"Type":  Equal(field.ErrorTypeRequired),
-							"Field": Equal("spec.networking.nodes"),
-						})),
-					),
-				)
+				Expect(err).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeRequired),
+						"Field": Equal("spec.networking.nodes"),
+					})),
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeInvalid),
+						"Field": Equal("spec.networking.ipFamilies"),
+					})),
+				))
 			})
 
 			It("should return err with IPv6-only networking", func() {
 				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
 
 				shoot.Spec.Networking.IPFamilies = []core.IPFamily{core.IPFamilyIPv6}
+				shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"overlay":{"enabled":false}}`),
+				}
 
 				err := shootValidator.Validate(ctx, shoot, nil)
-				Expect(err).To(
-					ConsistOf(
-						PointTo(MatchFields(IgnoreExtras, Fields{
-							"Type":  Equal(field.ErrorTypeInvalid),
-							"Field": Equal("spec.networking.ipFamilies"),
-						})),
-					),
-				)
+				Expect(err).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeInvalid),
+						"Field": Equal("spec.networking.ipFamilies"),
+					})),
+				))
 			})
 		})
 	})
