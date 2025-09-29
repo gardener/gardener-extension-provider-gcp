@@ -114,6 +114,7 @@ You can find more information about the process and the steps required [here](ht
 > [!WARNING]
 > Please note that the dual-stack migration requires the IPv4-only cluster to run in native routing mode, i.e. pod overlay network needs to be disabled.
 > The default quota of static routes per VPC in GCP is 200. This restricts the cluster size. Therefore, please adapt (if necessary) the quota for the routes per VPC (`STATIC_ROUTES_PER_NETWORK`) in the gcp cloud console accordingly before switching to native routing.
+> Furthermore, if a VPC is shared among multiple Gardener shoot clusters, the pod CIDR ranges of the shoot clusters running without an overlay must be disjoint.
 
 After triggering the migration a constraint of type `DualStackNodesMigrationReady` is added to the shoot status. It is in state `False` until all nodes have an IPv4 and IPv6 address assigned.
 Changing the `ipFamilies` field triggers immediately an infrastructure reconciliation, where the infrastructure is reconfigured to additionally support IPv6. During this infrastructure migration process the subnets get an external IPv6 range and the node subnet gets a secondary IPv4 range. Pod specific cloud routes are deleted from the VPC route table and alias IP ranges for the pod routes are added to the NIC of Kubernetes nodes/instances.
