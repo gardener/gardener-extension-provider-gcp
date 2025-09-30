@@ -142,11 +142,11 @@ func validateIPv6(networking *core.Networking, fldPath *field.Path) field.ErrorL
 	if _, ok := networkConfig[overlayKey]; ok {
 		if overlay, ok := networkConfig[overlayKey].(map[string]interface{}); ok {
 			if enabled, ok := overlay[enabledKey].(bool); ok && enabled {
-				allErrs = append(allErrs, field.Invalid(fldPath.Child("providerConfig").Child(overlayKey).Child(enabledKey), enabled, "overlay is not supported in conjunction with IPv6"))
+				allErrs = append(allErrs, field.Invalid(fldPath.Child("providerConfig").Child(overlayKey).Child(enabledKey), enabled, "overlay must be set to false in conjunction with IPv6"))
 			}
 		}
 	} else {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("ipFamilies"), networking.IPFamilies, "overlay is not supported in conjunction with IPv6"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("ipFamilies"), networking.IPFamilies, "overlay must be set to false in conjunction with IPv6"))
 	}
 
 	return allErrs
