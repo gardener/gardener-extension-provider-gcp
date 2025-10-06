@@ -22,4 +22,4 @@ spec:
     kind: Deployment
     name: csi-driver-filestore-controller
   updatePolicy:
-    updateMode: Auto
+    updateMode: Recreate
