@@ -6,16 +6,15 @@ package validator_test
 
 import (
 	"context"
-	"encoding/json"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
-	"github.com/gardener/gardener/pkg/apis/core"
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/validator"
@@ -24,233 +23,217 @@ import (
 )
 
 var _ = Describe("Seed Validator", func() {
-	var (
-		ctrl          *gomock.Controller
-		mgr           *mockmanager.MockManager
-		c             *mockclient.MockClient
-		seedValidator extensionswebhook.Validator
-		scheme        *runtime.Scheme
-	)
-
-	BeforeEach(func() {
-		ctrl = gomock.NewController(GinkgoT())
-
-		scheme = runtime.NewScheme()
-		Expect(core.AddToScheme(scheme)).To(Succeed())
-		Expect(apisgcp.AddToScheme(scheme)).To(Succeed())
-		Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
-		Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
-		c = mockclient.NewMockClient(ctrl)
-
-		mgr = mockmanager.NewMockManager(ctrl)
-		mgr.EXPECT().GetScheme().Return(scheme).AnyTimes()
-		mgr.EXPECT().GetClient().Return(c).AnyTimes()
-		seedValidator = validator.NewSeedValidator(mgr)
-	})
-
-	// Helper function to generate Seed objects
-	generateSeed := func(retentionType, retentionPeriod string, locked bool, isImmutableConfigured bool) *core.Seed {
-		var config *runtime.RawExtension
-		if isImmutableConfigured {
-
-			immutability := make(map[string]interface{})
-			if retentionType != "" {
-				immutability["retentionType"] = retentionType
-			}
-			if retentionPeriod != "" {
-				immutability["retentionPeriod"] = retentionPeriod
-				immutability["locked"] = locked
-			}
-
-			backupBucketConfig := map[string]interface{}{
-				"apiVersion":   "gcp.provider.extensions.gardener.cloud/v1alpha1",
-				"kind":         "BackupBucketConfig",
-				"immutability": immutability,
-			}
-			raw, err := json.Marshal(backupBucketConfig)
-			Expect(err).NotTo(HaveOccurred())
-			config = &runtime.RawExtension{
-				Raw: raw,
-			}
-		} else {
-			config = nil
-		}
-
-		var backup *core.Backup
-		if config != nil {
-			backup = &core.Backup{
-				ProviderConfig: config,
-			}
-		}
-
-		return &core.Seed{
-			Spec: core.SeedSpec{
-				Backup: backup,
-			},
-		}
-	}
-
-	Describe("ValidateUpdate", func() {
-		DescribeTable("Valid update scenarios",
-			func(oldSeed, newSeed *core.Seed) {
-				err := seedValidator.Validate(context.Background(), newSeed, oldSeed)
-				Expect(err).NotTo(HaveOccurred())
-			},
-			Entry("Immutable settings unchanged",
-				generateSeed("bucket", "96h", false, true),
-				generateSeed("bucket", "96h", false, true),
-			),
-			Entry("Retention period increased while locked",
-				generateSeed("bucket", "96h", true, true),
-				generateSeed("bucket", "120h", true, true),
-			),
-			Entry("Retention period decreased when not locked",
-				generateSeed("bucket", "96h", false, true),
-				generateSeed("bucket", "48h", false, true),
-			),
-			Entry("Adding immutability to an existing bucket without it",
-				generateSeed("", "", false, false),
-				generateSeed("bucket", "96h", false, true),
-			),
-			Entry("Adding immutability with locked=true",
-				generateSeed("", "", false, false),
-				generateSeed("bucket", "96h", true, true),
-			),
-			Entry("Retention period exactly at minimum (24h)",
-				generateSeed("bucket", "24h", false, true),
-				generateSeed("bucket", "24h", false, true),
-			),
-			Entry("Transitioning from locked=false to locked=true",
-				generateSeed("bucket", "96h", false, true),
-				generateSeed("bucket", "96h", true, true),
-			),
-			Entry("Disabling immutability when not locked",
-				generateSeed("bucket", "96h", false, true),
-				generateSeed("", "", false, false),
-			),
-			Entry("Backup not configured",
-				generateSeed("", "", false, false),
-				generateSeed("", "", false, false),
-			),
+	Describe("#Validate", func() {
+		var (
+			ctx            context.Context
+			credentialsRef *corev1.ObjectReference
+			ctrl           *gomock.Controller
+			mgr            *mockmanager.MockManager
+			seedValidator  extensionswebhook.Validator
+			scheme         *runtime.Scheme
 		)
 
-		DescribeTable("Invalid update scenarios",
-			func(oldSeed, newSeed *core.Seed, expectedError string) {
-				err := seedValidator.Validate(context.Background(), newSeed, oldSeed)
+		BeforeEach(func() {
+			ctx = context.TODO()
+			credentialsRef = &corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "Secret",
+				Namespace:  "garden",
+				Name:       "backup-credentials",
+			}
+
+			ctrl = gomock.NewController(GinkgoT())
+
+			scheme = runtime.NewScheme()
+			Expect(gardencore.AddToScheme(scheme)).To(Succeed())
+			Expect(apisgcp.AddToScheme(scheme)).To(Succeed())
+			Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
+			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
+
+			mgr = mockmanager.NewMockManager(ctrl)
+			mgr.EXPECT().GetScheme().Return(scheme).AnyTimes()
+			seedValidator = validator.NewSeedValidator(mgr)
+		})
+
+		It("should return err when obj is not a gardencore.Seed", func() {
+			Expect(seedValidator.Validate(ctx, &corev1.Secret{}, nil)).To(MatchError("wrong object type *v1.Secret for new object"))
+		})
+
+		It("should return err when oldObj is not a gardencore.Seed", func() {
+			Expect(seedValidator.Validate(ctx, &gardencore.Seed{}, &corev1.Secret{})).To(MatchError("wrong object type *v1.Secret for old object"))
+		})
+
+		Context("Create", func() {
+			It("should succeed to create seed when backup is unset", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: nil,
+					},
+				}
+
+				Expect(seedValidator.Validate(ctx, seed, nil)).To(Succeed())
+			})
+
+			It("should fail to create seed when backup has nil credentialsRef", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: &gardencore.Backup{
+							CredentialsRef: nil,
+						},
+					},
+				}
+
+				err := seedValidator.Validate(ctx, seed, nil)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(expectedError))
-			},
-			Entry("Disabling immutable settings is not allowed if locked",
-				generateSeed("bucket", "96h", true, true),
-				generateSeed("", "", false, true),
-				"immutability cannot be disabled once it is locked",
-			),
-			Entry("Unlocking a locked retention policy is not allowed",
-				generateSeed("bucket", "96h", true, true),
-				generateSeed("bucket", "96h", false, true),
-				"immutable retention policy lock cannot be unlocked once it is locked",
-			),
-			Entry("Reducing retention period when locked is not allowed",
-				generateSeed("bucket", "96h", true, true),
-				generateSeed("bucket", "48h", true, true),
-				"reducing the retention period from",
-			),
-			Entry("Changing retentionType is not allowed",
-				generateSeed("bucket", "96h", true, true),
-				generateSeed("object", "96h", true, true),
-				"must be 'bucket'",
-			),
-			Entry("Retention period below minimum when not locked is not allowed",
-				generateSeed("bucket", "96h", true, true),
-				generateSeed("bucket", "23h", false, true),
-				"must be a positive duration greater than 24h",
-			),
-			Entry("Retention period below minimum when locked is not allowed",
-				generateSeed("bucket", "96h", true, true),
-				generateSeed("bucket", "23h", true, true),
-				"must be a positive duration greater than 24h",
-			),
-			Entry("Invalid retention period format when locked is not allowed",
-				generateSeed("bucket", "96h", true, true),
-				generateSeed("bucket", "invalid", true, true),
-				"invalid duration",
-			),
-			Entry("Invalid retention period format when not locked is not allowed",
-				generateSeed("bucket", "96h", false, true),
-				generateSeed("bucket", "invalid", false, true),
-				"invalid duration",
-			),
-		)
-	})
+			})
 
-	Describe("ValidateCreate", func() {
-		DescribeTable("Valid creation scenarios",
-			func(newSeed *core.Seed) {
-				err := seedValidator.Validate(context.Background(), newSeed, nil)
-				Expect(err).NotTo(HaveOccurred())
-			},
-			Entry("Creation with valid immutable settings",
-				generateSeed("bucket", "96h", false, true),
-			),
-			Entry("Creation without immutable settings",
-				generateSeed("", "", false, false),
-			),
-			Entry("Creation with locked immutable settings",
-				generateSeed("bucket", "96h", true, true),
-			),
-			Entry("Retention period exactly at minimum (24h)",
-				generateSeed("bucket", "24h", false, true),
-			),
-			Entry("Backup not configured",
-				generateSeed("", "", false, false),
-			),
-		)
+			It("should succeed to create seed when backup has providerConfig unset", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: &gardencore.Backup{
+							CredentialsRef: credentialsRef,
+						},
+					},
+				}
 
-		DescribeTable("Invalid creation scenarios",
-			func(newSeed *core.Seed, expectedError string) {
-				err := seedValidator.Validate(context.Background(), newSeed, nil)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(expectedError))
-			},
-			Entry("Invalid retention type",
-				generateSeed("invalid", "96h", false, true),
-				"must be 'bucket'",
-			),
-			Entry("Invalid retention period format",
-				&core.Seed{
-					Spec: core.SeedSpec{
-						Backup: &core.Backup{
+				Expect(seedValidator.Validate(ctx, seed, nil)).To(Succeed())
+			})
+
+			It("should fail to create seed when backup has invalid providerConfig", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: &gardencore.Backup{
+							CredentialsRef: credentialsRef,
 							ProviderConfig: &runtime.RawExtension{
-								Raw: []byte(`{
-									"apiVersion":"gcp.provider.extensions.gardener.cloud/v1alpha1",
-									"kind":"BackupBucketConfig",
-									"immutability":{
-										"retentionType":"bucket",
-										"retentionPeriod":"invalid"
-									}
-								}`),
+								Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v0", "kind": "invalid"}`),
 							},
 						},
 					},
-				},
-				"invalid duration",
-			),
-			Entry("Negative retention period",
-				generateSeed("bucket", "-96h", false, true),
-				"must be a positive duration greater than 24h",
-			),
-			Entry("Retention period below minimum when not locked",
-				generateSeed("bucket", "23h", false, true),
-				"must be a positive duration greater than 24h",
-			),
-			Entry("Retention period below minimum when locked",
-				generateSeed("bucket", "23h", true, true),
-				"must be a positive duration greater than 24h",
-			),
-			Entry("Invalid retention period format when locked is not allowed",
-				generateSeed("bucket", "invalid", true, true),
-				"invalid duration",
-			),
-		)
+				}
+
+				err := seedValidator.Validate(ctx, seed, nil)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("failed to decode provider config: no kind \"invalid\" is registered for version \"gcp.provider.extensions.gardener.cloud/v0\" in scheme")))
+			})
+
+			It("should succeed to create seed when backup has valid providerConfig", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: &gardencore.Backup{
+							CredentialsRef: credentialsRef,
+							ProviderConfig: &runtime.RawExtension{
+								Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`),
+							},
+						},
+					},
+				}
+
+				Expect(seedValidator.Validate(ctx, seed, nil)).To(Succeed())
+			})
+		})
+
+		Context("Update", func() {
+			It("should succeed when seed had empty backup config but is now updated with valid providerConfig", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: nil,
+					},
+				}
+
+				newSeed := seed.DeepCopy()
+				newSeed.Spec.Backup = &gardencore.Backup{
+					CredentialsRef: credentialsRef,
+					ProviderConfig: &runtime.RawExtension{
+						Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`),
+					},
+				}
+
+				Expect(seedValidator.Validate(ctx, newSeed, seed)).To(Succeed())
+			})
+
+			It("should fail when seed had empty backup config but is now updated with invalid providerConfig", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: nil,
+					},
+				}
+
+				newSeed := seed.DeepCopy()
+				newSeed.Spec.Backup = &gardencore.Backup{
+					CredentialsRef: credentialsRef,
+					ProviderConfig: &runtime.RawExtension{
+						Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "invalid"}`),
+					},
+				}
+
+				err := seedValidator.Validate(ctx, newSeed, seed)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("failed to decode new provider config: no kind \"invalid\" is registered for version \"gcp.provider.extensions.gardener.cloud/v1alpha1\" in scheme")))
+			})
+
+			It("should fail when seed had set invalid backup config and is now updated with valid providerConfig", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: &gardencore.Backup{
+							CredentialsRef: credentialsRef,
+							ProviderConfig: &runtime.RawExtension{
+								Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "invalid"}`),
+							},
+						},
+					},
+				}
+
+				newseed := seed.DeepCopy()
+				newseed.Spec.Backup.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`),
+				}
+
+				err := seedValidator.Validate(ctx, newseed, seed)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("failed to decode old provider config: no kind \"invalid\" is registered for version \"gcp.provider.extensions.gardener.cloud/v1alpha1\" in scheme")))
+			})
+
+			It("should fail when seed had set valid backup config and is now updated with invalid providerConfig", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: &gardencore.Backup{
+							CredentialsRef: credentialsRef,
+							ProviderConfig: &runtime.RawExtension{
+								Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`),
+							},
+						},
+					},
+				}
+
+				newseed := seed.DeepCopy()
+				newseed.Spec.Backup.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "invalid"}`),
+				}
+
+				err := seedValidator.Validate(ctx, newseed, seed)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("failed to decode new provider config: no kind \"invalid\" is registered for version \"gcp.provider.extensions.gardener.cloud/v1alpha1\" in scheme")))
+			})
+
+			It("should succeed when seed had set backup config and is now updated with valid providerConfig", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: &gardencore.Backup{
+							CredentialsRef: credentialsRef,
+							ProviderConfig: &runtime.RawExtension{
+								Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`),
+							},
+						},
+					},
+				}
+
+				newSeed := seed.DeepCopy()
+				newSeed.Spec.Backup.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "immutability": {"retentionPeriod": "96h", "retentionType": "bucket"}}`),
+				}
+
+				Expect(seedValidator.Validate(ctx, newSeed, seed)).To(Succeed())
+			})
+		})
 	})
 })

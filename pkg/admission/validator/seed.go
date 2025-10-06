@@ -25,7 +25,6 @@ import (
 // ensuring backup configuration immutability according to policy.
 func NewSeedValidator(mgr manager.Manager) extensionswebhook.Validator {
 	return &seedValidator{
-		client:         mgr.GetClient(),
 		decoder:        serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 		lenientDecoder: serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
 	}
@@ -34,7 +33,6 @@ func NewSeedValidator(mgr manager.Manager) extensionswebhook.Validator {
 // seedValidator validates create and update operations on Seed resources,
 // enforcing immutability of backup configurations.
 type seedValidator struct {
-	client         client.Client
 	decoder        runtime.Decoder
 	lenientDecoder runtime.Decoder
 }
@@ -62,22 +60,22 @@ func (s *seedValidator) Validate(_ context.Context, newObj, oldObj client.Object
 // validateCreate validates the Seed object upon creation.
 // It checks if immutable settings are provided and validates them to ensure they meet the required criteria.
 func (s *seedValidator) validateCreate(seed *core.Seed) field.ErrorList {
-	var (
-		allErrs               = field.ErrorList{}
-		providerConfigfldPath = field.NewPath("spec", "backup", "providerConfig")
-	)
+	allErrs := field.ErrorList{}
 
-	if seed.Spec.Backup == nil || seed.Spec.Backup.ProviderConfig == nil {
-		return allErrs
+	if seed.Spec.Backup != nil {
+		backupPath := field.NewPath("spec", "backup")
+		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketCredentialsRef(seed.Spec.Backup.CredentialsRef, backupPath.Child("credentialsRef"))...)
+
+		if seed.Spec.Backup.ProviderConfig != nil {
+			providerConfigPath := backupPath.Child("providerConfig")
+			backupBucketConfig, err := admission.DecodeBackupBucketConfig(s.decoder, seed.Spec.Backup.ProviderConfig)
+			if err != nil {
+				return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(seed.Spec.Backup.ProviderConfig), fmt.Errorf("failed to decode provider config: %w", err).Error()))
+			}
+
+			allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(backupBucketConfig, providerConfigPath)...)
+		}
 	}
-
-	backupBucketConfig, err := admission.DecodeBackupBucketConfig(s.decoder, seed.Spec.Backup.ProviderConfig)
-	if err != nil {
-		allErrs = append(allErrs, field.Invalid(providerConfigfldPath, seed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode new provider config: %v", err).Error()))
-		return allErrs
-	}
-
-	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(backupBucketConfig, providerConfigfldPath)...)
 
 	return allErrs
 }
@@ -87,71 +85,31 @@ func (s *seedValidator) validateCreate(seed *core.Seed) field.ErrorList {
 // disabling immutability once locked, and reduction of retention periods when policies are locked.
 func (s *seedValidator) validateUpdate(oldSeed, newSeed *core.Seed) field.ErrorList {
 	var (
-		allErrs               = field.ErrorList{}
-		providerConfigfldPath = field.NewPath("spec", "backup", "providerConfig")
+		allErrs                                       = field.ErrorList{}
+		backupPath                                    = field.NewPath("spec", "backup")
+		providerConfigPath                            = backupPath.Child("providerConfig")
+		newBackupBucketConfig *gcp.BackupBucketConfig = nil
+		err                   error
 	)
 
-	if oldSeed.Spec.Backup == nil || oldSeed.Spec.Backup.ProviderConfig == nil {
-		return s.validateCreate(newSeed)
-	}
+	if newSeed.Spec.Backup != nil {
+		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketCredentialsRef(newSeed.Spec.Backup.CredentialsRef, backupPath.Child("credentialsRef"))...)
 
-	oldBackupBucketConfig, err := s.extractBackupBucketConfig(oldSeed, s.lenientDecoder)
-	if err != nil {
-		allErrs = append(allErrs, field.Invalid(providerConfigfldPath, oldSeed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode old provider config: %v", err).Error()))
-		return allErrs
-	}
-
-	newBackupBucketConfig, err := s.extractBackupBucketConfig(newSeed, s.decoder)
-	if err != nil {
-		allErrs = append(allErrs, field.Invalid(providerConfigfldPath, newSeed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode new provider config: %v", err).Error()))
-		return allErrs
-	}
-
-	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(newBackupBucketConfig, providerConfigfldPath)...)
-	allErrs = append(allErrs, s.validateImmutabilityUpdate(oldBackupBucketConfig, newBackupBucketConfig, providerConfigfldPath)...)
-
-	return allErrs
-}
-
-// extractBackupBucketConfig extracts BackupBucketConfig from the Seed.
-func (s *seedValidator) extractBackupBucketConfig(seed *core.Seed, decoder runtime.Decoder) (*gcp.BackupBucketConfig, error) {
-	if seed.Spec.Backup != nil && seed.Spec.Backup.ProviderConfig != nil {
-		config, err := admission.DecodeBackupBucketConfig(decoder, seed.Spec.Backup.ProviderConfig)
+		newBackupBucketConfig, err = admission.DecodeBackupBucketConfig(s.decoder, newSeed.Spec.Backup.ProviderConfig)
 		if err != nil {
-			return nil, err
+			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(newSeed.Spec.Backup.ProviderConfig), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
 		}
-		return config, nil
+
+		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(newBackupBucketConfig, providerConfigPath)...)
 	}
 
-	return nil, nil
-}
+	if oldSeed.Spec.Backup != nil && oldSeed.Spec.Backup.ProviderConfig != nil {
+		oldBackupBucketConfig, err := admission.DecodeBackupBucketConfig(s.lenientDecoder, oldSeed.Spec.Backup.ProviderConfig)
+		if err != nil {
+			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(oldSeed.Spec.Backup.ProviderConfig), fmt.Sprintf("failed to decode old provider config: %v", err.Error())))
+		}
 
-// validateImmutability validates immutability constraints.
-func (s *seedValidator) validateImmutabilityUpdate(oldConfig, newConfig *gcp.BackupBucketConfig, fldPath *field.Path) field.ErrorList {
-	var (
-		allErrs          = field.ErrorList{}
-		immutabilityPath = fldPath.Child("immutability")
-	)
-
-	if oldConfig.Immutability == nil || !oldConfig.Immutability.Locked {
-		return allErrs
-	}
-
-	if newConfig == nil || newConfig.Immutability == nil || *newConfig.Immutability == (gcp.ImmutableConfig{}) {
-		allErrs = append(allErrs, field.Invalid(immutabilityPath, newConfig, "immutability cannot be disabled once it is locked"))
-		return allErrs
-	}
-
-	if !newConfig.Immutability.Locked {
-		allErrs = append(allErrs, field.Forbidden(immutabilityPath.Child("locked"), "immutable retention policy lock cannot be unlocked once it is locked"))
-	} else if newConfig.Immutability.RetentionPeriod.Duration < oldConfig.Immutability.RetentionPeriod.Duration {
-		allErrs = append(allErrs, field.Forbidden(
-			immutabilityPath.Child("retentionPeriod"),
-			fmt.Sprintf("reducing the retention period from %v to %v is prohibited when the immutable retention policy is locked",
-				oldConfig.Immutability.RetentionPeriod.Duration,
-				newConfig.Immutability.RetentionPeriod.Duration,
-			),
-		))
+		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfigUpdate(oldBackupBucketConfig, newBackupBucketConfig, providerConfigPath)...)
 	}
 
 	return allErrs
