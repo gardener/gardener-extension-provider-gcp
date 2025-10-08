@@ -17,6 +17,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/test"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/component/nodemanagement/machinecontrollermanager"
 	imagevectorutils "github.com/gardener/gardener/pkg/utils/imagevector"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
@@ -552,6 +553,54 @@ var _ = Describe("Ensurer", func() {
 				ContainerName:    "machine-controller-manager-provider-gcp",
 				ControlledValues: &ccv,
 			}))
+		})
+	})
+
+	Describe("#EnsureAdditionalUnits", func() {
+		var ensurer genericmutator.Ensurer
+
+		BeforeEach(func() {
+			ensurer = NewEnsurer(fakeClient, logger)
+		})
+
+		It("should add google-guest-agent.service unit", func() {
+			var units []extensionsv1alpha1.Unit
+
+			err := ensurer.EnsureAdditionalUnits(ctx, nil, &units, nil)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(units).To(HaveLen(1))
+
+			unit := units[0]
+			Expect(unit.Name).To(Equal("google-guest-agent.service"))
+			Expect(unit.Enable).To(Equal(ptr.To(true)))
+			Expect(unit.Command).To(Equal(ptr.To(extensionsv1alpha1.CommandStart)))
+			Expect(unit.Content).ToNot(BeNil())
+			Expect(*unit.Content).To(ContainSubstring("Description=Google Compute Engine Guest Agent"))
+			Expect(*unit.Content).To(ContainSubstring("ExecStart=/usr/bin/google_guest_agent"))
+		})
+	})
+
+	Describe("#EnsureAdditionalFiles", func() {
+		var ensurer genericmutator.Ensurer
+
+		BeforeEach(func() {
+			ensurer = NewEnsurer(fakeClient, logger)
+		})
+
+		It("should add instance_configs.cfg file", func() {
+			var files []extensionsv1alpha1.File
+
+			err := ensurer.EnsureAdditionalFiles(ctx, nil, &files, nil)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(files).To(HaveLen(1))
+
+			file := files[0]
+			Expect(file.Path).To(Equal("/etc/default/instance_configs.cfg"))
+			Expect(file.Permissions).ToNot(BeNil())
+			Expect(*file.Permissions).To(Equal(uint32(0o644)))
+			Expect(file.Content.Inline).ToNot(BeNil())
+			Expect(file.Content.Inline.Data).To(ContainSubstring("[IpForwarding]"))
+			Expect(file.Content.Inline.Data).To(ContainSubstring("ip_aliases = false"))
 		})
 	})
 })

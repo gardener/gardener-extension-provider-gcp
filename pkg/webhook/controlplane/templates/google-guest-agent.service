@@ -1,0 +1,20 @@
+# https://github.com/GoogleCloudPlatform/guest-agent/blob/main/google-guest-agent.service
+[Unit]
+Description=Google Compute Engine Guest Agent
+# Start before sshd in order to regenerate SSH host keys.
+Before=sshd.service
+After=network-online.target syslog.service
+After=network.service networking.service NetworkManager.service systemd-networkd.service
+Wants=network-online.target
+PartOf=network.service networking.service NetworkManager.service systemd-networkd.service
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/google_guest_agent
+OOMScoreAdjust=-999
+Restart=always
+
+[Install]
+WantedBy=sshd.service
+WantedBy=multi-user.target
+WantedBy=network.service networking.service NetworkManager.service systemd-networkd.service
