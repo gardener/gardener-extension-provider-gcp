@@ -7,6 +7,7 @@ package controlplane
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/gardener/gardener/pkg/component/nodemanagement/machinecontrollermanager"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
@@ -49,6 +51,12 @@ type ensurer struct {
 
 // ImageVector is exposed for testing.
 var ImageVector = imagevector.ImageVector()
+
+//go:embed templates/instance_configs.cfg
+var instanceConfigsTemplate string
+
+//go:embed templates/google-guest-agent.service
+var googleGuestAgentTemplate string
 
 // EnsureMachineControllerManagerDeployment ensures that the machine-controller-manager deployment conforms to the provider requirements.
 func (e *ensurer) EnsureMachineControllerManagerDeployment(
@@ -400,5 +408,34 @@ func (e *ensurer) EnsureKubernetesGeneralConfiguration(_ context.Context, _ gcon
 	buf.WriteString("net.ipv4.ip_forward = 1")
 
 	*newConf = buf.String()
+	return nil
+}
+
+// EnsureAdditionalUnits ensures that additional required system units are added.
+func (e *ensurer) EnsureAdditionalUnits(_ context.Context, _ gcontext.GardenContext, newObj, _ *[]extensionsv1alpha1.Unit) error {
+	extensionswebhook.AppendUniqueUnit(newObj, extensionsv1alpha1.Unit{
+		Name:    "google-guest-agent.service",
+		Enable:  ptr.To(true),
+		Command: ptr.To(extensionsv1alpha1.CommandStart),
+		Content: &googleGuestAgentTemplate,
+	})
+	return nil
+}
+
+// EnsureAdditionalFiles ensures that additional required system files are added.
+func (e *ensurer) EnsureAdditionalFiles(_ context.Context, _ gcontext.GardenContext, newObj, _ *[]extensionsv1alpha1.File) error {
+	var permissions uint32 = 0o644
+	file := extensionsv1alpha1.File{
+		Path:        "/etc/default/instance_configs.cfg",
+		Permissions: &permissions,
+		Content: extensionsv1alpha1.FileContent{
+			Inline: &extensionsv1alpha1.FileContentInline{
+				Encoding: "",
+				Data:     instanceConfigsTemplate,
+			},
+		},
+	}
+	*newObj = extensionswebhook.EnsureFileWithPath(*newObj, file)
+
 	return nil
 }
