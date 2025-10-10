@@ -1,0 +1,75 @@
+ocm:
+  component_name: github.com/gardener/machine-controller-manager-provider-gcp
+  component_version: v0.26.0
+release_notes:
+- audience: operator
+  author:
+    hostname: github.com
+    type: githubUser
+    username: aaronfern
+  category: improvement
+  contents: Fix an issue that caused make targets to fail by ensuring MCM is present
+    in the mod cache
+  mimetype: text/markdown
+  reference: '[#157](https://github.com/gardener/machine-controller-manager-provider-gcp/pull/157)'
+  type: standard
+- audience: user
+  author:
+    hostname: github.com
+    type: githubUser
+    username: schrodit
+  category: improvement
+  contents: It is now possible to provision node with nested virtualization.
+  mimetype: text/markdown
+  reference: '[#156](https://github.com/gardener/machine-controller-manager-provider-gcp/pull/156)'
+  type: standard
+- audience: user
+  author:
+    hostname: github.com
+    type: githubUser
+    username: aaronfern
+  category: improvement
+  contents: Update build workflow to now also build arm64 images
+  mimetype: text/markdown
+  reference: '[#175](https://github.com/gardener/machine-controller-manager-provider-gcp/pull/175)'
+  type: standard
+- audience: user
+  author:
+    hostname: github.com
+    type: githubUser
+    username: axel7born
+  category: improvement
+  contents: AliasIPs can be assigned for single-stack networking.
+  mimetype: text/markdown
+  reference: '[#171](https://github.com/gardener/machine-controller-manager-provider-gcp/pull/171)'
+  type: standard
+- audience: developer
+  author:
+    hostname: github.com
+    type: githubUser
+    username: thiyyakat
+  category: improvement
+  contents: Convert `.reuse/dep5` to `REUSE.toml`.
+  mimetype: text/markdown
+  reference: '[#164](https://github.com/gardener/machine-controller-manager-provider-gcp/pull/164)'
+  type: standard
+- audience: user
+  author:
+    hostname: github.com
+    type: githubUser
+    username: hebelsan
+  category: improvement
+  contents: Add storagePool field to provider spec
+  mimetype: text/markdown
+  reference: '[#151](https://github.com/gardener/machine-controller-manager-provider-gcp/pull/151)'
+  type: standard
+- audience: developer
+  author:
+    hostname: github.com
+    type: githubUser
+    username: 8R0WNI3
+  category: other
+  contents: migrate CICD-Pipeline to GitHub-Actions
+  mimetype: text/markdown
+  reference: '[#159](https://github.com/gardener/machine-controller-manager-provider-gcp/pull/159)'
+  type: standard
