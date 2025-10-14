@@ -108,6 +108,8 @@ spec:
           - --extra-create-metadata=true
           - --leader-election=true
           - --leader-election-namespace=kube-system
+          - --kube-api-qps=100
+          - --kube-api-burst=200
           - --v=5
           securityContext:
             allowPrivilegeEscalation: false
@@ -137,6 +139,8 @@ spec:
           {{- if ((.Values.csiResizer).featureGates) }}
           - --feature-gates={{ range $feature, $enabled := .Values.csiResizer.featureGates }}{{ $feature }}={{ $enabled }},{{ end }}
           {{- end }}
+          - --kube-api-qps=100
+          - --kube-api-burst=200
           - --v=5
           securityContext:
             allowPrivilegeEscalation: false
@@ -177,6 +181,8 @@ spec:
           - --leader-election
           - --leader-election-namespace=kube-system
           - --snapshot-name-prefix=snapshot
+          - --kube-api-qps=100
+          - --kube-api-burst=200
           securityContext:
             allowPrivilegeEscalation: false
           env:
