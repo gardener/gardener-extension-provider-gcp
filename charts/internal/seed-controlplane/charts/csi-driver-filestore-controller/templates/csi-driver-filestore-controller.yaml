@@ -48,6 +48,8 @@ spec:
             - "--cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf"
             - "--extra-labels=k8s-cluster-name={{ .Release.Namespace }}"
             - "--logtostderr"
+            - "--kube-api-qps=100"
+            - "--kube-api-burst=200"
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
