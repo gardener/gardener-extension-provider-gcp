@@ -69,7 +69,7 @@ type DiskSettings struct {
 	// If not set gcp calculates a default value taking the disk size into consideration.
 	// Hyperdisk Extreme volumes can't be used as boot disks.
 	// +optional
-	ProvisionedIops *int64 `json:"provisionedIops"`
+	ProvisionedIops *int64 `json:"provisionedIops,omitempty"`
 
 	// ProvisionedThroughput of disk to create.
 	// Only for certain types of disk, see worker.AllowedTypesThroughput
@@ -78,11 +78,11 @@ type DiskSettings struct {
 	// If not set gcp calculates a default value taking the disk size into consideration.
 	// Hyperdisk Throughput volumes can't be used as boot disks.
 	// +optional
-	ProvisionedThroughput *int64 `json:"provisionedThroughput"`
+	ProvisionedThroughput *int64 `json:"provisionedThroughput,omitempty"`
 
 	// StoragePool in which the new disk is created.
 	// +optional
-	StoragePool *string `json:"storagePool"`
+	StoragePool *string `json:"storagePool,omitempty"`
 }
 
 // BootVolume contains configuration for the boot volume attached to VMs.

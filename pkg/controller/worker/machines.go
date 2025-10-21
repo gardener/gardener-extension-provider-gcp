@@ -429,10 +429,10 @@ func createDiskSpec(size string, boot bool, image, volumeType *string, volumeCon
 	}
 
 	if diskSettings != nil {
-		if diskSettings.ProvisionedIops != nil && slices.Contains(AllowedTypesIops, *volumeType) {
+		if diskSettings.ProvisionedIops != nil && volumeType != nil && slices.Contains(AllowedTypesIops, *volumeType) {
 			disk["provisionedIops"] = *diskSettings.ProvisionedIops
 		}
-		if diskSettings.ProvisionedThroughput != nil && slices.Contains(AllowedTypesThroughput, *volumeType) {
+		if diskSettings.ProvisionedThroughput != nil && volumeType != nil && slices.Contains(AllowedTypesThroughput, *volumeType) {
 			disk["provisionedThroughput"] = *diskSettings.ProvisionedThroughput
 		}
 		if diskSettings.StoragePool != nil {

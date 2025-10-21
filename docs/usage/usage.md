@@ -325,7 +325,7 @@ The worker configuration contains:
   * Some hyperdisks allow adjustment of their default values for `provisionedIops` and `provisionedThroughput`.
     Keep in mind though that Hyperdisk Extreme and Hyperdisk Throughput volumes can't be used as boot disks.
 
-  * In order to create the disk into a storage pool, define the storage pool in `dataVolumes.storagePoolName` and `bootVolume.storagePoolName`.
+  * In order to create the disk into a storage pool, define the storage pool in `dataVolumes.storagePool` and `bootVolume.storagePool`.
     The storage pool must be created in advance and must be in the same region and zone as your worker.
 
   * Here is an example how the `bootVolume` configuration may look like:
