@@ -81,7 +81,7 @@ func CloudProfileConfigFromCluster(cluster *controller.Cluster) (*apisgcp.CloudP
 }
 
 // WorkloadIdentityConfigFromRaw extracts WorkloadIdentityConfig from the provided [runtime.RawExtension].
-func WorkloadIdentityConfigFromRaw(raw *runtime.RawExtension) (*api.WorkloadIdentityConfig, error) {
+func WorkloadIdentityConfigFromRaw(raw *runtime.RawExtension) (*apisgcp.WorkloadIdentityConfig, error) {
 	if raw == nil || raw.Raw == nil {
 		return nil, errors.New("cannot parse WorkloadIdentityConfig from empty RawExtension")
 	}
@@ -89,11 +89,11 @@ func WorkloadIdentityConfigFromRaw(raw *runtime.RawExtension) (*api.WorkloadIden
 }
 
 // WorkloadIdentityConfigFromBytes extracts WorkloadIdentityConfig from the provided byte array.
-func WorkloadIdentityConfigFromBytes(config []byte) (*api.WorkloadIdentityConfig, error) {
+func WorkloadIdentityConfigFromBytes(config []byte) (*apisgcp.WorkloadIdentityConfig, error) {
 	if len(config) == 0 {
 		return nil, errors.New("cannot parse WorkloadIdentityConfig from empty config")
 	}
-	workloadIdentityConfig := &api.WorkloadIdentityConfig{}
+	workloadIdentityConfig := &apisgcp.WorkloadIdentityConfig{}
 	if err := util.Decode(decoder, config, workloadIdentityConfig); err != nil {
 		return nil, err
 	}

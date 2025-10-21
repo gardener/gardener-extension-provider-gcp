@@ -482,12 +482,12 @@ var _ = Describe("Machines", func() {
 									},
 								},
 								ProviderConfig: &runtime.RawExtension{
-									Raw: encode(&api.WorkerConfig{
-										Volume: &api.Volume{
+									Raw: encode(&apisgcp.WorkerConfig{
+										Volume: &apisgcp.Volume{
 											LocalSSDInterface: &localVolumeInterface,
 										},
 										MinCpuPlatform: &minCpuPlatform,
-										GPU: &api.GPU{
+										GPU: &apisgcp.GPU{
 											AcceleratorType: acceleratorTypeName,
 											Count:           acceleratorCount,
 										},
