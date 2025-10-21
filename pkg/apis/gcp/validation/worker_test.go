@@ -620,7 +620,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeForbidden),
-				"Field": Equal("dataVolumes.provisionedIops"),
+				"Field": Equal("dataVolumes[0].provisionedIops"),
 			}))))
 		})
 
@@ -659,7 +659,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeForbidden),
-				"Field": Equal("dataVolumes.provisionedThroughput"),
+				"Field": Equal("dataVolumes[0].provisionedThroughput"),
 			}))))
 		})
 
@@ -682,7 +682,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeForbidden),
-						"Field": Equal("volume.provisionedThroughput"),
+						"Field": Equal("bootVolume.provisionedThroughput"),
 					})),
 				))
 			})
@@ -711,7 +711,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeForbidden),
-						"Field": Equal("volume.provisionedIops"),
+						"Field": Equal("bootVolume.provisionedIops"),
 					})),
 				))
 			})
