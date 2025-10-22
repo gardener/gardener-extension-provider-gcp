@@ -86,8 +86,8 @@ func (a *actuator) injectWorkloadIdentityData(ctx context.Context, be *extension
 
 func getTokenMountDir(be *extensionsv1alpha1.BackupEntry) string {
 	const (
-		sourceTokenMountDir = "/var/.source-gcp"
-		targetTokenMountDir = "/var/.gcp"
+		sourceTokenMountDir = "/var/.source-gcp" // #nosec: G101 - This is just dirpath where the credentials file will be available.
+		targetTokenMountDir = "/var/.gcp"        // #nosec: G101 - This is just dirpath where the credentials file will be available.
 	)
 
 	if isSourceBackupEntry(be) {
