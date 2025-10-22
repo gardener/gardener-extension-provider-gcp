@@ -3,3 +3,5 @@ appVersion: "1.0"
 description: A Helm chart for the Gardener GCP Provider extension
 name: gardener-extension-provider-gcp
 version: 0.1.0
+sources:
+- https://github.com/gardener/gardener-extension-provider-gcp
