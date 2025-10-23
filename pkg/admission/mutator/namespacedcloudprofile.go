@@ -75,15 +75,18 @@ func mergeMachineImages(specMachineImages, statusMachineImages []v1alpha1.Machin
 		if _, exists := statusImages[specMachineImage.Name]; !exists {
 			statusImages[specMachineImage.Name] = specMachineImage
 		} else {
-			statusImageVersions := utils.CreateMapFromSlice(statusImages[specMachineImage.Name].Versions, func(v v1alpha1.MachineImageVersion) string { return v.Version })
-			specImageVersions := utils.CreateMapFromSlice(specImages[specMachineImage.Name].Versions, func(v v1alpha1.MachineImageVersion) string { return v.Version })
-			for _, version := range specImageVersions {
-				statusImageVersions[version.Version] = version
-			}
+			// since multiple version entries can exist for the same version string
+			mergedVersions := make([]v1alpha1.MachineImageVersion, 0, len(statusImages[specMachineImage.Name].Versions)+len(specImages[specMachineImage.Name].Versions))
+
+			// Add all existing status versions
+			mergedVersions = append(mergedVersions, statusImages[specMachineImage.Name].Versions...)
+
+			// Add all spec versions
+			mergedVersions = append(mergedVersions, specImages[specMachineImage.Name].Versions...)
 
 			statusImages[specMachineImage.Name] = v1alpha1.MachineImages{
 				Name:     specMachineImage.Name,
-				Versions: slices.Collect(maps.Values(statusImageVersions)),
+				Versions: mergedVersions,
 			}
 		}
 	}
