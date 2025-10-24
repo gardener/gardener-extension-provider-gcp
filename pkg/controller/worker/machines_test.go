@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
@@ -402,7 +403,7 @@ var _ = Describe("Machines", func() {
 								Minimum:        minPool2,
 								Architecture:   ptr.To(archARM),
 								Maximum:        maxPool2,
-								Priority:       priorityPool2,
+								Priority:       to.Ptr(priorityPool2),
 								MaxSurge:       maxSurgePool2,
 								MaxUnavailable: maxUnavailablePool2,
 								MachineType:    machineType,
@@ -713,7 +714,7 @@ var _ = Describe("Machines", func() {
 							SecretName: machineClassWithHashPool2Zone1,
 							Minimum:    worker.DistributeOverZones(0, minPool2, 2),
 							Maximum:    worker.DistributeOverZones(0, maxPool2, 2),
-							Priority:   priorityPool2,
+							Priority:   to.Ptr(priorityPool2),
 							Strategy: machinev1alpha1.MachineDeploymentStrategy{
 								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
 								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
@@ -734,7 +735,7 @@ var _ = Describe("Machines", func() {
 							SecretName: machineClassWithHashPool2Zone2,
 							Minimum:    worker.DistributeOverZones(1, minPool2, 2),
 							Maximum:    worker.DistributeOverZones(1, maxPool2, 2),
-							Priority:   priorityPool2,
+							Priority:   to.Ptr(priorityPool2),
 							Strategy: machinev1alpha1.MachineDeploymentStrategy{
 								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
 								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
