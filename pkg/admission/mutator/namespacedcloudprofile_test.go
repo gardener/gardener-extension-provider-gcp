@@ -82,13 +82,16 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 "apiVersion":"gcp.provider.extensions.gardener.cloud/v1alpha1",
 "kind":"CloudProfileConfig",
 "machineImages":[
-  {"name":"image-1","versions":[{"version":"1.0","image":"imgRef1"}]}
+  {"name":"image-1","versions":[
+	{"version":"1.0","image":"imgRef0"},
+	{"version":"1.0","image":"imgRef1","architecture":"arm64"}
+  ]}
 ]}`)}
 				namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
 "apiVersion":"gcp.provider.extensions.gardener.cloud/v1alpha1",
 "kind":"CloudProfileConfig",
 "machineImages":[
-  {"name":"image-1","versions":[{"version":"1.1","image":"imgRef2","architecture":"armhf"}]},
+  {"name":"image-1","versions":[{"version":"1.1","image":"imgRef2","architecture":"arm64"}]},
   {"name":"image-2","versions":[{"version":"2.0","image":"imgRef3"}]}
 ]}`)}
 
@@ -100,8 +103,9 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 					MatchFields(IgnoreExtras, Fields{
 						"Name": Equal("image-1"),
 						"Versions": ContainElements(
-							api.MachineImageVersion{Version: "1.0", Image: "imgRef1", Architecture: ptr.To("amd64")},
-							api.MachineImageVersion{Version: "1.1", Image: "imgRef2", Architecture: ptr.To("armhf")},
+							api.MachineImageVersion{Version: "1.0", Image: "imgRef0", Architecture: ptr.To("amd64")},
+							api.MachineImageVersion{Version: "1.0", Image: "imgRef1", Architecture: ptr.To("arm64")},
+							api.MachineImageVersion{Version: "1.1", Image: "imgRef2", Architecture: ptr.To("arm64")},
 						),
 					}),
 					MatchFields(IgnoreExtras, Fields{
