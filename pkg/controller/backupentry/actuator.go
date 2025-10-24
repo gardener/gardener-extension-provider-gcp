@@ -68,7 +68,7 @@ func (a *actuator) injectWorkloadIdentityData(ctx context.Context, be *extension
 	}
 
 	backupEntrySecretConfig := map[string][]byte{securityv1alpha1constants.DataKeyConfig: backupEntrySecret.Data[securityv1alpha1constants.DataKeyConfig]}
-	if err := gcp.SetWorkloadIdentityFeatures(backupEntrySecretConfig, "/var/.gcp"); err != nil {
+	if err := gcp.SetWorkloadIdentityFeatures(backupEntrySecretConfig, getTokenMountDir(be)); err != nil {
 		return err
 	}
 
@@ -82,4 +82,20 @@ func (a *actuator) injectWorkloadIdentityData(ctx context.Context, be *extension
 	data[gcp.ServiceAccountJSONField] = data[gcp.CredentialsConfigField]
 
 	return nil
+}
+
+func getTokenMountDir(be *extensionsv1alpha1.BackupEntry) string {
+	const (
+		sourceTokenMountDir = "/var/.source-gcp" // #nosec: G101 - This is just dirpath where the credentials file will be available.
+		targetTokenMountDir = "/var/.gcp"        // #nosec: G101 - This is just dirpath where the credentials file will be available.
+	)
+
+	if isSourceBackupEntry(be) {
+		return sourceTokenMountDir
+	}
+	return targetTokenMountDir
+}
+
+func isSourceBackupEntry(be *extensionsv1alpha1.BackupEntry) bool {
+	return strings.HasPrefix(be.Name, v1beta1constants.BackupSourcePrefix+"-")
 }

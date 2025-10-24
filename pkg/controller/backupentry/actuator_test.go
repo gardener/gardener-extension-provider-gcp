@@ -173,5 +173,18 @@ credentialsConfig:
 			Expect(string(injectedData["serviceaccount.json"])).To(Equal(`{"audience":"//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider","credential_source":{"file":"/var/.gcp/token","format":{"type":"text"}},"service_account_impersonation_url":"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/SERVICE_ACCOUNT_EMAIL:generateAccessToken","subject_token_type":"urn:ietf:params:oauth:token-type:jwt","token_url":"https://sts.googleapis.com/v1/token","type":"external_account","universe_domain":"googleapis.com"}`))
 			Expect(injectedData).To(HaveKeyWithValue("foo", []byte("bar")))
 		})
+
+		It("should successfully inject data for source backup entry", func() {
+			data := map[string][]byte{
+				"foo": []byte("bar"),
+			}
+			backupEntry.Name = "source-" + entryName
+			injectedData, err := actuator.GetETCDSecretData(ctx, log, backupEntry, data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(injectedData).To(HaveKeyWithValue("projectID", []byte("test-proj")))
+			Expect(string(injectedData["credentialsConfig"])).To(Equal(`{"audience":"//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider","credential_source":{"file":"/var/.source-gcp/token","format":{"type":"text"}},"service_account_impersonation_url":"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/SERVICE_ACCOUNT_EMAIL:generateAccessToken","subject_token_type":"urn:ietf:params:oauth:token-type:jwt","token_url":"https://sts.googleapis.com/v1/token","type":"external_account","universe_domain":"googleapis.com"}`))
+			Expect(string(injectedData["serviceaccount.json"])).To(Equal(`{"audience":"//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider","credential_source":{"file":"/var/.source-gcp/token","format":{"type":"text"}},"service_account_impersonation_url":"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/SERVICE_ACCOUNT_EMAIL:generateAccessToken","subject_token_type":"urn:ietf:params:oauth:token-type:jwt","token_url":"https://sts.googleapis.com/v1/token","type":"external_account","universe_domain":"googleapis.com"}`))
+			Expect(injectedData).To(HaveKeyWithValue("foo", []byte("bar")))
+		})
 	})
 })
