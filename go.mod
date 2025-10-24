@@ -10,7 +10,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.6.0
 	github.com/gardener/etcd-druid/api v0.31.0
 	github.com/gardener/gardener v1.127.1
-	github.com/gardener/machine-controller-manager v0.60.0
+	github.com/gardener/machine-controller-manager v0.60.1
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
 	github.com/onsi/ginkgo/v2 v2.25.3
