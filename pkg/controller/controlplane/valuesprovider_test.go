@@ -269,6 +269,7 @@ var _ = Describe("ValuesProvider", func() {
 						"replicas": 1,
 					},
 					"useWorkloadIdentity": false,
+					"enableDataCache":     false,
 				}),
 				gcp.CSIFilestoreControllerName: map[string]interface{}{
 					"enabled":   false,
@@ -379,6 +380,7 @@ var _ = Describe("ValuesProvider", func() {
 				gcp.CSINodeName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"kubernetesVersion": "1.29.13",
 					"enabled":           true,
+					"enableDataCache":   false,
 				}),
 				gcp.CSIFilestoreNodeName: map[string]interface{}{
 					"enabled": false,

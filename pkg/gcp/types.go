@@ -88,6 +88,10 @@ const (
 
 	// AnnotationEnableVolumeAttributesClass is the annotation to use on shoots to enable VolumeAttributesClasses
 	AnnotationEnableVolumeAttributesClass = "gcp.provider.extensions.gardener.cloud/enable-volume-attributes-class"
+	// AnnotationEnableCSIDataCache is the annotation to use on shoots to enable CSI Driver data cache
+	// This feature is currently still experimental and not enabled by default.
+	// See also https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver/releases/tag/v1.17.0
+	AnnotationEnableCSIDataCache = "gcp.provider.extensions.gardener.cloud/enable-csi-data-cache"
 
 	// WorkloadIdentityMountPath is the path where the workload identity token and GCP config file are usually mounted.
 	WorkloadIdentityMountPath = "/var/run/secrets/gardener.cloud/workload-identity"

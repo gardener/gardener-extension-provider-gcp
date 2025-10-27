@@ -426,6 +426,11 @@ End-users might want to update their custom `StorageClass`es to the new `pd.csi.
 
 To have the CSI-driver configured to support the necessary features for [VolumeAttributesClasses](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) on GCP for shoots with a k8s-version greater than 1.31, use the `gcp.provider.extensions.gardener.cloud/enable-volume-attributes-class` annotation on the shoot. Keep in mind to also enable the required feature flags and runtime-config on the common kubernetes controllers (as outlined in the link above) in the shoot-spec.
 
+## Support for CSI-driver data cache feature
+
+To enable data caching for the CSI-driver use the `gcp.provider.extensions.gardener.cloud/enable-csi-data-cache` annotation on the shoot.
+This feature is currently experimental and not yet fully documented.
+
 ## Kubernetes Versions per Worker Pool
 
 This extension supports `gardener/gardener`'s `WorkerPoolKubernetesVersion` feature gate, i.e., having [worker pools with overridden Kubernetes versions](https://github.com/gardener/gardener/blob/8a9c88866ec5fce59b5acf57d4227eeeb73669d7/example/90-shoot.yaml#L69-L70) since `gardener-extension-provider-gcp@v1.21`.
