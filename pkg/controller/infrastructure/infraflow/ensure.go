@@ -529,8 +529,7 @@ func (fctx *FlowContext) ensureFirewallRules(ctx context.Context) error {
 		}
 	}
 
-	// delete unnecessary firewall rule.
-	return fctx.computeClient.DeleteFirewallRule(ctx, FirewallRuleAllowExternalName(fctx.clusterName))
+	return nil
 }
 
 func (fctx *FlowContext) ensureVPCDeleted(ctx context.Context) error {
@@ -629,7 +628,6 @@ func (fctx *FlowContext) ensureFirewallRulesDeleted(ctx context.Context) error {
 				FirewallRuleAllowInternalNameIPv6(fctx.clusterName),
 				FirewallRuleAllowHealthChecksNameIPv6(fctx.clusterName),
 				FirewallRuleAllowHealthChecksName(fctx.clusterName),
-				FirewallRuleAllowExternalName(fctx.clusterName),
 			).Has(f.Name) {
 				return true
 			}
