@@ -231,7 +231,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 				},
 			}
 
-			if !gardencorev1beta1.IsIPv4SingleStack(infrastructureStatus.Networks.IPFamilies) || len(infrastructureStatus.Networks.IPFamilies) == 2 {
+			if !gardencorev1beta1.IsIPv4SingleStack(infrastructureStatus.Networks.IPFamilies) {
 				machineClassSpec["networkInterfaces"] = []map[string]interface{}{
 					{
 						"useAliasIPs":         true,

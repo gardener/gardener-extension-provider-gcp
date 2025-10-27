@@ -460,6 +460,8 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 
 func isDualstackEnabled(networking *gardencorev1beta1.Networking, networkingStatus *gardencorev1beta1.NetworkingStatus) bool {
 	if networking != nil {
+		// When migrating from dual-stack to single-stack, Nodes will still have both IPs.
+		// As we can't revert all changes done for dual-stack, we consider dual-stack enabled for some control plane components.
 		return !gardencorev1beta1.IsIPv4SingleStack(networking.IPFamilies) || networkingStatus != nil && len(networkingStatus.Nodes) == 2
 	}
 

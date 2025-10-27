@@ -22,6 +22,13 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
+// isDualStack returns true if the cluster is configured for dual-stack networking
+// or has migrated from dual-stack to single-stack (indicated by having 2 node CIDRs).
+func (fctx *FlowContext) isDualStack() bool {
+	return !gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies) ||
+		fctx.shoot.Status.Networking != nil && len(fctx.shoot.Status.Networking.Nodes) == 2
+}
+
 func (fctx *FlowContext) ensureServiceAccount(ctx context.Context) error {
 	log := shared.LogFromContext(ctx)
 
@@ -255,7 +262,7 @@ func (fctx *FlowContext) ensureNodesSubnet(ctx context.Context) error {
 	dualStack := !gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies)
 
 	var podCIDRS *string
-	if dualStack || fctx.shoot.Status.Networking != nil && len(fctx.shoot.Status.Networking.Nodes) == 2 {
+	if fctx.isDualStack() {
 		podCIDRS = fctx.networking.Pods
 	}
 
@@ -309,7 +316,7 @@ func (fctx *FlowContext) ensureInternalSubnet(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	dualStack := !gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies) || fctx.shoot.Status.Networking != nil && len(fctx.shoot.Status.Networking.Nodes) == 2
+	dualStack := fctx.isDualStack()
 	desired := targetSubnetState(
 		subnetName,
 		"gardener-managed internal subnet",
@@ -350,7 +357,7 @@ func (fctx *FlowContext) ensureServicesSubnet(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	dualStack := !gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies) || fctx.shoot.Status.Networking != nil && len(fctx.shoot.Status.Networking.Nodes) == 2
+	dualStack := fctx.isDualStack()
 	desired := targetSubnetState(
 		subnetName,
 		"gardener-managed services subnet",
