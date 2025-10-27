@@ -1,255 +1,255 @@
 images:
-  - name: cloud-controller-manager
-    sourceRepository: github.com/gardener/cloud-provider-gcp
-    repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
-    tag: v1.29.13
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: protected
-          authentication_enforced: false
-          user_interaction: gardener-operator
-          confidentiality_requirement: high
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-    targetVersion: 1.29.x
-  - name: cloud-controller-manager
-    sourceRepository: github.com/gardener/cloud-provider-gcp
-    repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
-    tag: v1.30.13
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: protected
-          authentication_enforced: false
-          user_interaction: gardener-operator
-          confidentiality_requirement: high
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-    targetVersion: 1.30.x
-  - name: cloud-controller-manager
-    sourceRepository: github.com/kubernetes/cloud-provider-gcp
-    repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-    # TODO(AndreasBurger,kon-angelo): Update to v31.x.y image of the cloud-controller-manager when it is available.
-    tag: v30.0.0
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: protected
-          authentication_enforced: false
-          user_interaction: gardener-operator
-          confidentiality_requirement: high
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-    targetVersion: 1.31.x
-    # Note: do not use the v32.2.5 image of cloud-controller-manager. Its dockerfile only specifies CMD and does not specify an ENTRYPOINT.
-    # This causes the container's entrypoint to be "ko-runner" instead of "/cloud-controller-manager". Due to this it cannot be used with the current
-    # chart that is used to deploy the cloud-controller-manager. For more information check
-    # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987914997 and
-    # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987998478
-    #
-    # TODO(plkokanov,AndreasBurger,kon-angelo,hebelsan): Bump the patch version of the cloud-controller-manager after the Dockerfile
-    # for the v32.2.* releases has been updated to contain both a CMD and ENTRYPOINT ref:
-    # https://github.com/kubernetes/cloud-provider-gcp/pull/842#issuecomment-2987419314
-  - name: cloud-controller-manager
-    sourceRepository: github.com/kubernetes/cloud-provider-gcp
-    repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-    tag: v32.2.4
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: protected
-          authentication_enforced: false
-          user_interaction: gardener-operator
-          confidentiality_requirement: high
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-    targetVersion: 1.32.x
-  - name: cloud-controller-manager
-    sourceRepository: github.com/kubernetes/cloud-provider-gcp
-    repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-    tag: v33.1.1
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: protected
-          authentication_enforced: false
-          user_interaction: gardener-operator
-          confidentiality_requirement: high
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-    targetVersion: '>= 1.33'
-  - name: csi-attacher
-    sourceRepository: github.com/kubernetes-csi/external-attacher
-    repository: registry.k8s.io/sig-storage/csi-attacher
-    tag: v4.10.0
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: private
-          authentication_enforced: false
-          user_interaction: gardener-operator
-          confidentiality_requirement: low
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-  - name: csi-driver
-    sourceRepository: github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
-    repository: registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver
-    tag: v1.17.14
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: protected
-          authentication_enforced: false
-          user_interaction: end-user
-          confidentiality_requirement: high
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-  - name: csi-driver-filestore
-    sourceRepository: github.com/kubernetes-sigs/gcp-filestore-csi-driver
-    repository: registry.k8s.io/cloud-provider-gcp/gcp-filestore-csi-driver
-    tag: v1.11.0
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: protected
-          authentication_enforced: false
-          user_interaction: end-user
-          confidentiality_requirement: high
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-  - name: csi-liveness-probe
-    sourceRepository: github.com/kubernetes-csi/livenessprobe
-    repository: registry.k8s.io/sig-storage/livenessprobe
-    tag: v2.17.0
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: private
-          authentication_enforced: false
-          user_interaction: end-user
-          confidentiality_requirement: low
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-  - name: csi-node-driver-registrar
-    sourceRepository: github.com/kubernetes-csi/node-driver-registrar
-    repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-    tag: v2.15.0
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: private
-          authentication_enforced: false
-          user_interaction: end-user
-          confidentiality_requirement: low
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-  - name: csi-provisioner
-    sourceRepository: github.com/kubernetes-csi/external-provisioner
-    repository: registry.k8s.io/sig-storage/csi-provisioner
-    tag: v5.3.0
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: private
-          authentication_enforced: false
-          user_interaction: gardener-operator
-          confidentiality_requirement: low
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-  - name: csi-resizer
-    sourceRepository: github.com/kubernetes-csi/external-resizer
-    repository: registry.k8s.io/sig-storage/csi-resizer
-    tag: v1.14.0
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: private
-          authentication_enforced: false
-          user_interaction: gardener-operator
-          confidentiality_requirement: low
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-  - name: csi-snapshot-controller
-    sourceRepository: github.com/kubernetes-csi/external-snapshotter
-    repository: registry.k8s.io/sig-storage/snapshot-controller
-    tag: v8.3.0
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: private
-          authentication_enforced: false
-          user_interaction: gardener-operator
-          confidentiality_requirement: low
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-  - name: csi-snapshotter
-    sourceRepository: github.com/kubernetes-csi/external-snapshotter
-    repository: registry.k8s.io/sig-storage/csi-snapshotter
-    tag: v8.3.0
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: private
-          authentication_enforced: false
-          user_interaction: gardener-operator
-          confidentiality_requirement: low
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-  - name: ingress-default-backend
-    sourceRepository: github.com/gardener/ingress-default-backend
-    repository: europe-docker.pkg.dev/gardener-project/releases/gardener/ingress-default-backend
-    tag: 0.24.0
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: private
-          authentication_enforced: false
-          user_interaction: end-user
-          confidentiality_requirement: none
-          integrity_requirement: none
-          availability_requirement: none
-          comment: Show static page when no path is found
-        signing: false
-  - name: ingress-gce
-    sourceRepository: github.com/kubernetes/ingress-gce
-    repository: ghcr.io/gardener/ingress-gce
-    tag: v1.30.5
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: private
-          authentication_enforced: false
-          user_interaction: end-user
-          confidentiality_requirement: low
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
-  - name: machine-controller-manager-provider-gcp
-    sourceRepository: github.com/gardener/machine-controller-manager-provider-gcp
-    repository: europe-docker.pkg.dev/gardener-project/releases/gardener/machine-controller-manager-provider-gcp
-    tag: v0.26.0
-    labels:
-      - name: gardener.cloud/cve-categorisation
-        value:
-          network_exposure: protected
-          authentication_enforced: false
-          user_interaction: gardener-operator
-          confidentiality_requirement: high
-          integrity_requirement: high
-          availability_requirement: low
-        signing: false
+- name: cloud-controller-manager
+  sourceRepository: github.com/gardener/cloud-provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
+  tag: v1.29.13
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+  targetVersion: 1.29.x
+- name: cloud-controller-manager
+  sourceRepository: github.com/gardener/cloud-provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
+  tag: v1.30.13
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+  targetVersion: 1.30.x
+- name: cloud-controller-manager
+  sourceRepository: github.com/kubernetes/cloud-provider-gcp
+  repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
+  # TODO(AndreasBurger,kon-angelo): Update to v31.x.y image of the cloud-controller-manager when it is available.
+  tag: v30.0.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+  targetVersion: 1.31.x
+  # Note: do not use the v32.2.5 image of cloud-controller-manager. Its dockerfile only specifies CMD and does not specify an ENTRYPOINT.
+  # This causes the container's entrypoint to be "ko-runner" instead of "/cloud-controller-manager". Due to this it cannot be used with the current
+  # chart that is used to deploy the cloud-controller-manager. For more information check
+  # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987914997 and
+  # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987998478
+  #
+  # TODO(plkokanov,AndreasBurger,kon-angelo,hebelsan): Bump the patch version of the cloud-controller-manager after the Dockerfile
+  # for the v32.2.* releases has been updated to contain both a CMD and ENTRYPOINT ref:
+  # https://github.com/kubernetes/cloud-provider-gcp/pull/842#issuecomment-2987419314
+- name: cloud-controller-manager
+  sourceRepository: github.com/kubernetes/cloud-provider-gcp
+  repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
+  tag: v32.2.4
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+  targetVersion: 1.32.x
+- name: cloud-controller-manager
+  sourceRepository: github.com/kubernetes/cloud-provider-gcp
+  repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
+  tag: v33.1.1
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+  targetVersion: '>= 1.33'
+- name: csi-attacher
+  sourceRepository: github.com/kubernetes-csi/external-attacher
+  repository: registry.k8s.io/sig-storage/csi-attacher
+  tag: v4.10.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: private
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: low
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+- name: csi-driver
+  sourceRepository: github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
+  repository: registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver
+  tag: v1.17.14
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: end-user
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+- name: csi-driver-filestore
+  sourceRepository: github.com/kubernetes-sigs/gcp-filestore-csi-driver
+  repository: registry.k8s.io/cloud-provider-gcp/gcp-filestore-csi-driver
+  tag: v1.11.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: end-user
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+- name: csi-liveness-probe
+  sourceRepository: github.com/kubernetes-csi/livenessprobe
+  repository: registry.k8s.io/sig-storage/livenessprobe
+  tag: v2.17.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: private
+      authentication_enforced: false
+      user_interaction: end-user
+      confidentiality_requirement: low
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+- name: csi-node-driver-registrar
+  sourceRepository: github.com/kubernetes-csi/node-driver-registrar
+  repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
+  tag: v2.15.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: private
+      authentication_enforced: false
+      user_interaction: end-user
+      confidentiality_requirement: low
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+- name: csi-provisioner
+  sourceRepository: github.com/kubernetes-csi/external-provisioner
+  repository: registry.k8s.io/sig-storage/csi-provisioner
+  tag: v5.3.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: private
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: low
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+- name: csi-resizer
+  sourceRepository: github.com/kubernetes-csi/external-resizer
+  repository: registry.k8s.io/sig-storage/csi-resizer
+  tag: v1.14.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: private
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: low
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+- name: csi-snapshot-controller
+  sourceRepository: github.com/kubernetes-csi/external-snapshotter
+  repository: registry.k8s.io/sig-storage/snapshot-controller
+  tag: v8.3.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: private
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: low
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+- name: csi-snapshotter
+  sourceRepository: github.com/kubernetes-csi/external-snapshotter
+  repository: registry.k8s.io/sig-storage/csi-snapshotter
+  tag: v8.3.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: private
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: low
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+- name: ingress-default-backend
+  sourceRepository: github.com/gardener/ingress-default-backend
+  repository: europe-docker.pkg.dev/gardener-project/releases/gardener/ingress-default-backend
+  tag: 0.24.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: private
+      authentication_enforced: false
+      user_interaction: end-user
+      confidentiality_requirement: none
+      integrity_requirement: none
+      availability_requirement: none
+      comment: Show static page when no path is found
+    signing: false
+- name: ingress-gce
+  sourceRepository: github.com/kubernetes/ingress-gce
+  repository: ghcr.io/gardener/ingress-gce
+  tag: v1.30.5
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: private
+      authentication_enforced: false
+      user_interaction: end-user
+      confidentiality_requirement: low
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+- name: machine-controller-manager-provider-gcp
+  sourceRepository: github.com/gardener/machine-controller-manager-provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/gardener/machine-controller-manager-provider-gcp
+  tag: v0.26.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
