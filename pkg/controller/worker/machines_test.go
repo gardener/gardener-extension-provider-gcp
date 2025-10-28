@@ -917,6 +917,7 @@ var _ = Describe("Machines", func() {
 						"ipv6accessType":      "EXTERNAL",
 						"ipCidrRange":         "/24",
 						"subnetworkRangeName": "ipv4-pod-cidr",
+						"useAliasIPs":         true,
 					}}))
 				}
 			})

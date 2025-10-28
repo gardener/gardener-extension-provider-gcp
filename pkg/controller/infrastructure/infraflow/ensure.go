@@ -22,6 +22,13 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
+// isDualStack returns true if the cluster is configured for dual-stack networking
+// or has migrated from dual-stack to single-stack (indicated by having 2 node CIDRs).
+func (fctx *FlowContext) isDualStack() bool {
+	return !gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies) ||
+		fctx.shoot.Status.Networking != nil && len(fctx.shoot.Status.Networking.Nodes) == 2
+}
+
 func (fctx *FlowContext) ensureServiceAccount(ctx context.Context) error {
 	log := shared.LogFromContext(ctx)
 
@@ -252,6 +259,12 @@ func (fctx *FlowContext) ensureNodesSubnet(ctx context.Context) error {
 	if len(cidr) == 0 {
 		cidr = fctx.config.Networks.Worker
 	}
+	dualStack := !gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies)
+
+	var podCIDRS *string
+	if fctx.isDualStack() {
+		podCIDRS = fctx.networking.Pods
+	}
 
 	targetSubnet := targetSubnetState(
 		subnetName,
@@ -259,8 +272,8 @@ func (fctx *FlowContext) ensureNodesSubnet(ctx context.Context) error {
 		cidr,
 		vpc.SelfLink,
 		fctx.config.Networks.FlowLogs,
-		!gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies),
-		fctx.networking.Pods,
+		dualStack,
+		podCIDRS,
 	)
 
 	subnet, err := fctx.computeClient.GetSubnet(ctx, region, subnetName)
@@ -303,13 +316,14 @@ func (fctx *FlowContext) ensureInternalSubnet(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	dualStack := fctx.isDualStack()
 	desired := targetSubnetState(
 		subnetName,
 		"gardener-managed internal subnet",
 		*fctx.config.Networks.Internal,
 		vpc.SelfLink,
 		nil,
-		!gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies),
+		dualStack,
 		nil,
 	)
 	if subnet == nil {
@@ -343,14 +357,14 @@ func (fctx *FlowContext) ensureServicesSubnet(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
+	dualStack := fctx.isDualStack()
 	desired := targetSubnetState(
 		subnetName,
 		"gardener-managed services subnet",
 		*fctx.networking.Services,
 		vpc.SelfLink,
 		nil,
-		!gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies),
+		dualStack,
 		nil,
 	)
 	if subnet == nil {

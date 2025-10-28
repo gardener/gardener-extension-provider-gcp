@@ -3,7 +3,6 @@ package infraflow
 import (
 	"time"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/utils/flow"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
@@ -48,12 +47,12 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	ensureServicesSubnet := fctx.AddTask(g, "ensure IPv6 services subnet", fctx.ensureServicesSubnet,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
-		shared.DoIf(!gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies)),
+		shared.DoIf(fctx.isDualStack()),
 	)
 	ensureIPv6Services := fctx.AddTask(g, "ensure IPv6 CIDR services", fctx.ensureIPv6CIDRs,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureNodesSubnet, ensureServicesSubnet),
-		shared.DoIf(!gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies)),
+		shared.DoIf(fctx.isDualStack()),
 	)
 	ensureRouter := fctx.AddTask(g, "ensure router", fctx.ensureCloudRouter,
 		shared.Timeout(defaultCreateTimeout),
@@ -98,7 +97,7 @@ func (fctx *FlowContext) buildDeleteGraph() *flow.Graph {
 		"destroy services subnet",
 		fctx.ensureSubnetDeletedFactory(fctx.servicesSubnetNameFromConfig(), ObjectKeyServicesSubnet),
 		shared.Timeout(defaultDeleteTimeout),
-		shared.DoIf(!gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies)),
+		shared.DoIf(fctx.isDualStack()),
 	)
 	ensureCloudRouterDeleted := fctx.AddTask(g, "ensure router deleted", fctx.ensureCloudRouterDeleted,
 		shared.Timeout(defaultDeleteTimeout),

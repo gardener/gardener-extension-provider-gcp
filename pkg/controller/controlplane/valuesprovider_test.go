@@ -282,7 +282,7 @@ var _ = Describe("ValuesProvider", func() {
 					"useWorkloadIdentity": false,
 				},
 				gcp.IngressGCEName: map[string]interface{}{
-					"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking),
+					"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
 					"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, false, 1),
 				},
 			}))
@@ -386,7 +386,7 @@ var _ = Describe("ValuesProvider", func() {
 					"enabled": false,
 				},
 				"default-http-backend": map[string]interface{}{
-					"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking),
+					"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
 				},
 			}))
 		})

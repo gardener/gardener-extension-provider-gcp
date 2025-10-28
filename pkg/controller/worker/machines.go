@@ -234,6 +234,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 			if !gardencorev1beta1.IsIPv4SingleStack(infrastructureStatus.Networks.IPFamilies) {
 				machineClassSpec["networkInterfaces"] = []map[string]interface{}{
 					{
+						"useAliasIPs":         true,
 						"subnetwork":          nodesSubnet.Name,
 						"disableExternalIP":   true,
 						"stackType":           w.getStackType(),
