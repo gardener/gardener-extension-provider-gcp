@@ -748,6 +748,7 @@ func autoConvert_v1alpha1_MachineImage_To_gcp_MachineImage(in *MachineImage, out
 	out.Version = in.Version
 	out.Image = in.Image
 	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
+	out.Capabilities = *(*v1beta1.Capabilities)(unsafe.Pointer(&in.Capabilities))
 	return nil
 }
 
@@ -761,6 +762,7 @@ func autoConvert_gcp_MachineImage_To_v1alpha1_MachineImage(in *gcp.MachineImage,
 	out.Version = in.Version
 	out.Image = in.Image
 	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
+	out.Capabilities = *(*v1beta1.Capabilities)(unsafe.Pointer(&in.Capabilities))
 	return nil
 }
 

@@ -134,23 +134,24 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		poolLabels := getGcePoolLabels(w.worker, pool)
 
+		machineTypeFromCloudProfile := gardencorev1beta1helper.FindMachineTypeByName(w.cluster.CloudProfile.Spec.MachineTypes, pool.MachineType)
+		if machineTypeFromCloudProfile == nil {
+			return fmt.Errorf("machine type %q not found in cloud profile %q", pool.MachineType, w.cluster.CloudProfile.Name)
+		}
+
 		arch := ptr.Deref(pool.Architecture, v1beta1constants.ArchitectureAMD64)
-		machineImage, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version, &arch)
+		machineImage, err := w.selectMachineImageForWorkerPool(pool.MachineImage.Name, pool.MachineImage.Version, &arch, machineTypeFromCloudProfile.Capabilities)
 		if err != nil {
 			return err
 		}
 
-		machineImages = appendMachineImage(machineImages, apisgcp.MachineImage{
-			Name:         pool.MachineImage.Name,
-			Version:      pool.MachineImage.Version,
-			Image:        machineImage,
-			Architecture: &arch,
-		})
+		machineImages = ensureUniformMachineImages(machineImages, w.cluster.CloudProfile.Spec.MachineCapabilities)
+		machineImages = appendMachineImage(machineImages, *machineImage, w.cluster.CloudProfile.Spec.MachineCapabilities)
 
 		disks := make([]map[string]interface{}, 0)
 		// root volume
 		if pool.Volume != nil {
-			disk, err := createDiskSpecForVolume(pool.Volume, machineImage, workerConfig, poolLabels)
+			disk, err := createDiskSpecForVolume(pool.Volume, machineImage.Image, workerConfig, poolLabels)
 			if err != nil {
 				return err
 			}
@@ -531,4 +532,50 @@ func sanitizeGcpLabelOrValue(label string, startWithCharacter bool) string {
 
 func addTopologyLabel(labels map[string]string, zone string) map[string]string {
 	return utils.MergeStringMaps(labels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone})
+}
+
+// ensureUniformMachineImages ensures that all machine images are in the same format, either with or without Capabilities.
+func ensureUniformMachineImages(images []apisgcp.MachineImage, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition) []apisgcp.MachineImage {
+	var uniformMachineImages []apisgcp.MachineImage
+
+	if len(capabilityDefinitions) == 0 {
+		// transform images that were added with Capabilities to the legacy format without Capabilities
+		for _, img := range images {
+			if len(img.Capabilities) == 0 {
+				// image is already legacy format
+				uniformMachineImages = appendMachineImage(uniformMachineImages, img, capabilityDefinitions)
+				continue
+			}
+			// transform to legacy format by using the Architecture capability if it exists
+			var architecture *string
+			if len(img.Capabilities[v1beta1constants.ArchitectureName]) > 0 {
+				architecture = &img.Capabilities[v1beta1constants.ArchitectureName][0]
+			}
+			uniformMachineImages = appendMachineImage(uniformMachineImages, apisgcp.MachineImage{
+				Name:         img.Name,
+				Version:      img.Version,
+				Image:        img.Image,
+				Architecture: architecture,
+			}, capabilityDefinitions)
+		}
+		return uniformMachineImages
+	}
+
+	// transform images that were added without Capabilities to contain a MachineImageFlavor with defaulted Architecture
+	for _, img := range images {
+		if len(img.Capabilities) > 0 {
+			// image is already in the new format with Capabilities
+			uniformMachineImages = appendMachineImage(uniformMachineImages, img, capabilityDefinitions)
+		} else {
+			// add image as a capability set with defaulted Architecture
+			architecture := ptr.Deref(img.Architecture, v1beta1constants.ArchitectureAMD64)
+			uniformMachineImages = appendMachineImage(uniformMachineImages, apisgcp.MachineImage{
+				Name:         img.Name,
+				Version:      img.Version,
+				Image:        img.Image,
+				Capabilities: gardencorev1beta1.Capabilities{v1beta1constants.ArchitectureName: []string{architecture}},
+			}, capabilityDefinitions)
+		}
+	}
+	return uniformMachineImages
 }
