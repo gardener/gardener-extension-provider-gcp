@@ -9,12 +9,10 @@ import (
 	"fmt"
 	"testing"
 
-	extensionsbastion "github.com/gardener/gardener/extensions/pkg/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
-	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -204,49 +202,6 @@ var _ = Describe("Bastion", func() {
 			cidrs := []string{"213.69.151.0/24"}
 			value := &compute.Firewall{SourceRanges: cidrs}
 			Expect(patchCIDRs(cidrs)).To(Equal(value))
-		})
-	})
-
-	Describe("getProviderSpecificImage", func() {
-		var (
-			desiredVM      extensionsbastion.MachineSpec
-			providerImages []gcpapi.MachineImages
-		)
-
-		BeforeEach(func() {
-			desiredVM = extensionsbastion.MachineSpec{
-				MachineTypeName: "small_machine",
-				Architecture:    "amd64",
-				ImageBaseName:   "gardenlinux",
-				ImageVersion:    "1.2.3",
-			}
-			providerImages = createTestProviderConfig().MachineImages
-		})
-
-		It("succeed for existing image", func() {
-			machineImage, err := getProviderSpecificImage(providerImages, desiredVM)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(machineImage.Image).To(DeepEqual(providerImages[0].Versions[0].Image))
-			Expect(machineImage.Version).To(DeepEqual(providerImages[0].Versions[0].Version))
-			Expect(machineImage.Architecture).To(DeepEqual(providerImages[0].Versions[0].Architecture))
-		})
-
-		It("fail if image name does not exist", func() {
-			desiredVM.ImageBaseName = "unknown"
-			_, err := getProviderSpecificImage(providerImages, desiredVM)
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("fail if image version does not exist", func() {
-			desiredVM.ImageVersion = "6.6.6"
-			_, err := getProviderSpecificImage(providerImages, desiredVM)
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("fail if no image for given architecture exists", func() {
-			desiredVM.Architecture = "x86"
-			_, err := getProviderSpecificImage(providerImages, desiredVM)
-			Expect(err).To(HaveOccurred())
 		})
 	})
 })
