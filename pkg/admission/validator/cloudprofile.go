@@ -53,10 +53,5 @@ func (cp *cloudProfileValidator) Validate(_ context.Context, newObj, _ client.Ob
 		return field.InternalError(specPath.Child("machineCapabilities"), err)
 	}
 
-	// TODO(Roncossek): Delete this function once the dedicated architecture fields on MachineType and MachineImageVersion have been removed.
-	if err := gcpvalidation.RestrictToArchitectureCapability(capabilityDefinitions, specPath.Child("machineCapabilities")); err != nil {
-		return err
-	}
-
 	return gcpvalidation.ValidateCloudProfileConfig(cpConfig, cloudProfile.Spec.MachineImages, capabilityDefinitions, specPath).ToAggregate()
 }
