@@ -25,6 +25,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
 
@@ -70,10 +71,10 @@ func (p *namespacedCloudProfile) Validate(ctx context.Context, newObj, _ client.
 		return err
 	}
 
-	//// TODO(Roncossek): Remove TransformSpecToParentFormat once all CloudProfiles have been migrated to use CapabilityFlavors and the Architecture fields are effectively forbidden or have been removed.
-	//if err := helper.SimulateTransformToParentFormat(cpConfig, cloudProfile, parentProfile.Spec.MachineCapabilities); err != nil {
-	//	return err
-	//}
+	// TODO(Roncossek): Remove TransformSpecToParentFormat once all CloudProfiles have been migrated to use CapabilityFlavors and the Architecture fields are effectively forbidden or have been removed.
+	if err := helper.SimulateTransformToParentFormat(cpConfig, profile, parentProfile.Spec.MachineCapabilities); err != nil {
+		return err
+	}
 
 	return p.validateNamespacedCloudProfileProviderConfig(cpConfig, profile.Spec, parentProfile.Spec).ToAggregate()
 }

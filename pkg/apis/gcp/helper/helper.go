@@ -29,29 +29,6 @@ func FindSubnetByPurpose(subnets []api.Subnet, purpose api.SubnetPurpose) (*api.
 	return nil, fmt.Errorf("cannot find subnet with purpose %q", purpose)
 }
 
-// FindImageFromCloudProfile takes a list of machine images, and the desired image name and version. It tries
-// to find the image with the given name, architecture and version in the desired cloud profile. If it cannot be found then an error
-// is returned.
-func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, imageName, imageVersion string, architecture *string) (string, error) {
-	if cloudProfileConfig != nil {
-		for _, machineImage := range cloudProfileConfig.MachineImages {
-			if machineImage.Name != imageName {
-				continue
-			}
-			for _, version := range machineImage.Versions {
-				if version.Architecture == nil {
-					version.Architecture = ptr.To(v1beta1constants.ArchitectureAMD64)
-				}
-				if imageVersion == version.Version && ptr.Equal(architecture, version.Architecture) {
-					return version.Image, nil
-				}
-			}
-		}
-	}
-
-	return "", fmt.Errorf("could not find an image for name %q and architecture %q in version %q", imageName, *architecture, imageVersion)
-}
-
 // FindImageInCloudProfile takes a list of machine images and tries to find the first entry
 // whose name, version, region, architecture, capabilities and zone matches with the given ones. If no such entry is
 // found then an error will be returned.
