@@ -44,10 +44,15 @@ spec:
         - --maxprocs=2 # https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver/issues/968
         {{- if .Values.enableDataCache }}
         - --enable-data-cache
+        - --node-name=$(KUBE_NODE_NAME)
         {{- end }}
         - --logtostderr
         - --v=5
         env:
+        - name: KUBE_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         - name: CSI_ENDPOINT
           value: "unix:{{ .Values.socketPath }}"
 {{- if .Values.resources.driver }}
