@@ -94,7 +94,7 @@ func targetNetwork(name string) *compute.Network {
 func targetSubnetState(name, description, cidr, networkName string, flowLogs *gcp.FlowLogs, dualStack bool, secondaryRange *string) *compute.Subnetwork {
 	subnet := &compute.Subnetwork{
 		Description:           description,
-		PrivateIpGoogleAccess: false,
+		PrivateIpGoogleAccess: false, // Gardener GCP shoot clusters enable PGA by default through a NAT gateway
 		Name:                  name,
 		IpCidrRange:           cidr,
 		Network:               networkName,
