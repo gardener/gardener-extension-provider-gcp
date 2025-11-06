@@ -282,8 +282,9 @@ var _ = Describe("ValuesProvider", func() {
 					"useWorkloadIdentity": false,
 				},
 				gcp.IngressGCEName: map[string]interface{}{
-					"enabled":  false,
-					"replicas": 0,
+					"enabled":             false,
+					"replicas":            0,
+					"useWorkloadIdentity": false,
 				},
 			}))
 		})
@@ -333,8 +334,9 @@ var _ = Describe("ValuesProvider", func() {
 					"useWorkloadIdentity": false,
 				},
 				gcp.IngressGCEName: map[string]interface{}{
-					"enabled":  true,
-					"replicas": 1,
+					"enabled":             true,
+					"replicas":            1,
+					"useWorkloadIdentity": false,
 				},
 			}))
 		})
@@ -383,8 +385,9 @@ var _ = Describe("ValuesProvider", func() {
 					"useWorkloadIdentity": false,
 				},
 				gcp.IngressGCEName: map[string]interface{}{
-					"enabled":  true,
-					"replicas": 0,
+					"enabled":             true,
+					"replicas":            0,
+					"useWorkloadIdentity": false,
 				},
 			}))
 		})
