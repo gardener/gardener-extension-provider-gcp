@@ -28,9 +28,6 @@ func ValidateCloudProfileConfig(cpConfig *apisgcp.CloudProfileConfig, machineIma
 	machineImagesPath := specPath.Child("providerConfig").Child("machineImages")
 	// Validate machine images section
 	allErrs = append(allErrs, validateMachineImages(cpConfig.MachineImages, capabilityDefinitions, machineImagesPath)...)
-	//if len(allErrs) > 0 {
-	//	return allErrs
-	//}
 
 	allErrs = append(allErrs, validateProviderImagesMapping(cpConfig.MachineImages, machineImages, capabilityDefinitions, specPath)...)
 

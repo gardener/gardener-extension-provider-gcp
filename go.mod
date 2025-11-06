@@ -38,8 +38,6 @@ require (
 	sigs.k8s.io/controller-tools v0.19.0
 )
 
-replace github.com/gardener/gardener => github.com/Roncossek/gardener v0.0.0-20251019124116-03c7bc667416
-
 require (
 	cel.dev/expr v0.24.0 // indirect
 	cloud.google.com/go v0.123.0 // indirect
