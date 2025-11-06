@@ -137,6 +137,8 @@ type MachineImage struct {
 	Version string `json:"version"`
 	// Image is the path to the image.
 	Image string `json:"image"`
+	// TODO @Roncossek add "// deprecated" once gcp cloudprofiles are migrated to use CapabilityFlavors
+
 	// Architecture is the CPU architecture of the machine image.
 	// +optional
 	Architecture *string `json:"architecture,omitempty"`

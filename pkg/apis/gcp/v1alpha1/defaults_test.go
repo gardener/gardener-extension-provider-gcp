@@ -5,6 +5,7 @@
 package v1alpha1_test
 
 import (
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -13,14 +14,27 @@ import (
 
 var _ = Describe("Defaults", func() {
 	Describe("#SetDefaults_MachineImageVersion", func() {
-		//It("should default the architecture to amd64", func() {
-		//	obj := &MachineImageVersion{}
-		//
-		//	//SetDefaults_MachineImageVersion(obj)
-		//
-		//	Expect(*obj.Architecture).To(Equal(v1beta1constants.ArchitectureAMD64))
-		//})
+		It("should default the architecture to amd64", func() {
+			obj := &MachineImageVersion{}
+
+			SetDefaults_MachineImageVersion(obj)
+
+			Expect(*obj.Architecture).To(Equal(v1beta1constants.ArchitectureAMD64))
+		})
+
+		It("should not default the architecture if capability flavors are defined", func() {
+			obj := &MachineImageVersion{
+				CapabilityFlavors: []MachineImageFlavor{
+					{},
+				},
+			}
+
+			SetDefaults_MachineImageVersion(obj)
+
+			Expect(obj.Architecture).To(BeNil())
+		})
 	})
+
 	Describe("#SetDefaults_Storage", func() {
 		It("should default to managed storage classes", func() {
 			obj := &Storage{}

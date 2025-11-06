@@ -502,9 +502,17 @@ func createCloudProfile() *gardencorev1beta1.CloudProfile {
 	profileConfig := &api.CloudProfileConfig{MachineImages: []api.MachineImages{{
 		Name: imageName,
 		Versions: []api.MachineImageVersion{{
-			Version:      "1443.9.0",
-			Image:        "projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-gcp-gardener-prod-amd64-1443-9-a9c614dc",
-			Architecture: ptr.To("amd64"),
+			Version: "1443.9.0",
+			CapabilityFlavors: []api.MachineImageFlavor{
+				{
+					Capabilities: gardencorev1beta1.Capabilities{"architecture": []string{"amd64"}},
+					Image:        "projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-gcp-gardener-prod-amd64-1443-9-a9c614dc",
+				},
+				{
+					Capabilities: gardencorev1beta1.Capabilities{"architecture": []string{"arm64"}},
+					Image:        "projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-gcp-gardener-prod-amd64-1443-9-a9c614dc",
+				},
+			},
 		}},
 	}}}
 
@@ -513,6 +521,12 @@ func createCloudProfile() *gardencorev1beta1.CloudProfile {
 
 	cloudProfile := &gardencorev1beta1.CloudProfile{
 		Spec: gardencorev1beta1.CloudProfileSpec{
+			MachineCapabilities: []gardencorev1beta1.CapabilityDefinition{
+				{
+					Name:   "architecture",
+					Values: []string{"amd64"},
+				},
+			},
 			Regions: []gardencorev1beta1.Region{
 				{Name: *region},
 				{Name: *region, Zones: []gardencorev1beta1.AvailabilityZone{
@@ -537,6 +551,10 @@ func createCloudProfile() *gardencorev1beta1.CloudProfile {
 						ExpirableVersion: gardencorev1beta1.ExpirableVersion{
 							Version:        "1443.9.0",
 							Classification: ptr.To(gardencorev1beta1.ClassificationSupported),
+						},
+						CapabilityFlavors: []gardencorev1beta1.MachineImageFlavor{
+							{Capabilities: gardencorev1beta1.Capabilities{"architecture": []string{"amd64"}}},
+							{Capabilities: gardencorev1beta1.Capabilities{"architecture": []string{"arm64"}}},
 						},
 						Architectures: []string{"amd64", "arm64"},
 					}},

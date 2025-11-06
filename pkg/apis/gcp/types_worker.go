@@ -129,6 +129,8 @@ type MachineImage struct {
 	Version string
 	// Image is the path to the image.
 	Image string
+	// TODO @Roncossek add "// deprecated" once gcp cloudprofiles are migrated to use CapabilityFlavors
+
 	// Architecture is the CPU architecture of the machine image.
 	Architecture *string
 	// Capabilities of the machine image.
