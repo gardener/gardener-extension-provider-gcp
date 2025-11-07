@@ -445,6 +445,11 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 		return nil, err
 	}
 
+	replicas := 0
+	if isDualstackEnabled(cluster.Shoot.Spec.Networking, nil) {
+		replicas = extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1)
+	}
+
 	return map[string]interface{}{
 		"global": map[string]interface{}{
 			"genericTokenKubeconfigSecretName": extensionscontroller.GenericTokenKubeconfigSecretNameFromCluster(cluster),
@@ -453,8 +458,8 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 		gcp.CSIControllerName:          csi,
 		gcp.CSIFilestoreControllerName: csiFilestore,
 		gcp.IngressGCEName: map[string]interface{}{
-			"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking, nil),
-			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
+			"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
+			"replicas": replicas,
 		},
 	}, nil
 }
