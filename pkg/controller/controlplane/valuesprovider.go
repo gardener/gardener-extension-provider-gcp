@@ -458,8 +458,9 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 		gcp.CSIControllerName:          csi,
 		gcp.CSIFilestoreControllerName: csiFilestore,
 		gcp.IngressGCEName: map[string]interface{}{
-			"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
-			"replicas": replicas,
+			"enabled":             isDualstackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
+			"replicas":            replicas,
+			"useWorkloadIdentity": shouldUseWorkloadIdentity(credentialsConfig),
 		},
 	}, nil
 }
