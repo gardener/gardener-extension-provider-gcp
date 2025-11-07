@@ -282,8 +282,109 @@ var _ = Describe("ValuesProvider", func() {
 					"useWorkloadIdentity": false,
 				},
 				gcp.IngressGCEName: map[string]interface{}{
-					"enabled":  isDualstackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
-					"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, false, 1),
+					"enabled":  false,
+					"replicas": 0,
+				},
+			}))
+		})
+
+		It("should return correct control plane chart values (dualstack)", func() {
+			dualstackShoot := cluster.Shoot.DeepCopy()
+			dualstackShoot.Spec.Networking.IPFamilies = []gardencorev1beta1.IPFamily{
+				gardencorev1beta1.IPFamilyIPv4,
+				gardencorev1beta1.IPFamilyIPv6,
+			}
+			dualstackShoot.Status.Networking = &gardencorev1beta1.NetworkingStatus{
+				Nodes: []string{"<node-ipv4>", "<node-ipv6>"},
+			}
+			cluster.Shoot = dualstackShoot
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"global": map[string]interface{}{
+					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
+				},
+				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
+					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
+					"allocatorType":       "CloudAllocator",
+					"useWorkloadIdentity": false,
+				}),
+				gcp.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"replicas":  1,
+					"projectID": projectID,
+					"zone":      zone,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+					},
+					"csiSnapshotController": map[string]interface{}{
+						"replicas": 1,
+					},
+					"useWorkloadIdentity": false,
+					"enableDataCache":     false,
+				}),
+				gcp.CSIFilestoreControllerName: map[string]interface{}{
+					"enabled":   false,
+					"replicas":  1,
+					"projectID": projectID,
+					"zone":      zone,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+					},
+					"useWorkloadIdentity": false,
+				},
+				gcp.IngressGCEName: map[string]interface{}{
+					"enabled":  true,
+					"replicas": 1,
+				},
+			}))
+		})
+
+		It("should return correct control plane chart values (post migration from dualstack)", func() {
+			dualstackShoot := cluster.Shoot.DeepCopy()
+			dualstackShoot.Spec.Networking.IPFamilies = []gardencorev1beta1.IPFamily{
+				gardencorev1beta1.IPFamilyIPv4,
+			}
+			dualstackShoot.Status.Networking = &gardencorev1beta1.NetworkingStatus{
+				Nodes: []string{"<node-ipv4>", "<node-ipv6>"},
+			}
+			cluster.Shoot = dualstackShoot
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"global": map[string]interface{}{
+					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
+				},
+				gcp.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
+					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
+					"allocatorType":       "CloudAllocator",
+					"useWorkloadIdentity": false,
+				}),
+				gcp.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"replicas":  1,
+					"projectID": projectID,
+					"zone":      zone,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+					},
+					"csiSnapshotController": map[string]interface{}{
+						"replicas": 1,
+					},
+					"useWorkloadIdentity": false,
+					"enableDataCache":     false,
+				}),
+				gcp.CSIFilestoreControllerName: map[string]interface{}{
+					"enabled":   false,
+					"replicas":  1,
+					"projectID": projectID,
+					"zone":      zone,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+					},
+					"useWorkloadIdentity": false,
+				},
+				gcp.IngressGCEName: map[string]interface{}{
+					"enabled":  true,
+					"replicas": 0,
 				},
 			}))
 		})
