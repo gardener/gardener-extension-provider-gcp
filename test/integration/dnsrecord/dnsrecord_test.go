@@ -189,7 +189,6 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to create client for the test environment")
 	Expect(c).NotTo(BeNil(), "Client for the test environment is nil")
 
-	fmt.Println("service account: ", *serviceAccount)
 	credentialsConfig, err := gcp.GetCredentialsConfigFromJSON([]byte(*serviceAccount))
 	Expect(err).NotTo(HaveOccurred())
 	project = credentialsConfig.ProjectID
