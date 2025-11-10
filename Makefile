@@ -206,5 +206,5 @@ integration-test-dnsrecord: $(SETUP_ENVTEST)
 	@go test -timeout=0 ./test/integration/dnsrecord \
 		--v -ginkgo.v -ginkgo.show-node-events \
 		--kubeconfig=${KUBECONFIG} \
-		--service-account="$(shell jq -c . $(SERVICE_ACCOUNT_FILE) | sed 's/"/\\"/g')" \
+		--service-account='$(shell cat $(SERVICE_ACCOUNT_FILE))' \
 		--log-level=$(TEST_LOGLEVEL)
