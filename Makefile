@@ -200,3 +200,11 @@ integration-test-backupbucket:
 		--region=$(REGION) \
 		--use-existing-cluster=$(TEST_USE_EXISTING_CLUSTER) \
 		--log-level=$(TEST_LOGLEVEL)
+
+.PHONY: integration-test-dnsrecord
+integration-test-dnsrecord: $(SETUP_ENVTEST)
+	@go test -timeout=0 ./test/integration/dnsrecord \
+		--v -ginkgo.v -ginkgo.show-node-events \
+		--kubeconfig=${KUBECONFIG} \
+		--service-account="$(shell jq -c . $(SERVICE_ACCOUNT_FILE) | sed 's/"/\\"/g')" \
+		--log-level=$(TEST_LOGLEVEL)

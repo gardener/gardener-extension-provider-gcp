@@ -6,6 +6,7 @@ package dnsrecord_test
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
@@ -44,7 +46,7 @@ import (
 
 var (
 	serviceAccount = flag.String("service-account", "", "Service account containing credentials for the GCP API")
-	logLevel       = flag.String("logLevel", "", "Log level (debug, info, error)")
+	logLevel       = flag.String("log-level", "", "Log level (debug, info, error)")
 )
 
 func validateFlags() {
@@ -69,10 +71,11 @@ var (
 	mgrCancel  context.CancelFunc
 	c          client.Client
 
-	project  string
-	testName string
-	zoneName string
-	zoneID   string
+	project     string
+	testName    string
+	zoneName    string
+	zoneDnsName string
+	zoneID      string
 
 	namespace *corev1.Namespace
 	secret    *corev1.Secret
@@ -84,8 +87,13 @@ var _ = BeforeSuite(func() {
 
 	// enable manager logs
 	logf.SetLogger(logger.MustNewZapLogger(*logLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
-
 	log = logf.Log.WithName("dnsrecord-test")
+
+	flag.Parse()
+	validateFlags()
+
+	var mgrContext context.Context
+	mgrContext, mgrCancel = context.WithCancel(ctx)
 
 	DeferCleanup(func() {
 		defer func() {
@@ -103,12 +111,15 @@ var _ = BeforeSuite(func() {
 		teardownShootEnvironment(ctx, c, namespace, secret, cluster)
 
 		By("stopping test environment")
-		Expect(testEnv.Stop()).To(Succeed())
+		if testEnv != nil {
+			Expect(testEnv.Stop()).To(Succeed())
+		}
 	})
 
 	By("generating randomized test resource identifiers")
 	testName = fmt.Sprintf("gcp-dnsrecord-it--%s", randomString())
-	zoneName = testName + ".gardener.cloud"
+	zoneName = testName + "-gardener-cloud"
+	zoneDnsName = testName + ".gardener.cloud."
 	namespace = &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: testName,
@@ -136,12 +147,14 @@ var _ = BeforeSuite(func() {
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
+		UseExistingCluster: ptr.To(true),
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_dnsrecords.yaml"),
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
 			},
 		},
+		ControlPlaneStopTimeout: 2 * time.Minute,
 	}
 
 	cfg, err := testEnv.Start()
@@ -154,34 +167,29 @@ var _ = BeforeSuite(func() {
 			BindAddress: "0",
 		},
 	})
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to create manager for the test environment")
 
-	Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
-	Expect(gcpinstall.AddToScheme(mgr.GetScheme())).To(Succeed())
+	Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed(), "Failed to add extensionsv1alpha1 scheme to manager")
+	Expect(gcpinstall.AddToScheme(mgr.GetScheme())).To(Succeed(), "Failed to add GCP scheme to manager")
 
-	Expect(dnsrecordctrl.AddToManagerWithOptions(ctx, mgr, dnsrecordctrl.AddOptions{})).To(Succeed())
-
-	var mgrContext context.Context
-	mgrContext, mgrCancel = context.WithCancel(ctx)
+	Expect(dnsrecordctrl.AddToManagerWithOptions(ctx, mgr, dnsrecordctrl.AddOptions{})).To(Succeed(), "Failed to add DNSRecord controller to manager")
 
 	By("starting manager")
 	go func() {
 		defer GinkgoRecover()
 		err := mgr.Start(mgrContext)
-		Expect(err).NotTo(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred(), "Failed to start the manager")
 	}()
 
-	// test client should be uncached and independent from the tested manager
+	By("getting client")
 	c, err = client.New(cfg, client.Options{
 		Scheme: mgr.GetScheme(),
 		Mapper: mgr.GetRESTMapper(),
 	})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(c).NotTo(BeNil())
+	Expect(err).NotTo(HaveOccurred(), "Failed to create client for the test environment")
+	Expect(c).NotTo(BeNil(), "Client for the test environment is nil")
 
-	flag.Parse()
-	validateFlags()
-
+	fmt.Println("service account: ", *serviceAccount)
 	credentialsConfig, err := gcp.GetCredentialsConfigFromJSON([]byte(*serviceAccount))
 	Expect(err).NotTo(HaveOccurred())
 	project = credentialsConfig.ProjectID
@@ -193,7 +201,7 @@ var _ = BeforeSuite(func() {
 	setupShootEnvironment(ctx, c, namespace, secret, cluster)
 
 	By("creating GCP DNS hosted zone")
-	zoneID = createDNSHostedZone(ctx, dnsService, zoneName)
+	zoneID = createDNSHostedZone(ctx, dnsService, zoneDnsName)
 })
 
 var runTest = func(dns *extensionsv1alpha1.DNSRecord, newValues []string, beforeCreate, beforeUpdate, beforeDelete func()) {
@@ -258,84 +266,89 @@ var runTest = func(dns *extensionsv1alpha1.DNSRecord, newValues []string, before
 var _ = Describe("DNSRecord tests", func() {
 	Context("when a DNS recordset doesn't exist and is not changed or deleted before dnsrecord deletion", func() {
 		It("should successfully create and delete a dnsrecord of type A", func() {
-			dns := newDNSRecord(testName, zoneName, nil, extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
+			dns := newDNSRecord(testName, zoneDnsName, zoneID, extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
 			runTest(dns, nil, nil, nil, nil)
 		})
 
 		It("should successfully create and delete a dnsrecord of type CNAME", func() {
-			dns := newDNSRecord(testName, zoneName, ptr.To(zoneID), extensionsv1alpha1.DNSRecordTypeCNAME, []string{"foo.example.com"}, ptr.To[int64](600))
+			dns := newDNSRecord(testName, zoneDnsName, zoneID, extensionsv1alpha1.DNSRecordTypeCNAME, []string{"foo.example.com."}, ptr.To[int64](600))
 			runTest(dns, nil, nil, nil, nil)
 		})
 
 		It("should successfully create and delete a dnsrecord of type TXT", func() {
-			dns := newDNSRecord(testName, zoneName, ptr.To(zoneID), extensionsv1alpha1.DNSRecordTypeTXT, []string{"foo", "bar"}, nil)
+			dns := newDNSRecord(testName, zoneDnsName, zoneID, extensionsv1alpha1.DNSRecordTypeTXT, []string{"foo", "bar"}, nil)
 			runTest(dns, nil, nil, nil, nil)
 		})
 	})
 
 	Context("when a DNS recordset exists and is changed before dnsrecord update and deletion", func() {
 		It("should successfully create, update, and delete a dnsrecord", func() {
-			dns := newDNSRecord(testName, zoneName, ptr.To(zoneID), extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
+			dns := newDNSRecord(testName, zoneDnsName, zoneID, extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
+
+			updateDNS := func() {
+				By("updating GCP DNS recordset")
+				_, err := dnsService.Changes.Create(project, zoneName, &googledns.Change{
+					Deletions: []*googledns.ResourceRecordSet{{
+						Name:    dns.Spec.Name,
+						Type:    string(dns.Spec.RecordType),
+						Ttl:     ptr.Deref(dns.Spec.TTL, 120),
+						Rrdatas: dns.Spec.Values,
+					}},
+					Additions: []*googledns.ResourceRecordSet{{
+						Name:    dns.Spec.Name,
+						Type:    string(dns.Spec.RecordType),
+						Ttl:     ptr.Deref(dns.Spec.TTL, 120),
+						Rrdatas: []string{"8.8.8.8"},
+					}},
+				}).Do()
+				Expect(err).To(BeNil())
+			}
 
 			runTest(
 				dns,
 				[]string{"3.3.3.3", "1.1.1.1"},
 				func() {
 					By("creating GCP DNS recordset")
-					Expect(dnsService.ResourceRecordSets.Create(project, zoneName, &googledns.ResourceRecordSet{
+					_, err := dnsService.ResourceRecordSets.Create(project, zoneName, &googledns.ResourceRecordSet{
 						Name:    dns.Spec.Name,
 						Type:    string(dns.Spec.RecordType),
 						Ttl:     ptr.Deref(dns.Spec.TTL, 120),
 						Rrdatas: []string{"8.8.8.8"},
-					}).Do()).To(Succeed())
+					}).Do()
+					Expect(err).To(BeNil())
 				},
-				func() {
-					By("updating GCP DNS recordset")
-					Expect(dnsService.ResourceRecordSets.Create(project, zoneName, &googledns.ResourceRecordSet{
-						Name:    dns.Spec.Name,
-						Type:    string(dns.Spec.RecordType),
-						Ttl:     ptr.Deref(dns.Spec.TTL, 120),
-						Rrdatas: []string{"8.8.8.8"},
-					}).Do()).To(Succeed())
-				},
-				func() {
-					By("updating GCP DNS recordset")
-					Expect(dnsService.ResourceRecordSets.Create(project, zoneName, &googledns.ResourceRecordSet{
-						Name:    dns.Spec.Name,
-						Type:    string(dns.Spec.RecordType),
-						Ttl:     ptr.Deref(dns.Spec.TTL, 120),
-						Rrdatas: []string{"8.8.8.8"},
-					}).Do()).To(Succeed())
-				},
+				updateDNS,
+				updateDNS,
 			)
 		})
 	})
 
 	Context("when a DNS recordset exists and is deleted before dnsrecord deletion", func() {
 		It("should successfully create and delete a dnsrecord", func() {
-			dns := newDNSRecord(testName, zoneName, nil, extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
+			dns := newDNSRecord(testName, zoneDnsName, zoneID, extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
 
 			runTest(
 				dns,
 				nil,
 				func() {
 					By("creating GCP DNS recordset")
-					Expect(dnsService.ResourceRecordSets.Create(project, zoneName, &googledns.ResourceRecordSet{
+					_, err := dnsService.ResourceRecordSets.Create(project, zoneName, &googledns.ResourceRecordSet{
 						Name:    dns.Spec.Name,
 						Type:    string(dns.Spec.RecordType),
 						Ttl:     ptr.Deref(dns.Spec.TTL, 120),
 						Rrdatas: []string{"8.8.8.8"},
-					}).Do()).To(Succeed())
+					}).Do()
+					Expect(err).To(BeNil())
 				},
 				nil,
 				func() {
 					By("deleting GCP DNS recordset")
-					Expect(dnsService.ResourceRecordSets.Create(project, zoneName, &googledns.ResourceRecordSet{
-						Name:    dns.Spec.Name,
-						Type:    string(dns.Spec.RecordType),
-						Ttl:     ptr.Deref(dns.Spec.TTL, 120),
-						Rrdatas: []string{"8.8.8.8"},
-					}).Do()).To(Succeed())
+					_, err := dnsService.ResourceRecordSets.Delete(
+						project,
+						zoneName,
+						dns.Spec.Name,
+						string(dns.Spec.RecordType)).Do()
+					Expect(err).To(BeNil())
 				},
 			)
 		})
@@ -349,9 +362,15 @@ func setupShootEnvironment(ctx context.Context, c client.Client, namespace *core
 }
 
 func teardownShootEnvironment(ctx context.Context, c client.Client, namespace *corev1.Namespace, secret *corev1.Secret, cluster *extensionsv1alpha1.Cluster) {
-	Expect(client.IgnoreNotFound(c.Delete(ctx, cluster))).To(Succeed())
-	Expect(client.IgnoreNotFound(c.Delete(ctx, secret))).To(Succeed())
-	Expect(client.IgnoreNotFound(c.Delete(ctx, namespace))).To(Succeed())
+	if c != nil && cluster != nil {
+		Expect(client.IgnoreNotFound(c.Delete(ctx, cluster))).To(Succeed())
+	}
+	if c != nil && secret != nil {
+		Expect(client.IgnoreNotFound(c.Delete(ctx, secret))).To(Succeed())
+	}
+	if c != nil && namespace != nil {
+		Expect(client.IgnoreNotFound(c.Delete(ctx, namespace))).To(Succeed())
+	}
 }
 
 func createDNSRecord(ctx context.Context, c client.Client, dns *extensionsv1alpha1.DNSRecord) {
@@ -367,8 +386,9 @@ func deleteDNSRecord(ctx context.Context, c client.Client, dns *extensionsv1alph
 }
 
 func getDNSRecordAndVerifyStatus(ctx context.Context, c client.Client, dns *extensionsv1alpha1.DNSRecord, zoneID string) {
+	projectZone := project + "/" + zoneID
 	Expect(c.Get(ctx, client.ObjectKey{Namespace: dns.Namespace, Name: dns.Name}, dns)).To(Succeed())
-	Expect(dns.Status.Zone).To(PointTo(Equal(zoneID)))
+	Expect(dns.Status.Zone).To(PointTo(Equal(projectZone)))
 }
 
 func waitUntilDNSRecordReady(ctx context.Context, c client.Client, log logr.Logger, dns *extensionsv1alpha1.DNSRecord) {
@@ -397,9 +417,9 @@ func waitUntilDNSRecordDeleted(ctx context.Context, c client.Client, log logr.Lo
 	)).To(Succeed())
 }
 
-func newDNSRecord(namespace string, zoneName string, zone *string, recordType extensionsv1alpha1.DNSRecordType, values []string, ttl *int64) *extensionsv1alpha1.DNSRecord {
+func newDNSRecord(namespace string, zoneDnsName string, zoneID string, recordType extensionsv1alpha1.DNSRecordType, values []string, ttl *int64) *extensionsv1alpha1.DNSRecord {
 	name := "dnsrecord-" + randomString()
-	projectZone := project + "/" + *zone
+	projectZone := project + "/" + zoneID
 	return &extensionsv1alpha1.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -414,7 +434,7 @@ func newDNSRecord(namespace string, zoneName string, zone *string, recordType ex
 				Namespace: namespace,
 			},
 			Zone:       &projectZone,
-			Name:       name + "." + zoneName,
+			Name:       name + "." + zoneDnsName,
 			RecordType: recordType,
 			Values:     values,
 			TTL:        ttl,
@@ -422,10 +442,10 @@ func newDNSRecord(namespace string, zoneName string, zone *string, recordType ex
 	}
 }
 
-func createDNSHostedZone(_ context.Context, dnsService *googledns.Service, zoneName string) string {
+func createDNSHostedZone(_ context.Context, dnsService *googledns.Service, zoneDnsName string) string {
 	zone, err := dnsService.ManagedZones.Create(project, &googledns.ManagedZone{
 		Name:        zoneName,
-		DnsName:     zoneName,
+		DnsName:     zoneDnsName,
 		Description: "Test zone for test " + testName,
 		Visibility:  "public",
 	}).Do()
@@ -434,6 +454,9 @@ func createDNSHostedZone(_ context.Context, dnsService *googledns.Service, zoneN
 }
 
 func deleteDNSHostedZone(_ context.Context, dnsService *googledns.Service, zoneID string) {
+	if dnsService == nil {
+		return
+	}
 	err := dnsService.ManagedZones.Delete(project, zoneID).Do()
 	Expect(err).NotTo(HaveOccurred())
 }
@@ -443,21 +466,37 @@ func verifyDNSRecordSet(_ context.Context, dnsService *googledns.Service, dns *e
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rrs).NotTo(BeNil())
 
-	Expect(rrs.Name).To(PointTo(Equal(ensureTrailingDot(dns.Spec.Name))))
-	Expect(rrs.Type).To(Equal(dns.Spec.RecordType))
+	Expect(rrs.Name).To(Equal(ensureTrailingDot(dns.Spec.Name)))
+	Expect(rrs.Type).To(Equal(string(dns.Spec.RecordType)))
 	Expect(rrs.Ttl).To(Equal(ptr.Deref(dns.Spec.TTL, 120)))
-	Expect(rrs.Rrdatas).To(ConsistOf(dns.Spec.Values))
+
+	Expect(rrs.Rrdatas).To(WithTransform(func(in []string) []string {
+		switch dns.Spec.RecordType {
+		case extensionsv1alpha1.DNSRecordTypeTXT:
+			out := make([]string, len(in))
+			for i, v := range in {
+				out[i] = strings.Trim(v, "\"")
+			}
+			return out
+		default:
+			return in
+		}
+	}, ConsistOf(dns.Spec.Values)))
 }
 
 func verifyDNSRecordSetDeleted(_ context.Context, dnsService *googledns.Service, dns *extensionsv1alpha1.DNSRecord) {
-	_, err := dnsService.ResourceRecordSets.Get(project, zoneName, dns.Spec.Name, string(dns.Spec.RecordType)).Do()
-	googleError, ok := err.(*googleapi.Error)
+	_, err := dnsService.ResourceRecordSets.Get(project, zoneDnsName, dns.Spec.Name, string(dns.Spec.RecordType)).Do()
+	var googleError *googleapi.Error
+	ok := errors.As(err, &googleError)
 	Expect(ok).To(BeTrue())
 	Expect(googleError.Code).To(Equal(404))
 }
 
 func deleteDNSRecordSet(_ context.Context, dnsService *googledns.Service, dns *extensionsv1alpha1.DNSRecord) {
 	response, err := dnsService.ResourceRecordSets.Delete(project, zoneName, dns.Spec.Name, string(dns.Spec.RecordType)).Do()
+	if gcpclient.IsErrorCode(err, 404) {
+		return
+	}
 	Expect(err).NotTo(HaveOccurred())
 	Expect(response.HTTPStatusCode).To(Equal(204))
 }
