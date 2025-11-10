@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
@@ -42,6 +41,7 @@ import (
 	gcpinstall "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/install"
 	dnsrecordctrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/dnsrecord"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 var (
@@ -301,7 +301,7 @@ var _ = Describe("DNSRecord tests", func() {
 						Rrdatas: []string{"8.8.8.8"},
 					}},
 				}).Do()
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			}
 
 			runTest(
@@ -315,7 +315,7 @@ var _ = Describe("DNSRecord tests", func() {
 						Ttl:     ptr.Deref(dns.Spec.TTL, 120),
 						Rrdatas: []string{"8.8.8.8"},
 					}).Do()
-					Expect(err).To(BeNil())
+					Expect(err).ToNot(HaveOccurred())
 				},
 				updateDNS,
 				updateDNS,
@@ -338,7 +338,7 @@ var _ = Describe("DNSRecord tests", func() {
 						Ttl:     ptr.Deref(dns.Spec.TTL, 120),
 						Rrdatas: []string{"8.8.8.8"},
 					}).Do()
-					Expect(err).To(BeNil())
+					Expect(err).ToNot(HaveOccurred())
 				},
 				nil,
 				func() {
@@ -348,7 +348,7 @@ var _ = Describe("DNSRecord tests", func() {
 						zoneName,
 						dns.Spec.Name,
 						string(dns.Spec.RecordType)).Do()
-					Expect(err).To(BeNil())
+					Expect(err).ToNot(HaveOccurred())
 				},
 			)
 		})
