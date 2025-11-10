@@ -9,6 +9,7 @@ import (
 	"time"
 
 	apisconfigv1alpha1 "github.com/gardener/gardener/extensions/pkg/apis/config/v1alpha1"
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck/general"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck/worker"
@@ -23,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/controlplane"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
@@ -42,6 +44,9 @@ var (
 
 // RegisterHealthChecks registers health checks for each extension resource
 func RegisterHealthChecks(_ context.Context, mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
+	gceIngressControllerPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, cluster *extensionscontroller.Cluster) bool {
+		return controlplane.IsDualStackEnabled(cluster.Shoot.Spec.Networking, nil)
+	}
 	if err := healthcheck.DefaultRegistration(
 		gcp.Type,
 		extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.ControlPlaneResource),
@@ -62,6 +67,11 @@ func RegisterHealthChecks(_ context.Context, mgr manager.Manager, opts healthche
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.CSISnapshotControllerName),
+			},
+			{
+				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
+				HealthCheck:   general.NewSeedDeploymentHealthChecker(gcp.IngressGCEName),
+				PreCheckFunc:  gceIngressControllerPreCheckFunc,
 			},
 		},
 		sets.New[gardencorev1beta1.ConditionType](),

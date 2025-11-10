@@ -490,7 +490,7 @@ var _ = Describe("ValuesProvider", func() {
 					"enabled": false,
 				},
 				"default-http-backend": map[string]interface{}{
-					"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
+					"enabled": IsDualStackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
 				},
 			}))
 		})
