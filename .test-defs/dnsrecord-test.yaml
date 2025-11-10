@@ -14,4 +14,11 @@ spec:
     --kubeconfig=$TM_KUBECONFIG_PATH/testmachinery.config
     --service-account="${SERVICEACCOUNT_JSON}"
 
-  image: golang:1.24
+  image: golang:1.25
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "5Gi"
+      cpu: "1"
