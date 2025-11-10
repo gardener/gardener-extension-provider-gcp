@@ -9,12 +9,10 @@ import (
 	"fmt"
 	"testing"
 
-	extensionsbastion "github.com/gardener/gardener/extensions/pkg/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
-	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -206,49 +204,6 @@ var _ = Describe("Bastion", func() {
 			Expect(patchCIDRs(cidrs)).To(Equal(value))
 		})
 	})
-
-	Describe("getProviderSpecificImage", func() {
-		var (
-			desiredVM      extensionsbastion.MachineSpec
-			providerImages []gcpapi.MachineImages
-		)
-
-		BeforeEach(func() {
-			desiredVM = extensionsbastion.MachineSpec{
-				MachineTypeName: "small_machine",
-				Architecture:    "amd64",
-				ImageBaseName:   "gardenlinux",
-				ImageVersion:    "1.2.3",
-			}
-			providerImages = createTestProviderConfig().MachineImages
-		})
-
-		It("succeed for existing image", func() {
-			machineImage, err := getProviderSpecificImage(providerImages, desiredVM)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(machineImage.Image).To(DeepEqual(providerImages[0].Versions[0].Image))
-			Expect(machineImage.Version).To(DeepEqual(providerImages[0].Versions[0].Version))
-			Expect(machineImage.Architecture).To(DeepEqual(providerImages[0].Versions[0].Architecture))
-		})
-
-		It("fail if image name does not exist", func() {
-			desiredVM.ImageBaseName = "unknown"
-			_, err := getProviderSpecificImage(providerImages, desiredVM)
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("fail if image version does not exist", func() {
-			desiredVM.ImageVersion = "6.6.6"
-			_, err := getProviderSpecificImage(providerImages, desiredVM)
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("fail if no image for given architecture exists", func() {
-			desiredVM.Architecture = "x86"
-			_, err := getProviderSpecificImage(providerImages, desiredVM)
-			Expect(err).To(HaveOccurred())
-		})
-	})
 })
 
 func createShootTestStruct() *gardencorev1beta1.Shoot {
@@ -275,6 +230,11 @@ func createTestMachineImages() []gardencorev1beta1.MachineImage {
 				Classification: ptr.To(gardencorev1beta1.ClassificationSupported),
 			},
 			Architectures: []string{"amd64"},
+			CapabilityFlavors: []gardencorev1beta1.MachineImageFlavor{{
+				Capabilities: gardencorev1beta1.Capabilities{
+					"architecture": []string{"amd64"},
+				},
+			}},
 		}},
 	}}
 }
@@ -287,7 +247,21 @@ func createTestMachineTypes() []gardencorev1beta1.MachineType {
 	}}
 }
 
-func createTestProviderConfig() *gcpapi.CloudProfileConfig {
+func createTestProviderConfig(isCapabilityCloudProfile bool) *gcpapi.CloudProfileConfig {
+	if isCapabilityCloudProfile {
+		return &gcpapi.CloudProfileConfig{MachineImages: []gcpapi.MachineImages{{
+			Name: "gardenlinux",
+			Versions: []gcpapi.MachineImageVersion{{
+				Version: "1.2.3",
+				CapabilityFlavors: []gcpapi.MachineImageFlavor{{
+					Capabilities: gardencorev1beta1.Capabilities{
+						"architecture": []string{"amd64"},
+					},
+					Image: "/path/to/images",
+				}},
+			}},
+		}}}
+	}
 	return &gcpapi.CloudProfileConfig{MachineImages: []gcpapi.MachineImages{{
 		Name: "gardenlinux",
 		Versions: []gcpapi.MachineImageVersion{{
@@ -299,11 +273,22 @@ func createTestProviderConfig() *gcpapi.CloudProfileConfig {
 }
 
 func createGCPTestCluster() *extensions.Cluster {
+	capabilityDefinitions := []gardencorev1beta1.CapabilityDefinition{
+		{Name: "architecture", Values: []string{"amd64", "arm64"}},
+		{Name: "someCap", Values: []string{"value1", "value2", "value3"}},
+	}
+
+	// TODO CONTINUE HERE TO COMPLETE TESTS FOR CAPABILITY FLAVORS
+	if !isCapabilitiesCloudProfile {
+		capabilityDefinitions = nil
+	}
+
 	return &controller.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster1"},
 		Shoot:      createShootTestStruct(),
 		CloudProfile: &gardencorev1beta1.CloudProfile{
 			Spec: gardencorev1beta1.CloudProfileSpec{
+				MachineCapabilities: capabilityDefinitions,
 				Regions: []gardencorev1beta1.Region{
 					{Name: "regionName"},
 					{Name: "us-west", Zones: []gardencorev1beta1.AvailabilityZone{
@@ -312,9 +297,9 @@ func createGCPTestCluster() *extensions.Cluster {
 					}},
 				},
 				MachineImages: createTestMachineImages(),
-				MachineTypes:  createTestMachineTypes(),
+				MachineTypes:  createTestMachineTypes(isCapabilitiesCloudProfile),
 				ProviderConfig: &runtime.RawExtension{
-					Raw: mustEncode(createTestProviderConfig()),
+					Raw: mustEncode(createTestProviderConfig(isCapabilitiesCloudProfile)),
 				},
 			},
 		},

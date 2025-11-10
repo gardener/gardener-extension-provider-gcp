@@ -21,7 +21,20 @@ var _ = Describe("Defaults", func() {
 
 			Expect(*obj.Architecture).To(Equal(v1beta1constants.ArchitectureAMD64))
 		})
+
+		It("should not default the architecture if capability flavors are defined", func() {
+			obj := &MachineImageVersion{
+				CapabilityFlavors: []MachineImageFlavor{
+					{},
+				},
+			}
+
+			SetDefaults_MachineImageVersion(obj)
+
+			Expect(obj.Architecture).To(BeNil())
+		})
 	})
+
 	Describe("#SetDefaults_Storage", func() {
 		It("should default to managed storage classes", func() {
 			obj := &Storage{}
