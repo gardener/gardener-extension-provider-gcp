@@ -387,7 +387,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 			"enabled": isCSIFilestoreEnabled(cpConfig),
 		},
 		"default-http-backend": map[string]interface{}{
-			"enabled": isDualstackEnabled(cluster.Shoot.Spec.Networking, nil),
+			"enabled": IsDualStackEnabled(cluster.Shoot.Spec.Networking, nil),
 		},
 	}, nil
 }
@@ -446,7 +446,7 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 	}
 
 	replicas := 0
-	if isDualstackEnabled(cluster.Shoot.Spec.Networking, nil) {
+	if IsDualStackEnabled(cluster.Shoot.Spec.Networking, nil) {
 		replicas = extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1)
 	}
 
@@ -458,14 +458,15 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 		gcp.CSIControllerName:          csi,
 		gcp.CSIFilestoreControllerName: csiFilestore,
 		gcp.IngressGCEName: map[string]interface{}{
-			"enabled":             isDualstackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
+			"enabled":             IsDualStackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
 			"replicas":            replicas,
 			"useWorkloadIdentity": shouldUseWorkloadIdentity(credentialsConfig),
 		},
 	}, nil
 }
 
-func isDualstackEnabled(networking *gardencorev1beta1.Networking, networkingStatus *gardencorev1beta1.NetworkingStatus) bool {
+// IsDualStackEnabled returns true if dual-stack is enabled based on the provided networking and networking status. If the cluster is migrating from dual-stack to single-stack, it still returns true.
+func IsDualStackEnabled(networking *gardencorev1beta1.Networking, networkingStatus *gardencorev1beta1.NetworkingStatus) bool {
 	if networking != nil {
 		// When migrating from dual-stack to single-stack, Nodes will still have both IPs.
 		// As we can't revert all changes done for dual-stack, we consider dual-stack enabled for some control plane components.
@@ -531,7 +532,7 @@ func (vp *valuesProvider) getCCMChartValues(
 	}
 	values["configureCloudRoutes"] = !overlayEnabled
 
-	if isDualstackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking) {
+	if IsDualStackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking) {
 		values["configureCloudRoutes"] = false
 		values["allocatorType"] = "CloudAllocator"
 	}
