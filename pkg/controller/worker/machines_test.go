@@ -83,6 +83,7 @@ var _ = Describe("Machines", func() {
 			var (
 				name             string
 				namespace        string
+				technicalID      string
 				cloudProfileName string
 
 				region string
@@ -159,7 +160,8 @@ var _ = Describe("Machines", func() {
 
 			BeforeEach(func() {
 				name = "my-shoot"
-				namespace = "shoot--foobar--gcp"
+				namespace = "control-plane-namespace"
+				technicalID = "shoot--foobar--gcp"
 				cloudProfileName = "gcp"
 
 				region = "eu-west-1"
@@ -279,6 +281,9 @@ var _ = Describe("Machines", func() {
 								Version: shootVersion,
 							},
 							Networking: &gardencorev1beta1.Networking{IPFamilies: []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4}},
+						},
+						Status: gardencorev1beta1.ShootStatus{
+							TechnicalID: technicalID,
 						},
 					},
 				}
@@ -527,7 +532,7 @@ var _ = Describe("Machines", func() {
 				setup := func(disableExternalIP bool) {
 					instanceLabels := map[string]interface{}{
 						"name":             name,
-						"k8s-cluster-name": namespace,
+						"k8s-cluster-name": technicalID,
 					}
 					for k, v := range poolLabels {
 						instanceLabels[SanitizeGcpLabel(k)] = SanitizeGcpLabelValue(v)
@@ -587,8 +592,8 @@ var _ = Describe("Machines", func() {
 							},
 						},
 						"tags": []string{
-							namespace,
-							fmt.Sprintf("kubernetes-io-cluster-%s", namespace),
+							technicalID,
+							fmt.Sprintf("kubernetes-io-cluster-%s", technicalID),
 							"kubernetes-io-role-node",
 						},
 						"operatingSystem": map[string]interface{}{
@@ -618,12 +623,12 @@ var _ = Describe("Machines", func() {
 						machineClassPool3Zone1 = useDefaultMachineClass(defaultMachineClass, "zone", zone1)
 						machineClassPool3Zone2 = useDefaultMachineClass(defaultMachineClass, "zone", zone2)
 
-						machineClassNamePool1Zone1 = fmt.Sprintf("%s-%s-z1", namespace, namePool1)
-						machineClassNamePool1Zone2 = fmt.Sprintf("%s-%s-z2", namespace, namePool1)
-						machineClassNamePool2Zone1 = fmt.Sprintf("%s-%s-z1", namespace, namePool2)
-						machineClassNamePool2Zone2 = fmt.Sprintf("%s-%s-z2", namespace, namePool2)
-						machineClassNamePool3Zone1 = fmt.Sprintf("%s-%s-z1", namespace, namePool3)
-						machineClassNamePool3Zone2 = fmt.Sprintf("%s-%s-z2", namespace, namePool3)
+						machineClassNamePool1Zone1 = fmt.Sprintf("%s-%s-z1", technicalID, namePool1)
+						machineClassNamePool1Zone2 = fmt.Sprintf("%s-%s-z2", technicalID, namePool1)
+						machineClassNamePool2Zone1 = fmt.Sprintf("%s-%s-z1", technicalID, namePool2)
+						machineClassNamePool2Zone2 = fmt.Sprintf("%s-%s-z2", technicalID, namePool2)
+						machineClassNamePool3Zone1 = fmt.Sprintf("%s-%s-z1", technicalID, namePool3)
+						machineClassNamePool3Zone2 = fmt.Sprintf("%s-%s-z2", technicalID, namePool3)
 
 						machineClassWithHashPool1Zone1 = fmt.Sprintf("%s-%s", machineClassNamePool1Zone1, workerPoolHash1)
 						machineClassWithHashPool1Zone2 = fmt.Sprintf("%s-%s", machineClassNamePool1Zone2, workerPoolHash1)
