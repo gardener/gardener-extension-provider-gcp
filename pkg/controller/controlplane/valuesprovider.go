@@ -579,8 +579,8 @@ func getCSIControllerChartValues(
 		if _, ok := cluster.Shoot.Annotations[gcp.AnnotationEnableVolumeAttributesClass]; ok {
 			values["csiDriver"] = map[string]interface{}{
 				"storage": map[string]interface{}{
-					"supportsDynamicIopsProvisioning":       []string{"hyperdisk-balanced", "hyperdisk-extreme"},
-					"supportsDynamicThroughputProvisioning": []string{"hyperdisk-balanced", "hyperdisk-throughput", "hyperdisk-ml"},
+					"supportsDynamicIopsProvisioning":       []string{gcp.HyperDiskBalanced, gcp.HyperDiskExtreme},
+					"supportsDynamicThroughputProvisioning": []string{gcp.HyperDiskBalanced, gcp.HyperDiskThroughput, gcp.HyperDiskML},
 				},
 			}
 			values["csiResizer"] = map[string]interface{}{

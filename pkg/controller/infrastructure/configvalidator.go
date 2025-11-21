@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
@@ -64,7 +64,7 @@ func (c *configValidator) Validate(ctx context.Context, infra *extensionsv1alpha
 	return allErrs
 }
 
-func (c *configValidator) validateNetworks(ctx context.Context, computeClient gcpclient.ComputeClient, clusterName, region string, networks api.NetworkConfig, fldPath *field.Path) field.ErrorList {
+func (c *configValidator) validateNetworks(ctx context.Context, computeClient gcpclient.ComputeClient, clusterName, region string, networks apisgcp.NetworkConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if networks.CloudNAT == nil || len(networks.CloudNAT.NatIPNames) == 0 {

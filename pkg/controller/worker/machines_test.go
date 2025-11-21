@@ -39,7 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
@@ -66,7 +66,7 @@ var _ = Describe("Machines", func() {
 		statusWriter = mockclient.NewMockStatusWriter(ctrl)
 
 		scheme = runtime.NewScheme()
-		_ = api.AddToScheme(scheme)
+		_ = apisgcp.AddToScheme(scheme)
 		_ = apiv1alpha1.AddToScheme(scheme)
 	})
 
@@ -338,13 +338,13 @@ var _ = Describe("Machines", func() {
 						},
 						Region: region,
 						InfrastructureProviderStatus: &runtime.RawExtension{
-							Raw: encode(&api.InfrastructureStatus{
+							Raw: encode(&apisgcp.InfrastructureStatus{
 								ServiceAccountEmail: serviceAccountEmail,
-								Networks: api.NetworkStatus{
-									Subnets: []api.Subnet{
+								Networks: apisgcp.NetworkStatus{
+									Subnets: []apisgcp.Subnet{
 										{
 											Name:    subnetName,
-											Purpose: api.PurposeNodes,
+											Purpose: apisgcp.PurposeNodes,
 										},
 									},
 								},
@@ -381,12 +381,12 @@ var _ = Describe("Machines", func() {
 									},
 								},
 								ProviderConfig: &runtime.RawExtension{
-									Raw: encode(&api.WorkerConfig{
-										Volume: &api.Volume{
+									Raw: encode(&apisgcp.WorkerConfig{
+										Volume: &apisgcp.Volume{
 											LocalSSDInterface: &localVolumeInterface,
 										},
 										MinCpuPlatform: &minCpuPlatform,
-										GPU: &api.GPU{
+										GPU: &apisgcp.GPU{
 											AcceleratorType: acceleratorTypeName,
 											Count:           acceleratorCount,
 										},
@@ -415,11 +415,11 @@ var _ = Describe("Machines", func() {
 									Capacity: nodeCapacity,
 								},
 								ProviderConfig: &runtime.RawExtension{
-									Raw: encode(&api.WorkerConfig{
-										Volume: &api.Volume{
+									Raw: encode(&apisgcp.WorkerConfig{
+										Volume: &apisgcp.Volume{
 											LocalSSDInterface: &localVolumeInterface,
 										},
-										ServiceAccount: &api.ServiceAccount{
+										ServiceAccount: &apisgcp.ServiceAccount{
 											Email:  "foo",
 											Scopes: []string{"bar"},
 										},
@@ -478,12 +478,12 @@ var _ = Describe("Machines", func() {
 									},
 								},
 								ProviderConfig: &runtime.RawExtension{
-									Raw: encode(&api.WorkerConfig{
-										Volume: &api.Volume{
+									Raw: encode(&apisgcp.WorkerConfig{
+										Volume: &apisgcp.Volume{
 											LocalSSDInterface: &localVolumeInterface,
 										},
 										MinCpuPlatform: &minCpuPlatform,
-										GPU: &api.GPU{
+										GPU: &apisgcp.GPU{
 											AcceleratorType: acceleratorTypeName,
 											Count:           acceleratorCount,
 										},
@@ -798,18 +798,18 @@ var _ = Describe("Machines", func() {
 					setup(true)
 					workerCloudRouter := w
 					workerCloudRouter.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
-						Raw: encode(&api.InfrastructureStatus{
+						Raw: encode(&apisgcp.InfrastructureStatus{
 							ServiceAccountEmail: serviceAccountEmail,
-							Networks: api.NetworkStatus{
-								VPC: api.VPC{
-									CloudRouter: &api.CloudRouter{
+							Networks: apisgcp.NetworkStatus{
+								VPC: apisgcp.VPC{
+									CloudRouter: &apisgcp.CloudRouter{
 										Name: "my-cloudrouter",
 									},
 								},
-								Subnets: []api.Subnet{
+								Subnets: []apisgcp.Subnet{
 									{
 										Name:    subnetName,
-										Purpose: api.PurposeNodes,
+										Purpose: apisgcp.PurposeNodes,
 									},
 								},
 							},
@@ -889,13 +889,13 @@ var _ = Describe("Machines", func() {
 			It("should succeed with dual-stack cluster", func() {
 				cluster.Shoot.Spec.Networking.IPFamilies = []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4, gardencorev1beta1.IPFamilyIPv6}
 				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
-					Raw: encode(&api.InfrastructureStatus{
+					Raw: encode(&apisgcp.InfrastructureStatus{
 						ServiceAccountEmail: serviceAccountEmail,
-						Networks: api.NetworkStatus{
-							Subnets: []api.Subnet{
+						Networks: apisgcp.NetworkStatus{
+							Subnets: []apisgcp.Subnet{
 								{
 									Name:    subnetName,
-									Purpose: api.PurposeNodes,
+									Purpose: apisgcp.PurposeNodes,
 								},
 							},
 							IPFamilies: []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4, gardencorev1beta1.IPFamilyIPv6},
@@ -943,7 +943,7 @@ var _ = Describe("Machines", func() {
 
 			It("should fail because the nodes subnet cannot be found", func() {
 				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
-					Raw: encode(&api.InfrastructureStatus{}),
+					Raw: encode(&apisgcp.InfrastructureStatus{}),
 				}
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
@@ -1020,7 +1020,7 @@ var _ = Describe("Machines", func() {
 					dongleName:                      dongleQuant,
 				}
 				w.Spec.Pools[0].ProviderConfig = &runtime.RawExtension{
-					Raw: encode(&api.WorkerConfig{
+					Raw: encode(&apisgcp.WorkerConfig{
 						NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 							Capacity: customResources,
 						},
