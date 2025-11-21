@@ -132,7 +132,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 			return err
 		}
 
-		poolLabels := getGcePoolLabels(w.worker, pool)
+		poolLabels := getGcePoolLabels(w.worker, pool, w.cluster.Shoot.Status.TechnicalID)
 
 		arch := ptr.Deref(pool.Architecture, v1beta1constants.ArchitectureAMD64)
 		machineImage, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version, &arch)
@@ -225,8 +225,8 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 				},
 				"serviceAccounts": serviceAccounts,
 				"tags": []string{
-					w.worker.Namespace,
-					fmt.Sprintf("kubernetes-io-cluster-%s", w.worker.Namespace),
+					w.cluster.Shoot.Status.TechnicalID,
+					fmt.Sprintf("kubernetes-io-cluster-%s", w.cluster.Shoot.Status.TechnicalID),
 					"kubernetes-io-role-node",
 				},
 			}
@@ -246,7 +246,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 
 			var (
-				deploymentName = fmt.Sprintf("%s-%s-z%d", w.worker.Namespace, pool.Name, zoneIndex+1)
+				deploymentName = fmt.Sprintf("%s-%s-z%d", w.cluster.Shoot.Status.TechnicalID, pool.Name, zoneIndex+1)
 				className      = fmt.Sprintf("%s-%s", deploymentName, workerPoolHash)
 				gpuCount       int32
 			)
@@ -463,11 +463,11 @@ func getDataVolumeWorkerConf(volumeName string, dataVolumes []apisgcp.DataVolume
 	return apisgcp.DataVolume{}
 }
 
-func getGcePoolLabels(worker *v1alpha1.Worker, pool v1alpha1.WorkerPool) map[string]interface{} {
+func getGcePoolLabels(worker *v1alpha1.Worker, pool v1alpha1.WorkerPool, technicalID string) map[string]interface{} {
 	gceInstanceLabels := map[string]interface{}{
 		"name": SanitizeGcpLabelValue(worker.Name),
 		// Add shoot id to keep consistency with the label added to all disks by the csi-driver
-		"k8s-cluster-name": SanitizeGcpLabelValue(worker.Namespace),
+		"k8s-cluster-name": SanitizeGcpLabelValue(technicalID),
 	}
 	for k, v := range pool.Labels {
 		if label := SanitizeGcpLabel(k); label != "" {
