@@ -9,16 +9,22 @@ spec:
     containerPolicies:
     - containerName: gcp-csi-driver
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
     - containerName: gcp-csi-provisioner
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
     - containerName: gcp-csi-attacher
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
     - containerName: gcp-csi-snapshotter
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
     - containerName: gcp-csi-resizer
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
     - containerName: gcp-csi-liveness-probe
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
   targetRef:
     apiVersion: apps/v1
     kind: Deployment
