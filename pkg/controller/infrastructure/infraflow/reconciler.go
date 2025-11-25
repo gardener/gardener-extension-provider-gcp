@@ -178,6 +178,11 @@ func (fctx *FlowContext) Delete(ctx context.Context) error {
 }
 
 func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
+
+	ipFamilies := fctx.networking.IPFamilies
+	if fctx.shoot.Status.Networking != nil {
+		ipFamilies = IPFamiliesFromCIDRs(fctx.shoot.Status.Networking.Nodes)
+	}
 	status := &v1alpha1.InfrastructureStatus{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
@@ -187,7 +192,7 @@ func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 			VPC:        v1alpha1.VPC{},
 			Subnets:    []v1alpha1.Subnet{},
 			NatIPs:     []v1alpha1.NatIP{},
-			IPFamilies: fctx.networking.IPFamilies,
+			IPFamilies: ipFamilies,
 		},
 	}
 

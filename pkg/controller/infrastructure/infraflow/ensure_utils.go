@@ -2,6 +2,7 @@ package infraflow
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"strings"
 
@@ -370,4 +371,24 @@ func extractInstanceAndZone(nextHopInstance string) (string, string, error) {
 	instance := parts[8]
 
 	return instance, zone, nil
+}
+
+// IPFamiliesFromCIDRs returns a slice of IP families (IPv4 / IPv6) corresponding
+// to the provided CIDRs. The position in the returned slice matches the input.
+func IPFamiliesFromCIDRs(cidrs []string) []gardencorev1beta1.IPFamily {
+	families := make([]gardencorev1beta1.IPFamily, len(cidrs))
+	for i, c := range cidrs {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		if ip, _, err := net.ParseCIDR(c); err == nil {
+			if ip.To4() != nil {
+				families[i] = gardencorev1beta1.IPFamilyIPv4
+			} else {
+				families[i] = gardencorev1beta1.IPFamilyIPv6
+			}
+		}
+	}
+	return families
 }
