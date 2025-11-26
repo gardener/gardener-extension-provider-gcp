@@ -17,27 +17,21 @@ zone: bar
 resources:
   driver:
     requests:
-      cpu: 20m
       memory: 50Mi
   provisioner:
     requests:
-      cpu: 11m
       memory: 32Mi
   attacher:
     requests:
-      cpu: 10m
       memory: 50Mi
   snapshotter:
     requests:
-      cpu: 10m
       memory: 32Mi
   resizer:
     requests:
-      cpu: 10m
       memory: 32Mi
   livenessProbe:
     requests:
-      cpu: 10m
       memory: 32Mi
 
 csiSnapshotController:
@@ -45,7 +39,6 @@ csiSnapshotController:
   podAnnotations: {}
   resources:
     requests:
-      cpu: 11m
       memory: 32Mi
 
 useWorkloadIdentity: false

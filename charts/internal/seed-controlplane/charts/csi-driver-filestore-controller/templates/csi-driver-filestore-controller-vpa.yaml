@@ -9,14 +9,19 @@ spec:
     containerPolicies:
     - containerName: gcp-filestore-driver
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
     - containerName: gcp-filestore-provisioner
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
     - containerName: gcp-filestore-resizer
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
     - containerName: gcp-filestore-liveness-probe
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
     - containerName: gcp-filestore-snapshotter
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
   targetRef:
     apiVersion: apps/v1
     kind: Deployment
