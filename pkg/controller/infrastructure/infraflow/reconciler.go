@@ -178,7 +178,6 @@ func (fctx *FlowContext) Delete(ctx context.Context) error {
 }
 
 func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
-
 	ipFamilies := fctx.networking.IPFamilies
 	if fctx.shoot.Status.Networking != nil {
 		ipFamilies = IPFamiliesFromCIDRs(fctx.shoot.Status.Networking.Nodes)
