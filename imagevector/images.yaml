@@ -32,6 +32,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
+  # TODO(AndreasBurger,kon-angelo): Update to v31.x.y image of the cloud-controller-manager when it is available.
   tag: v30.0.0
   labels:
   - name: gardener.cloud/cve-categorisation
@@ -43,11 +44,20 @@ images:
       integrity_requirement: high
       availability_requirement: low
     signing: false
-  targetVersion: 30.0.x
+  targetVersion: 1.31.x
+  # Note: do not use the v32.2.5 image of cloud-controller-manager. Its dockerfile only specifies CMD and does not specify an ENTRYPOINT.
+  # This causes the container's entrypoint to be "ko-runner" instead of "/cloud-controller-manager". Due to this it cannot be used with the current
+  # chart that is used to deploy the cloud-controller-manager. For more information check
+  # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987914997 and
+  # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987998478
+  #
+  # TODO(plkokanov,AndreasBurger,kon-angelo,hebelsan): Bump the patch version of the cloud-controller-manager after the Dockerfile
+  # for the v32.2.* releases has been updated to contain both a CMD and ENTRYPOINT ref:
+  # https://github.com/kubernetes/cloud-provider-gcp/pull/842#issuecomment-2987419314
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-  tag: v32.2.5
+  tag: v32.2.4
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -58,7 +68,7 @@ images:
       integrity_requirement: high
       availability_requirement: low
     signing: false
-  targetVersion: 32.2.x
+  targetVersion: 1.32.x
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
@@ -73,7 +83,7 @@ images:
       integrity_requirement: high
       availability_requirement: low
     signing: false
-  targetVersion: 33.1.x
+  targetVersion: 1.33.x
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
@@ -88,7 +98,7 @@ images:
       integrity_requirement: high
       availability_requirement: low
     signing: false
-  targetVersion: '>= 34.1'
+  targetVersion: '>= 1.34'
 - name: csi-attacher
   sourceRepository: github.com/kubernetes-csi/external-attacher
   repository: registry.k8s.io/sig-storage/csi-attacher
