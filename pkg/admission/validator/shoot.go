@@ -135,7 +135,7 @@ func (s *shoot) validateContext(valContext *validationContext) field.ErrorList {
 			continue
 		}
 		if workerConfig != nil {
-			allErrors = append(allErrors, gcpvalidation.ValidateWorkerConfig(*workerConfig, worker.DataVolumes, providerPath.Child("providerConfig"))...)
+			allErrors = append(allErrors, gcpvalidation.ValidateWorkerConfig(*workerConfig, worker.DataVolumes, worker.Volume, providerPath.Child("providerConfig"))...)
 		}
 	}
 
