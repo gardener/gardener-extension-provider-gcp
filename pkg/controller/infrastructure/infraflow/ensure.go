@@ -259,7 +259,6 @@ func (fctx *FlowContext) ensureNodesSubnet(ctx context.Context) error {
 	if len(cidr) == 0 {
 		cidr = fctx.config.Networks.Worker
 	}
-	dualStack := !gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies)
 
 	var podCIDRS *string
 	if fctx.isDualStack() {
@@ -272,7 +271,7 @@ func (fctx *FlowContext) ensureNodesSubnet(ctx context.Context) error {
 		cidr,
 		vpc.SelfLink,
 		fctx.config.Networks.FlowLogs,
-		dualStack,
+		fctx.isDualStack(),
 		podCIDRS,
 	)
 
