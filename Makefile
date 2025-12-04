@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Gardener contributors
+# SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and Gardener contributors
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -199,4 +199,12 @@ integration-test-backupbucket:
 		--service-account='$(shell cat $(SERVICE_ACCOUNT_FILE))' \
 		--region=$(REGION) \
 		--use-existing-cluster=$(TEST_USE_EXISTING_CLUSTER) \
+		--log-level=$(TEST_LOGLEVEL)
+
+.PHONY: integration-test-dnsrecord
+integration-test-dnsrecord: $(SETUP_ENVTEST)
+	@go test -timeout=0 ./test/integration/dnsrecord \
+		--v -ginkgo.v -ginkgo.show-node-events \
+		--kubeconfig=${KUBECONFIG} \
+		--service-account='$(shell cat $(SERVICE_ACCOUNT_FILE))' \
 		--log-level=$(TEST_LOGLEVEL)
