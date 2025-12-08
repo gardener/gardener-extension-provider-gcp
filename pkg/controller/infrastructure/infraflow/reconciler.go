@@ -180,7 +180,8 @@ func (fctx *FlowContext) Delete(ctx context.Context) error {
 func (fctx *FlowContext) getStatus() *v1alpha1.InfrastructureStatus {
 	ipFamilies := fctx.networking.IPFamilies
 	if fctx.shoot.Status.Networking != nil && len(fctx.shoot.Status.Networking.Nodes) > 0 {
-		if families := IPFamiliesFromCIDRs(fctx.shoot.Status.Networking.Nodes); len(families) > 0 {
+		// Override the IP families when the shoot status indicates dual-stack
+		if families := IPFamiliesFromCIDRs(fctx.shoot.Status.Networking.Nodes); len(families) > 1 {
 			ipFamilies = families
 		}
 	}
