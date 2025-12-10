@@ -15,6 +15,8 @@ import (
 	gardencorehelper "github.com/gardener/gardener/pkg/apis/core/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/utils/gardener"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -25,10 +27,12 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 type shoot struct {
 	client         client.Client
+	apiReader      client.Reader
 	decoder        runtime.Decoder
 	lenientDecoder runtime.Decoder
 }
@@ -37,6 +41,7 @@ type shoot struct {
 func NewShootValidator(mgr manager.Manager) extensionswebhook.Validator {
 	return &shoot{
 		client:         mgr.GetClient(),
+		apiReader:      mgr.GetAPIReader(),
 		decoder:        serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 		lenientDecoder: serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
 	}
@@ -107,7 +112,7 @@ func getAllowedRegionZonesFromCloudProfile(shoot *core.Shoot, cloudProfileSpec *
 	return nil
 }
 
-func (s *shoot) validateContext(valContext *validationContext) field.ErrorList {
+func (s *shoot) validateContext(ctx context.Context, valContext *validationContext) field.ErrorList {
 	var (
 		allErrors    = field.ErrorList{}
 		allowedZones = getAllowedRegionZonesFromCloudProfile(valContext.shoot, valContext.cloudProfileSpec)
@@ -125,6 +130,9 @@ func (s *shoot) validateContext(valContext *validationContext) field.ErrorList {
 
 	allErrors = append(allErrors, gcpvalidation.ValidateWorkers(valContext.shoot.Spec.Provider.Workers, workersPath)...)
 	allErrors = append(allErrors, gcpvalidation.ValidateControlPlaneConfig(valContext.controlPlaneConfig, allowedZones, workersZones(valContext.shoot.Spec.Provider.Workers), valContext.shoot.Spec.Kubernetes.Version, controlPlaneConfigPath)...)
+
+	// DNS validation
+	allErrors = append(allErrors, s.validateDNS(ctx, valContext.shoot)...)
 
 	// WorkerConfig
 	for i, worker := range valContext.shoot.Spec.Provider.Workers {
@@ -148,7 +156,7 @@ func (s *shoot) validateCreate(ctx context.Context, shoot *core.Shoot) error {
 		return err
 	}
 
-	return s.validateContext(validationContext).ToAggregate()
+	return s.validateContext(ctx, validationContext).ToAggregate()
 }
 
 func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core.Shoot) error {
@@ -177,9 +185,50 @@ func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core
 	}
 
 	allErrors = append(allErrors, gcpvalidation.ValidateWorkersUpdate(oldValContext.shoot.Spec.Provider.Workers, currentValContext.shoot.Spec.Provider.Workers, workersPath)...)
-	allErrors = append(allErrors, s.validateContext(currentValContext)...)
+	allErrors = append(allErrors, s.validateContext(ctx, currentValContext)...)
 
 	return allErrors.ToAggregate()
+}
+
+// validateDNS validates all google-clouddns provider entries in the Shoot spec.
+func (s *shoot) validateDNS(ctx context.Context, shoot *core.Shoot) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if shoot.Spec.DNS == nil {
+		return allErrs
+	}
+
+	providersPath := specPath.Child("dns").Child("providers")
+
+	for i, p := range shoot.Spec.DNS.Providers {
+		if p.Type == nil || *p.Type != gcp.DNSType {
+			continue
+		}
+
+		providerFldPath := providersPath.Index(i)
+
+		if p.SecretName == nil || *p.SecretName == "" {
+			allErrs = append(allErrs, field.Required(providerFldPath.Child("secretName"),
+				fmt.Sprintf("secretName must be specified for %v provider", gcp.DNSType)))
+			continue
+		}
+
+		secret := &corev1.Secret{}
+		key := client.ObjectKey{Namespace: shoot.Namespace, Name: *p.SecretName}
+		if err := s.apiReader.Get(ctx, key, secret); err != nil {
+			if apierrors.IsNotFound(err) {
+				allErrs = append(allErrs, field.Invalid(providerFldPath.Child("secretName"),
+					*p.SecretName, "referenced secret not found"))
+			} else {
+				allErrs = append(allErrs, field.InternalError(providerFldPath.Child("secretName"), err))
+			}
+			continue
+		}
+
+		allErrs = append(allErrs, gcpvalidation.ValidateCloudProviderSecret(secret, providerFldPath)...)
+	}
+
+	return allErrs
 }
 
 func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client.Client, shoot *core.Shoot) (*validationContext, error) {

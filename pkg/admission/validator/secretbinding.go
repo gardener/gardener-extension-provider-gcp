@@ -12,6 +12,7 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -58,8 +59,9 @@ func (sb *secretBinding) Validate(ctx context.Context, newObj, oldObj client.Obj
 		return err
 	}
 
-	if err := gcpvalidation.ValidateCloudProviderSecret(secret); err != nil {
-		return fmt.Errorf("referenced secret %s is not valid: %w", secretKey, err)
+	secretPath := field.NewPath("secret")
+	if errs := gcpvalidation.ValidateCloudProviderSecret(secret, secretPath); len(errs) > 0 {
+		return errs.ToAggregate()
 	}
 	return nil
 }
