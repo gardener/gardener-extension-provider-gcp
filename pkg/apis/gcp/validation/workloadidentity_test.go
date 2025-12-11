@@ -118,6 +118,21 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 		))
 	})
 
+	It("should return an validation error if CredentialsConfig is not set", func() {
+		workloadIdentityConfig.ProjectID = "my-project"
+		workloadIdentityConfig.CredentialsConfig = nil
+
+		errorList := validation.ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"), nil, nil)
+		Expect(errorList).To(ConsistOfFields(
+			Fields{
+				"Type":     Equal(field.ErrorTypeRequired),
+				"Field":    Equal("providerConfig.credentialsConfig"),
+				"BadValue": Equal(""),
+				"Detail":   Equal("is required"),
+			},
+		))
+	})
+
 	It("should validate the config successfully during update", func() {
 		newConfig := workloadIdentityConfig.DeepCopy()
 		Expect(validation.ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath(""), allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)).To(BeEmpty())

@@ -50,6 +50,7 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 
 	if config.CredentialsConfig == nil {
 		allErrs = append(allErrs, field.Required(fldPath.Child("credentialsConfig"), "is required"))
+		return allErrs
 	}
 
 	cfg := map[string]any{}
