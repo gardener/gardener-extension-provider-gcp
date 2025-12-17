@@ -7,7 +7,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"runtime"
 
@@ -20,7 +19,6 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/util"
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
-	"github.com/gardener/gardener/pkg/controllerutils/routes"
 	gardenerhealthz "github.com/gardener/gardener/pkg/healthz"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -168,15 +166,13 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 
 			util.ApplyClientConnectionConfigurationToRESTConfig(cfg.Config.ClientConnection, restOpts.Completed().Config)
 
-			var extraHandlers map[string]http.Handler
-			if cfg.Config.Debugging != nil && ptr.Deref(cfg.Config.Debugging.EnableProfiling, false) {
-				extraHandlers = routes.ProfilingHandlers
-				if ptr.Deref(cfg.Config.Debugging.EnableContentionProfiling, false) {
+			managerOptions := mgrOpts.Completed().Options()
+			if profiling := cfg.Config.Profiling; profiling != nil && ptr.Deref(profiling.PprofBindAddress, "") != "" {
+				managerOptions.PprofBindAddress = *profiling.PprofBindAddress
+				if ptr.Deref(profiling.EnableContentionProfiling, false) {
 					runtime.SetBlockProfileRate(1)
 				}
 			}
-			managerOptions := mgrOpts.Completed().Options()
-			managerOptions.Metrics.ExtraHandlers = extraHandlers
 
 			mgr, err := manager.New(restOpts.Completed().Config, managerOptions)
 			if err != nil {

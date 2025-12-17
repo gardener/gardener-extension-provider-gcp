@@ -33,9 +33,22 @@ type ControllerConfiguration struct {
 	// +optional
 	FeatureGates map[string]bool `json:"featureGates,omitempty"`
 
-	// Debugging holds configuration for profiling related features.
+	// Profiling holds configuration for profiling and debugging related features.
+	// This configuration is meant for debugging purposes only
+	// and should be used in production with caution
+	// as pprof can expose sensitive information and impact performance.
 	// +optional
-	Debugging *componentbaseconfigv1alpha1.DebuggingConfiguration `json:"debugging,omitempty"`
+	Profiling *ProfilingConfiguration `json:"profiling,omitempty"`
+}
+
+// ProfilingConfiguration contains debugging and profiling configuration.
+type ProfilingConfiguration struct {
+	// PprofBindAddress is the TCP address that the controller should bind to for serving pprof.
+	// +optional
+	PprofBindAddress *string `json:"pprofBindAddress,omitempty"`
+	// EnableContentionProfiling enables block profiling, if PprofBindAddress is set.
+	// +optional
+	EnableContentionProfiling *bool `json:"enableContentionProfiling,omitempty"`
 }
 
 // ETCD is an etcd configuration.

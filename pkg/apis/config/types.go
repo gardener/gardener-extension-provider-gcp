@@ -29,8 +29,19 @@ type ControllerConfiguration struct {
 	// Default: nil
 	FeatureGates map[string]bool
 
-	// Debugging holds configuration for profiling related features.
-	Debugging *componentbaseconfigv1alpha1.DebuggingConfiguration
+	// Profiling holds configuration for profiling and debugging related features.
+	// This configuration is meant for debugging purposes only
+	// and should be used in production with caution
+	// as pprof can expose sensitive information and impact performance.
+	Profiling *ProfilingConfiguration
+}
+
+// ProfilingConfiguration contains debugging and profiling configuration.
+type ProfilingConfiguration struct {
+	// PprofBindAddress is the TCP address that the controller should bind to for serving pprof.
+	PprofBindAddress *string
+	// EnableContentionProfiling enables block profiling, if PprofBindAddress is set.
+	EnableContentionProfiling *bool
 }
 
 // ETCD is an etcd configuration.

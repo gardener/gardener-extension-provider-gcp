@@ -100,16 +100,19 @@ Default: nil</p>
 </tr>
 <tr>
 <td>
-<code>debugging</code></br>
+<code>profiling</code></br>
 <em>
-<a href="https://godoc.org/k8s.io/component-base/config/v1alpha1#DebuggingConfiguration">
-Kubernetes v1alpha1.DebuggingConfiguration
+<a href="#%09gcp.provider.extensions.config.gardener.cloud/v1alpha1.ProfilingConfiguration">
+ProfilingConfiguration
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Debugging holds configuration for profiling related features.</p>
+<p>Profiling holds configuration for profiling and debugging related features.
+This configuration is meant for debugging purposes only
+and should be used in production with caution
+as pprof can expose sensitive information and impact performance.</p>
 </td>
 </tr>
 </tbody>
@@ -231,6 +234,49 @@ k8s.io/apimachinery/pkg/api/resource.Quantity
 <td>
 <em>(Optional)</em>
 <p>Capacity is the storage capacity used in etcd-main volume claims.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="	gcp.provider.extensions.config.gardener.cloud/v1alpha1.ProfilingConfiguration">ProfilingConfiguration
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#%09gcp.provider.extensions.config.gardener.cloud/v1alpha1.ControllerConfiguration">ControllerConfiguration</a>)
+</p>
+<p>
+<p>ProfilingConfiguration contains debugging and profiling configuration.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pprofBindAddress</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PprofBindAddress is the TCP address that the controller should bind to for serving pprof.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableContentionProfiling</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableContentionProfiling enables block profiling, if PprofBindAddress is set.</p>
 </td>
 </tr>
 </tbody>

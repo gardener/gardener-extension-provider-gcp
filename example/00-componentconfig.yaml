@@ -17,6 +17,6 @@ etcd:
 featureGates:
   DisableGardenerServiceAccountCreation: true
 
-debugging:
-  enableProfiling: false
-  enableContentionProfiling: false
+# profiling:
+#   pprofBindAddress: "127.0.0.1:6060"
+#   enableContentionProfiling: false
