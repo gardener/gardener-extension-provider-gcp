@@ -116,6 +116,7 @@ spec:
         - --leader-election-namespace=kube-system
         - --kube-api-qps=100
         - --kube-api-burst=200
+        - --strict-topology
         - --v=5
         securityContext:
           allowPrivilegeEscalation: false
