@@ -221,7 +221,11 @@ The `networks.internal` section is optional and can describe a CIDR for a subnet
 
 The `networks.cloudNAT.minPortsPerVM` is optional and is used to define the [minimum number of ports allocated to a VM for the CloudNAT](https://cloud.google.com/nat/docs/overview#number_of_nat_ports_and_connections)
 
-The `networks.cloudNAT.natIPNames` is optional and is used to specify the names of the manual ip addresses which should be used by the nat gateway
+The `networks.cloudNAT.natIPNames` is optional and is used to specify the names of the manual ip addresses which should be used by the nat gateway.
+If you bring your own IP addresses, the shoot’s `status.networking.egressCIDRs` field will be populated with those addresses.
+If you don’t, the field remains empty because GCP uses automatically allocated external IPs.
+During autoscaling, GCP may add more nodes and assign additional ephemeral IPs as needed.
+Since the set of egress IPs cannot be determined in advance in this scenario, we intentionally leave the field empty.
 
 The `networks.cloudNAT.endpointIndependentMapping` is optional and is used to define the [endpoint mapping behavior](https://cloud.google.com/nat/docs/ports-and-addresses#ports-reuse-endpoints). You can enable it or disable it at any point by toggling `networks.cloudNAT.endpointIndependentMapping.enabled`. By default, it is disabled.
 
