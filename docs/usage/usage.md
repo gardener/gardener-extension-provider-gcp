@@ -316,7 +316,9 @@ The worker configuration contains:
   Service accounts created in advance that generate access tokens that can be accessed through the metadata server and used to authenticate applications on the instance.
 
   **Note**: If you do not provide service accounts for your workers, the Compute Engine default service account will be used. For more details on the default account, see https://cloud.google.com/compute/docs/access/service-accounts#default_service_account.
-  If the `DisableGardenerServiceAccountCreation` feature gate is disabled, Gardener will create a shared service accounts to use for all instances. This feature gate is currently in beta and it will no longer be possible to re-enable the service account creation via feature gate flag.
+  If the `DisableGardenerServiceAccountCreation` feature gate is disabled, Gardener will create a shared service account to use for all instances.
+  The feature gate `DisableGardenerServiceAccountCreation` has been marked as deprecated and will be removed in v1.52.
+  It is recommended to always create dedicated service accounts for each shoot cluster.
 
 * GPU with its type and count per node. This will attach that GPU to all the machines in the worker grp
 
