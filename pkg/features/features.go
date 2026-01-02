@@ -12,6 +12,8 @@ import (
 const (
 	// DisableGardenerServiceAccountCreation controls whether the gcp provider will create a default service account for VMs managed by MCM.
 	// beta: v1.29.0
+	// Deprecated: DisableGardenerServiceAccountCreation will be removed in v1.52
+	// TODO: Remove this feature gate and related code in v1.52
 	DisableGardenerServiceAccountCreation featuregate.Feature = "DisableGardenerServiceAccountCreation"
 )
 
