@@ -33,7 +33,7 @@ spec:
     kind: Shoot
     spec:
       kubernetes:
-        version: 1.29.13
+        version: 1.30.14
     status:
       lastOperation:
         state: Succeeded

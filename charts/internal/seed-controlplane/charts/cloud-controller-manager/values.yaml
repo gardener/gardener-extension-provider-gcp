@@ -2,7 +2,7 @@ replicas: 1
 # RangeAllocator or CloudAllocator
 allocatorType: RangeAllocator
 clusterName: shoot-foo-bar
-kubernetesVersion: 1.29.0
+kubernetesVersion: 1.30.14
 podNetwork: 192.168.0.0/16
 serviceNetwork: 10.96.0.0/12
 podAnnotations: {}
