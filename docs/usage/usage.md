@@ -289,31 +289,76 @@ that the filestore API is enabled in your GCP project.
 
 The worker configuration contains:
 
-* Local SSD interface for the additional volumes attached to GCP worker machines.
+* Optional general volume configuration that applies to all your volumes (boot volume as well as data volumes).
 
-  If you attach the disk with `SCRATCH` type, either an `NVMe` interface or a `SCSI` interface must be specified.
-  It is only meaningful to provide this volume interface if only `SCRATCH` data volumes are used.
+  * Local SSD interface for the additional volumes attached to GCP worker machines.
+    If you attach the disk with `SCRATCH` type, either an `NVMe` interface or a `SCSI` interface must be specified.
+    It is only meaningful to provide this volume interface if only `SCRATCH` data volumes are used.
 
-* Volume Encryption config that specifies values for `kmsKeyName` and `kmsKeyServiceAccountName`.
-  * The `kmsKeyName` is the
-  key name of the cloud kms disk encryption key and must be specified if CMEK disk encryption is needed.
-  *  The `kmsKeyServiceAccount` is the service account granted the `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the `kmsKeyName`
-  If empty, then the role should be given to the Compute Engine Service Agent Account. This CESA account usually has the name:
-   `service-PROJECT_NUMBER@compute-system.iam.gserviceaccount.com`. See: https://cloud.google.com/iam/docs/service-agents#compute-engine-service-agent
-  * Prior to use, the operator should add IAM policy binding using the gcloud CLI:
-    ```
-    gcloud projects add-iam-policy-binding projectId --member
-    serviceAccount:name@projectIdgserviceaccount.com --role roles/cloudkms.cryptoKeyEncrypterDecrypter
+  * Volume Encryption config that specifies values for `kmsKeyName` and `kmsKeyServiceAccountName`.
+    * The `kmsKeyName` is the
+    key name of the cloud kms disk encryption key and must be specified if CMEK disk encryption is needed.
+    *  The `kmsKeyServiceAccount` is the service account granted the `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the `kmsKeyName`
+    If empty, then the role should be given to the Compute Engine Service Agent Account. This CESA account usually has the name:
+     `service-PROJECT_NUMBER@compute-system.iam.gserviceaccount.com`. See: https://cloud.google.com/iam/docs/service-agents#compute-engine-service-agent
+    * Prior to use, the operator should add IAM policy binding using the gcloud CLI:
+      ```
+      gcloud projects add-iam-policy-binding projectId --member
+      serviceAccount:name@projectIdgserviceaccount.com --role roles/cloudkms.cryptoKeyEncrypterDecrypter
+      ```
+
+  * Here is an example how the volume configuration may look like:
+    ```yaml
+    providerConfig:
+      apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+      kind: WorkerConfig
+      volume: # provider specific volume configuration
+        interface: "SCSI" # applies only for scratch disks, the local SSD Interface.
+        encryption: # Encryption Details
+          kmsKeyName: "projects/projectId/locations/<zoneName>/keyRings/<keyRingName>/cryptoKeys/alpha"
+          kmsKeyServiceAccount: "user@projectId.iam.gserviceaccount.com
     ```
   * Setting `.spec.provider.workers[].(data)Volumes[].encrypted` has no impact because GCP disks are encrypted by default.
 
-* Setting a volume image with `dataVolumes.sourceImage`.
-  However, this parameter should only be used with particular caution.
-  For example Gardenlinux works with filesystem LABELs only and creating another disk form the very same image causes the LABELs to be duplicated.
-  See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323
+* Optional specific configuration for your `bootVolume`.
 
-* Some hyperdisks allow adjustment of their default values for `provisionedIops` and `provisionedThroughput`.
-  Keep in mind though that Hyperdisk Extreme and Hyperdisk Throughput volumes can't be used as boot disks.
+  * Some hyperdisks allow adjustment of their default values for `provisionedIops` and `provisionedThroughput`.
+    Keep in mind though that Hyperdisk Extreme and Hyperdisk Throughput volumes can't be used as boot disks.
+
+  * In order to create the disk into a storage pool, define the storage pool in `dataVolumes.storagePool` and `bootVolume.storagePool`.
+    The storage pool must be created in advance and must be in the same region and zone as your worker.
+
+  * Here is an example how the `bootVolume` configuration may look like:
+    ```yaml
+    providerConfig:
+      apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+      kind: WorkerConfig
+      bootVolume:
+        storagePool: projects/<projectName>/zones/<zoneName>/storagePools/<storagePoolName>
+        provisionedIops: 3000 # applies only for certain volume types
+        provisionedThroughput: 140 # applies only for certain volume types
+    ```
+
+* Optional specific configuration for your `dataVolume`.
+
+  * All fields that are available for the boot volume are also available for the data volume.
+
+  * Setting a volume image with `dataVolumes.sourceImage`.
+    However, this parameter should only be used with particular caution.
+    For example Gardenlinux works with filesystem LABELs only and creating another disk form the very same image causes the LABELs to be duplicated.
+    See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323
+
+  * Here is an example how the `dataVolume` configuration may look like:
+    ```yaml
+    providerConfig:
+      apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+      kind: WorkerConfig
+      dataVolume: # provider specific dataVolume configuration
+        name: "alpha"
+        sourceImage: "projects/sap-se-gcp-gardenlinux/global/images/..."
+        provisionedIops: 3000 # applies only for certain volume types
+        provisionedThroughput: 140 # applies only for certain volume types
+    ```
 
 * Service Account with their specified scopes, authorized for this worker.
 
