@@ -246,6 +246,8 @@ func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 		if gcp.VolumeAttributeClassEnabled(shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
+			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--runtime-config=",
+				"storage.k8s.io/v1beta1=true", ",")
 		}
 	}
 
