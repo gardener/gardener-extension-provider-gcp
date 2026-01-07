@@ -6,6 +6,7 @@ package validation
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
@@ -38,6 +39,13 @@ func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, fldPath *fie
 		// Reference: https://github.com/googleapis/google-cloud-go/blob/3005f5a86c18254e569b8b1782bf014aa62f33cc/storage/bucket.go#L1430-L1434
 		if config.Immutability.RetentionPeriod.Duration < 24*time.Hour {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("immutability", "retentionPeriod"), config.Immutability.RetentionPeriod.Duration.String(), "must be a positive duration greater than 24h"))
+		}
+	}
+
+	if config.Endpoint != nil {
+		_, err := url.Parse(*config.Endpoint)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("endpoint"), *config.Endpoint, "must be a valid URL"))
 		}
 	}
 
