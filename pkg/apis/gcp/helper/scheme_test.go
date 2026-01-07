@@ -5,6 +5,9 @@
 package helper_test
 
 import (
+	"time"
+
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -143,6 +146,111 @@ credentialsConfig:
 			config, err := helper.WorkloadIdentityConfigFromRaw(raw)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(config.ProjectID).To(Equal("my-project"))
+		})
+	})
+
+	Describe("BackupBucketConfigFromBackupBucket", func() {
+		It("should successfully parse BackupBucketConfig", func() {
+			raw := []byte(`apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+kind: BackupBucketConfig
+immutability:
+  retentionType: bucket
+  retentionPeriod: "24h"
+  locked: true
+endpoint: "https://storage.googleapis.com"`)
+
+			bb := &extensionsv1alpha1.BackupBucket{}
+			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: raw}
+
+			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(config).ToNot(BeNil())
+			Expect(config.Immutability).ToNot(BeNil())
+			Expect(config.Immutability.RetentionType).To(Equal("bucket"))
+			Expect(config.Immutability.RetentionPeriod.Duration).To(Equal(24 * time.Hour))
+			Expect(config.Immutability.Locked).To(BeTrue())
+			Expect(config.Endpoint).ToNot(BeNil())
+			Expect(*config.Endpoint).To(Equal("https://storage.googleapis.com"))
+		})
+
+		It("should fail due to nil ProviderConfig", func() {
+			bb := &extensionsv1alpha1.BackupBucket{}
+			bb.Spec.ProviderConfig = nil
+
+			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("provider config is not set on the backupbucket resource"))
+			Expect(config).To(BeNil())
+		})
+
+		It("should fail due to nil Raw", func() {
+			bb := &extensionsv1alpha1.BackupBucket{}
+			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: nil}
+
+			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("provider config is not set on the backupbucket resource"))
+			Expect(config).To(BeNil())
+		})
+
+		It("should fail to parse BackupBucketConfig due to unknown field", func() {
+			raw := []byte(`apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+kind: BackupBucketConfig
+immutability:
+  retentionType: bucket
+  retentionPeriod: "24h"
+additionalField: additionalValue`)
+
+			bb := &extensionsv1alpha1.BackupBucket{}
+			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: raw}
+
+			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
+			Expect(err).To(HaveOccurred())
+			Expect(config).To(BeNil())
+		})
+
+		It("should fail to parse BackupBucketConfig due to missing apiVersion", func() {
+			raw := []byte(`kind: BackupBucketConfig
+immutability:
+  retentionType: bucket
+  retentionPeriod: "24h"`)
+
+			bb := &extensionsv1alpha1.BackupBucket{}
+			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: raw}
+
+			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
+			Expect(err).To(HaveOccurred())
+			Expect(config).To(BeNil())
+		})
+
+		It("should fail to parse BackupBucketConfig due to unsupported apiVersion", func() {
+			raw := []byte(`apiVersion: gcp.provider.extensions.gardener.cloud/v0
+kind: BackupBucketConfig
+immutability:
+  retentionType: bucket
+  retentionPeriod: "24h"`)
+
+			bb := &extensionsv1alpha1.BackupBucket{}
+			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: raw}
+
+			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
+			Expect(err).To(HaveOccurred())
+			Expect(config).To(BeNil())
+		})
+
+		It("should fail to parse BackupBucketConfig due to unregistered kind", func() {
+			raw := []byte(`apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+kind: FooBar
+immutability:
+  retentionType: bucket
+  retentionPeriod: "24h"`)
+
+			bb := &extensionsv1alpha1.BackupBucket{}
+			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: raw}
+
+			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
+			Expect(err).To(HaveOccurred())
+			Expect(config).To(BeNil())
 		})
 	})
 })

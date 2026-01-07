@@ -99,3 +99,16 @@ func WorkloadIdentityConfigFromBytes(config []byte) (*apisgcp.WorkloadIdentityCo
 	}
 	return workloadIdentityConfig, nil
 }
+
+// BackupBucketConfigFromBackupBucket extracts the BackupBucketConfig from the
+// ProviderConfig section of the given BackupBucket.
+func BackupBucketConfigFromBackupBucket(backupBucket *extensionsv1alpha1.BackupBucket) (*api.BackupBucketConfig, error) {
+	config := &api.BackupBucketConfig{}
+	if backupBucket.Spec.ProviderConfig != nil && backupBucket.Spec.ProviderConfig.Raw != nil {
+		if _, _, err := decoder.Decode(backupBucket.Spec.ProviderConfig.Raw, nil, config); err != nil {
+			return nil, err
+		}
+		return config, nil
+	}
+	return nil, errors.New("provider config is not set on the backupbucket resource")
+}
