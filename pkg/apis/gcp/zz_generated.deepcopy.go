@@ -24,6 +24,11 @@ func (in *BackupBucketConfig) DeepCopyInto(out *BackupBucketConfig) {
 		*out = new(ImmutableConfig)
 		**out = **in
 	}
+	if in.Endpoint != nil {
+		in, out := &in.Endpoint, &out.Endpoint
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

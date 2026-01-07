@@ -65,6 +65,18 @@ ImmutableConfig
 <p>Immutability defines the immutability config for the backup bucket.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>endpoint</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Endpoint is the endpoint at which the GCS bucket is hosted. Necessary for regional endpoints.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig
