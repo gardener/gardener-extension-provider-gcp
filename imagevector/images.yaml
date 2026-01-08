@@ -2,21 +2,6 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
-  tag: v1.29.13
-  labels:
-  - name: gardener.cloud/cve-categorisation
-    value:
-      network_exposure: protected
-      authentication_enforced: false
-      user_interaction: gardener-operator
-      confidentiality_requirement: high
-      integrity_requirement: high
-      availability_requirement: low
-    signing: false
-  targetVersion: 1.29.x
-- name: cloud-controller-manager
-  sourceRepository: github.com/gardener/cloud-provider-gcp
-  repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
   tag: v1.30.13
   labels:
   - name: gardener.cloud/cve-categorisation

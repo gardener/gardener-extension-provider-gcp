@@ -85,7 +85,7 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 				},
 			}
 
-			errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "1.29.13", fldPath)
+			errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "1.30.14", fldPath)
 
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{

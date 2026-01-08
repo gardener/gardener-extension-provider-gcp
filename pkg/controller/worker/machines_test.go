@@ -270,8 +270,8 @@ var _ = Describe("Machines", func() {
 
 				machineConfiguration = &machinev1alpha1.MachineConfiguration{}
 
-				shootVersionMajorMinor = "1.29"
-				shootVersion = shootVersionMajorMinor + ".13"
+				shootVersionMajorMinor = "1.30"
+				shootVersion = shootVersionMajorMinor + ".14"
 
 				clusterWithoutImages = &extensionscontroller.Cluster{
 					Shoot: &gardencorev1beta1.Shoot{
