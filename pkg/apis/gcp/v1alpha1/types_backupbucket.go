@@ -17,6 +17,10 @@ type BackupBucketConfig struct {
 
 	// Immutability defines the immutability config for the backup bucket.
 	Immutability *ImmutableConfig `json:"immutability"`
+
+	// Endpoint is the endpoint at which the GCS bucket is hosted. Necessary for regional endpoints.
+	// +optional
+	Endpoint *string `json:"endpoint,omitempty"`
 }
 
 // ImmutableConfig represents the immutability configuration for a backup bucket.

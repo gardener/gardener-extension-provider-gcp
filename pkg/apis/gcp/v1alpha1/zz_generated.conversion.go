@@ -351,6 +351,7 @@ func RegisterConversions(s *runtime.Scheme) error {
 
 func autoConvert_v1alpha1_BackupBucketConfig_To_gcp_BackupBucketConfig(in *BackupBucketConfig, out *gcp.BackupBucketConfig, s conversion.Scope) error {
 	out.Immutability = (*gcp.ImmutableConfig)(unsafe.Pointer(in.Immutability))
+	out.Endpoint = (*string)(unsafe.Pointer(in.Endpoint))
 	return nil
 }
 
@@ -361,6 +362,7 @@ func Convert_v1alpha1_BackupBucketConfig_To_gcp_BackupBucketConfig(in *BackupBuc
 
 func autoConvert_gcp_BackupBucketConfig_To_v1alpha1_BackupBucketConfig(in *gcp.BackupBucketConfig, out *BackupBucketConfig, s conversion.Scope) error {
 	out.Immutability = (*ImmutableConfig)(unsafe.Pointer(in.Immutability))
+	out.Endpoint = (*string)(unsafe.Pointer(in.Endpoint))
 	return nil
 }
 
