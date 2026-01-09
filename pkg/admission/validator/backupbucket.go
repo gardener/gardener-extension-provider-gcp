@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
 
@@ -59,12 +60,14 @@ func (b *backupBucketValidator) validateCreate(backupBucket *gardencore.BackupBu
 		providerConfigPath = field.NewPath("spec", "providerConfig")
 	)
 
-	config, err := admission.DecodeBackupBucketConfig(b.decoder, backupBucket.Spec.ProviderConfig)
-	if err != nil {
-		return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode provider config: %s", err.Error())))
-	}
+	if backupBucket.Spec.ProviderConfig != nil {
+		config, err := admission.DecodeBackupBucketConfig(b.decoder, backupBucket.Spec.ProviderConfig)
+		if err != nil {
+			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode provider config: %s", err.Error())))
+		}
 
-	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(config, providerConfigPath)...)
+		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(config, providerConfigPath)...)
+	}
 	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketCredentialsRef(backupBucket.Spec.CredentialsRef, field.NewPath("spec", "credentialsRef"))...)
 	return allErrs
 }
@@ -74,14 +77,19 @@ func (b *backupBucketValidator) validateUpdate(oldBackupBucket, backupBucket *ga
 	var (
 		allErrs            = field.ErrorList{}
 		providerConfigPath = field.NewPath("spec", "providerConfig")
+		config             *apisgcp.BackupBucketConfig
+		err                error
 	)
 
-	config, err := admission.DecodeBackupBucketConfig(b.decoder, backupBucket.Spec.ProviderConfig)
-	if err != nil {
-		return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
+	if backupBucket.Spec.ProviderConfig != nil {
+		config, err = admission.DecodeBackupBucketConfig(b.decoder, backupBucket.Spec.ProviderConfig)
+		if err != nil {
+			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
+		}
+
+		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(config, providerConfigPath)...)
 	}
 
-	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(config, providerConfigPath)...)
 	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketCredentialsRef(backupBucket.Spec.CredentialsRef, field.NewPath("spec", "credentialsRef"))...)
 
 	if oldBackupBucket.Spec.ProviderConfig != nil {
