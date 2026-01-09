@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
 )
 
@@ -25,7 +25,7 @@ var (
 )
 
 // ValidateWorkerConfig validates a WorkerConfig object.
-func ValidateWorkerConfig(workerConfig gcp.WorkerConfig, dataVolumes []core.DataVolume, fldPath *field.Path) field.ErrorList {
+func ValidateWorkerConfig(workerConfig apisgcp.WorkerConfig, dataVolumes []core.DataVolume, bootVolume *core.Volume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	for idx, dataVolume := range dataVolumes {
@@ -49,6 +49,10 @@ func ValidateWorkerConfig(workerConfig gcp.WorkerConfig, dataVolumes []core.Data
 		allErrs = append(allErrs, validateDataVolumeConfigs(dataVolumes, workerConfig.DataVolumes, fldPath.Child("dataVolumes"))...)
 	}
 
+	if bootVolume != nil && bootVolume.Type != nil && workerConfig.BootVolume != nil {
+		allErrs = append(allErrs, validateBootVolumeConfig(*workerConfig.BootVolume, *bootVolume.Type, fldPath.Child("bootVolume"))...)
+	}
+
 	if workerConfig.MinCpuPlatform != nil {
 		allErrs = append(allErrs, validateMinCPUsPlatform(*workerConfig.MinCpuPlatform, fldPath.Child("minCpuPlatform"))...)
 	}
@@ -56,7 +60,7 @@ func ValidateWorkerConfig(workerConfig gcp.WorkerConfig, dataVolumes []core.Data
 	return allErrs
 }
 
-func validateGPU(gpu *gcp.GPU, fldPath *field.Path) field.ErrorList {
+func validateGPU(gpu *apisgcp.GPU, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if gpu == nil {
@@ -72,7 +76,7 @@ func validateGPU(gpu *gcp.GPU, fldPath *field.Path) field.ErrorList {
 	return allErrs
 }
 
-func validateServiceAccount(sa gcp.ServiceAccount, fldPath *field.Path) field.ErrorList {
+func validateServiceAccount(sa apisgcp.ServiceAccount, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	allErrs = append(allErrs, validateServiceAccountEmail(sa.Email, fldPath.Child("email"))...)
@@ -99,7 +103,7 @@ func validateServiceAccount(sa gcp.ServiceAccount, fldPath *field.Path) field.Er
 	return allErrs
 }
 
-func validateVolumeConfig(volume gcp.Volume, fldPath *field.Path) field.ErrorList {
+func validateVolumeConfig(volume apisgcp.Volume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if volume.LocalSSDInterface != nil {
@@ -117,7 +121,7 @@ func validateVolumeConfig(volume gcp.Volume, fldPath *field.Path) field.ErrorLis
 }
 
 // validateDiskEncryption validates the provider specific disk encryption configuration for a volume
-func validateDiskEncryption(encryption gcp.DiskEncryption, fldPath *field.Path) field.ErrorList {
+func validateDiskEncryption(encryption apisgcp.DiskEncryption, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if encryption.KmsKeyName == nil || strings.TrimSpace(*encryption.KmsKeyName) == "" {
@@ -136,7 +140,7 @@ func validateDiskEncryption(encryption gcp.DiskEncryption, fldPath *field.Path) 
 	return allErrs
 }
 
-func validateScratchDisk(volumeType string, workerConfig gcp.WorkerConfig, fldPath *field.Path) field.ErrorList {
+func validateScratchDisk(volumeType string, workerConfig apisgcp.WorkerConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	interfacePath := fldPath.Child("interface")
@@ -159,7 +163,7 @@ func validateScratchDisk(volumeType string, workerConfig gcp.WorkerConfig, fldPa
 	return allErrs
 }
 
-func validateDataVolumeConfigs(dataVolumes []core.DataVolume, configs []gcp.DataVolume, fldPath *field.Path) field.ErrorList {
+func validateDataVolumeConfigs(dataVolumes []core.DataVolume, configs []apisgcp.DataVolume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	volumeNames := sets.New[string]()
 
@@ -179,24 +183,31 @@ func validateDataVolumeConfigs(dataVolumes []core.DataVolume, configs []gcp.Data
 			continue
 		}
 		volumeNames.Insert(volumeName)
-		allErrs = append(allErrs, validateHyperDisk(dataVolumes[idx], configDataVolume, fldPath)...)
+		if dataVolumes[idx].Type != nil {
+			allErrs = append(allErrs, validateHyperDisk(
+				configDataVolume.DiskSettings, *dataVolumes[idx].Type, fldPath.Index(i))...)
+		}
 	}
 
 	return allErrs
 }
 
-func validateHyperDisk(dataVolume core.DataVolume, config gcp.DataVolume, fldPath *field.Path) field.ErrorList {
+func validateHyperDisk(config apisgcp.DiskSettings, volumeType string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if config.ProvisionedIops != nil && !slices.Contains(worker.AllowedTypesIops, *dataVolume.Type) {
+	if config.ProvisionedIops != nil && !slices.Contains(worker.AllowedTypesIops, volumeType) {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("provisionedIops"),
 			fmt.Sprintf("is only allowed for types: %v", worker.AllowedTypesIops)))
 	}
-	if config.ProvisionedThroughput != nil && !slices.Contains(worker.AllowedTypesThroughput, *dataVolume.Type) {
+	if config.ProvisionedThroughput != nil && !slices.Contains(worker.AllowedTypesThroughput, volumeType) {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("provisionedThroughput"),
 			fmt.Sprintf("is only allowed for types: %v", worker.AllowedTypesThroughput)))
 	}
 	return allErrs
+}
+
+func validateBootVolumeConfig(config apisgcp.BootVolume, volumeType string, fldPath *field.Path) field.ErrorList {
+	return validateHyperDisk(config.DiskSettings, volumeType, fldPath)
 }
 
 func validateNodeTemplate(nt *extensionsv1alpha1.NodeTemplate, fldPath *field.Path) field.ErrorList {
