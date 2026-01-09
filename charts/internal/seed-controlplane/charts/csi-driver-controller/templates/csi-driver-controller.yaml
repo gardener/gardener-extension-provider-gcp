@@ -49,6 +49,8 @@ spec:
         - --logtostderr
         - --v=3
         - --enable-storage-pools
+        - --supports-dynamic-iops-provisioning=hyperdisk-balanced,hyperdisk-extreme
+        - --supports-dynamic-throughput-provisioning=hyperdisk-balanced,hyperdisk-throughput,hyperdisk-ml
         {{- if .Values.enableDataCache }}
         - --enable-data-cache
         {{- end }}
