@@ -27,6 +27,12 @@ var (
 	ServiceAccountRegex = `^[a-zA-Z0-9\-_]+@[a-z0-9\-]+\.iam\.gserviceaccount\.com$`
 	// ServiceAccountScopeRegex matches e.g.https://www.googleapis.com/auth/cloud-platform
 	ServiceAccountScopeRegex = `^https:\/\/www\.googleapis\.com\/[a-z0-9\-\.\/_]+$`
+	// ProjectIDRegex matches GCP project IDs (6-30 chars, lowercase alphanumeric + hyphens, must start with letter, end with alphanumeric)
+	ProjectIDRegex = `^[a-z][a-z0-9\-]*[a-z0-9]$`
+	// PrivateKeyIDRegex matches hexadecimal strings
+	PrivateKeyIDRegex = `^[a-f0-9]+$`
+	// ClientIDRegex matches numeric strings
+	ClientIDRegex = `^[0-9]+$`
 
 	validateGcpResourceName            = combineValidationFuncs(regex(Rfc1035Regex), minLength(1), maxLength(63))
 	validateGpuAcceleratorType         = combineValidationFuncs(regex(GpuAcceleratorTypeRegex), minLength(1), maxLength(250))
@@ -36,6 +42,9 @@ var (
 	validateVolumeKmsKeyServiceAccount = combineValidationFuncs(regex(ServiceAccountRegex), minLength(1), maxLength(250))
 	validateServiceAccountEmail        = combineValidationFuncs(regex(ServiceAccountRegex), minLength(1), maxLength(250))
 	validateServiceAccountScopeName    = combineValidationFuncs(regex(ServiceAccountScopeRegex), minLength(1), maxLength(250))
+	validateProjectID                  = combineValidationFuncs(regex(ProjectIDRegex), minLength(6), maxLength(30))
+	validatePrivateKeyID               = combineValidationFuncs(regex(PrivateKeyIDRegex), minLength(40), maxLength(40))
+	validateClientID                   = combineValidationFuncs(regex(ClientIDRegex), minLength(1), maxLength(30))
 )
 
 type validateFunc[T any] func(T, *field.Path) field.ErrorList
