@@ -43,11 +43,25 @@ var (
 	validateServiceAccountEmail        = combineValidationFuncs(regex(ServiceAccountRegex), minLength(1), maxLength(250))
 	validateServiceAccountScopeName    = combineValidationFuncs(regex(ServiceAccountScopeRegex), minLength(1), maxLength(250))
 	validateProjectID                  = combineValidationFuncs(regex(ProjectIDRegex), minLength(6), maxLength(30))
-	validatePrivateKeyID               = combineValidationFuncs(regex(PrivateKeyIDRegex), minLength(40), maxLength(40))
-	validateClientID                   = combineValidationFuncs(regex(ClientIDRegex), minLength(1), maxLength(30))
+	validatePrivateKeyID               = hideSensitiveValue(combineValidationFuncs(regex(PrivateKeyIDRegex), minLength(40), maxLength(40)))
+	validateClientID                   = hideSensitiveValue(combineValidationFuncs(regex(ClientIDRegex), minLength(1), maxLength(30)))
 )
 
 type validateFunc[T any] func(T, *field.Path) field.ErrorList
+
+// hideSensitiveValue wraps a validation function to hide the actual value in error messages
+func hideSensitiveValue(fn validateFunc[string]) validateFunc[string] {
+	return func(value string, fld *field.Path) field.ErrorList {
+		errs := fn(value, fld)
+		// Replace the actual value with "(hidden)" in all error messages
+		for i := range errs {
+			if errs[i].Type == field.ErrorTypeInvalid || errs[i].Type == field.ErrorTypeRequired {
+				errs[i].BadValue = "(hidden)"
+			}
+		}
+		return errs
+	}
+}
 
 // combineValidationFuncs validates a value against a list of filters.
 func combineValidationFuncs[T any](filters ...validateFunc[T]) validateFunc[T] {
