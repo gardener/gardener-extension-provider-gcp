@@ -171,6 +171,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 				managerOptions.PprofBindAddress = *profiling.PprofBindAddress
 				if ptr.Deref(profiling.EnableContentionProfiling, false) {
 					runtime.SetBlockProfileRate(1)
+					runtime.SetMutexProfileFraction(1)
 				}
 			}
 
