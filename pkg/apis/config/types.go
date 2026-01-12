@@ -8,7 +8,7 @@ import (
 	apisconfigv1alpha1 "github.com/gardener/gardener/extensions/pkg/apis/config/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	configv1alpha1 "k8s.io/component-base/config/v1alpha1"
+	componentbaseconfigv1alpha1 "k8s.io/component-base/config/v1alpha1"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -19,7 +19,7 @@ type ControllerConfiguration struct {
 
 	// ClientConnection specifies the kubeconfig file and client connection
 	// settings for the proxy server to use when communicating with the apiserver.
-	ClientConnection *configv1alpha1.ClientConnectionConfiguration
+	ClientConnection *componentbaseconfigv1alpha1.ClientConnectionConfiguration
 	// ETCD is the etcd configuration.
 	ETCD ETCD
 	// HealthCheckConfig is the config for the health check controller
@@ -28,6 +28,20 @@ type ControllerConfiguration struct {
 	// or disable alpha/experimental features.
 	// Default: nil
 	FeatureGates map[string]bool
+
+	// Profiling holds configuration for profiling and debugging related features.
+	// This configuration is meant for debugging purposes only
+	// and should be used in production with caution
+	// as pprof can expose sensitive information and impact performance.
+	Profiling *ProfilingConfiguration
+}
+
+// ProfilingConfiguration contains debugging and profiling configuration.
+type ProfilingConfiguration struct {
+	// PprofBindAddress is the TCP address that the controller should bind to for serving pprof.
+	PprofBindAddress *string
+	// EnableContentionProfiling enables block profiling, if PprofBindAddress is set.
+	EnableContentionProfiling *bool
 }
 
 // ETCD is an etcd configuration.

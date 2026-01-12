@@ -28,3 +28,7 @@ data:
     featureGates:
 {{ toYaml .Values.config.featureGates | indent 6 }}
 {{- end }}
+{{- if .Values.config.profiling }}
+    profiling:
+{{ toYaml .Values.config.profiling | indent 6 }}
+{{- end }}

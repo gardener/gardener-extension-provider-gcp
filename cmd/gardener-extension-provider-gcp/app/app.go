@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 
 	druidcorev1alpha1 "github.com/gardener/etcd-druid/api/core/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -25,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/component-base/version/verflag"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -157,13 +159,23 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 				return err
 			}
 
-			if err := features.ExtensionFeatureGate.SetFromMap(configFileOpts.Completed().Config.FeatureGates); err != nil {
+			cfg := configFileOpts.Completed()
+			if err := features.ExtensionFeatureGate.SetFromMap(cfg.Config.FeatureGates); err != nil {
 				return err
 			}
 
-			util.ApplyClientConnectionConfigurationToRESTConfig(configFileOpts.Completed().Config.ClientConnection, restOpts.Completed().Config)
+			util.ApplyClientConnectionConfigurationToRESTConfig(cfg.Config.ClientConnection, restOpts.Completed().Config)
 
-			mgr, err := manager.New(restOpts.Completed().Config, mgrOpts.Completed().Options())
+			managerOptions := mgrOpts.Completed().Options()
+			if profiling := cfg.Config.Profiling; profiling != nil && ptr.Deref(profiling.PprofBindAddress, "") != "" {
+				managerOptions.PprofBindAddress = *profiling.PprofBindAddress
+				if ptr.Deref(profiling.EnableContentionProfiling, false) {
+					runtime.SetBlockProfileRate(1)
+					runtime.SetMutexProfileFraction(1)
+				}
+			}
+
+			mgr, err := manager.New(restOpts.Completed().Config, managerOptions)
 			if err != nil {
 				return fmt.Errorf("could not instantiate manager: %w", err)
 			}

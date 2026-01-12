@@ -80,6 +80,9 @@ config:
       volumeBindingMode: WaitForFirstConsumer
   featureGates:
     DisableGardenerServiceAccountCreation: true
+# profiling:
+  # pprofBindAddress: "127.0.0.1:6060"
+  # enableContentionProfiling: false
 gardener:
   version: ""
   gardenlet:
