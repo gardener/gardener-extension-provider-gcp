@@ -22,11 +22,11 @@ import (
 )
 
 // NewEnsurer creates a new seedprovider ensurer.
-func NewEnsurer(etcdStorage *config.ETCDStorage, client client.Client, logger logr.Logger) genericmutator.Ensurer {
+func NewEnsurer(etcdStorage *config.ETCDStorage, reader client.Reader, logger logr.Logger) genericmutator.Ensurer {
 	return &ensurer{
 		etcdStorage: etcdStorage,
 		logger:      logger.WithName("gcp-seedprovider-ensurer"),
-		client:      client,
+		reader:      reader,
 	}
 }
 
@@ -34,7 +34,7 @@ type ensurer struct {
 	genericmutator.NoopEnsurer
 	etcdStorage *config.ETCDStorage
 	logger      logr.Logger
-	client      client.Client
+	reader      client.Reader
 }
 
 // EnsureETCD ensures that the etcd conform to the provider requirements.
@@ -59,7 +59,7 @@ func (e *ensurer) EnsureETCD(ctx context.Context, _ gcontext.GardenContext, newE
 	}
 
 	backupBucket := &extensionsv1alpha1.BackupBucket{}
-	if err := e.client.Get(ctx, client.ObjectKey{Name: *newEtcd.Spec.Backup.Store.Container}, backupBucket); err != nil {
+	if err := e.reader.Get(ctx, client.ObjectKey{Name: *newEtcd.Spec.Backup.Store.Container}, backupBucket); err != nil {
 		return fmt.Errorf("failed to fetch the seed's backupbucket to find the endpoint with error: %w", err)
 	}
 
