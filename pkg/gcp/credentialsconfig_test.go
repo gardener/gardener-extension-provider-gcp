@@ -142,7 +142,7 @@ credentialsConfig:
 	Describe("#GetCredentialsConfigData", func() {
 		It("should retrieve the service account data", func() {
 			var (
-				c         = mockclient.NewMockClient(ctrl)
+				r         = mockclient.NewMockReader(ctrl)
 				ctx       = context.TODO()
 				namespace = "foo"
 				name      = "bar"
@@ -151,13 +151,13 @@ credentialsConfig:
 					Name:      name,
 				}
 			)
-			c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
+			r.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
 					*actual = *secret
 					return nil
 				})
 
-			actual, err := GetCredentialsConfigFromSecretReference(ctx, c, secretRef)
+			actual, err := GetCredentialsConfigFromSecretReference(ctx, r, secretRef)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual.Raw).To(Equal(credentialsConfigData))
@@ -167,7 +167,7 @@ credentialsConfig:
 	Describe("#GetCredentialsConfig", func() {
 		It("should correctly retrieve the service account", func() {
 			var (
-				c         = mockclient.NewMockClient(ctrl)
+				r         = mockclient.NewMockReader(ctrl)
 				ctx       = context.TODO()
 				namespace = "foo"
 				name      = "bar"
@@ -176,13 +176,13 @@ credentialsConfig:
 					Name:      name,
 				}
 			)
-			c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
+			r.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
 					*actual = *secret
 					return nil
 				})
 
-			actual, err := GetCredentialsConfigFromSecretReference(ctx, c, secretRef)
+			actual, err := GetCredentialsConfigFromSecretReference(ctx, r, secretRef)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(credentialsConfig))

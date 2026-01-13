@@ -52,8 +52,8 @@ func NewStorageClient(ctx context.Context, credentialsConfig *gcp.CredentialsCon
 }
 
 // NewStorageClientFromSecretRef creates a new storage client from the given <secretRef>.
-func NewStorageClientFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (StorageClient, error) {
-	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, c, secretRef)
+func NewStorageClientFromSecretRef(ctx context.Context, r client.Reader, secretRef corev1.SecretReference) (StorageClient, error) {
+	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, r, secretRef)
 	if err != nil {
 		return nil, err
 	}

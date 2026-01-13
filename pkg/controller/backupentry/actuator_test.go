@@ -49,7 +49,7 @@ var _ = Describe("Actuator", func() {
 		log = logger.MustNewZapLogger(logger.DebugLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter))
 
 		fakeClient = fakeclient.NewClientBuilder().Build()
-		fakeManager = &test.FakeManager{Client: fakeClient}
+		fakeManager = &test.FakeManager{APIReader: fakeClient}
 		actuator = backupentry.NewActuator(fakeManager)
 
 		validConfig = []byte(`apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1

@@ -40,7 +40,7 @@ const (
 var _ = Describe("ConfigValidator", func() {
 	var (
 		ctrl             *gomock.Controller
-		c                *mockclient.MockClient
+		r                *mockclient.MockReader
 		gcpClientFactory *mockgcpclient.MockFactory
 		gcpComputeClient *mockgcpclient.MockComputeClient
 		ctx              context.Context
@@ -53,7 +53,7 @@ var _ = Describe("ConfigValidator", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 
-		c = mockclient.NewMockClient(ctrl)
+		r = mockclient.NewMockReader(ctrl)
 		gcpClientFactory = mockgcpclient.NewMockFactory(ctrl)
 		gcpComputeClient = mockgcpclient.NewMockComputeClient(ctrl)
 
@@ -61,7 +61,7 @@ var _ = Describe("ConfigValidator", func() {
 		logger = log.Log.WithName("test")
 
 		mgr = mockmanager.NewMockManager(ctrl)
-		mgr.EXPECT().GetClient().Return(c)
+		mgr.EXPECT().GetAPIReader().Return(r)
 
 		cv = infractrl.NewConfigValidator(mgr, logger, gcpClientFactory)
 
@@ -101,7 +101,7 @@ var _ = Describe("ConfigValidator", func() {
 
 	Describe("#Validate", func() {
 		BeforeEach(func() {
-			gcpClientFactory.EXPECT().Compute(ctx, c, infra.Spec.SecretRef).Return(gcpComputeClient, nil)
+			gcpClientFactory.EXPECT().Compute(ctx, r, infra.Spec.SecretRef).Return(gcpComputeClient, nil)
 		})
 
 		It("should succeed if there are no NAT IP names", func() {

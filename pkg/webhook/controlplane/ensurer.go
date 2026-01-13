@@ -37,17 +37,17 @@ import (
 )
 
 // NewEnsurer creates a new controlplane ensurer.
-func NewEnsurer(c client.Client, logger logr.Logger) genericmutator.Ensurer {
+func NewEnsurer(r client.Reader, logger logr.Logger) genericmutator.Ensurer {
 	return &ensurer{
 		logger: logger.WithName("gcp-controlplane-ensurer"),
-		client: c,
+		reader: r,
 	}
 }
 
 type ensurer struct {
 	genericmutator.NoopEnsurer
 	logger logr.Logger
-	client client.Client
+	reader client.Reader
 }
 
 // ImageVector is exposed for testing.
@@ -81,7 +81,7 @@ func (e *ensurer) EnsureMachineControllerManagerDeployment(
 			Namespace: newDeployment.Namespace,
 		},
 	}
-	if err := e.client.Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret); err != nil {
+	if err := e.reader.Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret); err != nil {
 		return fmt.Errorf("failed getting cloudprovider secret: %w", err)
 	}
 
