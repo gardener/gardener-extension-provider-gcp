@@ -105,7 +105,7 @@ func WorkloadIdentityConfigFromBytes(config []byte) (*apisgcp.WorkloadIdentityCo
 func BackupBucketConfigFromBackupBucket(backupBucket *extensionsv1alpha1.BackupBucket) (*api.BackupBucketConfig, error) {
 	config := &api.BackupBucketConfig{}
 	if backupBucket.Spec.ProviderConfig != nil && backupBucket.Spec.ProviderConfig.Raw != nil {
-		if _, _, err := decoder.Decode(backupBucket.Spec.ProviderConfig.Raw, nil, config); err != nil {
+		if err := util.Decode(decoder, backupBucket.Spec.ProviderConfig.Raw, config); err != nil {
 			return nil, err
 		}
 		return config, nil

@@ -88,11 +88,11 @@ var _ = Describe("BackupBucket", func() {
 			Entry("endpoint URL invalid",
 				&apisgcp.BackupBucketConfig{
 					Endpoint: ptr.To("https://gardener.cloud:invalidport"),
-				}, true, "must be a valid URL"),
+				}, true, "invalid URL"),
 			Entry("endpoint URL valid",
 				&apisgcp.BackupBucketConfig{
 					Endpoint: ptr.To("https://storage.me-central2.rep.googleapis.com"),
-				}, false, "must be a valid URL"),
+				}, false, "invalid URL"),
 		)
 	})
 

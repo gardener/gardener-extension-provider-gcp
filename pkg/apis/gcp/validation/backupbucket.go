@@ -45,7 +45,7 @@ func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, fldPath *fie
 	if config.Endpoint != nil {
 		_, err := url.Parse(*config.Endpoint)
 		if err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("endpoint"), *config.Endpoint, "must be a valid URL"))
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("endpoint"), *config.Endpoint, fmt.Sprintf("invalid URL, parsing failed with error: %s", err.Error())))
 		}
 	}
 
