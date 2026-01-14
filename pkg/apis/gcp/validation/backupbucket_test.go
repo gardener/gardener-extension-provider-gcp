@@ -87,11 +87,15 @@ var _ = Describe("BackupBucket", func() {
 				}, true, "must be a positive duration greater than 24h"),
 			Entry("endpoint URL invalid",
 				&apisgcp.BackupBucketConfig{
-					Endpoint: ptr.To("https://gardener.cloud:invalidport"),
+					Store: &apisgcp.Store{
+						Endpoint: ptr.To("https://gardener.cloud:invalidport"),
+					},
 				}, true, "invalid URL"),
 			Entry("endpoint URL valid",
 				&apisgcp.BackupBucketConfig{
-					Endpoint: ptr.To("https://storage.me-central2.rep.googleapis.com"),
+					Store: &apisgcp.Store{
+						Endpoint: ptr.To("https://storage.me-central2.rep.googleapis.com"),
+					},
 				}, false, "invalid URL"),
 		)
 	})

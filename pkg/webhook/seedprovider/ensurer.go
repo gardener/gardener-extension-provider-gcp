@@ -68,7 +68,9 @@ func (e *ensurer) EnsureETCD(ctx context.Context, _ gcontext.GardenContext, newE
 		return fmt.Errorf("failed to decode backupbucketconfig from backupbucket resource with error: %w", err)
 	}
 
-	newEtcd.Spec.Backup.Store.Endpoint = backupBucketConfig.Endpoint
+	if backupBucketConfig.Store != nil {
+		newEtcd.Spec.Backup.Store.Endpoint = backupBucketConfig.Store.Endpoint
+	}
 
 	return nil
 }

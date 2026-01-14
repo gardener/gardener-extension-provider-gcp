@@ -157,7 +157,8 @@ immutability:
   retentionType: bucket
   retentionPeriod: "24h"
   locked: true
-endpoint: "https://storage.googleapis.com"`)
+store:
+  endpoint: "https://storage.googleapis.com"`)
 
 			bb := &extensionsv1alpha1.BackupBucket{}
 			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: raw}
@@ -169,8 +170,9 @@ endpoint: "https://storage.googleapis.com"`)
 			Expect(config.Immutability.RetentionType).To(Equal("bucket"))
 			Expect(config.Immutability.RetentionPeriod.Duration).To(Equal(24 * time.Hour))
 			Expect(config.Immutability.Locked).To(BeTrue())
-			Expect(config.Endpoint).ToNot(BeNil())
-			Expect(*config.Endpoint).To(Equal("https://storage.googleapis.com"))
+			Expect(config.Store).ToNot(BeNil())
+			Expect(config.Store.Endpoint).ToNot(BeNil())
+			Expect(*config.Store.Endpoint).To(Equal("https://storage.googleapis.com"))
 		})
 
 		It("should fail due to nil ProviderConfig", func() {
