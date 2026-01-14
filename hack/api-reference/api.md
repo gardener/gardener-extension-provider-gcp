@@ -67,14 +67,16 @@ ImmutableConfig
 </tr>
 <tr>
 <td>
-<code>endpoint</code></br>
+<code>store</code></br>
 <em>
-string
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Store">
+Store
+</a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Endpoint is the endpoint at which the GCS bucket is hosted. Necessary for regional endpoints.</p>
+<p>Store holds the configuration of the backup store</p>
 </td>
 </tr>
 </tbody>
@@ -1672,6 +1674,37 @@ CSIFilestore
 <td>
 <em>(Optional)</em>
 <p>CSIFilestore contains configuration for CSI Filestore driver (support for NFS volumes)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.Store">Store
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>)
+</p>
+<p>
+<p>Store holds the configuration of the backup store</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>endpoint</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Endpoint is the endpoint at which the GCS bucket is hosted. Necessary for regional endpoints.</p>
 </td>
 </tr>
 </tbody>
