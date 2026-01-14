@@ -11,7 +11,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 )
 
@@ -46,7 +46,7 @@ func (w *WorkerDelegate) findMachineImage(name, version string, architecture *st
 
 	// Try to look up machine image in worker provider status as it was not found in componentconfig.
 	if providerStatus := w.worker.Status.ProviderStatus; providerStatus != nil {
-		workerStatus := &api.WorkerStatus{}
+		workerStatus := &apisgcp.WorkerStatus{}
 		if _, _, err := w.decoder.Decode(providerStatus.Raw, nil, workerStatus); err != nil {
 			return "", fmt.Errorf("could not decode worker status of worker '%s': %w", k8sclient.ObjectKeyFromObject(w.worker), err)
 		}
@@ -62,7 +62,7 @@ func (w *WorkerDelegate) findMachineImage(name, version string, architecture *st
 	return "", worker.ErrorMachineImageNotFound(name, version, *architecture)
 }
 
-func appendMachineImage(machineImages []api.MachineImage, machineImage api.MachineImage) []api.MachineImage {
+func appendMachineImage(machineImages []apisgcp.MachineImage, machineImage apisgcp.MachineImage) []apisgcp.MachineImage {
 	if _, err := helper.FindMachineImage(machineImages, machineImage.Name, machineImage.Version, machineImage.Architecture); err != nil {
 		return append(machineImages, machineImage)
 	}
