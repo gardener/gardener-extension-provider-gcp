@@ -122,7 +122,7 @@ var _ = Describe("Ensurer", func() {
 				Spec: extensionsv1alpha1.BackupBucketSpec{
 					DefaultSpec: extensionsv1alpha1.DefaultSpec{
 						ProviderConfig: &runtime.RawExtension{
-							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "endpoint": "https://storage.me-central2.rep.googleapis.com"}`),
+							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "store": {"endpoint": "https://storage.me-central2.rep.googleapis.com"}}`),
 						},
 					},
 				},
@@ -180,7 +180,7 @@ var _ = Describe("Ensurer", func() {
 				Spec: extensionsv1alpha1.BackupBucketSpec{
 					DefaultSpec: extensionsv1alpha1.DefaultSpec{
 						ProviderConfig: &runtime.RawExtension{
-							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "endpoint": "https://storage.me-central2.rep.googleapis.com"}`),
+							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "store": {"endpoint": "https://storage.me-central2.rep.googleapis.com"}}`),
 						},
 					},
 				},
