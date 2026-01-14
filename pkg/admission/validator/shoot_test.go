@@ -36,7 +36,7 @@ var _ = Describe("Shoot validator", func() {
 			shootValidator extensionswebhook.Validator
 
 			ctrl         *gomock.Controller
-			c            *mockclient.MockClient
+			r            *mockclient.MockReader
 			mgr          *mockmanager.MockManager
 			cloudProfile *gardencorev1beta1.CloudProfile
 			shoot        *core.Shoot
@@ -52,11 +52,11 @@ var _ = Describe("Shoot validator", func() {
 			Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
 			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
 
-			c = mockclient.NewMockClient(ctrl)
+			r = mockclient.NewMockReader(ctrl)
 
 			mgr = mockmanager.NewMockManager(ctrl)
 			mgr.EXPECT().GetScheme().Return(scheme).Times(2)
-			mgr.EXPECT().GetClient().Return(c)
+			mgr.EXPECT().GetAPIReader().Return(r)
 			shootValidator = validator.NewShootValidator(mgr)
 
 			cloudProfile = &gardencorev1beta1.CloudProfile{
@@ -153,7 +153,7 @@ var _ = Describe("Shoot validator", func() {
 			})
 
 			It("should return err when networking is invalid", func() {
-				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				r.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
 
 				shoot.Spec.Networking.Nodes = nil
 				shoot.Spec.Networking.IPFamilies = []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}
@@ -171,7 +171,7 @@ var _ = Describe("Shoot validator", func() {
 			})
 
 			It("should return err with IPv6-only networking", func() {
-				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				r.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
 
 				shoot.Spec.Networking.IPFamilies = []core.IPFamily{core.IPFamilyIPv6}
 				shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{

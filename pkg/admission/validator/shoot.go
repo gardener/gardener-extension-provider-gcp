@@ -28,7 +28,7 @@ import (
 )
 
 type shoot struct {
-	client         client.Client
+	reader         client.Reader
 	decoder        runtime.Decoder
 	lenientDecoder runtime.Decoder
 }
@@ -36,7 +36,7 @@ type shoot struct {
 // NewShootValidator returns a new instance of a shoot validator.
 func NewShootValidator(mgr manager.Manager) extensionswebhook.Validator {
 	return &shoot{
-		client:         mgr.GetClient(),
+		reader:         mgr.GetAPIReader(),
 		decoder:        serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 		lenientDecoder: serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
 	}
@@ -143,7 +143,7 @@ func (s *shoot) validateContext(valContext *validationContext) field.ErrorList {
 }
 
 func (s *shoot) validateCreate(ctx context.Context, shoot *core.Shoot) error {
-	validationContext, err := newValidationContext(ctx, s.decoder, s.client, shoot)
+	validationContext, err := newValidationContext(ctx, s.decoder, s.reader, shoot)
 	if err != nil {
 		return err
 	}
@@ -152,12 +152,12 @@ func (s *shoot) validateCreate(ctx context.Context, shoot *core.Shoot) error {
 }
 
 func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core.Shoot) error {
-	oldValContext, err := newValidationContext(ctx, s.lenientDecoder, s.client, oldShoot)
+	oldValContext, err := newValidationContext(ctx, s.lenientDecoder, s.reader, oldShoot)
 	if err != nil {
 		return err
 	}
 
-	currentValContext, err := newValidationContext(ctx, s.decoder, s.client, currentShoot)
+	currentValContext, err := newValidationContext(ctx, s.decoder, s.reader, currentShoot)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core
 	return allErrors.ToAggregate()
 }
 
-func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client.Client, shoot *core.Shoot) (*validationContext, error) {
+func newValidationContext(ctx context.Context, decoder runtime.Decoder, reader client.Reader, shoot *core.Shoot) (*validationContext, error) {
 	if shoot.Spec.Provider.InfrastructureConfig == nil {
 		return nil, field.Required(infrastructureConfigPath, "infrastructureConfig must be set for GCP shoots")
 	}
@@ -204,7 +204,7 @@ func newValidationContext(ctx context.Context, decoder runtime.Decoder, c client
 	if err != nil {
 		return nil, err
 	}
-	cloudProfile, err := gardener.GetCloudProfile(ctx, c, shootV1Beta1)
+	cloudProfile, err := gardener.GetCloudProfile(ctx, reader, shootV1Beta1)
 	if err != nil {
 		return nil, err
 	}

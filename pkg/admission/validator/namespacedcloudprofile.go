@@ -29,13 +29,13 @@ import (
 // NewNamespacedCloudProfileValidator returns a new instance of a namespaced cloud profile validator.
 func NewNamespacedCloudProfileValidator(mgr manager.Manager) extensionswebhook.Validator {
 	return &namespacedCloudProfile{
-		client:  mgr.GetClient(),
+		reader:  mgr.GetAPIReader(),
 		decoder: serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 	}
 }
 
 type namespacedCloudProfile struct {
-	client  client.Client
+	reader  client.Reader
 	decoder runtime.Decoder
 }
 
@@ -64,7 +64,7 @@ func (p *namespacedCloudProfile) Validate(ctx context.Context, newObj, _ client.
 		return fmt.Errorf("parent reference must be of kind CloudProfile (unsupported kind: %s)", parentCloudProfile.Kind)
 	}
 	parentProfile := &gardencorev1beta1.CloudProfile{}
-	if err := p.client.Get(ctx, client.ObjectKey{Name: parentCloudProfile.Name}, parentProfile); err != nil {
+	if err := p.reader.Get(ctx, client.ObjectKey{Name: parentCloudProfile.Name}, parentProfile); err != nil {
 		return err
 	}
 
