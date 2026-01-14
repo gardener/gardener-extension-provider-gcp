@@ -64,8 +64,8 @@ func (cb *credentialsBinding) Validate(ctx context.Context, newObj, oldObj clien
 			return err
 		}
 
-		if err := gcpvalidation.ValidateCloudProviderSecret(secret); err != nil {
-			return fmt.Errorf("referenced secret %s is not valid: %w", credentialsKey, err)
+		if errs := gcpvalidation.ValidateCloudProviderSecret(secret, field.NewPath("secret")); len(errs) > 0 {
+			return errs.ToAggregate()
 		}
 		return nil
 	case credentialsBinding.CredentialsRef.APIVersion == securityv1alpha1.SchemeGroupVersion.String() && credentialsBinding.CredentialsRef.Kind == "WorkloadIdentity":
