@@ -75,8 +75,8 @@ type CredentialsConfig struct {
 }
 
 // GetCredentialsConfigFromSecretReference retrieves the credentials config from the secret with the given secret reference.
-func GetCredentialsConfigFromSecretReference(ctx context.Context, c client.Reader, secretRef corev1.SecretReference) (*CredentialsConfig, error) {
-	secret, err := extensionscontroller.GetSecretByReference(ctx, c, &secretRef)
+func GetCredentialsConfigFromSecretReference(ctx context.Context, reader client.Reader, secretRef corev1.SecretReference) (*CredentialsConfig, error) {
+	secret, err := extensionscontroller.GetSecretByReference(ctx, reader, &secretRef)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func GetCredentialsConfigFromSecretReference(ctx context.Context, c client.Reade
 
 	if credentialsConfig.Type == ExternalAccountCredentialType {
 		credentialsConfig.TokenRetriever = &tokenRetriever{
-			r:               c,
+			r:               reader,
 			secretName:      secretRef.Name,
 			secretNamespace: secretRef.Namespace,
 		}
