@@ -575,8 +575,8 @@ func getCSIControllerChartValues(
 	if err != nil {
 		return nil, err
 	}
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) {
-		if _, ok := cluster.Shoot.Annotations[gcp.AnnotationEnableVolumeAttributesClass]; ok {
+	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
+		if gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 			values["csiDriver"] = map[string]interface{}{
 				"storage": map[string]interface{}{
 					"supportsDynamicIopsProvisioning":       []string{"hyperdisk-balanced", "hyperdisk-extreme"},
