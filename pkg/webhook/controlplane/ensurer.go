@@ -243,7 +243,7 @@ func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 			"InTreePluginGCEUnregister=true", ",")
 	}
 	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
-		if gcp.VolumeAttributeClassEnabled(shoot) {
+		if gcp.VolumeAttributesClassBetaEnabled(shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--runtime-config=",
@@ -275,7 +275,7 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 		c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--allocate-node-cidrs=", strconv.FormatBool(false))
 	}
 	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
-		if gcp.VolumeAttributeClassEnabled(shoot) {
+		if gcp.VolumeAttributesClassBetaEnabled(shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
 		}
@@ -291,7 +291,7 @@ func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 			"InTreePluginGCEUnregister=true", ",")
 	}
 	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
-		if gcp.VolumeAttributeClassEnabled(shoot) {
+		if gcp.VolumeAttributesClassBetaEnabled(shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
 		}
@@ -305,7 +305,7 @@ func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, k8sVersion *sem
 			"InTreePluginGCEUnregister=true", ",")
 	}
 	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
-		if gcp.VolumeAttributeClassEnabled(shoot) {
+		if gcp.VolumeAttributesClassBetaEnabled(shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
 		}
