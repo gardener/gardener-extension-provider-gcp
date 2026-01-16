@@ -88,7 +88,7 @@ var _ = Describe("Shoot validator", func() {
 				},
 				Spec: core.ShootSpec{
 					CloudProfile: &core.CloudProfileReference{
-						Name: "cloudProfile",
+						Name: "cloudProfileValidator",
 					},
 					Provider: core.Provider{
 						Type:    "gcp",
