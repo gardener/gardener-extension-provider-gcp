@@ -1197,7 +1197,7 @@ var _ = Describe("Machines", func() {
 			})
 		},
 			Entry("cloudprofile with capabilities", true),
-			//Entry("cloudprofile without capabilities", false),
+			Entry("cloudprofile without capabilities", false),
 		)
 	})
 
