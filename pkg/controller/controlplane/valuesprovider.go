@@ -575,24 +575,27 @@ func getCSIControllerChartValues(
 	if err != nil {
 		return nil, err
 	}
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) {
-		if _, ok := cluster.Shoot.Annotations[gcp.AnnotationEnableVolumeAttributesClass]; ok {
-			values["csiDriver"] = map[string]interface{}{
-				"storage": map[string]interface{}{
-					"supportsDynamicIopsProvisioning":       []string{"hyperdisk-balanced", "hyperdisk-extreme"},
-					"supportsDynamicThroughputProvisioning": []string{"hyperdisk-balanced", "hyperdisk-throughput", "hyperdisk-ml"},
-				},
-			}
-			values["csiResizer"] = map[string]interface{}{
-				"featureGates": map[string]string{
-					"VolumeAttributesClass": "true",
-				},
-			}
-			values["csiProvisioner"] = map[string]interface{}{
-				"featureGates": map[string]string{
-					"VolumeAttributesClass": "true",
-				},
-			}
+
+	// Configure VolumeAttributesClass feature for CSI driver if enabled.
+	lessThan134VACEnabled := versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot)
+	if versionutils.ConstraintK8sGreaterEqual134.Check(k8sVersion) || lessThan134VACEnabled {
+		values["csiDriver"] = map[string]interface{}{
+			"storage": map[string]interface{}{
+				"supportsDynamicIopsProvisioning":       []string{"hyperdisk-balanced", "hyperdisk-extreme"},
+				"supportsDynamicThroughputProvisioning": []string{"hyperdisk-balanced", "hyperdisk-throughput", "hyperdisk-ml"},
+			},
+		}
+	}
+	if lessThan134VACEnabled {
+		values["csiResizer"] = map[string]interface{}{
+			"featureGates": map[string]string{
+				"VolumeAttributesClass": "true",
+			},
+		}
+		values["csiProvisioner"] = map[string]interface{}{
+			"featureGates": map[string]string{
+				"VolumeAttributesClass": "true",
+			},
 		}
 	}
 

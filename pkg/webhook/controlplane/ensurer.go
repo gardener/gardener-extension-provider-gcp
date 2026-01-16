@@ -14,10 +14,10 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/coreos/go-systemd/v22/unit"
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
@@ -156,7 +156,7 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(
 	}
 
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "kube-apiserver"); c != nil {
-		ensureKubeAPIServerCommandLineArgs(c, k8sVersion, cluster.Shoot)
+		ensureKubeAPIServerCommandLineArgs(c, k8sVersion, cluster)
 	}
 
 	return nil
@@ -181,7 +181,7 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(
 	}
 
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "kube-controller-manager"); c != nil {
-		ensureKubeControllerManagerCommandLineArgs(c, k8sVersion, cluster.Shoot)
+		ensureKubeControllerManagerCommandLineArgs(c, k8sVersion, cluster)
 		ensureKubeControllerManagerVolumeMounts(c)
 	}
 
@@ -209,7 +209,7 @@ func (e *ensurer) EnsureKubeSchedulerDeployment(
 	}
 
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "kube-scheduler"); c != nil {
-		ensureKubeSchedulerCommandLineArgs(c, k8sVersion, cluster.Shoot)
+		ensureKubeSchedulerCommandLineArgs(c, k8sVersion, cluster)
 	}
 	return nil
 }
@@ -232,18 +232,18 @@ func (e *ensurer) EnsureClusterAutoscalerDeployment(ctx context.Context,
 	}
 
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "cluster-autoscaler"); c != nil {
-		ensureClusterAutoscalerCommandLineArgs(c, k8sVersion, cluster.Shoot)
+		ensureClusterAutoscalerCommandLineArgs(c, k8sVersion, cluster)
 	}
 	return nil
 }
 
-func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, shoot *gardencorev1beta1.Shoot) {
+func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
 	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"InTreePluginGCEUnregister=true", ",")
 	}
 	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
-		if gcp.VolumeAttributeClassEnabled(shoot) {
+		if gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--runtime-config=",
@@ -261,7 +261,7 @@ func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 	}
 }
 
-func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, shoot *gardencorev1beta1.Shoot) {
+func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
 	c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--cloud-provider=", "external")
 
 	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
@@ -275,7 +275,7 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 		c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--allocate-node-cidrs=", strconv.FormatBool(false))
 	}
 	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
-		if gcp.VolumeAttributeClassEnabled(shoot) {
+		if gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
 		}
@@ -285,13 +285,13 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--external-cloud-volume-plugin=")
 }
 
-func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, shoot *gardencorev1beta1.Shoot) {
+func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
 	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"InTreePluginGCEUnregister=true", ",")
 	}
 	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
-		if gcp.VolumeAttributeClassEnabled(shoot) {
+		if gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
 		}
@@ -299,13 +299,13 @@ func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 }
 
 // ensureClusterAutoscalerCommandLineArgs ensures the cluster-autoscaler command line args.
-func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, shoot *gardencorev1beta1.Shoot) {
+func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
 	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"InTreePluginGCEUnregister=true", ",")
 	}
 	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
-		if gcp.VolumeAttributeClassEnabled(shoot) {
+		if gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
 		}
