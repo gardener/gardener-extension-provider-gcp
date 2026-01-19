@@ -17,6 +17,7 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
@@ -155,7 +156,7 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(
 	}
 
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "kube-apiserver"); c != nil {
-		ensureKubeAPIServerCommandLineArgs(c, k8sVersion)
+		ensureKubeAPIServerCommandLineArgs(c, k8sVersion, cluster.Shoot)
 	}
 
 	return nil
@@ -180,7 +181,7 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(
 	}
 
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "kube-controller-manager"); c != nil {
-		ensureKubeControllerManagerCommandLineArgs(c, k8sVersion)
+		ensureKubeControllerManagerCommandLineArgs(c, k8sVersion, cluster.Shoot)
 		ensureKubeControllerManagerVolumeMounts(c)
 	}
 
@@ -208,7 +209,7 @@ func (e *ensurer) EnsureKubeSchedulerDeployment(
 	}
 
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "kube-scheduler"); c != nil {
-		ensureKubeSchedulerCommandLineArgs(c, k8sVersion)
+		ensureKubeSchedulerCommandLineArgs(c, k8sVersion, cluster.Shoot)
 	}
 	return nil
 }
@@ -231,15 +232,23 @@ func (e *ensurer) EnsureClusterAutoscalerDeployment(ctx context.Context,
 	}
 
 	if c := extensionswebhook.ContainerWithName(ps.Containers, "cluster-autoscaler"); c != nil {
-		ensureClusterAutoscalerCommandLineArgs(c, k8sVersion)
+		ensureClusterAutoscalerCommandLineArgs(c, k8sVersion, cluster.Shoot)
 	}
 	return nil
 }
 
-func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
+func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, shoot *gardencorev1beta1.Shoot) {
 	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"InTreePluginGCEUnregister=true", ",")
+	}
+	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
+		if gcp.VolumeAttributeClassEnabled(shoot) {
+			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+				"VolumeAttributesClass=true", ",")
+			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--runtime-config=",
+				"storage.k8s.io/v1beta1=true", ",")
+		}
 	}
 
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-provider=")
@@ -252,7 +261,7 @@ func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 	}
 }
 
-func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
+func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, shoot *gardencorev1beta1.Shoot) {
 	c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--cloud-provider=", "external")
 
 	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
@@ -265,23 +274,41 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 		c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--allocate-node-cidrs")
 		c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--allocate-node-cidrs=", strconv.FormatBool(false))
 	}
+	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
+		if gcp.VolumeAttributeClassEnabled(shoot) {
+			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+				"VolumeAttributesClass=true", ",")
+		}
+	}
 
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-config=")
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--external-cloud-volume-plugin=")
 }
 
-func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
+func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, shoot *gardencorev1beta1.Shoot) {
 	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"InTreePluginGCEUnregister=true", ",")
 	}
+	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
+		if gcp.VolumeAttributeClassEnabled(shoot) {
+			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+				"VolumeAttributesClass=true", ",")
+		}
+	}
 }
 
 // ensureClusterAutoscalerCommandLineArgs ensures the cluster-autoscaler command line args.
-func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version) {
+func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, shoot *gardencorev1beta1.Shoot) {
 	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"InTreePluginGCEUnregister=true", ",")
+	}
+	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
+		if gcp.VolumeAttributeClassEnabled(shoot) {
+			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+				"VolumeAttributesClass=true", ",")
+		}
 	}
 }
 
