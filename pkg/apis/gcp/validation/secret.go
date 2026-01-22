@@ -20,6 +20,7 @@ import (
 // based on what JWTConfigFromJSON from golang.org/x/oauth2/google actually uses
 var serviceAccountRequiredFields = sets.New(
 	"type",
+	"project_id",
 	"client_email",
 	"private_key_id",
 	"private_key",
@@ -28,7 +29,6 @@ var serviceAccountRequiredFields = sets.New(
 
 // serviceAccountOptionalFields defines optional fields in a GCP service account JSON
 var serviceAccountOptionalFields = sets.New(
-	"project_id",
 	"client_id",
 	"auth_uri",
 	"auth_provider_x509_cert_url",

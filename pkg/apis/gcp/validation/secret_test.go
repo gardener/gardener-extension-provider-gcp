@@ -78,8 +78,7 @@ var _ = Describe("Secret validation", func() {
 
 		It("should pass with valid minimal service account JSON (only required fields)", func() {
 			minimalJSON := createServiceAccountJSON(map[string]any{
-				"project_id":                  nil, // remove optional fields
-				"client_id":                   nil,
+				"client_id":                   nil, // remove optional fields
 				"auth_uri":                    nil,
 				"auth_provider_x509_cert_url": nil,
 				"client_x509_cert_url":        nil,
