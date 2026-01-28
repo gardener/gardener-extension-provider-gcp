@@ -72,7 +72,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-  tag: v34.1.0
+  tag: v34.2.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
