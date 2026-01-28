@@ -70,9 +70,9 @@ images:
     signing: false
   targetVersion: 1.33.x
 - name: cloud-controller-manager
-  sourceRepository: github.com/kubernetes/cloud-provider-gcp
-  repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-  tag: v34.1.0
+  sourceRepository: github.com/gardener/cloud-provider-gcp
+  repository: europe-docker.pkg.dev/gardener-project/releases/kubernetes/cloud-provider-gcp
+  tag: v34.2.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
