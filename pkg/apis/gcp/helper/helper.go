@@ -132,6 +132,28 @@ func convertLegacyVersionsToCapabilityFlavors(versions []api.MachineImageVersion
 	return capabilityFlavors
 }
 
+// GroupVersionsByVersionString groups all provider versions by their version string.
+// This is needed because the old format may have multiple entries for the same version
+// with different architectures (mixed format support).
+func GroupVersionsByVersionString(versions []api.MachineImageVersion) map[string][]api.MachineImageVersion {
+	result := make(map[string][]api.MachineImageVersion)
+	for _, v := range versions {
+		result[v.Version] = append(result[v.Version], v)
+	}
+	return result
+}
+
+// GroupV1alpha1VersionsByVersionString groups all v1alpha1 provider versions by their version string.
+// This is needed because the old format may have multiple entries for the same version
+// with different architectures (mixed format support).
+func GroupV1alpha1VersionsByVersionString(versions []v1alpha1.MachineImageVersion) map[string][]v1alpha1.MachineImageVersion {
+	result := make(map[string][]v1alpha1.MachineImageVersion)
+	for _, v := range versions {
+		result[v.Version] = append(result[v.Version], v)
+	}
+	return result
+}
+
 // FindImageInWorkerStatus takes a list of machine images from the worker status and tries to find the first entry
 // whose name, version, architecture, capabilities and zone matches with the given ones. If no such entry is
 // found then an error will be returned.

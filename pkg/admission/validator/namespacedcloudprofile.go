@@ -7,7 +7,6 @@ package validator
 import (
 	"context"
 	"fmt"
-	"maps"
 	"slices"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
@@ -16,7 +15,6 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
-	"github.com/gardener/gardener/pkg/utils"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -27,6 +25,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
 
@@ -103,12 +102,7 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 	// Create a map of provider images grouped by version for mixed format support
 	providerVersionsMap := make(map[string]map[string][]api.MachineImageVersion)
 	for _, img := range providerConfig.MachineImages {
-		if providerVersionsMap[img.Name] == nil {
-			providerVersionsMap[img.Name] = make(map[string][]api.MachineImageVersion)
-		}
-		for _, v := range img.Versions {
-			providerVersionsMap[img.Name][v.Version] = append(providerVersionsMap[img.Name][v.Version], v)
-		}
+		providerVersionsMap[img.Name] = helper.GroupVersionsByVersionString(img.Versions)
 	}
 
 	for _, machineImage := range namespacedImages.Images {
@@ -252,104 +246,44 @@ func validateMachineImageCapabilitiesMixed(machineImage core.MachineImage, versi
 	}
 	defaultedVersionCapabilityFlavors := gardencorev1beta1helper.GetImageFlavorsWithAppliedDefaults(v1betaVersion.CapabilityFlavors, capabilityDefinitions)
 
-	// Check if any provider version uses new format (capabilityFlavors)
-	var capabilityFlavorsVersion *api.MachineImageVersion
-	for i := range providerVersions {
-		if len(providerVersions[i].CapabilityFlavors) > 0 {
-			capabilityFlavorsVersion = &providerVersions[i]
-			break
-		}
-	}
-
+	capabilityFlavorsVersion := validation.FindCapabilityFlavorsVersion(providerVersions)
 	if capabilityFlavorsVersion != nil {
-		// New format: validate using capabilityFlavors
-		allErrs = append(allErrs, validateCapabilityFlavorsFormat(machineImage, version, *capabilityFlavorsVersion, defaultedVersionCapabilityFlavors, capabilityDefinitions, path)...)
+		// New format: validate both directions (missing and excess)
+		allErrs = append(allErrs, validation.ValidateExcessCapabilityFlavors(
+			machineImage.Name, version.Version,
+			defaultedVersionCapabilityFlavors,
+			capabilityFlavorsVersion.CapabilityFlavors,
+			capabilityDefinitions,
+			path,
+			"NamespacedCloudProfile machineImages spec",
+		)...)
+		allErrs = append(allErrs, validation.ValidateMissingCapabilityFlavors(
+			machineImage.Name, version.Version,
+			defaultedVersionCapabilityFlavors,
+			capabilityFlavorsVersion.CapabilityFlavors,
+			capabilityDefinitions,
+			path,
+			"NamespacedCloudProfile providerConfig",
+			false, // don't include index path for NamespacedCloudProfile validation
+		)...)
 	} else {
-		// Old format: validate using image with architecture
-		allErrs = append(allErrs, validateLegacyFormatWithCapabilities(machineImage, version, providerVersions, defaultedVersionCapabilityFlavors, path)...)
-	}
-
-	return allErrs
-}
-
-// validateCapabilityFlavorsFormat validates when provider uses new format (capabilityFlavors)
-func validateCapabilityFlavorsFormat(machineImage core.MachineImage, version core.MachineImageVersion, providerVersion api.MachineImageVersion, defaultedCapabilityFlavors []gardencorev1beta1.MachineImageFlavor, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition, path *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
-
-	// 1. Create an error for each capabilityFlavor in the providerConfig that is not defined in the core machine image version
-	for _, providerCapabilityFlavor := range providerVersion.CapabilityFlavors {
-		isFound := false
-		for _, defaultedCapabilityFlavor := range defaultedCapabilityFlavors {
-			defaultedProviderCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(providerCapabilityFlavor.Capabilities, capabilityDefinitions)
-			if gardencorev1beta1helper.AreCapabilitiesEqual(defaultedCapabilityFlavor.Capabilities, defaultedProviderCapabilities) {
-				isFound = true
-				break
-			}
-		}
-		if !isFound {
-			allErrs = append(allErrs, field.Forbidden(path,
-				fmt.Sprintf("machine image version %s@%s has an excess capabilityFlavor %v, which is not defined in the NamespacedCloudProfile machineImages spec",
-					machineImage.Name, version.Version, providerCapabilityFlavor.Capabilities)))
-		}
-	}
-
-	// 2. Create an error for each capabilityFlavor in the core machine image version that is not defined in the providerConfig
-	for _, capabilityFlavor := range defaultedCapabilityFlavors {
-		isFound := false
-		for _, providerCapabilityFlavor := range providerVersion.CapabilityFlavors {
-			defaultedProviderCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(providerCapabilityFlavor.Capabilities, capabilityDefinitions)
-			if gardencorev1beta1helper.AreCapabilitiesEqual(defaultedProviderCapabilities, capabilityFlavor.Capabilities) {
-				isFound = true
-				break
-			}
-		}
-		if !isFound {
-			allErrs = append(allErrs, field.Required(path,
-				fmt.Sprintf("machine image version %s@%s and capabilityFlavor %v is not defined in the NamespacedCloudProfile providerConfig",
-					machineImage.Name, version.Version, capabilityFlavor.Capabilities)))
-		}
-	}
-
-	return allErrs
-}
-
-// validateLegacyFormatWithCapabilities validates when provider uses old format (image with architecture) in capabilities CloudProfile
-func validateLegacyFormatWithCapabilities(machineImage core.MachineImage, version core.MachineImageVersion, providerVersions []api.MachineImageVersion, defaultedCapabilityFlavors []gardencorev1beta1.MachineImageFlavor, path *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
-
-	// Collect architectures from all provider version entries
-	architecturesMap := utils.CreateMapFromSlice(providerVersions, func(v api.MachineImageVersion) string {
-		return ptr.Deref(v.Architecture, constants.ArchitectureAMD64)
-	})
-	availableArchitectures := slices.Collect(maps.Keys(architecturesMap))
-
-	// 1. Check for excess architectures in provider that are not in spec
-	for _, arch := range availableArchitectures {
-		isFound := false
-		for _, defaultedCapabilityFlavor := range defaultedCapabilityFlavors {
-			expectedArchitectures := defaultedCapabilityFlavor.Capabilities[constants.ArchitectureName]
-			if slices.Contains(expectedArchitectures, arch) {
-				isFound = true
-				break
-			}
-		}
-		if !isFound {
-			allErrs = append(allErrs, field.Forbidden(path,
-				fmt.Sprintf("machine image version %s@%s has an excess architecture %q, which is not defined in the machineImages spec",
-					machineImage.Name, version.Version, arch)))
-		}
-	}
-
-	// 2. Check that each expected capability flavor has a corresponding architecture in provider
-	for _, capabilityFlavor := range defaultedCapabilityFlavors {
-		expectedArchitectures := capabilityFlavor.Capabilities[constants.ArchitectureName]
-		for _, expectedArch := range expectedArchitectures {
-			if !slices.Contains(availableArchitectures, expectedArch) {
-				allErrs = append(allErrs, field.Required(path,
-					fmt.Sprintf("machine image version %s@%s and capabilityFlavor %v is not defined in the NamespacedCloudProfile providerConfig",
-						machineImage.Name, version.Version, capabilityFlavor.Capabilities)))
-			}
-		}
+		// Old format: validate both directions (missing and excess architectures)
+		availableArchitectures := validation.CollectAvailableArchitectures(providerVersions)
+		allErrs = append(allErrs, validation.ValidateExcessArchitectures(
+			machineImage.Name, version.Version,
+			defaultedVersionCapabilityFlavors,
+			availableArchitectures,
+			path,
+			"machineImages spec",
+		)...)
+		allErrs = append(allErrs, validation.ValidateMissingArchitectures(
+			machineImage.Name, version.Version,
+			defaultedVersionCapabilityFlavors,
+			availableArchitectures,
+			path,
+			"NamespacedCloudProfile providerConfig",
+			false, // don't include index path for NamespacedCloudProfile validation
+		)...)
 	}
 
 	return allErrs

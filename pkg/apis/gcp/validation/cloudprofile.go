@@ -20,6 +20,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 )
 
 // ValidateCloudProfileConfig validates a CloudProfileConfig object.
@@ -59,7 +60,7 @@ func validateProviderImagesMapping(cpConfigImages []apisgcp.MachineImages, machi
 			if len(capabilityDefinitions) > 0 {
 				// Group provider versions by version string to handle mixed format
 				// (old format may have multiple entries per version with different architectures)
-				groupedVersions := groupProviderVersionsByVersionString(providerImage.Versions)
+				groupedVersions := helper.GroupVersionsByVersionString(providerImage.Versions)
 				providerVersions, versionExists := groupedVersions[version.Version]
 				if !versionExists || len(providerVersions) == 0 {
 					allErrs = append(allErrs, field.Required(machineImageVersionPath,
@@ -76,15 +77,6 @@ func validateProviderImagesMapping(cpConfigImages []apisgcp.MachineImages, machi
 	return allErrs
 }
 
-// groupProviderVersionsByVersionString groups all provider versions by their version string.
-func groupProviderVersionsByVersionString(versions []apisgcp.MachineImageVersion) map[string][]apisgcp.MachineImageVersion {
-	result := make(map[string][]apisgcp.MachineImageVersion)
-	for _, v := range versions {
-		result[v.Version] = append(result[v.Version], v)
-	}
-	return result
-}
-
 // validateImageFlavorMappingMixed validates that each flavor in a version has a corresponding mapping.
 // This function handles both the new format (capabilityFlavors) and old format (image with architecture).
 // For mixed format support, multiple provider version entries may exist for the same version string.
@@ -98,48 +90,29 @@ func validateImageFlavorMappingMixed(version core.MachineImageVersion, providerV
 
 	defaultedCapabilityFlavors := gardencorev1beta1helper.GetImageFlavorsWithAppliedDefaults(v1beta1Version.CapabilityFlavors, capabilityDefinitions)
 
-	// Check if any provider version uses new format (capabilityFlavors)
-	var capabilityFlavorsVersion *apisgcp.MachineImageVersion
-	for i := range providerVersions {
-		if len(providerVersions[i].CapabilityFlavors) > 0 {
-			capabilityFlavorsVersion = &providerVersions[i]
-			break
-		}
-	}
-
+	capabilityFlavorsVersion := FindCapabilityFlavorsVersion(providerVersions)
 	if capabilityFlavorsVersion != nil {
 		// New format: validate against capabilityFlavors
-		for idxCapability, defaultedCapabilitySet := range defaultedCapabilityFlavors {
-			isFound := false
-			for _, providerCapabilityFlavor := range capabilityFlavorsVersion.CapabilityFlavors {
-				providerDefaultedCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(providerCapabilityFlavor.Capabilities, capabilityDefinitions)
-				if gardencorev1beta1helper.AreCapabilitiesEqual(defaultedCapabilitySet.Capabilities, providerDefaultedCapabilities) {
-					isFound = true
-					break
-				}
-			}
-			if !isFound {
-				allErrs = append(allErrs, field.Required(machineImageVersionPath.Child("capabilityFlavors").Index(idxCapability),
-					fmt.Sprintf("machine image version %s@%s and capabilitySet %v is not defined in the providerConfig", machineImage.Name, version.Version, defaultedCapabilitySet.Capabilities)))
-			}
-		}
+		allErrs = append(allErrs, ValidateMissingCapabilityFlavors(
+			machineImage.Name, version.Version,
+			defaultedCapabilityFlavors,
+			capabilityFlavorsVersion.CapabilityFlavors,
+			capabilityDefinitions,
+			machineImageVersionPath,
+			"providerConfig",
+			true, // include index path for CloudProfile validation
+		)...)
 	} else {
 		// Old format: collect architectures from all provider version entries
-		architecturesMap := utils.CreateMapFromSlice(providerVersions, func(v apisgcp.MachineImageVersion) string {
-			return ptr.Deref(v.Architecture, v1beta1constants.ArchitectureAMD64)
-		})
-		availableArchitectures := slices.Collect(maps.Keys(architecturesMap))
-
-		// For each expected capability flavor, check if the architecture capability is available
-		for idxCapability, defaultedCapabilitySet := range defaultedCapabilityFlavors {
-			expectedArchitectures := defaultedCapabilitySet.Capabilities[v1beta1constants.ArchitectureName]
-			for _, expectedArch := range expectedArchitectures {
-				if !slices.Contains(availableArchitectures, expectedArch) {
-					allErrs = append(allErrs, field.Required(machineImageVersionPath.Child("capabilityFlavors").Index(idxCapability),
-						fmt.Sprintf("missing providerConfig mapping for machine image version %s@%s and architecture: %s", machineImage.Name, version.Version, expectedArch)))
-				}
-			}
-		}
+		availableArchitectures := CollectAvailableArchitectures(providerVersions)
+		allErrs = append(allErrs, ValidateMissingArchitectures(
+			machineImage.Name, version.Version,
+			defaultedCapabilityFlavors,
+			availableArchitectures,
+			machineImageVersionPath,
+			"providerConfig",
+			true, // include index path for CloudProfile validation
+		)...)
 	}
 	return allErrs
 }
@@ -323,4 +296,144 @@ func providerMachineImageKey(v apisgcp.MachineImageVersion) string {
 // VersionArchitectureKey returns a key for a version and architecture.
 func VersionArchitectureKey(version, architecture string) string {
 	return version + "-" + architecture
+}
+
+// FindCapabilityFlavorsVersion finds the first provider version that uses the new format (capabilityFlavors).
+// Returns nil if no version uses the new format.
+func FindCapabilityFlavorsVersion(providerVersions []apisgcp.MachineImageVersion) *apisgcp.MachineImageVersion {
+	for i := range providerVersions {
+		if len(providerVersions[i].CapabilityFlavors) > 0 {
+			return &providerVersions[i]
+		}
+	}
+	return nil
+}
+
+// CollectAvailableArchitectures collects unique architectures from all provider version entries (old format).
+func CollectAvailableArchitectures(providerVersions []apisgcp.MachineImageVersion) []string {
+	architecturesMap := utils.CreateMapFromSlice(providerVersions, func(v apisgcp.MachineImageVersion) string {
+		return ptr.Deref(v.Architecture, v1beta1constants.ArchitectureAMD64)
+	})
+	return slices.Collect(maps.Keys(architecturesMap))
+}
+
+// ValidateMissingCapabilityFlavors checks that all expected capability flavors from the spec are defined in the provider config.
+// If includeIndexPath is true, adds .capabilityFlavors[idx] to the field path.
+func ValidateMissingCapabilityFlavors(
+	imageName, versionStr string,
+	defaultedSpecCapabilities []gardencorev1beta1.MachineImageFlavor,
+	providerCapabilityFlavors []apisgcp.MachineImageFlavor,
+	capabilityDefinitions []gardencorev1beta1.CapabilityDefinition,
+	path *field.Path,
+	errorMsgSuffix string,
+	includeIndexPath bool,
+) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for idxCapability, specCapabilitySet := range defaultedSpecCapabilities {
+		isFound := false
+		for _, providerCapabilityFlavor := range providerCapabilityFlavors {
+			providerDefaultedCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(providerCapabilityFlavor.Capabilities, capabilityDefinitions)
+			if gardencorev1beta1helper.AreCapabilitiesEqual(specCapabilitySet.Capabilities, providerDefaultedCapabilities) {
+				isFound = true
+				break
+			}
+		}
+		if !isFound {
+			errPath := path
+			if includeIndexPath {
+				errPath = path.Child("capabilityFlavors").Index(idxCapability)
+			}
+			allErrs = append(allErrs, field.Required(errPath,
+				fmt.Sprintf("machine image version %s@%s and capabilityFlavor %v is not defined in the %s", imageName, versionStr, specCapabilitySet.Capabilities, errorMsgSuffix)))
+		}
+	}
+
+	return allErrs
+}
+
+// ValidateExcessCapabilityFlavors checks that the provider config doesn't have extra capability flavors not defined in the spec.
+func ValidateExcessCapabilityFlavors(
+	imageName, versionStr string,
+	defaultedSpecCapabilities []gardencorev1beta1.MachineImageFlavor,
+	providerCapabilityFlavors []apisgcp.MachineImageFlavor,
+	capabilityDefinitions []gardencorev1beta1.CapabilityDefinition,
+	path *field.Path,
+	errorMsgSuffix string,
+) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for _, providerCapabilityFlavor := range providerCapabilityFlavors {
+		isFound := false
+		for _, specCapabilitySet := range defaultedSpecCapabilities {
+			providerDefaultedCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(providerCapabilityFlavor.Capabilities, capabilityDefinitions)
+			if gardencorev1beta1helper.AreCapabilitiesEqual(specCapabilitySet.Capabilities, providerDefaultedCapabilities) {
+				isFound = true
+				break
+			}
+		}
+		if !isFound {
+			allErrs = append(allErrs, field.Forbidden(path,
+				fmt.Sprintf("machine image version %s@%s has an excess capabilityFlavor %v, which is not defined in the %s", imageName, versionStr, providerCapabilityFlavor.Capabilities, errorMsgSuffix)))
+		}
+	}
+
+	return allErrs
+}
+
+// ValidateMissingArchitectures checks that all expected architectures from capability flavors are available in the provider.
+// If includeIndexPath is true, adds .capabilityFlavors[idx] to the field path.
+func ValidateMissingArchitectures(
+	imageName, versionStr string,
+	defaultedSpecCapabilities []gardencorev1beta1.MachineImageFlavor,
+	availableArchitectures []string,
+	path *field.Path,
+	errorMsgSuffix string,
+	includeIndexPath bool,
+) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for idxCapability, specCapabilitySet := range defaultedSpecCapabilities {
+		expectedArchitectures := specCapabilitySet.Capabilities[v1beta1constants.ArchitectureName]
+		for _, expectedArch := range expectedArchitectures {
+			if !slices.Contains(availableArchitectures, expectedArch) {
+				errPath := path
+				if includeIndexPath {
+					errPath = path.Child("capabilityFlavors").Index(idxCapability)
+				}
+				allErrs = append(allErrs, field.Required(errPath,
+					fmt.Sprintf("machine image version %s@%s and capabilityFlavor %v is not defined in the %s", imageName, versionStr, specCapabilitySet.Capabilities, errorMsgSuffix)))
+			}
+		}
+	}
+
+	return allErrs
+}
+
+// ValidateExcessArchitectures checks that the provider doesn't have extra architectures not defined in the spec capabilities.
+func ValidateExcessArchitectures(
+	imageName, versionStr string,
+	defaultedSpecCapabilities []gardencorev1beta1.MachineImageFlavor,
+	availableArchitectures []string,
+	path *field.Path,
+	errorMsgSuffix string,
+) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for _, arch := range availableArchitectures {
+		isFound := false
+		for _, specCapabilitySet := range defaultedSpecCapabilities {
+			expectedArchitectures := specCapabilitySet.Capabilities[v1beta1constants.ArchitectureName]
+			if slices.Contains(expectedArchitectures, arch) {
+				isFound = true
+				break
+			}
+		}
+		if !isFound {
+			allErrs = append(allErrs, field.Forbidden(path,
+				fmt.Sprintf("machine image version %s@%s has an excess architecture %q, which is not defined in the %s", imageName, versionStr, arch, errorMsgSuffix)))
+		}
+	}
+
+	return allErrs
 }

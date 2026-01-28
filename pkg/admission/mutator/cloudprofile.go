@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 )
 
@@ -68,7 +69,7 @@ func overwriteMachineImageCapabilityFlavors(profile *gardencorev1beta1.CloudProf
 		}
 
 		// Group provider versions by version string (old format may have multiple entries per version)
-		groupedVersions := groupVersionsByVersionString(providerMachineImage.Versions)
+		groupedVersions := helper.GroupV1alpha1VersionsByVersionString(providerMachineImage.Versions)
 
 		for versionStr, providerVersions := range groupedVersions {
 			// Find the corresponding version in the CloudProfile's machine image
@@ -98,17 +99,6 @@ func overwriteMachineImageCapabilityFlavors(profile *gardencorev1beta1.CloudProf
 			profile.Spec.MachineImages[imageIdx].Versions[versionIdx].CapabilityFlavors = capabilityFlavors
 		}
 	}
-}
-
-// groupVersionsByVersionString groups all provider versions by their version string.
-// This is needed because the old format may have multiple entries for the same version
-// with different architectures.
-func groupVersionsByVersionString(providerVersions []v1alpha1.MachineImageVersion) map[string][]v1alpha1.MachineImageVersion {
-	result := make(map[string][]v1alpha1.MachineImageVersion)
-	for _, v := range providerVersions {
-		result[v.Version] = append(result[v.Version], v)
-	}
-	return result
 }
 
 // convertVersionsToCapabilityFlavors converts old format (image with architecture) entries to capability flavors.
