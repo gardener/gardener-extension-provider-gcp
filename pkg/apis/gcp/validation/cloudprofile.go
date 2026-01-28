@@ -6,6 +6,7 @@ package validation
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 
 	gardencoreapi "github.com/gardener/gardener/pkg/api"
@@ -45,7 +46,7 @@ func validateProviderImagesMapping(cpConfigImages []apisgcp.MachineImages, machi
 		}
 		machineImagePath := fldPath.Child("machineImages").Index(idxImage)
 		// validate that for each machine image there is a corresponding cpConfig image
-		_, imageExists := cpConfigImagesContext.GetImage(machineImage.Name)
+		providerImage, imageExists := cpConfigImagesContext.GetImage(machineImage.Name)
 		if !imageExists {
 			allErrs = append(allErrs, field.Required(machineImagePath,
 				fmt.Sprintf("must provide an image mapping for image %q in providerConfig", machineImage.Name)))
@@ -56,14 +57,17 @@ func validateProviderImagesMapping(cpConfigImages []apisgcp.MachineImages, machi
 			machineImageVersionPath := machineImagePath.Child("versions").Index(idxVersion)
 
 			if len(capabilityDefinitions) > 0 {
-				providerVersion, versionExists := cpConfigImagesContext.GetImageVersion(machineImage.Name, version.Version)
-				if !versionExists {
+				// Group provider versions by version string to handle mixed format
+				// (old format may have multiple entries per version with different architectures)
+				groupedVersions := groupProviderVersionsByVersionString(providerImage.Versions)
+				providerVersions, versionExists := groupedVersions[version.Version]
+				if !versionExists || len(providerVersions) == 0 {
 					allErrs = append(allErrs, field.Required(machineImageVersionPath,
 						fmt.Sprintf("machine image version %s@%s is not defined in the providerConfig", machineImage.Name, version.Version),
 					))
 					continue
 				}
-				allErrs = append(allErrs, validateImageFlavorMapping(version, providerVersion, capabilityDefinitions, machineImage, machineImageVersionPath)...)
+				allErrs = append(allErrs, validateImageFlavorMappingMixed(version, providerVersions, capabilityDefinitions, machineImage, machineImageVersionPath)...)
 			} else {
 				allErrs = append(allErrs, validateArchitectureMapping(version, cpConfigImages, machineImage, machineImageVersionPath)...)
 			}
@@ -72,8 +76,19 @@ func validateProviderImagesMapping(cpConfigImages []apisgcp.MachineImages, machi
 	return allErrs
 }
 
-// validateImageFlavorMapping validates that each flavor in a version has a corresponding mapping
-func validateImageFlavorMapping(version core.MachineImageVersion, imageVersion apisgcp.MachineImageVersion, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition, machineImage core.MachineImage, machineImageVersionPath *field.Path) field.ErrorList {
+// groupProviderVersionsByVersionString groups all provider versions by their version string.
+func groupProviderVersionsByVersionString(versions []apisgcp.MachineImageVersion) map[string][]apisgcp.MachineImageVersion {
+	result := make(map[string][]apisgcp.MachineImageVersion)
+	for _, v := range versions {
+		result[v.Version] = append(result[v.Version], v)
+	}
+	return result
+}
+
+// validateImageFlavorMappingMixed validates that each flavor in a version has a corresponding mapping.
+// This function handles both the new format (capabilityFlavors) and old format (image with architecture).
+// For mixed format support, multiple provider version entries may exist for the same version string.
+func validateImageFlavorMappingMixed(version core.MachineImageVersion, providerVersions []apisgcp.MachineImageVersion, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition, machineImage core.MachineImage, machineImageVersionPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	var v1beta1Version gardencorev1beta1.MachineImageVersion
@@ -82,19 +97,48 @@ func validateImageFlavorMapping(version core.MachineImageVersion, imageVersion a
 	}
 
 	defaultedCapabilityFlavors := gardencorev1beta1helper.GetImageFlavorsWithAppliedDefaults(v1beta1Version.CapabilityFlavors, capabilityDefinitions)
-	for idxCapability, defaultedCapabilitySet := range defaultedCapabilityFlavors {
-		isFound := false
-		// search for the corresponding imageVersion.MachineImageFlavor
-		for _, providerCapabilityFlavor := range imageVersion.CapabilityFlavors {
-			providerDefaultedCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(providerCapabilityFlavor.Capabilities, capabilityDefinitions)
-			if gardencorev1beta1helper.AreCapabilitiesEqual(defaultedCapabilitySet.Capabilities, providerDefaultedCapabilities) {
-				isFound = true
-				break
+
+	// Check if any provider version uses new format (capabilityFlavors)
+	var capabilityFlavorsVersion *apisgcp.MachineImageVersion
+	for i := range providerVersions {
+		if len(providerVersions[i].CapabilityFlavors) > 0 {
+			capabilityFlavorsVersion = &providerVersions[i]
+			break
+		}
+	}
+
+	if capabilityFlavorsVersion != nil {
+		// New format: validate against capabilityFlavors
+		for idxCapability, defaultedCapabilitySet := range defaultedCapabilityFlavors {
+			isFound := false
+			for _, providerCapabilityFlavor := range capabilityFlavorsVersion.CapabilityFlavors {
+				providerDefaultedCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(providerCapabilityFlavor.Capabilities, capabilityDefinitions)
+				if gardencorev1beta1helper.AreCapabilitiesEqual(defaultedCapabilitySet.Capabilities, providerDefaultedCapabilities) {
+					isFound = true
+					break
+				}
+			}
+			if !isFound {
+				allErrs = append(allErrs, field.Required(machineImageVersionPath.Child("capabilityFlavors").Index(idxCapability),
+					fmt.Sprintf("machine image version %s@%s and capabilitySet %v is not defined in the providerConfig", machineImage.Name, version.Version, defaultedCapabilitySet.Capabilities)))
 			}
 		}
-		if !isFound {
-			allErrs = append(allErrs, field.Required(machineImageVersionPath.Child("capabilityFlavors").Index(idxCapability),
-				fmt.Sprintf("machine image version %s@%s and capabilitySet %v is not defined in the providerConfig", machineImage.Name, version.Version, defaultedCapabilitySet.Capabilities)))
+	} else {
+		// Old format: collect architectures from all provider version entries
+		architecturesMap := utils.CreateMapFromSlice(providerVersions, func(v apisgcp.MachineImageVersion) string {
+			return ptr.Deref(v.Architecture, v1beta1constants.ArchitectureAMD64)
+		})
+		availableArchitectures := slices.Collect(maps.Keys(architecturesMap))
+
+		// For each expected capability flavor, check if the architecture capability is available
+		for idxCapability, defaultedCapabilitySet := range defaultedCapabilityFlavors {
+			expectedArchitectures := defaultedCapabilitySet.Capabilities[v1beta1constants.ArchitectureName]
+			for _, expectedArch := range expectedArchitectures {
+				if !slices.Contains(availableArchitectures, expectedArch) {
+					allErrs = append(allErrs, field.Required(machineImageVersionPath.Child("capabilityFlavors").Index(idxCapability),
+						fmt.Sprintf("missing providerConfig mapping for machine image version %s@%s and architecture: %s", machineImage.Name, version.Version, expectedArch)))
+				}
+			}
 		}
 	}
 	return allErrs
@@ -133,51 +177,92 @@ func ValidateProviderMachineImage(providerImage apisgcp.MachineImages, capabilit
 
 	for j, version := range providerImage.Versions {
 		jdxPath := imagePath.Child("versions").Index(j)
+		if len(version.Version) == 0 {
+			allErrs = append(allErrs, field.Required(jdxPath.Child("version"), "must provide a version"))
+		}
+
+		hasCapabilityFlavors := len(version.CapabilityFlavors) > 0
+		hasLegacyImage := version.Image != ""
+
 		if len(capabilityDefinitions) > 0 {
-			if len(version.Version) == 0 {
-				allErrs = append(allErrs, field.Required(jdxPath.Child("version"), "must provide a version"))
-			}
-
-			if len(version.CapabilityFlavors) == 0 {
-				allErrs = append(allErrs, field.Required(jdxPath.Child("capabilityFlavors"), "must provide a capabilityFlavor"))
-			}
-
-			for k, capabilityFlavor := range version.CapabilityFlavors {
-				kdxPath := jdxPath.Child("capabilityFlavors").Index(k)
-				allErrs = append(allErrs, gutil.ValidateCapabilities(capabilityFlavor.Capabilities, capabilityDefinitions, kdxPath.Child("capabilities"))...)
-
-				if capabilityFlavor.Image == "" {
-					allErrs = append(allErrs, field.Required(kdxPath.Child("image"),
-						fmt.Sprintf("must provide the image field for image version %s@%s and capabilityFlavor: %v",
-							providerImage.Name, version.Version, capabilityFlavor)))
-				}
-			}
-
-			// ensure legacy fields are not set
-			if ptr.Deref(version.Architecture, "") != "" {
-				allErrs = append(allErrs, field.Forbidden(jdxPath.Child("architecture"), "must not set architecture when capabilityFlavor is defined"))
-			}
-			if len(version.Image) != 0 {
-				allErrs = append(allErrs, field.Forbidden(jdxPath.Child("image"), "must not set image when capabilityFlavor is defined"))
+			// When CloudProfile defines capabilities, allow either old format (image) or new format (capabilityFlavors) per version
+			if hasCapabilityFlavors && hasLegacyImage {
+				allErrs = append(allErrs, field.Forbidden(jdxPath.Child("image"), "must not be set together with capabilityFlavors. Use one format per version."))
+			} else if hasCapabilityFlavors {
+				// New format: validate capabilityFlavors
+				allErrs = append(allErrs, validateCapabilityFlavors(providerImage, version, capabilityDefinitions, jdxPath)...)
+			} else if hasLegacyImage {
+				// Old format: validate image with architecture (mixed format support)
+				allErrs = append(allErrs, validateLegacyImageWithCapabilities(version, jdxPath)...)
+			} else {
+				// Neither format specified
+				allErrs = append(allErrs, field.Required(jdxPath.Child("image"),
+					fmt.Sprintf("must provide either image or capabilityFlavors for machine image %s@%s", providerImage.Name, version.Version)))
 			}
 		} else {
-			versionArch := ptr.Deref(version.Architecture, v1beta1constants.ArchitectureAMD64)
-			// validate image version image field
-			if version.Image == "" {
-				allErrs = append(allErrs, field.Required(
-					jdxPath.Child("image"),
-					fmt.Sprintf("must provide the image field for image version %s@%s and architecture: %s",
-						providerImage.Name, version.Version, versionArch)))
-			}
-			// validate architecture field
-			if !slices.Contains(v1beta1constants.ValidArchitectures, versionArch) {
-				allErrs = append(allErrs, field.NotSupported(jdxPath.Child("architecture"), versionArch, v1beta1constants.ValidArchitectures))
-			}
-			// ensure capability related fields are not set
-			if len(version.CapabilityFlavors) != 0 {
+			// Without capabilities, only old format with image is supported
+			if hasCapabilityFlavors {
 				allErrs = append(allErrs, field.Forbidden(jdxPath.Child("capabilityFlavors"), "capabilityFlavors must not be set when cloudprofile is not using capabilities"))
 			}
+			allErrs = append(allErrs, validateLegacyImage(providerImage, version, jdxPath)...)
 		}
+	}
+
+	return allErrs
+}
+
+// validateCapabilityFlavors validates the new format (capabilityFlavors) for a machine image version.
+func validateCapabilityFlavors(providerImage apisgcp.MachineImages, version apisgcp.MachineImageVersion, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition, jdxPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for k, capabilityFlavor := range version.CapabilityFlavors {
+		kdxPath := jdxPath.Child("capabilityFlavors").Index(k)
+		allErrs = append(allErrs, gutil.ValidateCapabilities(capabilityFlavor.Capabilities, capabilityDefinitions, kdxPath.Child("capabilities"))...)
+
+		if capabilityFlavor.Image == "" {
+			allErrs = append(allErrs, field.Required(kdxPath.Child("image"),
+				fmt.Sprintf("must provide the image field for image version %s@%s and capabilityFlavor: %v",
+					providerImage.Name, version.Version, capabilityFlavor)))
+		}
+	}
+
+	// Ensure legacy fields are not set when using new format
+	if ptr.Deref(version.Architecture, "") != "" {
+		allErrs = append(allErrs, field.Forbidden(jdxPath.Child("architecture"), "must not set architecture when capabilityFlavors is defined"))
+	}
+
+	return allErrs
+}
+
+// validateLegacyImageWithCapabilities validates old format (image with architecture) when CloudProfile uses capabilities.
+// This allows architecture field since it will be converted to capability flavors.
+func validateLegacyImageWithCapabilities(version apisgcp.MachineImageVersion, jdxPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	versionArch := ptr.Deref(version.Architecture, v1beta1constants.ArchitectureAMD64)
+
+	// Validate architecture is valid since it will be used for capability mapping
+	if !slices.Contains(v1beta1constants.ValidArchitectures, versionArch) {
+		allErrs = append(allErrs, field.NotSupported(jdxPath.Child("architecture"), versionArch, v1beta1constants.ValidArchitectures))
+	}
+
+	return allErrs
+}
+
+// validateLegacyImage validates old format (image with architecture) when CloudProfile does not use capabilities.
+func validateLegacyImage(providerImage apisgcp.MachineImages, version apisgcp.MachineImageVersion, jdxPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	versionArch := ptr.Deref(version.Architecture, v1beta1constants.ArchitectureAMD64)
+
+	// Validate image version image field
+	if version.Image == "" {
+		allErrs = append(allErrs, field.Required(
+			jdxPath.Child("image"),
+			fmt.Sprintf("must provide the image field for image version %s@%s and architecture: %s",
+				providerImage.Name, version.Version, versionArch)))
+	}
+	// Validate architecture field
+	if !slices.Contains(v1beta1constants.ValidArchitectures, versionArch) {
+		allErrs = append(allErrs, field.NotSupported(jdxPath.Child("architecture"), versionArch, v1beta1constants.ValidArchitectures))
 	}
 
 	return allErrs

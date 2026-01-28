@@ -260,6 +260,66 @@ var _ = Describe("CloudProfile Mutator", func() {
 					}),
 				))
 			})
+
+			It("should convert old format (image with architecture) to capabilityFlavors - mixed format support", func() {
+				// This tests the mixed format feature: some versions use old format (image with architecture)
+				// while others use new format (capabilityFlavors)
+				cloudProfile.Spec.MachineImages = []v1beta1.MachineImage{
+					{
+						Name: "os-1",
+						Versions: []v1beta1.MachineImageVersion{
+							{ExpirableVersion: v1beta1.ExpirableVersion{Version: "1.0.0"}},
+							{ExpirableVersion: v1beta1.ExpirableVersion{Version: "1.0.1"}},
+						},
+					},
+				}
+				// Mix of new format and old format in providerConfig
+				cloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"gcp.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"os-1","versions":[
+    {"version":"1.0.0","capabilityFlavors":[
+      {"capabilities":{"architecture":["arm64"]},"image":"projects/my-project/global/images/os-1-arm64"},
+      {"capabilities":{"architecture":["amd64"]},"image":"projects/my-project/global/images/os-1-amd64"}
+    ]},
+    {"version":"1.0.1","image":"projects/my-project/global/images/os-1-v101","architecture":"amd64"},
+    {"version":"1.0.1","image":"projects/my-project/global/images/os-1-v101-arm64","architecture":"arm64"}
+  ]}
+]}`)}
+				Expect(cloudProfileMutator.Mutate(ctx, cloudProfile, nil)).To(Succeed())
+				Expect(cloudProfile.Spec.MachineImages).To(ConsistOf(
+					MatchFields(IgnoreExtras, Fields{
+						"Name": Equal("os-1"),
+						"Versions": ConsistOf(
+							// Version 1.0.0 - uses new format (capabilityFlavors)
+							MatchFields(IgnoreExtras, Fields{
+								"ExpirableVersion": MatchFields(IgnoreExtras, Fields{"Version": Equal("1.0.0")}),
+								"CapabilityFlavors": ConsistOf(
+									MatchFields(IgnoreExtras, Fields{
+										"Capabilities": Equal(v1beta1.Capabilities{"architecture": []string{"arm64"}}),
+									}),
+									MatchFields(IgnoreExtras, Fields{
+										"Capabilities": Equal(v1beta1.Capabilities{"architecture": []string{"amd64"}}),
+									}),
+								),
+							}),
+							// Version 1.0.1 - uses old format (image with architecture), converted to capabilityFlavors
+							MatchFields(IgnoreExtras, Fields{
+								"ExpirableVersion": MatchFields(IgnoreExtras, Fields{"Version": Equal("1.0.1")}),
+								"CapabilityFlavors": ConsistOf(
+									MatchFields(IgnoreExtras, Fields{
+										"Capabilities": Equal(v1beta1.Capabilities{"architecture": []string{"amd64"}}),
+									}),
+									MatchFields(IgnoreExtras, Fields{
+										"Capabilities": Equal(v1beta1.Capabilities{"architecture": []string{"arm64"}}),
+									}),
+								),
+							}),
+						),
+					}),
+				))
+			})
 		})
 
 	})

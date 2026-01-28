@@ -7,6 +7,7 @@ package validator
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
@@ -15,6 +16,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
+	"github.com/gardener/gardener/pkg/utils"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -25,7 +27,6 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission"
 	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 )
 
@@ -71,11 +72,8 @@ func (p *namespacedCloudProfile) Validate(ctx context.Context, newObj, _ client.
 		return err
 	}
 
-	// TODO(Roncossek): Remove TransformSpecToParentFormat once all CloudProfiles have been migrated to use CapabilityFlavors and the Architecture fields are effectively forbidden or have been removed.
-	if err := helper.SimulateTransformToParentFormat(cpConfig, profile, parentProfile.Spec.MachineCapabilities); err != nil {
-		return err
-	}
-
+	// Validate provider config as-is without transforming to parent format.
+	// Mixed format (old image with architecture and new capabilityFlavors) is supported per version.
 	return p.validateNamespacedCloudProfileProviderConfig(cpConfig, profile.Spec, parentProfile.Spec).ToAggregate()
 }
 
@@ -102,10 +100,21 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 	parentImages := gutil.NewV1beta1ImagesContext(parentSpec.MachineImages)
 	providerImages := validation.NewProviderImagesContextLegacy(providerConfig.MachineImages)
 
+	// Create a map of provider images grouped by version for mixed format support
+	providerVersionsMap := make(map[string]map[string][]api.MachineImageVersion)
+	for _, img := range providerConfig.MachineImages {
+		if providerVersionsMap[img.Name] == nil {
+			providerVersionsMap[img.Name] = make(map[string][]api.MachineImageVersion)
+		}
+		for _, v := range img.Versions {
+			providerVersionsMap[img.Name][v.Version] = append(providerVersionsMap[img.Name][v.Version], v)
+		}
+	}
+
 	for _, machineImage := range namespacedImages.Images {
 		// Check that for each new image version defined in the NamespacedCloudProfile, the image is also defined in the providerConfig.
 		_, existsInParent := parentImages.GetImage(machineImage.Name)
-		providerImage, existsInProvider := providerImages.GetImage(machineImage.Name)
+		_, existsInProvider := providerImages.GetImage(machineImage.Name)
 		if !existsInParent && !existsInProvider {
 			allErrs = append(allErrs, field.Required(
 				field.NewPath("spec.providerConfig.machineImages"),
@@ -126,18 +135,15 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 				}
 			} else {
 				// check that each capabilityFlavor defined has a corresponding entry in the providerConfig
-				isFound := false
-				for _, providerImageVersion := range providerImage.Versions {
-					if providerImageVersion.Version == version.Version {
-						isFound = true
-						allErrs = append(allErrs, validateMachineImageCapabilities(machineImage, version, providerImageVersion, capabilityDefinitions, imagesPath)...)
-					}
-				}
-				if !isFound {
+				// Support mixed format: group provider versions by version string
+				providerVersions, versionExists := providerVersionsMap[machineImage.Name][version.Version]
+				if !versionExists || len(providerVersions) == 0 {
 					allErrs = append(allErrs, field.Required(imagesPath,
 						fmt.Sprintf("machine image version %s@%s is not defined in the NamespacedCloudProfile providerConfig", machineImage.Name, version.Version),
 					))
+					continue
 				}
+				allErrs = append(allErrs, validateMachineImageCapabilitiesMixed(machineImage, version, providerVersions, capabilityDefinitions, imagesPath)...)
 			}
 		}
 	}
@@ -173,13 +179,21 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 			}
 
 			if len(capabilityDefinitions) == 0 {
+				// For non-capabilities CloudProfile, check if architecture is valid
 				providerConfigArchitecture := ptr.Deref(version.Architecture, constants.ArchitectureAMD64)
-				if !slices.Contains(profileImageVersion.Architectures, providerConfigArchitecture) {
+				// If version doesn't exist, all architectures are excess
+				if !exists || !slices.Contains(profileImageVersion.Architectures, providerConfigArchitecture) {
 					allErrs = append(allErrs, field.Forbidden(
 						field.NewPath("spec.providerConfig.machineImages"),
 						fmt.Sprintf("machine image version %s@%s has an excess entry for architecture %q, which is not defined in the machineImages spec",
 							machineImage.Name, version.Version, providerConfigArchitecture),
 					))
+				}
+			} else if exists {
+				// For capabilities CloudProfile, validate excess architectures in old format
+				if version.Image != "" && len(version.CapabilityFlavors) == 0 {
+					providerArch := ptr.Deref(version.Architecture, constants.ArchitectureAMD64)
+					allErrs = append(allErrs, validateExcessArchitecture(machineImage.Name, version.Version, providerArch, profileImageVersion.CapabilityFlavors, capabilityDefinitions, imagesPath)...)
 				}
 			}
 		}
@@ -188,45 +202,155 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 	return allErrs
 }
 
-func validateMachineImageCapabilities(machineImage core.MachineImage, version core.MachineImageVersion, providerImageVersion api.MachineImageVersion, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition, versionPath *field.Path) field.ErrorList {
+// validateExcessArchitecture checks if a provider's architecture is defined in the spec's capability flavors
+func validateExcessArchitecture(imageName, versionStr, providerArch string, specCapabilityFlavors []core.MachineImageFlavor, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+
+	var v1beta1Flavors []gardencorev1beta1.MachineImageFlavor
+	for _, f := range specCapabilityFlavors {
+		// Manually convert core.Capabilities to v1beta1.Capabilities
+		v1betaCapabilities := convertCoreCapabilitiesToV1beta1(f.Capabilities)
+		v1beta1Flavors = append(v1beta1Flavors, gardencorev1beta1.MachineImageFlavor{Capabilities: v1betaCapabilities})
+	}
+	defaultedCapabilityFlavors := gardencorev1beta1helper.GetImageFlavorsWithAppliedDefaults(v1beta1Flavors, capabilityDefinitions)
+
+	isFound := false
+	for _, flavor := range defaultedCapabilityFlavors {
+		expectedArchitectures := flavor.Capabilities[constants.ArchitectureName]
+		if slices.Contains(expectedArchitectures, providerArch) {
+			isFound = true
+			break
+		}
+	}
+	if !isFound {
+		allErrs = append(allErrs, field.Forbidden(path,
+			fmt.Sprintf("machine image version %s@%s has an excess architecture %q, which is not defined in the machineImages spec",
+				imageName, versionStr, providerArch)))
+	}
+
+	return allErrs
+}
+
+// convertCoreCapabilitiesToV1beta1 converts core.Capabilities to v1beta1.Capabilities manually
+func convertCoreCapabilitiesToV1beta1(coreCapabilities core.Capabilities) gardencorev1beta1.Capabilities {
+	v1beta1Capabilities := make(gardencorev1beta1.Capabilities)
+	for k, v := range coreCapabilities {
+		// Copy the slice values
+		v1beta1Capabilities[k] = append([]string{}, v...)
+	}
+	return v1beta1Capabilities
+}
+
+// validateMachineImageCapabilitiesMixed validates machine image capabilities with mixed format support.
+// It handles both old format (image with architecture) and new format (capabilityFlavors).
+func validateMachineImageCapabilitiesMixed(machineImage core.MachineImage, version core.MachineImageVersion, providerVersions []api.MachineImageVersion, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition, path *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
 	var v1betaVersion gardencorev1beta1.MachineImageVersion
 	if err := gardencoreapi.Scheme.Convert(&version, &v1betaVersion, nil); err != nil {
-		return append(allErrs, field.InternalError(versionPath, err))
+		return append(allErrs, field.InternalError(path, err))
 	}
 	defaultedVersionCapabilityFlavors := gardencorev1beta1helper.GetImageFlavorsWithAppliedDefaults(v1betaVersion.CapabilityFlavors, capabilityDefinitions)
 
+	// Check if any provider version uses new format (capabilityFlavors)
+	var capabilityFlavorsVersion *api.MachineImageVersion
+	for i := range providerVersions {
+		if len(providerVersions[i].CapabilityFlavors) > 0 {
+			capabilityFlavorsVersion = &providerVersions[i]
+			break
+		}
+	}
+
+	if capabilityFlavorsVersion != nil {
+		// New format: validate using capabilityFlavors
+		allErrs = append(allErrs, validateCapabilityFlavorsFormat(machineImage, version, *capabilityFlavorsVersion, defaultedVersionCapabilityFlavors, capabilityDefinitions, path)...)
+	} else {
+		// Old format: validate using image with architecture
+		allErrs = append(allErrs, validateLegacyFormatWithCapabilities(machineImage, version, providerVersions, defaultedVersionCapabilityFlavors, path)...)
+	}
+
+	return allErrs
+}
+
+// validateCapabilityFlavorsFormat validates when provider uses new format (capabilityFlavors)
+func validateCapabilityFlavorsFormat(machineImage core.MachineImage, version core.MachineImageVersion, providerVersion api.MachineImageVersion, defaultedCapabilityFlavors []gardencorev1beta1.MachineImageFlavor, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition, path *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
 	// 1. Create an error for each capabilityFlavor in the providerConfig that is not defined in the core machine image version
-	for _, providerCapabilityFlavor := range providerImageVersion.CapabilityFlavors {
+	for _, providerCapabilityFlavor := range providerVersion.CapabilityFlavors {
 		isFound := false
-		for _, defaultedCapabilityFlavors := range defaultedVersionCapabilityFlavors {
+		for _, defaultedCapabilityFlavor := range defaultedCapabilityFlavors {
 			defaultedProviderCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(providerCapabilityFlavor.Capabilities, capabilityDefinitions)
-			if gardencorev1beta1helper.AreCapabilitiesEqual(defaultedCapabilityFlavors.Capabilities, defaultedProviderCapabilities) {
+			if gardencorev1beta1helper.AreCapabilitiesEqual(defaultedCapabilityFlavor.Capabilities, defaultedProviderCapabilities) {
 				isFound = true
+				break
 			}
 		}
 		if !isFound {
-			allErrs = append(allErrs, field.Forbidden(versionPath,
+			allErrs = append(allErrs, field.Forbidden(path,
 				fmt.Sprintf("machine image version %s@%s has an excess capabilityFlavor %v, which is not defined in the NamespacedCloudProfile machineImages spec",
 					machineImage.Name, version.Version, providerCapabilityFlavor.Capabilities)))
 		}
 	}
 
 	// 2. Create an error for each capabilityFlavor in the core machine image version that is not defined in the providerConfig
-	for _, capabilityFlavor := range defaultedVersionCapabilityFlavors {
+	for _, capabilityFlavor := range defaultedCapabilityFlavors {
 		isFound := false
-		for _, providerCapabilityFlavor := range providerImageVersion.CapabilityFlavors {
+		for _, providerCapabilityFlavor := range providerVersion.CapabilityFlavors {
 			defaultedProviderCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(providerCapabilityFlavor.Capabilities, capabilityDefinitions)
 			if gardencorev1beta1helper.AreCapabilitiesEqual(defaultedProviderCapabilities, capabilityFlavor.Capabilities) {
 				isFound = true
+				break
 			}
 		}
 		if !isFound {
-			allErrs = append(allErrs, field.Required(versionPath,
+			allErrs = append(allErrs, field.Required(path,
 				fmt.Sprintf("machine image version %s@%s and capabilityFlavor %v is not defined in the NamespacedCloudProfile providerConfig",
 					machineImage.Name, version.Version, capabilityFlavor.Capabilities)))
-			continue
 		}
 	}
+
+	return allErrs
+}
+
+// validateLegacyFormatWithCapabilities validates when provider uses old format (image with architecture) in capabilities CloudProfile
+func validateLegacyFormatWithCapabilities(machineImage core.MachineImage, version core.MachineImageVersion, providerVersions []api.MachineImageVersion, defaultedCapabilityFlavors []gardencorev1beta1.MachineImageFlavor, path *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	// Collect architectures from all provider version entries
+	architecturesMap := utils.CreateMapFromSlice(providerVersions, func(v api.MachineImageVersion) string {
+		return ptr.Deref(v.Architecture, constants.ArchitectureAMD64)
+	})
+	availableArchitectures := slices.Collect(maps.Keys(architecturesMap))
+
+	// 1. Check for excess architectures in provider that are not in spec
+	for _, arch := range availableArchitectures {
+		isFound := false
+		for _, defaultedCapabilityFlavor := range defaultedCapabilityFlavors {
+			expectedArchitectures := defaultedCapabilityFlavor.Capabilities[constants.ArchitectureName]
+			if slices.Contains(expectedArchitectures, arch) {
+				isFound = true
+				break
+			}
+		}
+		if !isFound {
+			allErrs = append(allErrs, field.Forbidden(path,
+				fmt.Sprintf("machine image version %s@%s has an excess architecture %q, which is not defined in the machineImages spec",
+					machineImage.Name, version.Version, arch)))
+		}
+	}
+
+	// 2. Check that each expected capability flavor has a corresponding architecture in provider
+	for _, capabilityFlavor := range defaultedCapabilityFlavors {
+		expectedArchitectures := capabilityFlavor.Capabilities[constants.ArchitectureName]
+		for _, expectedArch := range expectedArchitectures {
+			if !slices.Contains(availableArchitectures, expectedArch) {
+				allErrs = append(allErrs, field.Required(path,
+					fmt.Sprintf("machine image version %s@%s and capabilityFlavor %v is not defined in the NamespacedCloudProfile providerConfig",
+						machineImage.Name, version.Version, capabilityFlavor.Capabilities)))
+			}
+		}
+	}
+
 	return allErrs
 }

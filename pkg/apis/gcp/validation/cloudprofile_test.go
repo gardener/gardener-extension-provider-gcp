@@ -20,6 +20,158 @@ import (
 )
 
 var _ = Describe("CloudProfileConfig validation", func() {
+	Describe("Mixed format validation", func() {
+		var (
+			capabilitiesDefinitions []gardencorev1beta1.CapabilityDefinition
+			cloudProfileConfig      *apisgcp.CloudProfileConfig
+			machineImages           []core.MachineImage
+			nilPath                 *field.Path
+		)
+
+		BeforeEach(func() {
+			capabilitiesDefinitions = []gardencorev1beta1.CapabilityDefinition{{
+				Name:   v1beta1constants.ArchitectureName,
+				Values: []string{v1beta1constants.ArchitectureAMD64, v1beta1constants.ArchitectureARM64},
+			}}
+		})
+
+		It("should allow mixed format with some versions using old format and others using new format", func() {
+			cloudProfileConfig = &apisgcp.CloudProfileConfig{
+				MachineImages: []apisgcp.MachineImages{
+					{
+						Name: "ubuntu",
+						Versions: []apisgcp.MachineImageVersion{
+							// Version 1.0.0 uses new format (capabilityFlavors)
+							{
+								Version: "1.0.0",
+								CapabilityFlavors: []apisgcp.MachineImageFlavor{
+									{Image: "path/to/gcp/image-amd64", Capabilities: gardencorev1beta1.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureAMD64}}},
+								},
+							},
+							// Version 1.0.1 uses old format (image with architecture)
+							{Version: "1.0.1", Image: "path/to/gcp/image-amd64", Architecture: ptr.To(v1beta1constants.ArchitectureAMD64)},
+							{Version: "1.0.1", Image: "path/to/gcp/image-arm64", Architecture: ptr.To(v1beta1constants.ArchitectureARM64)},
+						},
+					},
+				},
+			}
+			machineImages = []core.MachineImage{
+				{
+					Name: "ubuntu",
+					Versions: []core.MachineImageVersion{
+						{
+							ExpirableVersion:  core.ExpirableVersion{Version: "1.0.0"},
+							CapabilityFlavors: []core.MachineImageFlavor{{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureAMD64}}}},
+						},
+						{
+							ExpirableVersion:  core.ExpirableVersion{Version: "1.0.1"},
+							CapabilityFlavors: []core.MachineImageFlavor{{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureAMD64}}}, {Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureARM64}}}},
+						},
+					},
+				},
+			}
+			errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, capabilitiesDefinitions, nilPath)
+			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should reject version with both old and new format simultaneously", func() {
+			cloudProfileConfig = &apisgcp.CloudProfileConfig{
+				MachineImages: []apisgcp.MachineImages{
+					{
+						Name: "ubuntu",
+						Versions: []apisgcp.MachineImageVersion{
+							{
+								Version:           "1.0.0",
+								Image:             "path/to/gcp/image", // old format
+								Architecture:      ptr.To(v1beta1constants.ArchitectureAMD64),
+								CapabilityFlavors: []apisgcp.MachineImageFlavor{{Image: "path/to/gcp/image"}}, // new format
+							},
+						},
+					},
+				},
+			}
+			machineImages = []core.MachineImage{
+				{
+					Name: "ubuntu",
+					Versions: []core.MachineImageVersion{
+						{
+							ExpirableVersion: core.ExpirableVersion{Version: "1.0.0"},
+							Architectures:    []string{v1beta1constants.ArchitectureAMD64},
+						},
+					},
+				},
+			}
+			errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, capabilitiesDefinitions, nilPath)
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeForbidden),
+					"Field": Equal("providerConfig.machineImages[0].versions[0].image"),
+				})),
+			))
+		})
+
+		It("should allow old format (image with architecture) when CloudProfile uses capabilities", func() {
+			cloudProfileConfig = &apisgcp.CloudProfileConfig{
+				MachineImages: []apisgcp.MachineImages{
+					{
+						Name: "ubuntu",
+						Versions: []apisgcp.MachineImageVersion{
+							{Version: "1.0.0", Image: "path/to/gcp/image-amd64", Architecture: ptr.To(v1beta1constants.ArchitectureAMD64)},
+						},
+					},
+				},
+			}
+			machineImages = []core.MachineImage{
+				{
+					Name: "ubuntu",
+					Versions: []core.MachineImageVersion{
+						{
+							ExpirableVersion:  core.ExpirableVersion{Version: "1.0.0"},
+							CapabilityFlavors: []core.MachineImageFlavor{{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureAMD64}}}},
+						},
+					},
+				},
+			}
+			errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, capabilitiesDefinitions, nilPath)
+			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should report missing architecture mapping when using old format with capabilities", func() {
+			cloudProfileConfig = &apisgcp.CloudProfileConfig{
+				MachineImages: []apisgcp.MachineImages{
+					{
+						Name: "ubuntu",
+						Versions: []apisgcp.MachineImageVersion{
+							// Only amd64, but spec expects both amd64 and arm64
+							{Version: "1.0.0", Image: "path/to/gcp/image-amd64", Architecture: ptr.To(v1beta1constants.ArchitectureAMD64)},
+						},
+					},
+				},
+			}
+			machineImages = []core.MachineImage{
+				{
+					Name: "ubuntu",
+					Versions: []core.MachineImageVersion{
+						{
+							ExpirableVersion: core.ExpirableVersion{Version: "1.0.0"},
+							CapabilityFlavors: []core.MachineImageFlavor{
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureAMD64}}},
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureARM64}}},
+							},
+						},
+					},
+				},
+			}
+			errorList := ValidateCloudProfileConfig(cloudProfileConfig, machineImages, capabilitiesDefinitions, nilPath)
+			Expect(errorList).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Detail": ContainSubstring("architecture: arm64"),
+				})),
+			))
+		})
+	})
+
 	DescribeTableSubtree("#ValidateCloudProfileConfig", func(isCapabilitiesCloudProfile bool) {
 		var (
 			capabilitiesDefinitions []gardencorev1beta1.CapabilityDefinition

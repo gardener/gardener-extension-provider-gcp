@@ -63,31 +63,73 @@ func findMachineImageFlavor(
 		if machineImage.Name != imageName {
 			continue
 		}
-		for _, version := range machineImage.Versions {
-			if imageVersion != version.Version {
-				continue
-			}
 
-			if len(capabilityDefinitions) == 0 {
+		// Collect all versions with matching version string (mixed format support)
+		var matchingVersions []api.MachineImageVersion
+		for _, version := range machineImage.Versions {
+			if imageVersion == version.Version {
+				matchingVersions = append(matchingVersions, version)
+			}
+		}
+
+		if len(matchingVersions) == 0 {
+			continue
+		}
+
+		if len(capabilityDefinitions) == 0 {
+			// No capabilities: match by architecture
+			for _, version := range matchingVersions {
 				if ptr.Equal(architecture, version.Architecture) {
 					return &api.MachineImageFlavor{
 						Image:        version.Image,
 						Capabilities: gardencorev1beta1.Capabilities{},
 					}, nil
 				}
-
-				continue
 			}
+			continue
+		}
 
-			bestMatch, err := worker.FindBestImageFlavor(version.CapabilityFlavors, machineTypeCapabilities, capabilityDefinitions)
+		// With capabilities: try new format first, then fall back to old format (mixed format support)
+		// Check if any version uses new format (capabilityFlavors)
+		for _, version := range matchingVersions {
+			if len(version.CapabilityFlavors) > 0 {
+				bestMatch, err := worker.FindBestImageFlavor(version.CapabilityFlavors, machineTypeCapabilities, capabilityDefinitions)
+				if err != nil {
+					return nil, fmt.Errorf("could not determine best flavor %w", err)
+				}
+				return &bestMatch, nil
+			}
+		}
+
+		// Fall back to old format: convert image+architecture to capability flavors
+		capabilityFlavors := convertLegacyVersionsToCapabilityFlavors(matchingVersions)
+		if len(capabilityFlavors) > 0 {
+			bestMatch, err := worker.FindBestImageFlavor(capabilityFlavors, machineTypeCapabilities, capabilityDefinitions)
 			if err != nil {
 				return nil, fmt.Errorf("could not determine best flavor %w", err)
 			}
-
 			return &bestMatch, nil
 		}
 	}
 	return nil, fmt.Errorf("version not found")
+}
+
+// convertLegacyVersionsToCapabilityFlavors converts old format (image with architecture) versions
+// to capability flavors for mixed format support.
+func convertLegacyVersionsToCapabilityFlavors(versions []api.MachineImageVersion) []api.MachineImageFlavor {
+	var capabilityFlavors []api.MachineImageFlavor
+	for _, version := range versions {
+		if version.Image != "" && len(version.CapabilityFlavors) == 0 {
+			arch := ptr.Deref(version.Architecture, v1beta1constants.ArchitectureAMD64)
+			capabilityFlavors = append(capabilityFlavors, api.MachineImageFlavor{
+				Image: version.Image,
+				Capabilities: gardencorev1beta1.Capabilities{
+					v1beta1constants.ArchitectureName: []string{arch},
+				},
+			})
+		}
+	}
+	return capabilityFlavors
 }
 
 // FindImageInWorkerStatus takes a list of machine images from the worker status and tries to find the first entry

@@ -377,6 +377,148 @@ var _ = DescribeTableSubtree("NamespacedCloudProfile Validator", func(isCapabili
 		})
 	})
 },
-	//Entry("CloudProfile uses architecture only", false),
+	Entry("CloudProfile uses architecture only", false),
 	Entry("CloudProfile uses capabilities", true),
 )
+
+var _ = Describe("NamespacedCloudProfile Validator - Mixed Format", func() {
+	var (
+		fakeClient  client.Client
+		fakeManager manager.Manager
+		namespace   string
+		ctx         = context.Background()
+
+		namespacedCloudProfileValidator extensionswebhook.Validator
+		namespacedCloudProfile          *core.NamespacedCloudProfile
+		cloudProfile                    *v1beta1.CloudProfile
+		capabilitiesDefinitions         []v1beta1.CapabilityDefinition
+	)
+
+	BeforeEach(func() {
+		capabilitiesDefinitions = []v1beta1.CapabilityDefinition{
+			{Name: v1beta1constants.ArchitectureName, Values: []string{v1beta1constants.ArchitectureAMD64, v1beta1constants.ArchitectureARM64}},
+		}
+		scheme := runtime.NewScheme()
+		utilruntime.Must(install.AddToScheme(scheme))
+		utilruntime.Must(v1beta1.AddToScheme(scheme))
+		fakeClient = fakeclient.NewClientBuilder().WithScheme(scheme).Build()
+		fakeManager = &test.FakeManager{
+			Client: fakeClient,
+			Scheme: scheme,
+		}
+		namespace = "garden-dev"
+
+		namespacedCloudProfileValidator = validator.NewNamespacedCloudProfileValidator(fakeManager)
+		namespacedCloudProfile = &core.NamespacedCloudProfile{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "profile-1",
+				Namespace: namespace,
+			},
+			Spec: core.NamespacedCloudProfileSpec{
+				Parent: core.CloudProfileReference{
+					Name: "cloud-profile",
+					Kind: "CloudProfile",
+				},
+			},
+		}
+		cloudProfile = &v1beta1.CloudProfile{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "cloud-profile",
+			},
+			Spec: v1beta1.CloudProfileSpec{
+				MachineCapabilities: capabilitiesDefinitions,
+			},
+		}
+	})
+
+	Describe("#Validate - Mixed Format", func() {
+		It("should succeed if NamespacedCloudProfile uses mixed format with some versions in old format and others in new format", func() {
+			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"gcp.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"image-1","versions":[
+    {"version":"1.0","capabilityFlavors": [{"image": "imgRef1", "capabilities": {"architecture": ["amd64"]}}]},
+    {"version":"1.1","image":"imgRef2","architecture":"amd64"}
+  ]}
+]}`)}
+			namespacedCloudProfile.Spec.MachineImages = []core.MachineImage{
+				{
+					Name: "image-1",
+					Versions: []core.MachineImageVersion{
+						{
+							ExpirableVersion:  core.ExpirableVersion{Version: "1.0"},
+							CapabilityFlavors: []core.MachineImageFlavor{{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureAMD64}}}},
+						},
+						{
+							ExpirableVersion:  core.ExpirableVersion{Version: "1.1"},
+							CapabilityFlavors: []core.MachineImageFlavor{{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureAMD64}}}},
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, cloudProfile)).To(Succeed())
+			Expect(namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)).To(Succeed())
+		})
+
+		It("should succeed if NamespacedCloudProfile uses old format with multiple architectures", func() {
+			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"gcp.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"image-1","versions":[
+    {"version":"1.1","image":"imgRef2-amd64","architecture":"amd64"},
+    {"version":"1.1","image":"imgRef2-arm64","architecture":"arm64"}
+  ]}
+]}`)}
+			namespacedCloudProfile.Spec.MachineImages = []core.MachineImage{
+				{
+					Name: "image-1",
+					Versions: []core.MachineImageVersion{
+						{
+							ExpirableVersion: core.ExpirableVersion{Version: "1.1"},
+							CapabilityFlavors: []core.MachineImageFlavor{
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureAMD64}}},
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureARM64}}},
+							},
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, cloudProfile)).To(Succeed())
+			Expect(namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)).To(Succeed())
+		})
+
+		It("should fail if NamespacedCloudProfile uses old format with missing architecture mapping", func() {
+			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"gcp.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"image-1","versions":[
+    {"version":"1.1","image":"imgRef2-amd64","architecture":"amd64"}
+  ]}
+]}`)}
+			namespacedCloudProfile.Spec.MachineImages = []core.MachineImage{
+				{
+					Name: "image-1",
+					Versions: []core.MachineImageVersion{
+						{
+							ExpirableVersion: core.ExpirableVersion{Version: "1.1"},
+							CapabilityFlavors: []core.MachineImageFlavor{
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureAMD64}}},
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{v1beta1constants.ArchitectureARM64}}},
+							},
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, cloudProfile)).To(Succeed())
+
+			err := namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)
+			Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":   Equal(field.ErrorTypeRequired),
+				"Detail": ContainSubstring("arm64"),
+			}))))
+		})
+	})
+})

@@ -5,14 +5,17 @@
 package mutator
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -64,19 +67,86 @@ func overwriteMachineImageCapabilityFlavors(profile *gardencorev1beta1.CloudProf
 			continue
 		}
 
-		// Iterate over versions in the provider's machine image
-		for _, providerVersion := range providerMachineImage.Versions {
+		// Group provider versions by version string (old format may have multiple entries per version)
+		groupedVersions := groupVersionsByVersionString(providerMachineImage.Versions)
+
+		for versionStr, providerVersions := range groupedVersions {
 			// Find the corresponding version in the CloudProfile's machine image
 			versionIdx := slices.IndexFunc(profile.Spec.MachineImages[imageIdx].Versions, func(miv gardencorev1beta1.MachineImageVersion) bool {
-				return miv.Version == providerVersion.Version
+				return miv.Version == versionStr
 			})
 			if versionIdx == -1 {
 				continue
 			}
 
-			profile.Spec.MachineImages[imageIdx].Versions[versionIdx].CapabilityFlavors = convertCapabilityFlavors(providerVersion.CapabilityFlavors)
+			// Check if any version entry uses new format (capabilityFlavors)
+			// If so, use that; otherwise convert old format entries to capability flavors
+			var capabilityFlavors []gardencorev1beta1.MachineImageFlavor
+			for _, pv := range providerVersions {
+				if len(pv.CapabilityFlavors) > 0 {
+					// New format: use capabilityFlavors directly
+					capabilityFlavors = convertCapabilityFlavors(pv.CapabilityFlavors)
+					break
+				}
+			}
+
+			if len(capabilityFlavors) == 0 {
+				// Old format: convert all image+architecture entries to capability flavors
+				capabilityFlavors = convertVersionsToCapabilityFlavors(providerVersions)
+			}
+
+			profile.Spec.MachineImages[imageIdx].Versions[versionIdx].CapabilityFlavors = capabilityFlavors
 		}
 	}
+}
+
+// groupVersionsByVersionString groups all provider versions by their version string.
+// This is needed because the old format may have multiple entries for the same version
+// with different architectures.
+func groupVersionsByVersionString(providerVersions []v1alpha1.MachineImageVersion) map[string][]v1alpha1.MachineImageVersion {
+	result := make(map[string][]v1alpha1.MachineImageVersion)
+	for _, v := range providerVersions {
+		result[v.Version] = append(result[v.Version], v)
+	}
+	return result
+}
+
+// convertVersionsToCapabilityFlavors converts old format (image with architecture) entries to capability flavors.
+// It collects unique architectures from all version entries and creates a capability flavor for each.
+// Note: A similar function exists in helper.go for internal API types that also preserves image references.
+// This version only extracts unique architectures for CloudProfile spec mutation.
+func convertVersionsToCapabilityFlavors(versions []v1alpha1.MachineImageVersion) []gardencorev1beta1.MachineImageFlavor {
+	// Collect unique architectures from all version entries
+	architectureSet := make(map[string]struct{})
+	for _, version := range versions {
+		if version.Image != "" {
+			arch := ptr.Deref(version.Architecture, v1beta1constants.ArchitectureAMD64)
+			architectureSet[arch] = struct{}{}
+		}
+	}
+
+	// Create a capability flavor for each unique architecture
+	capabilityFlavors := make([]gardencorev1beta1.MachineImageFlavor, 0, len(architectureSet))
+	for arch := range architectureSet {
+		capabilityFlavors = append(capabilityFlavors, gardencorev1beta1.MachineImageFlavor{
+			Capabilities: gardencorev1beta1.Capabilities{
+				v1beta1constants.ArchitectureName: []string{arch},
+			},
+		})
+	}
+
+	// Sort for deterministic output
+	slices.SortFunc(capabilityFlavors, func(a, b gardencorev1beta1.MachineImageFlavor) int {
+		getArch := func(f gardencorev1beta1.MachineImageFlavor) string {
+			if archList := f.Capabilities[v1beta1constants.ArchitectureName]; len(archList) > 0 {
+				return archList[0]
+			}
+			return ""
+		}
+		return cmp.Compare(getArch(a), getArch(b))
+	})
+
+	return capabilityFlavors
 }
 
 // convertCapabilityFlavors converts provider capability flavors to CloudProfile capability flavors

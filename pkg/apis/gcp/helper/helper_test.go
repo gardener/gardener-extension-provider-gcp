@@ -167,3 +167,106 @@ func expectResults(result, expected interface{}, err error, expectErr bool) {
 		Expect(err).To(HaveOccurred())
 	}
 }
+
+var _ = Describe("Helper - Mixed Format", func() {
+	var (
+		capabilityDefinitions   []v1beta1.CapabilityDefinition
+		machineTypeCapabilities v1beta1.Capabilities
+	)
+
+	BeforeEach(func() {
+		capabilityDefinitions = []v1beta1.CapabilityDefinition{
+			{Name: "architecture", Values: []string{"amd64", "arm64"}},
+		}
+		machineTypeCapabilities = v1beta1.Capabilities{
+			"architecture": []string{"amd64"},
+		}
+	})
+
+	Describe("#FindImageInCloudProfile - Mixed Format", func() {
+		It("should find image using old format (image with architecture) when capabilities defined", func() {
+			// Provider uses old format but CloudProfile has capabilities
+			profileImages := []api.MachineImages{
+				{
+					Name: "ubuntu",
+					Versions: []api.MachineImageVersion{
+						{Version: "1.0", Image: "projects/my-project/global/images/ubuntu-amd64", Architecture: ptr.To("amd64")},
+						{Version: "1.0", Image: "projects/my-project/global/images/ubuntu-arm64", Architecture: ptr.To("arm64")},
+					},
+				},
+			}
+			cfg := &api.CloudProfileConfig{MachineImages: profileImages}
+
+			image, err := FindImageInCloudProfile(cfg, "ubuntu", "1.0", ptr.To("amd64"), machineTypeCapabilities, capabilityDefinitions)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(image.Image).To(Equal("projects/my-project/global/images/ubuntu-amd64"))
+		})
+
+		It("should find image using new format (capabilityFlavors) when capabilities defined", func() {
+			profileImages := []api.MachineImages{
+				{
+					Name: "ubuntu",
+					Versions: []api.MachineImageVersion{
+						{
+							Version: "1.0",
+							CapabilityFlavors: []api.MachineImageFlavor{
+								{Image: "projects/my-project/global/images/ubuntu-amd64", Capabilities: v1beta1.Capabilities{"architecture": []string{"amd64"}}},
+								{Image: "projects/my-project/global/images/ubuntu-arm64", Capabilities: v1beta1.Capabilities{"architecture": []string{"arm64"}}},
+							},
+						},
+					},
+				},
+			}
+			cfg := &api.CloudProfileConfig{MachineImages: profileImages}
+
+			image, err := FindImageInCloudProfile(cfg, "ubuntu", "1.0", ptr.To("amd64"), machineTypeCapabilities, capabilityDefinitions)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(image.Image).To(Equal("projects/my-project/global/images/ubuntu-amd64"))
+		})
+
+		It("should prefer new format over old format when both exist", func() {
+			// This shouldn't normally happen but tests priority
+			profileImages := []api.MachineImages{
+				{
+					Name: "ubuntu",
+					Versions: []api.MachineImageVersion{
+						{
+							Version: "1.0",
+							CapabilityFlavors: []api.MachineImageFlavor{
+								{Image: "new-format-image", Capabilities: v1beta1.Capabilities{"architecture": []string{"amd64"}}},
+							},
+						},
+						{Version: "1.0", Image: "old-format-image", Architecture: ptr.To("amd64")},
+					},
+				},
+			}
+			cfg := &api.CloudProfileConfig{MachineImages: profileImages}
+
+			image, err := FindImageInCloudProfile(cfg, "ubuntu", "1.0", ptr.To("amd64"), machineTypeCapabilities, capabilityDefinitions)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(image.Image).To(Equal("new-format-image"))
+		})
+
+		It("should find arm64 image using old format with capabilities", func() {
+			machineTypeCapabilities["architecture"] = []string{"arm64"}
+			profileImages := []api.MachineImages{
+				{
+					Name: "ubuntu",
+					Versions: []api.MachineImageVersion{
+						{Version: "1.0", Image: "projects/my-project/global/images/ubuntu-amd64", Architecture: ptr.To("amd64")},
+						{Version: "1.0", Image: "projects/my-project/global/images/ubuntu-arm64", Architecture: ptr.To("arm64")},
+					},
+				},
+			}
+			cfg := &api.CloudProfileConfig{MachineImages: profileImages}
+
+			image, err := FindImageInCloudProfile(cfg, "ubuntu", "1.0", ptr.To("arm64"), machineTypeCapabilities, capabilityDefinitions)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(image.Image).To(Equal("projects/my-project/global/images/ubuntu-arm64"))
+		})
+	})
+})
