@@ -21,7 +21,7 @@ data:
         className: {{ .Values.config.etcd.storage.className }}
         capacity: {{ .Values.config.etcd.storage.capacity }}
 {{- if .Values.config.etcd.backup }}
-      backup: {{- toYaml .Values.config.etcd.backup | indent 8 }}
+      backup: {{- toYaml .Values.config.etcd.backup | nindent 8 }}
 {{- end }}
 {{- if .Values.config.featureGates }}
     featureGates: {{- toYaml .Values.config.featureGates | nindent 6 }}
