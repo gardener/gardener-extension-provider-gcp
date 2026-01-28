@@ -430,7 +430,7 @@ End-users might want to update their custom `StorageClass`es to the new `pd.csi.
 
 ## Support for VolumeAttributesClasses (Beta in k8s 1.31)
 
-To have the CSI-driver configured to support the necessary features for [VolumeAttributesClasses](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) on GCP for shoots with a k8s-version greater than 1.31, use the `gcp.provider.extensions.gardener.cloud/enable-volume-attributes-class` annotation on the shoot. Keep in mind to also enable the required feature flags and runtime-config on the common kubernetes controllers (as outlined in the link above) in the shoot-spec.
+To have the CSI-driver configured to support the necessary features for [VolumeAttributesClasses](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) on GCP for shoots with a k8s-version greater than 1.31, use the `gcp.provider.extensions.gardener.cloud/enable-volume-attributes-class=true` annotation on the shoot.
 
 ## Support for CSI-driver data cache feature
 
