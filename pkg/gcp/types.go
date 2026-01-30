@@ -102,6 +102,17 @@ const (
 	// CSISnapshotValidationName is the constant for the name of the csi-snapshot-validation-webhook component.
 	// TODO(AndreasBurger): Clean up once SnapshotValidation is removed everywhere
 	CSISnapshotValidationName = "csi-snapshot-validation"
+
+	// PersistentDiskExtreme is the disk type for extreme persistent disks.
+	PersistentDiskExtreme = "pd-extreme"
+	// HyperDiskBalanced is the disk type for balanced hyper disks.
+	HyperDiskBalanced = "hyperdisk-balanced"
+	// HyperDiskExtreme is the disk type for extreme hyper disks.
+	HyperDiskExtreme = "hyperdisk-extreme"
+	// HyperDiskThroughput is the disk type for throughput hyper disks.
+	HyperDiskThroughput = "hyperdisk-throughput"
+	// HyperDiskML is the disk type for ML hyper disks.
+	HyperDiskML = "hyperdisk-ml"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by GCP.

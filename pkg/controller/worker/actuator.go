@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 )
 
@@ -89,13 +89,13 @@ type WorkerDelegate struct {
 	seedChartApplier gardener.ChartApplier
 	serverVersion    string
 
-	cloudProfileConfig *api.CloudProfileConfig
+	cloudProfileConfig *apisgcp.CloudProfileConfig
 	cluster            *extensionscontroller.Cluster
 	worker             *extensionsv1alpha1.Worker
 
 	machineClasses     []map[string]interface{}
 	machineDeployments worker.MachineDeployments
-	machineImages      []api.MachineImage
+	machineImages      []apisgcp.MachineImage
 }
 
 // NewWorkerDelegate creates a new context for a worker reconciliation.

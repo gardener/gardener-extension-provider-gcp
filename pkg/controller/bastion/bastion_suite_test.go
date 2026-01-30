@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 
-	gcpapi "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
 func TestBastion(t *testing.T) {
@@ -127,8 +127,8 @@ var _ = Describe("Bastion", func() {
 
 	Describe("check getNetworkName", func() {
 		It("should return network name vpc-123", func() {
-			network := &gcpapi.NetworkConfig{
-				VPC: &gcpapi.VPC{
+			network := &apisgcp.NetworkConfig{
+				VPC: &apisgcp.VPC{
 					Name: "vpc-123",
 				},
 			}
@@ -141,7 +141,7 @@ var _ = Describe("Bastion", func() {
 		})
 
 		It("should return network name clustername-123", func() {
-			network := &gcpapi.NetworkConfig{}
+			network := &apisgcp.NetworkConfig{}
 			testCluster := createTestCluster(network)
 			clusterName := "clustername-123"
 			nameWork, err := getNetworkName(testCluster, projectID, clusterName)
@@ -210,7 +210,7 @@ var _ = Describe("Bastion", func() {
 	Describe("getProviderSpecificImage", func() {
 		var (
 			desiredVM      extensionsbastion.MachineSpec
-			providerImages []gcpapi.MachineImages
+			providerImages []apisgcp.MachineImages
 		)
 
 		BeforeEach(func() {
@@ -256,8 +256,8 @@ func createShootTestStruct() *gardencorev1beta1.Shoot {
 		Spec: gardencorev1beta1.ShootSpec{
 			Region: "us-west",
 			Provider: gardencorev1beta1.Provider{
-				InfrastructureConfig: &runtime.RawExtension{Raw: mustEncode(gcpapi.InfrastructureConfig{
-					Networks: gcpapi.NetworkConfig{
+				InfrastructureConfig: &runtime.RawExtension{Raw: mustEncode(apisgcp.InfrastructureConfig{
+					Networks: apisgcp.NetworkConfig{
 						Workers: "10.250.0.0/16",
 					},
 				})},
@@ -287,10 +287,10 @@ func createTestMachineTypes() []gardencorev1beta1.MachineType {
 	}}
 }
 
-func createTestProviderConfig() *gcpapi.CloudProfileConfig {
-	return &gcpapi.CloudProfileConfig{MachineImages: []gcpapi.MachineImages{{
+func createTestProviderConfig() *apisgcp.CloudProfileConfig {
+	return &apisgcp.CloudProfileConfig{MachineImages: []apisgcp.MachineImages{{
 		Name: "gardenlinux",
-		Versions: []gcpapi.MachineImageVersion{{
+		Versions: []apisgcp.MachineImageVersion{{
 			Version:      "1.2.3",
 			Image:        "/path/to/images",
 			Architecture: ptr.To("amd64"),
@@ -338,8 +338,8 @@ func createTestBastion() *extensionsv1alpha1.Bastion {
 	}
 }
 
-func createTestCluster(networkConfig *gcpapi.NetworkConfig) *extensions.Cluster {
-	bytes, _ := json.Marshal(&gcpapi.InfrastructureConfig{
+func createTestCluster(networkConfig *apisgcp.NetworkConfig) *extensions.Cluster {
+	bytes, _ := json.Marshal(&apisgcp.InfrastructureConfig{
 		Networks: *networkConfig,
 	})
 	return &extensions.Cluster{
@@ -354,7 +354,7 @@ func createTestCluster(networkConfig *gcpapi.NetworkConfig) *extensions.Cluster 
 }
 
 func getNetworkName(cluster *extensions.Cluster, projectID string, clusterName string) (string, error) {
-	infrastructureConfig := &gcpapi.InfrastructureConfig{}
+	infrastructureConfig := &apisgcp.InfrastructureConfig{}
 	err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig)
 	if err != nil {
 		return "", err

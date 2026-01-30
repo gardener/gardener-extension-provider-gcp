@@ -17,9 +17,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 var _ = Describe("#ValidateWorkers", func() {
@@ -212,18 +213,18 @@ var _ = Describe("#ValidateWorkers", func() {
 var _ = Describe("#ValidateWorkerConfig", func() {
 	var (
 		nilPath      *field.Path
-		workerConfig gcp.WorkerConfig
+		workerConfig apisgcp.WorkerConfig
 	)
 
 	BeforeEach(func() {
-		workerConfig = gcp.WorkerConfig{
-			GPU: &gcp.GPU{
+		workerConfig = apisgcp.WorkerConfig{
+			GPU: &apisgcp.GPU{
 				AcceleratorType: "nvidia-tesla-p100",
 				Count:           1,
 			},
 			MinCpuPlatform: ptr.To("Intel Haswell"),
-			Volume:         &gcp.Volume{},
-			ServiceAccount: &gcp.ServiceAccount{
+			Volume:         &apisgcp.Volume{},
+			ServiceAccount: &apisgcp.ServiceAccount{
 				Email:  "user@projectid.iam.gserviceaccount.com",
 				Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"},
 			},
@@ -232,7 +233,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 
 	It("should forbid because data volume type is nil", func() {
 		dataVolumes := []core.DataVolume{{Type: nil}}
-		errorList := ValidateWorkerConfig(gcp.WorkerConfig{}, dataVolumes, nilPath)
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{}, dataVolumes, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":  Equal(field.ErrorTypeRequired),
@@ -241,7 +242,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should allow valid source image", func() {
-		workerConfig.DataVolumes = []gcp.DataVolume{{
+		workerConfig.DataVolumes = []apisgcp.DataVolume{{
 			Name:        "foo",
 			SourceImage: ptr.To("/debian-cloud/global/images/family/debian-9"),
 		}}
@@ -249,13 +250,13 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 			Name:       "foo",
 			Type:       ptr.To("Volume"),
 			VolumeSize: "30G",
-		}}, nilPath)
+		}}, nil, nilPath)
 
 		Expect(errorList).To(BeEmpty())
 	})
 
 	It("should forbid invalid data volume source image", func() {
-		workerConfig.DataVolumes = []gcp.DataVolume{{
+		workerConfig.DataVolumes = []apisgcp.DataVolume{{
 			Name:        "foo",
 			SourceImage: ptr.To("projects/my-project/NO_UPPER_CASE"),
 		}}
@@ -263,7 +264,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 			Name:       "foo",
 			Type:       ptr.To("Volume"),
 			VolumeSize: "30G",
-		}}, nilPath)
+		}}, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -273,12 +274,12 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should forbid because service account's email is empty", func() {
-		errorList := ValidateWorkerConfig(gcp.WorkerConfig{
-			ServiceAccount: &gcp.ServiceAccount{
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+			ServiceAccount: &apisgcp.ServiceAccount{
 				Email:  "",
 				Scopes: []string{"https://www.googleapis.com/auth"},
 			},
-		}, nil, nilPath)
+		}, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -289,7 +290,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 
 	It("should forbid invalid service account email", func() {
 		workerConfig.ServiceAccount.Email = "user@projectid.iam.WRONG_SUFFIX.com"
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -300,7 +301,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 
 	It("should forbid invalid service account scope", func() {
 		workerConfig.ServiceAccount.Scopes[0] = "https://www.wrong-host.com/auth/cloud-platform"
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -311,14 +312,14 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 
 	It("should pass for valid volume interface", func() {
 		workerConfig.Volume.LocalSSDInterface = ptr.To("NVME")
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(BeEmpty())
 	})
 
 	It("should forbid invalid volume interface", func() {
 		workerConfig.Volume.LocalSSDInterface = ptr.To("not in set")
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":  Equal(field.ErrorTypeNotSupported),
@@ -327,10 +328,10 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should forbid invalid volume encryption key name", func() {
-		workerConfig.Volume.Encryption = &gcp.DiskEncryption{
+		workerConfig.Volume.Encryption = &apisgcp.DiskEncryption{
 			KmsKeyName: ptr.To("projects/my-project/NO_SPECIAL_CHARS#"),
 		}
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -340,21 +341,21 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should pass for valid volume encryption", func() {
-		workerConfig.Volume.Encryption = &gcp.DiskEncryption{
+		workerConfig.Volume.Encryption = &apisgcp.DiskEncryption{
 			KmsKeyName:           ptr.To("projects/my-project/locations/global/keyRings/my-keyring"),
 			KmsKeyServiceAccount: ptr.To("user@projectid.iam.gserviceaccount.com"),
 		}
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(BeEmpty())
 	})
 
 	It("should forbid invalid volume encryption service account", func() {
-		workerConfig.Volume.Encryption = &gcp.DiskEncryption{
+		workerConfig.Volume.Encryption = &apisgcp.DiskEncryption{
 			KmsKeyName:           ptr.To("projects/my-project/locations/global/keyRings/my-keyring"),
 			KmsKeyServiceAccount: ptr.To("userMISSING_ATprojectid.iam.gserviceaccount.com"),
 		}
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -364,13 +365,13 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should forbid because volume.encryption.kmsKeyName should be specified", func() {
-		errorList := ValidateWorkerConfig(gcp.WorkerConfig{
-			Volume: &gcp.Volume{
-				Encryption: &gcp.DiskEncryption{
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+			Volume: &apisgcp.Volume{
+				Encryption: &apisgcp.DiskEncryption{
 					KmsKeyName: ptr.To("  "),
 				},
 			},
-		}, nil, nilPath)
+		}, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":  Equal(field.ErrorTypeRequired),
@@ -379,12 +380,12 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should forbid because service account scope is empty", func() {
-		errorList := ValidateWorkerConfig(gcp.WorkerConfig{
-			ServiceAccount: &gcp.ServiceAccount{
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+			ServiceAccount: &apisgcp.ServiceAccount{
 				Email:  "user@projectid.iam.gserviceaccount.com",
 				Scopes: []string{},
 			},
-		}, nil, nilPath)
+		}, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":  Equal(field.ErrorTypeRequired),
@@ -393,12 +394,12 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should forbid because service account scopes has an empty scope", func() {
-		errorList := ValidateWorkerConfig(gcp.WorkerConfig{
-			ServiceAccount: &gcp.ServiceAccount{
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+			ServiceAccount: &apisgcp.ServiceAccount{
 				Email:  "user@projectid.iam.gserviceaccount.com",
 				Scopes: []string{"https://www.googleapis.com/auth/test", ""},
 			},
-		}, nil, nilPath)
+		}, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -408,12 +409,12 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should forbid because service account scopes are duplicated", func() {
-		errorList := ValidateWorkerConfig(gcp.WorkerConfig{
-			ServiceAccount: &gcp.ServiceAccount{
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+			ServiceAccount: &apisgcp.ServiceAccount{
 				Email:  "user@projectid.iam.gserviceaccount.com",
 				Scopes: []string{"https://www.googleapis.com/auth/test", "https://www.googleapis.com/auth/test"},
 			},
-		}, nil, nilPath)
+		}, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":  Equal(field.ErrorTypeDuplicate),
@@ -422,19 +423,19 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should allow valid service account", func() {
-		errorList := ValidateWorkerConfig(gcp.WorkerConfig{
-			ServiceAccount: &gcp.ServiceAccount{
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+			ServiceAccount: &apisgcp.ServiceAccount{
 				Email:  "user@projectid.iam.gserviceaccount.com",
 				Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"},
 			},
-		}, nil, nilPath)
+		}, nil, nil, nilPath)
 
 		Expect(errorList).To(BeEmpty())
 	})
 
 	It("should forbid because gpu accelerator type is empty", func() {
 		workerConfig.GPU.AcceleratorType = ""
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -445,7 +446,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 
 	It("should forbid invalid gpu accelerator type", func() {
 		workerConfig.GPU.AcceleratorType = "CAPITAL-NOT-ALLOWED"
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -456,7 +457,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 
 	It("should forbid because gpu count is zero", func() {
 		workerConfig.GPU.Count = 0
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":  Equal(field.ErrorTypeForbidden),
@@ -466,7 +467,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 
 	It("should forbid invalid min CPU platform", func() {
 		workerConfig.MinCpuPlatform = ptr.To("No Special Chars#")
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -476,11 +477,11 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should fail because WorkerConfig NodeTemplate is specified with empty capacity", func() {
-		errorList := ValidateWorkerConfig(gcp.WorkerConfig{
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
 			NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 				Capacity: corev1.ResourceList{},
 			},
-		}, nil, nilPath)
+		}, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeRequired),
@@ -490,25 +491,25 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should not fail for WorkerConfig NodeTemplate not populated with all fields", func() {
-		errorList := ValidateWorkerConfig(gcp.WorkerConfig{
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
 			NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 				Capacity: corev1.ResourceList{
 					"cpu": resource.MustParse("80m"),
 				},
 			},
-		}, nil, nilPath)
+		}, nil, nil, nilPath)
 
 		Expect(errorList).To(BeEmpty())
 	})
 
 	It("should fail for WorkerConfig NodeTemplate resource value less than zero", func() {
-		errorList := ValidateWorkerConfig(gcp.WorkerConfig{
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
 			NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 				Capacity: corev1.ResourceList{
 					"cpu": resource.MustParse("-80m"),
 				},
 			},
-		}, nil, nilPath)
+		}, nil, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -518,18 +519,18 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should allow valid gpu configurations", func() {
-		workerConfig.GPU = &gcp.GPU{
+		workerConfig.GPU = &apisgcp.GPU{
 			AcceleratorType: "nvidia-tesla-p100",
 			Count:           1,
 		}
-		errorList := ValidateWorkerConfig(workerConfig, nil, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, nil, nil, nilPath)
 
 		Expect(errorList).To(BeEmpty())
 	})
 
 	It("should allow valid dataVolume name", func() {
-		workerConfig := gcp.WorkerConfig{
-			DataVolumes: []gcp.DataVolume{{
+		workerConfig := apisgcp.WorkerConfig{
+			DataVolumes: []apisgcp.DataVolume{{
 				Name: "foo",
 			}},
 		}
@@ -537,14 +538,14 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 			Type: ptr.To("Volume"),
 			Name: "foo",
 		}}
-		errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nil, nilPath)
 
 		Expect(errorList).To(BeEmpty())
 	})
 
 	It("should detect duplicate dataVolume names", func() {
-		workerConfig := gcp.WorkerConfig{
-			DataVolumes: []gcp.DataVolume{
+		workerConfig := apisgcp.WorkerConfig{
+			DataVolumes: []apisgcp.DataVolume{
 				{
 					Name: "foo",
 				}, {
@@ -556,7 +557,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 			Type: ptr.To("Volume"),
 			Name: "foo",
 		}}
-		errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":  Equal(field.ErrorTypeDuplicate),
@@ -565,8 +566,8 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 	})
 
 	It("should forbid invalid dataVolume name", func() {
-		workerConfig := gcp.WorkerConfig{
-			DataVolumes: []gcp.DataVolume{{
+		workerConfig := apisgcp.WorkerConfig{
+			DataVolumes: []apisgcp.DataVolume{{
 				Name: "foo-invalid",
 			}},
 		}
@@ -574,7 +575,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 			Type: ptr.To("Volume"),
 			Name: "foo",
 		}}
-		errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nilPath)
+		errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nil, nilPath)
 
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 			"Type":   Equal(field.ErrorTypeInvalid),
@@ -585,83 +586,157 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 
 	Describe("#Volume type hyper-disk", func() {
 		It("should pass because setting ProvisionedIops is allowed for hyperdisk-extreme", func() {
-			workerConfig := gcp.WorkerConfig{
-				DataVolumes: []gcp.DataVolume{{
-					Name:            "foo",
-					ProvisionedIops: ptr.To[int64](3000),
+			workerConfig := apisgcp.WorkerConfig{
+				DataVolumes: []apisgcp.DataVolume{{
+					Name: "foo",
+					DiskSettings: apisgcp.DiskSettings{
+						ProvisionedIops: ptr.To[int64](3000),
+					},
 				}},
 			}
 			dataVolumes := []core.DataVolume{{
 				Type: ptr.To("hyperdisk-extreme"),
 				Name: "foo",
 			}}
-			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nilPath)
+			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nil, nilPath)
 
 			Expect(errorList).To(BeEmpty())
 		})
 
 		It("should fail because setting ProvisionedIops is not allowed for hyperdisk-throughput", func() {
-			workerConfig := gcp.WorkerConfig{
-				DataVolumes: []gcp.DataVolume{{
-					Name:            "foo",
-					ProvisionedIops: ptr.To[int64](3000),
+			workerConfig := apisgcp.WorkerConfig{
+				DataVolumes: []apisgcp.DataVolume{{
+					Name: "foo",
+					DiskSettings: apisgcp.DiskSettings{
+						ProvisionedIops: ptr.To[int64](3000),
+					},
 				}},
 			}
 			dataVolumes := []core.DataVolume{{
 				Type: ptr.To("hyperdisk-throughput"),
 				Name: "foo",
 			}}
-			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nilPath)
+			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nil, nilPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeForbidden),
-				"Field": Equal("dataVolumes.provisionedIops"),
+				"Field": Equal("dataVolumes[0].provisionedIops"),
 			}))))
 		})
 
 		It("should pass because setting ProvisionedThroughput is allowed for hyperdisk-throughput", func() {
-			workerConfig := gcp.WorkerConfig{
-				DataVolumes: []gcp.DataVolume{{
-					Name:                  "foo",
-					ProvisionedThroughput: ptr.To[int64](150),
+			workerConfig := apisgcp.WorkerConfig{
+				DataVolumes: []apisgcp.DataVolume{{
+					Name: "foo",
+					DiskSettings: apisgcp.DiskSettings{
+						ProvisionedThroughput: ptr.To[int64](150),
+					},
 				}},
 			}
 			dataVolumes := []core.DataVolume{{
 				Type: ptr.To("hyperdisk-throughput"),
 				Name: "foo",
 			}}
-			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nilPath)
+			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nil, nilPath)
 
 			Expect(errorList).To(BeEmpty())
 		})
 
 		It("should fail because setting ProvisionedThroughput is not allowed for hyperdisk-extreme", func() {
-			workerConfig := gcp.WorkerConfig{
-				DataVolumes: []gcp.DataVolume{{
-					Name:                  "foo",
-					ProvisionedThroughput: ptr.To[int64](150),
+			workerConfig := apisgcp.WorkerConfig{
+				DataVolumes: []apisgcp.DataVolume{{
+					Name: "foo",
+					DiskSettings: apisgcp.DiskSettings{
+						ProvisionedThroughput: ptr.To[int64](150),
+					},
 				}},
 			}
 			dataVolumes := []core.DataVolume{{
 				Type: ptr.To("hyperdisk-extreme"),
 				Name: "foo",
 			}}
-			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nilPath)
+			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nil, nilPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeForbidden),
-				"Field": Equal("dataVolumes.provisionedThroughput"),
+				"Field": Equal("dataVolumes[0].provisionedThroughput"),
 			}))))
+		})
+
+		Context("BootVolume", func() {
+			var bootVolume *core.Volume
+
+			BeforeEach(func() {
+				bootVolume = &core.Volume{}
+			})
+
+			It("should fail because ProvisionedThroughput is not allowed for hyperdisk-extreme", func() {
+				bootVolume.Type = ptr.To(gcp.HyperDiskExtreme)
+				errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+					BootVolume: &apisgcp.BootVolume{
+						DiskSettings: apisgcp.DiskSettings{
+							ProvisionedThroughput: ptr.To[int64](150),
+						},
+					},
+				}, nil, bootVolume, nilPath)
+				Expect(errorList).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeForbidden),
+						"Field": Equal("bootVolume.provisionedThroughput"),
+					})),
+				))
+			})
+
+			It("should pass because ProvisionedThroughput is allowed for hyperdisk-throughput", func() {
+				bootVolume.Type = ptr.To(gcp.HyperDiskThroughput)
+				errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+					BootVolume: &apisgcp.BootVolume{
+						DiskSettings: apisgcp.DiskSettings{
+							ProvisionedThroughput: ptr.To[int64](150),
+						},
+					},
+				}, nil, bootVolume, nilPath)
+				Expect(errorList).To(BeEmpty())
+			})
+
+			It("should fail because provisionedIops is not allowed for hyperdisk-throughput", func() {
+				bootVolume.Type = ptr.To(gcp.HyperDiskThroughput)
+				errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+					BootVolume: &apisgcp.BootVolume{
+						DiskSettings: apisgcp.DiskSettings{
+							ProvisionedIops: ptr.To[int64](3000),
+						},
+					},
+				}, nil, bootVolume, nilPath)
+				Expect(errorList).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeForbidden),
+						"Field": Equal("bootVolume.provisionedIops"),
+					})),
+				))
+			})
+
+			It("should pass because provisionedIops is allowed for hyperdisk-balanced", func() {
+				bootVolume.Type = ptr.To(gcp.HyperDiskBalanced)
+				errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+					BootVolume: &apisgcp.BootVolume{
+						DiskSettings: apisgcp.DiskSettings{
+							ProvisionedIops: ptr.To[int64](3000),
+						},
+					},
+				}, nil, bootVolume, nilPath)
+				Expect(errorList).To(BeEmpty())
+			})
 		})
 	})
 
 	Describe("#Volume type SCRATCH", func() {
 		It("should pass because worker config is configured correctly", func() {
-			workerConfig := gcp.WorkerConfig{
-				Volume: &gcp.Volume{
+			workerConfig := apisgcp.WorkerConfig{
+				Volume: &apisgcp.Volume{
 					LocalSSDInterface: ptr.To("NVME"),
 				},
-				DataVolumes: []gcp.DataVolume{{
+				DataVolumes: []apisgcp.DataVolume{{
 					Name: "foo",
 				}},
 			}
@@ -669,20 +744,20 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 				Type: ptr.To(worker.VolumeTypeScratch),
 				Name: "foo",
 			}}
-			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nilPath)
+			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nil, nilPath)
 
 			Expect(errorList).To(BeEmpty())
 		})
 
 		It("should forbid because encryption is not allowed for volume type SCRATCH", func() {
-			workerConfig := gcp.WorkerConfig{
-				Volume: &gcp.Volume{
+			workerConfig := apisgcp.WorkerConfig{
+				Volume: &apisgcp.Volume{
 					LocalSSDInterface: ptr.To("NVME"),
-					Encryption: &gcp.DiskEncryption{
+					Encryption: &apisgcp.DiskEncryption{
 						KmsKeyName: ptr.To("KmsKey"),
 					},
 				},
-				DataVolumes: []gcp.DataVolume{{
+				DataVolumes: []apisgcp.DataVolume{{
 					Name: "foo",
 				}},
 			}
@@ -690,7 +765,7 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 				Type: ptr.To(worker.VolumeTypeScratch),
 				Name: "foo",
 			}}
-			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nilPath)
+			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nil, nilPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":   Equal(field.ErrorTypeInvalid),
@@ -700,12 +775,12 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 		})
 
 		It("should forbid because interface of worker config is not configured", func() {
-			workerConfig := gcp.WorkerConfig{}
+			workerConfig := apisgcp.WorkerConfig{}
 			dataVolumes := []core.DataVolume{{
 				Type: ptr.To(worker.VolumeTypeScratch),
 				Name: "foo",
 			}}
-			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nilPath)
+			errorList := ValidateWorkerConfig(workerConfig, dataVolumes, nil, nilPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
