@@ -61,7 +61,7 @@ type Volume struct {
 	Encryption *DiskEncryption
 }
 
-// DiskSettings stores single disc specific information.
+// DiskSettings stores single disk specific information.
 type DiskSettings struct {
 	// ProvisionedIops of disk to create.
 	// Only for certain types of disk, see worker.AllowedTypesIops
