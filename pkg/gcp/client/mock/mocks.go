@@ -46,7 +46,7 @@ func (m *MockFactory) EXPECT() *MockFactoryMockRecorder {
 }
 
 // Compute mocks base method.
-func (m *MockFactory) Compute(arg0 context.Context, arg1 client0.Client, arg2 v1.SecretReference) (client.ComputeClient, error) {
+func (m *MockFactory) Compute(arg0 context.Context, arg1 client0.Reader, arg2 v1.SecretReference) (client.ComputeClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Compute", arg0, arg1, arg2)
 	ret0, _ := ret[0].(client.ComputeClient)
@@ -61,7 +61,7 @@ func (mr *MockFactoryMockRecorder) Compute(arg0, arg1, arg2 any) *gomock.Call {
 }
 
 // DNS mocks base method.
-func (m *MockFactory) DNS(arg0 context.Context, arg1 client0.Client, arg2 v1.SecretReference) (client.DNSClient, error) {
+func (m *MockFactory) DNS(arg0 context.Context, arg1 client0.Reader, arg2 v1.SecretReference) (client.DNSClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DNS", arg0, arg1, arg2)
 	ret0, _ := ret[0].(client.DNSClient)
@@ -76,7 +76,7 @@ func (mr *MockFactoryMockRecorder) DNS(arg0, arg1, arg2 any) *gomock.Call {
 }
 
 // IAM mocks base method.
-func (m *MockFactory) IAM(arg0 context.Context, arg1 client0.Client, arg2 v1.SecretReference) (client.IAMClient, error) {
+func (m *MockFactory) IAM(arg0 context.Context, arg1 client0.Reader, arg2 v1.SecretReference) (client.IAMClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IAM", arg0, arg1, arg2)
 	ret0, _ := ret[0].(client.IAMClient)
@@ -91,7 +91,7 @@ func (mr *MockFactoryMockRecorder) IAM(arg0, arg1, arg2 any) *gomock.Call {
 }
 
 // Storage mocks base method.
-func (m *MockFactory) Storage(arg0 context.Context, arg1 client0.Client, arg2 v1.SecretReference) (client.StorageClient, error) {
+func (m *MockFactory) Storage(arg0 context.Context, arg1 client0.Reader, arg2 v1.SecretReference) (client.StorageClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Storage", arg0, arg1, arg2)
 	ret0, _ := ret[0].(client.StorageClient)
