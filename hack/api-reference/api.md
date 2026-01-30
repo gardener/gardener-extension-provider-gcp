@@ -799,7 +799,7 @@ serviceAccount:name@projectIdgserviceaccount.com &ndash;role roles/cloudkms.cryp
 <a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.DataVolume">DataVolume</a>)
 </p>
 <p>
-<p>DiskSettings stores single disc specific information.</p>
+<p>DiskSettings stores single disk specific information.</p>
 </p>
 <table>
 <thead>
