@@ -11,6 +11,7 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gcpvalidation "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
@@ -41,5 +42,5 @@ func (s *secret) Validate(_ context.Context, newObj, oldObj client.Object) error
 		}
 	}
 
-	return gcpvalidation.ValidateCloudProviderSecret(secret)
+	return gcpvalidation.ValidateCloudProviderSecret(secret, field.NewPath("secret")).ToAggregate()
 }
