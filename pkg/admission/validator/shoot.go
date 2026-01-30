@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -207,7 +208,7 @@ func (s *shoot) validateDNS(ctx context.Context, shoot *core.Shoot) field.ErrorL
 
 		providerFldPath := providersPath.Index(i)
 
-		if p.SecretName == nil || *p.SecretName == "" {
+		if ptr.Deref(p.SecretName, "") == "" {
 			allErrs = append(allErrs, field.Required(providerFldPath.Child("secretName"),
 				fmt.Sprintf("secretName must be specified for %v provider", gcp.DNSType)))
 			continue

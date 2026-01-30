@@ -108,6 +108,27 @@ var _ = Describe("Secret validation", func() {
 			}))))
 		})
 
+		It("should fail when serviceaccount.json field is empty", func() {
+			secret.Data[gcp.ServiceAccountJSONField] = []byte("")
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("secret.data[serviceaccount.json]"),
+			}))))
+		})
+
+		It("should fail when serviceaccount.json contains invalid JSON", func() {
+			secret.Data[gcp.ServiceAccountJSONField] = []byte("{invalid json}")
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":     Equal(field.ErrorTypeInvalid),
+				"Field":    Equal("secret.data[serviceaccount.json]"),
+				"BadValue": Equal("(hidden)"),
+			}))))
+		})
+
 		It("should fail when required field 'type' is missing", func() {
 			invalidJSON := createServiceAccountJSON(map[string]any{
 				"type": nil, // remove field
@@ -117,6 +138,19 @@ var _ = Describe("Secret validation", func() {
 			errs := ValidateCloudProviderSecret(secret, fldPath)
 			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("secret.data[serviceaccount.json].type"),
+			}))))
+		})
+
+		It("should fail when required field 'type' is empty", func() {
+			invalidJSON := createServiceAccountJSON(map[string]any{
+				"type": "",
+			})
+			secret.Data[gcp.ServiceAccountJSONField] = []byte(invalidJSON)
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
 				"Field": Equal("secret.data[serviceaccount.json].type"),
 			}))))
 		})
@@ -148,6 +182,61 @@ var _ = Describe("Secret validation", func() {
 			}))))
 		})
 
+		It("should fail when client_email has invalid format", func() {
+			invalidJSON := createServiceAccountJSON(map[string]any{
+				"client_email": "not-a-service-account@example.com", // missing .iam.gserviceaccount.com
+			})
+			secret.Data[gcp.ServiceAccountJSONField] = []byte(invalidJSON)
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("secret.data[serviceaccount.json].client_email"),
+			}))))
+		})
+
+		It("should fail when optional field client_id is present but empty", func() {
+			invalidJSON := createServiceAccountJSON(map[string]any{
+				"client_id": "",
+			})
+			secret.Data[gcp.ServiceAccountJSONField] = []byte(invalidJSON)
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":     Equal(field.ErrorTypeInvalid),
+				"Field":    Equal("secret.data[serviceaccount.json].client_id"),
+				"BadValue": Equal("(hidden)"),
+			}))))
+		})
+
+		It("should fail when client_id contains non-numeric characters", func() {
+			invalidJSON := createServiceAccountJSON(map[string]any{
+				"client_id": "abc123", // must be all numeric
+			})
+			secret.Data[gcp.ServiceAccountJSONField] = []byte(invalidJSON)
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":     Equal(field.ErrorTypeInvalid),
+				"Field":    Equal("secret.data[serviceaccount.json].client_id"),
+				"BadValue": Equal("(hidden)"),
+			}))))
+		})
+
+		It("should fail when private_key_id has invalid format", func() {
+			invalidJSON := createServiceAccountJSON(map[string]any{
+				"private_key_id": "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ", // uppercase not allowed
+			})
+			secret.Data[gcp.ServiceAccountJSONField] = []byte(invalidJSON)
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":     Equal(field.ErrorTypeInvalid),
+				"Field":    Equal("secret.data[serviceaccount.json].private_key_id"),
+				"BadValue": Equal("(hidden)"),
+			}))))
+		})
+
 		It("should fail when private_key doesn't have PEM header", func() {
 			invalidJSON := createServiceAccountJSON(map[string]any{
 				"private_key": "THIS-IS-A-FAKE-TEST-KEY\n-----END PRIVATE KEY-----\n",
@@ -159,6 +248,59 @@ var _ = Describe("Secret validation", func() {
 				"Type":     Equal(field.ErrorTypeInvalid),
 				"Field":    Equal("secret.data[serviceaccount.json].private_key"),
 				"BadValue": Equal("(hidden)"),
+			}))))
+		})
+
+		It("should fail when private_key doesn't have PEM footer", func() {
+			invalidJSON := createServiceAccountJSON(map[string]any{
+				"private_key": "-----BEGIN PRIVATE KEY-----\nTHIS-IS-A-FAKE-TEST-KEY",
+			})
+			secret.Data[gcp.ServiceAccountJSONField] = []byte(invalidJSON)
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":     Equal(field.ErrorTypeInvalid),
+				"Field":    Equal("secret.data[serviceaccount.json].private_key"),
+				"BadValue": Equal("(hidden)"),
+			}))))
+		})
+
+		It("should fail when optional URL field token_uri is present but empty", func() {
+			invalidJSON := createServiceAccountJSON(map[string]any{
+				"token_uri": "",
+			})
+			secret.Data[gcp.ServiceAccountJSONField] = []byte(invalidJSON)
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("secret.data[serviceaccount.json].token_uri"),
+			}))))
+		})
+
+		It("should fail when URL field uses http instead of https", func() {
+			invalidJSON := createServiceAccountJSON(map[string]any{
+				"auth_uri": "http://accounts.google.com/o/oauth2/auth",
+			})
+			secret.Data[gcp.ServiceAccountJSONField] = []byte(invalidJSON)
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("secret.data[serviceaccount.json].auth_uri"),
+			}))))
+		})
+
+		It("should fail when URL field is malformed", func() {
+			invalidJSON := createServiceAccountJSON(map[string]any{
+				"token_uri": "not a valid url",
+			})
+			secret.Data[gcp.ServiceAccountJSONField] = []byte(invalidJSON)
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("secret.data[serviceaccount.json].token_uri"),
 			}))))
 		})
 

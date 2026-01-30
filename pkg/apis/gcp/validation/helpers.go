@@ -15,6 +15,7 @@ func validateHTTPSURL(urlStr string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if urlStr == "" {
+		allErrs = append(allErrs, field.Required(fldPath, "URL cannot be empty if key is set"))
 		return allErrs
 	}
 

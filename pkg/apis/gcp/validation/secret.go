@@ -88,9 +88,7 @@ func validateServiceAccountFields(fields map[string]string, fldPath *field.Path,
 		if !exists {
 			allErrs = append(allErrs, field.Required(fldPath.Child(requiredField),
 				fmt.Sprintf("missing required field %q in service account JSON in secret %s", requiredField, secretKey)))
-			continue
-		}
-		if value == "" {
+		} else if value == "" {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child(requiredField), "",
 				fmt.Sprintf("field %q cannot be empty in service account JSON in secret %s", requiredField, secretKey)))
 		}
@@ -132,7 +130,7 @@ func validateFieldFormats(fields map[string]string, fldPath *field.Path) field.E
 	}
 
 	// Validate client_id format
-	if clientID, ok := fields["client_id"]; ok && clientID != "" {
+	if clientID, ok := fields["client_id"]; ok {
 		allErrs = append(allErrs, validateClientID(clientID, fldPath.Child("client_id"))...)
 	}
 
@@ -155,7 +153,7 @@ func validateFieldFormats(fields map[string]string, fldPath *field.Path) field.E
 	}
 
 	for _, fieldName := range urlFields {
-		if urlValue, ok := fields[fieldName]; ok && urlValue != "" {
+		if urlValue, ok := fields[fieldName]; ok {
 			allErrs = append(allErrs, validateHTTPSURL(urlValue, fldPath.Child(fieldName))...)
 		}
 	}

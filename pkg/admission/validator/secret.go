@@ -42,9 +42,5 @@ func (s *secret) Validate(_ context.Context, newObj, oldObj client.Object) error
 		}
 	}
 
-	if errs := gcpvalidation.ValidateCloudProviderSecret(secret, field.NewPath("secret")); len(errs) > 0 {
-		return errs.ToAggregate()
-	}
-
-	return nil
+	return gcpvalidation.ValidateCloudProviderSecret(secret, field.NewPath("secret")).ToAggregate()
 }

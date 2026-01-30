@@ -60,8 +60,5 @@ func (sb *secretBinding) Validate(ctx context.Context, newObj, oldObj client.Obj
 	}
 
 	secretPath := field.NewPath("secret")
-	if errs := gcpvalidation.ValidateCloudProviderSecret(secret, secretPath); len(errs) > 0 {
-		return errs.ToAggregate()
-	}
-	return nil
+	return gcpvalidation.ValidateCloudProviderSecret(secret, secretPath).ToAggregate()
 }
