@@ -84,7 +84,7 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 				"Type":     Equal(field.ErrorTypeInvalid),
 				"Field":    Equal("providerConfig.projectID"),
 				"BadValue": Equal("_invalid"),
-				"Detail":   Equal("does not match the expected format"),
+				"Detail":   ContainSubstring("does not match expected regex"),
 			},
 			Fields{
 				"Type":     Equal(field.ErrorTypeInvalid),
@@ -96,7 +96,7 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 				"Type":     Equal(field.ErrorTypeInvalid),
 				"Field":    Equal("providerConfig.credentialsConfig.token_url"),
 				"BadValue": Equal("http://insecure"),
-				"Detail":   Equal("should start with https://"),
+				"Detail":   Equal("must use https:// scheme"),
 			},
 			Fields{
 				"Type":   Equal(field.ErrorTypeForbidden),
@@ -107,7 +107,7 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 				"Type":     Equal(field.ErrorTypeInvalid),
 				"Field":    Equal("providerConfig.credentialsConfig.service_account_impersonation_url"),
 				"BadValue": Equal("http://insecure"),
-				"Detail":   Equal("should start with https://"),
+				"Detail":   Equal("must use https:// scheme"),
 			},
 			Fields{
 				"Type":     Equal(field.ErrorTypeInvalid),

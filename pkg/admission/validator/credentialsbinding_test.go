@@ -17,9 +17,11 @@ import (
 	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/validator"
@@ -107,42 +109,49 @@ var _ = Describe("CredentialsBinding validator", func() {
 		})
 
 		It("should return err when the corresponding Secret does not contain a 'serviceaccount.json' field", func() {
+			secret := &corev1.Secret{Data: map[string][]byte{
+				"foo": []byte("bar"),
+			}}
 			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
-					secret := &corev1.Secret{Data: map[string][]byte{
-						"foo": []byte("bar"),
-					}}
-					*obj = *secret
-					return nil
-				})
+				SetArg(2, *secret)
 
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingSecret, nil)
-			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: missing \"serviceaccount.json\" field in secret"))
+			Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":   Equal(field.ErrorTypeRequired),
+				"Field":  Equal("secret.data[serviceaccount.json]"),
+				"Detail": Equal("missing required field \"serviceaccount.json\" in secret /"),
+			}))))
 		})
 
 		It("should return err when the corresponding Secret does not contain a valid 'serviceaccount.json' field", func() {
+			secret := &corev1.Secret{Data: map[string][]byte{
+				gcp.ServiceAccountJSONField: []byte(``),
+			}}
 			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
-					secret := &corev1.Secret{Data: map[string][]byte{
-						gcp.ServiceAccountJSONField: []byte(``),
-					}}
-					*obj = *secret
-					return nil
-				})
+				SetArg(2, *secret)
 
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingSecret, nil)
-			Expect(err).To(MatchError("referenced secret garden-dev/my-provider-account is not valid: failed to unmarshal 'serviceaccount.json' field: unexpected end of JSON input"))
+			Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":   Equal(field.ErrorTypeInvalid),
+				"Field":  Equal("secret.data[serviceaccount.json]"),
+				"Detail": Equal("field \"serviceaccount.json\" cannot be empty in secret /"),
+			}))))
 		})
 
 		It("should succeed when the corresponding Secret is valid", func() {
+			secret := &corev1.Secret{Data: map[string][]byte{
+				gcp.ServiceAccountJSONField: []byte(`{
+					"type":                        "service_account",
+					"project_id":                  "my-project-123",
+					"private_key_id":              "1234567890abcdef1234567890abcdef12345678",
+					"private_key":                 "-----BEGIN PRIVATE KEY-----\nTHIS-IS-A-FAKE-TEST-KEY\n-----END PRIVATE KEY-----\n",
+					"client_email":                "my-service-account@my-project-123.iam.gserviceaccount.com",
+					"client_id":                   "123456789012345678901",
+					"token_uri":                   "https://oauth2.googleapis.com/token"
+				}`),
+			}}
 			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
-					secret := &corev1.Secret{Data: map[string][]byte{
-						gcp.ServiceAccountJSONField: []byte(`{"project_id": "project", "type": "service_account"}`),
-					}}
-					*obj = *secret
-					return nil
-				})
+				SetArg(2, *secret)
 
 			Expect(credentialsBindingValidator.Validate(ctx, credentialsBindingSecret, nil)).To(Succeed())
 		})

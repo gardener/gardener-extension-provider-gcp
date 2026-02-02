@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
-	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -44,8 +43,8 @@ var (
 func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldPath *field.Path, allowedTokenURLs []string, allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if !projectIDRegexp.MatchString(config.ProjectID) {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("projectID"), config.ProjectID, "does not match the expected format"))
+	if config.ProjectID != "" {
+		allErrs = append(allErrs, validateProjectID(config.ProjectID, fldPath.Child("projectID"))...)
 	}
 
 	if config.CredentialsConfig == nil {
@@ -88,14 +87,7 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be string"))
 		}
 
-		tokenURL, err := url.Parse(rawTokenURL)
-		if err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be a valid URL"))
-		}
-
-		if tokenURL.Scheme != "https" {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should start with https://"))
-		}
+		allErrs = append(allErrs, validateHTTPSURL(rawTokenURL, fldPath.Child("credentialsConfig").Child(keyTokenURL))...)
 
 		if !slices.Contains(allowedTokenURLs, rawTokenURL) {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig").Child(keyTokenURL), fmt.Sprintf("allowed values are %q", allowedTokenURLs)))
@@ -127,22 +119,7 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 				)
 			}
 
-			serviceAccountImpersonationURL, err := url.Parse(rawURL)
-			if err != nil {
-				allErrs = append(allErrs, field.Invalid(
-					fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
-					rawURL,
-					"should be a valid URL"),
-				)
-			}
-
-			if serviceAccountImpersonationURL.Scheme != "https" {
-				allErrs = append(allErrs, field.Invalid(
-					fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
-					rawURL,
-					"should start with https://"),
-				)
-			}
+			allErrs = append(allErrs, validateHTTPSURL(rawURL, fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL))...)
 		}
 	}
 

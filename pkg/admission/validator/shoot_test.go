@@ -17,8 +17,11 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"go.uber.org/mock/gomock"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,6 +40,7 @@ var _ = Describe("Shoot validator", func() {
 
 			ctrl         *gomock.Controller
 			c            *mockclient.MockClient
+			reader       *mockclient.MockReader
 			mgr          *mockmanager.MockManager
 			cloudProfile *gardencorev1beta1.CloudProfile
 			shoot        *core.Shoot
@@ -53,10 +57,12 @@ var _ = Describe("Shoot validator", func() {
 			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
 
 			c = mockclient.NewMockClient(ctrl)
+			reader = mockclient.NewMockReader(ctrl)
 
 			mgr = mockmanager.NewMockManager(ctrl)
 			mgr.EXPECT().GetScheme().Return(scheme).Times(2)
 			mgr.EXPECT().GetClient().Return(c)
+			mgr.EXPECT().GetAPIReader().Return(reader)
 			shootValidator = validator.NewShootValidator(mgr)
 
 			cloudProfile = &gardencorev1beta1.CloudProfile{
@@ -185,6 +191,190 @@ var _ = Describe("Shoot validator", func() {
 						"Field": Equal("spec.networking.ipFamilies"),
 					})),
 				))
+			})
+
+			It("should return error when google-clouddns provider has no secretName", func() {
+				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{
+							Type:    ptr.To("google-clouddns"), // secretName missing
+							Primary: ptr.To(true)},
+					},
+				}
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("spec.dns.providers[0].secretName"),
+				}))))
+			})
+
+			It("should return error when google-clouddns provider secret not found", func() {
+				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{
+							Type:       ptr.To("google-clouddns"),
+							Primary:    ptr.To(true),
+							SecretName: ptr.To("dns-secret")},
+					},
+				}
+
+				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"}, gomock.Any()).
+					Return(apierrors.NewNotFound(schema.GroupResource{Resource: "secrets"}, "dns-secret"))
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("spec.dns.providers[0].secretName"),
+				}))))
+			})
+
+			It("should return error when google-clouddns secret is invalid (missing type)", func() {
+				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{
+							Type:       ptr.To("google-clouddns"),
+							Primary:    ptr.To(true),
+							SecretName: ptr.To("dns-secret")},
+					},
+				}
+
+				invalidSecret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "dns-secret", Namespace: namespace},
+					Data: map[string][]byte{
+						"serviceaccount.json": []byte(`{
+							"project_id": "my-project-123",
+							"private_key_id": "1234567890abcdef1234567890abcdef12345678",
+							"private_key": "-----BEGIN PRIVATE KEY-----\nTHIS-IS-A-FAKE-TEST-KEY\n-----END PRIVATE KEY-----\n",
+							"client_email": "my-sa@my-project-123.iam.gserviceaccount.com",
+							"token_uri": "https://oauth2.googleapis.com/token"
+						}`),
+					},
+				}
+
+				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"}, gomock.Any()).
+					SetArg(2, *invalidSecret)
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("spec.dns.providers[0].data[serviceaccount.json].type"),
+				}))))
+			})
+
+			It("should succeed with valid google-clouddns provider secret", func() {
+				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{
+							Type:       ptr.To("google-clouddns"),
+							Primary:    ptr.To(true),
+							SecretName: ptr.To("dns-secret")},
+					},
+				}
+
+				validSecret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "dns-secret", Namespace: namespace},
+					Data: map[string][]byte{
+						"serviceaccount.json": []byte(`{
+							"type": "service_account",
+							"project_id": "my-project-123",
+							"private_key_id": "1234567890abcdef1234567890abcdef12345678",
+							"private_key": "-----BEGIN PRIVATE KEY-----\nTHIS-IS-A-FAKE-TEST-KEY\n-----END PRIVATE KEY-----\n",
+							"client_email": "my-sa@my-project-123.iam.gserviceaccount.com",
+							"token_uri": "https://oauth2.googleapis.com/token"
+						}`),
+					},
+				}
+
+				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"}, gomock.Any()).
+					SetArg(2, *validSecret)
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should skip validation for non google-clouddns providers", func() {
+				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{
+							Type:       ptr.To("aws-route53"),
+							Primary:    ptr.To(true),
+							SecretName: ptr.To("other-secret")},
+					},
+				}
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should skip validation for non-primary google-clouddns providers", func() {
+				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{
+							Type:       ptr.To("google-clouddns"),
+							SecretName: ptr.To("non-primary-secret"),
+							Primary:    ptr.To(false),
+						},
+					},
+				}
+
+				// No reader.EXPECT() call - secret should NOT be fetched
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should validate only primary google-clouddns provider when multiple providers exist", func() {
+				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{
+							Type:       ptr.To("google-clouddns"),
+							SecretName: ptr.To("non-primary-secret"),
+							Primary:    ptr.To(false),
+						},
+						{
+							Type:       ptr.To("google-clouddns"),
+							SecretName: ptr.To("primary-secret"),
+							Primary:    ptr.To(true),
+						},
+						{
+							Type:       ptr.To("google-clouddns"),
+							SecretName: ptr.To("another-non-primary"),
+							Primary:    nil, // nil means false
+						},
+					},
+				}
+
+				validSecret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "primary-secret", Namespace: namespace},
+					Data: map[string][]byte{
+						"serviceaccount.json": []byte(`{
+				"type": "service_account",
+				"project_id": "my-project-123",
+				"private_key_id": "1234567890abcdef1234567890abcdef12345678",
+				"private_key": "-----BEGIN PRIVATE KEY-----\nTHIS-IS-A-FAKE-TEST-KEY\n-----END PRIVATE KEY-----\n",
+				"client_email": "my-sa@my-project-123.iam.gserviceaccount.com",
+				"token_uri": "https://oauth2.googleapis.com/token"
+			}`),
+					},
+				}
+
+				// Only the primary secret should be fetched
+				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "primary-secret"}, gomock.Any()).
+					SetArg(2, *validSecret)
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 	})
