@@ -197,7 +197,9 @@ var _ = Describe("Shoot validator", func() {
 				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
 				shoot.Spec.DNS = &core.DNS{
 					Providers: []core.DNSProvider{
-						{Type: ptr.To("google-clouddns")}, // secretName missing
+						{
+							Type:    ptr.To("google-clouddns"), // secretName missing
+							Primary: ptr.To(true)},
 					},
 				}
 
@@ -213,7 +215,10 @@ var _ = Describe("Shoot validator", func() {
 
 				shoot.Spec.DNS = &core.DNS{
 					Providers: []core.DNSProvider{
-						{Type: ptr.To("google-clouddns"), SecretName: ptr.To("dns-secret")},
+						{
+							Type:       ptr.To("google-clouddns"),
+							Primary:    ptr.To(true),
+							SecretName: ptr.To("dns-secret")},
 					},
 				}
 
@@ -232,7 +237,10 @@ var _ = Describe("Shoot validator", func() {
 
 				shoot.Spec.DNS = &core.DNS{
 					Providers: []core.DNSProvider{
-						{Type: ptr.To("google-clouddns"), SecretName: ptr.To("dns-secret")},
+						{
+							Type:       ptr.To("google-clouddns"),
+							Primary:    ptr.To(true),
+							SecretName: ptr.To("dns-secret")},
 					},
 				}
 
@@ -264,7 +272,10 @@ var _ = Describe("Shoot validator", func() {
 
 				shoot.Spec.DNS = &core.DNS{
 					Providers: []core.DNSProvider{
-						{Type: ptr.To("google-clouddns"), SecretName: ptr.To("dns-secret")},
+						{
+							Type:       ptr.To("google-clouddns"),
+							Primary:    ptr.To(true),
+							SecretName: ptr.To("dns-secret")},
 					},
 				}
 
@@ -293,9 +304,74 @@ var _ = Describe("Shoot validator", func() {
 				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
 				shoot.Spec.DNS = &core.DNS{
 					Providers: []core.DNSProvider{
-						{Type: ptr.To("aws-route53"), SecretName: ptr.To("other-secret")},
+						{
+							Type:       ptr.To("aws-route53"),
+							Primary:    ptr.To(true),
+							SecretName: ptr.To("other-secret")},
 					},
 				}
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should skip validation for non-primary google-clouddns providers", func() {
+				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{
+							Type:       ptr.To("google-clouddns"),
+							SecretName: ptr.To("non-primary-secret"),
+							Primary:    ptr.To(false),
+						},
+					},
+				}
+
+				// No reader.EXPECT() call - secret should NOT be fetched
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should validate only primary google-clouddns provider when multiple providers exist", func() {
+				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{
+							Type:       ptr.To("google-clouddns"),
+							SecretName: ptr.To("non-primary-secret"),
+							Primary:    ptr.To(false),
+						},
+						{
+							Type:       ptr.To("google-clouddns"),
+							SecretName: ptr.To("primary-secret"),
+							Primary:    ptr.To(true),
+						},
+						{
+							Type:       ptr.To("google-clouddns"),
+							SecretName: ptr.To("another-non-primary"),
+							Primary:    nil, // nil means false
+						},
+					},
+				}
+
+				validSecret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "primary-secret", Namespace: namespace},
+					Data: map[string][]byte{
+						"serviceaccount.json": []byte(`{
+				"type": "service_account",
+				"project_id": "my-project-123",
+				"private_key_id": "1234567890abcdef1234567890abcdef12345678",
+				"private_key": "-----BEGIN PRIVATE KEY-----\nTHIS-IS-A-FAKE-TEST-KEY\n-----END PRIVATE KEY-----\n",
+				"client_email": "my-sa@my-project-123.iam.gserviceaccount.com",
+				"token_uri": "https://oauth2.googleapis.com/token"
+			}`),
+					},
+				}
+
+				// Only the primary secret should be fetched
+				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "primary-secret"}, gomock.Any()).
+					SetArg(2, *validSecret)
 
 				err := shootValidator.Validate(ctx, shoot, nil)
 				Expect(err).NotTo(HaveOccurred())
