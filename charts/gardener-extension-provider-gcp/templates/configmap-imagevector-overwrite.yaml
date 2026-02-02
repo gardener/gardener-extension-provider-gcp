@@ -7,5 +7,5 @@ metadata:
   labels: {{- include "labels" . | nindent 4 }}
 data:
   images_overwrite.yaml: |
-  {{- .Values.imageVectorOverwrite | indent 4 }}
+  {{- .Values.imageVectorOverwrite | nindent 4 }}
 {{- end }}
