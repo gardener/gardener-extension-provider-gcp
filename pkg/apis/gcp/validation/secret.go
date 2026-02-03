@@ -16,6 +16,13 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
+const (
+	// storageAPIEndpointField is temporarily allowed in GCP secrets for backward compatibility.
+	// TODO: Remove this field once etcd-backup-restore drops using the storageAPIEndpoint key in the secret.
+	// See: https://github.com/gardener/etcd-backup-restore/issues/943
+	storageAPIEndpointField = "storageAPIEndpoint"
+)
+
 // serviceAccountRequiredFields defines the required fields in a GCP service account JSON
 // based on what JWTConfigFromJSON from golang.org/x/oauth2/google actually uses
 var serviceAccountRequiredFields = sets.New(
@@ -42,10 +49,16 @@ func ValidateCloudProviderSecret(secret *corev1.Secret, fldPath *field.Path) fie
 	secretKey := fmt.Sprintf("%s/%s", secret.Namespace, secret.Name)
 	dataPath := fldPath.Child("data")
 
-	// Ensure that secret contains exactly one field: serviceaccount.json
-	if len(secret.Data) != 1 {
+	// Ensure that secret contains only allowed fields: serviceaccount.json and optionally storageAPIEndpoint
+	allowedFieldCount := 1
+	if _, hasStorageEndpoint := secret.Data[storageAPIEndpointField]; hasStorageEndpoint {
+		allowedFieldCount = 2
+	}
+
+	if len(secret.Data) > allowedFieldCount {
 		allErrs = append(allErrs, field.Invalid(dataPath, len(secret.Data),
-			fmt.Sprintf("secret %s must contain exactly one field %q, got %d fields", secretKey, gcp.ServiceAccountJSONField, len(secret.Data))))
+			fmt.Sprintf("secret %s must contain only %q (and optionally %q), got %d fields",
+				secretKey, gcp.ServiceAccountJSONField, storageAPIEndpointField, len(secret.Data))))
 	}
 
 	// Ensure serviceaccount.json field exists and is non-empty

@@ -89,8 +89,28 @@ var _ = Describe("Secret validation", func() {
 			Expect(errs).To(BeEmpty())
 		})
 
-		It("should fail when secret contains multiple fields", func() {
+		It("should fail when secret contains fields other than serviceaccount.json and storageAPIEndpoint", func() {
 			secret.Data[gcp.ServiceAccountJSONField] = []byte(createServiceAccountJSON(nil))
+			secret.Data["extra-field"] = []byte("value")
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("secret.data"),
+			}))))
+		})
+
+		It("should pass when secret contains serviceaccount.json and storageAPIEndpoint", func() {
+			secret.Data[gcp.ServiceAccountJSONField] = []byte(createServiceAccountJSON(nil))
+			secret.Data["storageAPIEndpoint"] = []byte("https://storage.googleapis.com")
+
+			errs := ValidateCloudProviderSecret(secret, fldPath)
+			Expect(errs).To(BeEmpty())
+		})
+
+		It("should fail when secret contains unexpected fields beyond serviceaccount.json and storageAPIEndpoint", func() {
+			secret.Data[gcp.ServiceAccountJSONField] = []byte(createServiceAccountJSON(nil))
+			secret.Data["storageAPIEndpoint"] = []byte("https://storage.googleapis.com")
 			secret.Data["extra-field"] = []byte("value")
 
 			errs := ValidateCloudProviderSecret(secret, fldPath)
