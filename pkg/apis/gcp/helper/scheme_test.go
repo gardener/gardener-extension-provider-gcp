@@ -160,8 +160,15 @@ immutability:
 store:
   endpoint: "https://storage.googleapis.com"`)
 
-			bb := &extensionsv1alpha1.BackupBucket{}
-			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: raw}
+			bb := &extensionsv1alpha1.BackupBucket{
+				Spec: extensionsv1alpha1.BackupBucketSpec{
+					DefaultSpec: extensionsv1alpha1.DefaultSpec{
+						ProviderConfig: &runtime.RawExtension{
+							Raw: raw,
+						},
+					},
+				},
+			}
 
 			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
 			Expect(err).ToNot(HaveOccurred())
@@ -177,7 +184,6 @@ store:
 
 		It("should fail due to nil ProviderConfig", func() {
 			bb := &extensionsv1alpha1.BackupBucket{}
-			bb.Spec.ProviderConfig = nil
 
 			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
 			Expect(err).To(HaveOccurred())
@@ -186,8 +192,13 @@ store:
 		})
 
 		It("should fail due to nil Raw", func() {
-			bb := &extensionsv1alpha1.BackupBucket{}
-			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: nil}
+			bb := &extensionsv1alpha1.BackupBucket{
+				Spec: extensionsv1alpha1.BackupBucketSpec{
+					DefaultSpec: extensionsv1alpha1.DefaultSpec{
+						ProviderConfig: &runtime.RawExtension{},
+					},
+				},
+			}
 
 			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
 			Expect(err).To(HaveOccurred())
@@ -203,8 +214,15 @@ immutability:
   retentionPeriod: "24h"
 additionalField: additionalValue`)
 
-			bb := &extensionsv1alpha1.BackupBucket{}
-			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: raw}
+			bb := &extensionsv1alpha1.BackupBucket{
+				Spec: extensionsv1alpha1.BackupBucketSpec{
+					DefaultSpec: extensionsv1alpha1.DefaultSpec{
+						ProviderConfig: &runtime.RawExtension{
+							Raw: raw,
+						},
+					},
+				},
+			}
 
 			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
 			Expect(err).To(HaveOccurred())
@@ -217,8 +235,15 @@ immutability:
   retentionType: bucket
   retentionPeriod: "24h"`)
 
-			bb := &extensionsv1alpha1.BackupBucket{}
-			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: raw}
+			bb := &extensionsv1alpha1.BackupBucket{
+				Spec: extensionsv1alpha1.BackupBucketSpec{
+					DefaultSpec: extensionsv1alpha1.DefaultSpec{
+						ProviderConfig: &runtime.RawExtension{
+							Raw: raw,
+						},
+					},
+				},
+			}
 
 			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
 			Expect(err).To(HaveOccurred())
@@ -232,8 +257,15 @@ immutability:
   retentionType: bucket
   retentionPeriod: "24h"`)
 
-			bb := &extensionsv1alpha1.BackupBucket{}
-			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: raw}
+			bb := &extensionsv1alpha1.BackupBucket{
+				Spec: extensionsv1alpha1.BackupBucketSpec{
+					DefaultSpec: extensionsv1alpha1.DefaultSpec{
+						ProviderConfig: &runtime.RawExtension{
+							Raw: raw,
+						},
+					},
+				},
+			}
 
 			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
 			Expect(err).To(HaveOccurred())
@@ -247,8 +279,15 @@ immutability:
   retentionType: bucket
   retentionPeriod: "24h"`)
 
-			bb := &extensionsv1alpha1.BackupBucket{}
-			bb.Spec.ProviderConfig = &runtime.RawExtension{Raw: raw}
+			bb := &extensionsv1alpha1.BackupBucket{
+				Spec: extensionsv1alpha1.BackupBucketSpec{
+					DefaultSpec: extensionsv1alpha1.DefaultSpec{
+						ProviderConfig: &runtime.RawExtension{
+							Raw: raw,
+						},
+					},
+				},
+			}
 
 			config, err := helper.BackupBucketConfigFromBackupBucket(bb)
 			Expect(err).To(HaveOccurred())

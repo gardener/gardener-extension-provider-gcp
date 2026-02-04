@@ -45,10 +45,13 @@ var _ = Describe("Ensurer", func() {
 
 		ctrl *gomock.Controller
 
+		ctx context.Context
+
 		dummyContext = gcontext.NewGardenContext(nil, nil)
 	)
 
 	BeforeEach(func() {
+		ctx = context.TODO()
 		ctrl = gomock.NewController(GinkgoT())
 		scheme := runtime.NewScheme()
 		Expect(extensionsv1alpha1.AddToScheme(scheme)).To(Succeed())
@@ -64,56 +67,48 @@ var _ = Describe("Ensurer", func() {
 
 	Describe("#EnsureETCD", func() {
 		It("should add or modify elements to etcd-main statefulset", func() {
-			var (
-				etcd = &druidcorev1alpha1.Etcd{
-					ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
-				}
-			)
+			etcd := &druidcorev1alpha1.Etcd{
+				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
+			}
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
-			Expect(err).To(Not(HaveOccurred()))
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
 			checkETCDMainStorage(etcd)
 		})
 
 		It("should error when fetching backupbucket fails", func() {
-			var (
-				etcd = &druidcorev1alpha1.Etcd{
-					ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
-					Spec: druidcorev1alpha1.EtcdSpec{
-						Backup: druidcorev1alpha1.BackupSpec{
-							Store: &druidcorev1alpha1.StoreSpec{
-								Container: ptr.To(backupBucketName),
-							},
+			etcd := &druidcorev1alpha1.Etcd{
+				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
+				Spec: druidcorev1alpha1.EtcdSpec{
+					Backup: druidcorev1alpha1.BackupSpec{
+						Store: &druidcorev1alpha1.StoreSpec{
+							Container: ptr.To(backupBucketName),
 						},
 					},
-				}
-			)
+				},
+			}
 
-			c.EXPECT().Get(context.TODO(), client.ObjectKey{Name: backupBucketName}, gomock.AssignableToTypeOf(&extensionsv1alpha1.BackupBucket{})).DoAndReturn(
+			c.EXPECT().Get(ctx, client.ObjectKey{Name: backupBucketName}, gomock.AssignableToTypeOf(&extensionsv1alpha1.BackupBucket{})).DoAndReturn(
 				func(_ context.Context, _ client.ObjectKey, _ *extensionsv1alpha1.BackupBucket, _ ...client.GetOption) error {
 					return fmt.Errorf("failed to fetch backupbucket")
 				},
 			)
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
-			Expect(err).To(HaveOccurred())
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(HaveOccurred())
 		})
 
 		It("should add or modify backup endpoint of the etcd spec", func() {
-			var (
-				etcd = &druidcorev1alpha1.Etcd{
-					ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
-					Spec: druidcorev1alpha1.EtcdSpec{
-						Backup: druidcorev1alpha1.BackupSpec{
-							Store: &druidcorev1alpha1.StoreSpec{
-								Container: ptr.To(backupBucketName),
-							},
+			etcd := &druidcorev1alpha1.Etcd{
+				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
+				Spec: druidcorev1alpha1.EtcdSpec{
+					Backup: druidcorev1alpha1.BackupSpec{
+						Store: &druidcorev1alpha1.StoreSpec{
+							Container: ptr.To(backupBucketName),
 						},
 					},
-				}
-			)
+				},
+			}
 
 			backupBucket := &extensionsv1alpha1.BackupBucket{
 				ObjectMeta: metav1.ObjectMeta{
@@ -128,7 +123,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			c.EXPECT().Get(context.TODO(), client.ObjectKey{Name: backupBucketName}, gomock.AssignableToTypeOf(&extensionsv1alpha1.BackupBucket{})).DoAndReturn(
+			c.EXPECT().Get(ctx, client.ObjectKey{Name: backupBucketName}, gomock.AssignableToTypeOf(&extensionsv1alpha1.BackupBucket{})).DoAndReturn(
 				func(_ context.Context, _ client.ObjectKey, bb *extensionsv1alpha1.BackupBucket, _ ...client.GetOption) error {
 					*bb = *backupBucket
 					return nil
@@ -136,42 +131,36 @@ var _ = Describe("Ensurer", func() {
 			)
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			checkETCDMainBackup(etcd)
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
+			Expect(*etcd.Spec.Backup.Store.Endpoint).To(Equal("https://storage.me-central2.rep.googleapis.com"))
 		})
 
 		It("should modify existing elements of etcd-main statefulset", func() {
-			var (
-				r    = resource.MustParse("10Gi")
-				etcd = &druidcorev1alpha1.Etcd{
-					ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
-					Spec: druidcorev1alpha1.EtcdSpec{
-						StorageCapacity: &r,
-					},
-				}
-			)
+			r := resource.MustParse("10Gi")
+			etcd := &druidcorev1alpha1.Etcd{
+				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
+				Spec: druidcorev1alpha1.EtcdSpec{
+					StorageCapacity: &r,
+				},
+			}
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
-			Expect(err).To(Not(HaveOccurred()))
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
 			checkETCDMainStorage(etcd)
 		})
 
 		It("should modify existing backup endpoint of the etcd spec", func() {
-			var (
-				etcd = &druidcorev1alpha1.Etcd{
-					ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
-					Spec: druidcorev1alpha1.EtcdSpec{
-						Backup: druidcorev1alpha1.BackupSpec{
-							Store: &druidcorev1alpha1.StoreSpec{
-								Container: ptr.To(backupBucketName),
-								Endpoint:  ptr.To("https://storage.me-central1.rep.googleapis.com"),
-							},
+			etcd := &druidcorev1alpha1.Etcd{
+				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
+				Spec: druidcorev1alpha1.EtcdSpec{
+					Backup: druidcorev1alpha1.BackupSpec{
+						Store: &druidcorev1alpha1.StoreSpec{
+							Container: ptr.To(backupBucketName),
+							Endpoint:  ptr.To("https://storage.me-central1.rep.googleapis.com"),
 						},
 					},
-				}
-			)
+				},
+			}
 
 			backupBucket := &extensionsv1alpha1.BackupBucket{
 				ObjectMeta: metav1.ObjectMeta{
@@ -186,7 +175,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			c.EXPECT().Get(context.TODO(), client.ObjectKey{Name: backupBucketName}, gomock.AssignableToTypeOf(&extensionsv1alpha1.BackupBucket{})).DoAndReturn(
+			c.EXPECT().Get(ctx, client.ObjectKey{Name: backupBucketName}, gomock.AssignableToTypeOf(&extensionsv1alpha1.BackupBucket{})).DoAndReturn(
 				func(_ context.Context, _ client.ObjectKey, bb *extensionsv1alpha1.BackupBucket, _ ...client.GetOption) error {
 					*bb = *backupBucket
 					return nil
@@ -194,38 +183,31 @@ var _ = Describe("Ensurer", func() {
 			)
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			checkETCDMainBackup(etcd)
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
+			Expect(*etcd.Spec.Backup.Store.Endpoint).To(Equal("https://storage.me-central2.rep.googleapis.com"))
 		})
 
 		It("should add or modify elements to etcd-events statefulset", func() {
-			var (
-				etcd = &druidcorev1alpha1.Etcd{
-					ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDEvents},
-				}
-			)
+			etcd := &druidcorev1alpha1.Etcd{
+				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDEvents},
+			}
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
-			Expect(err).To(Not(HaveOccurred()))
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
 			checkETCDEventsStorage(etcd)
 		})
 
 		It("should modify existing elements of etcd-events statefulset", func() {
-			var (
-				r    = resource.MustParse("20Gi")
-				etcd = &druidcorev1alpha1.Etcd{
-					ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDEvents},
-					Spec: druidcorev1alpha1.EtcdSpec{
-						StorageCapacity: &r,
-					},
-				}
-			)
+			r := resource.MustParse("20Gi")
+			etcd := &druidcorev1alpha1.Etcd{
+				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDEvents},
+				Spec: druidcorev1alpha1.EtcdSpec{
+					StorageCapacity: &r,
+				},
+			}
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
-			Expect(err).To(Not(HaveOccurred()))
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
 			checkETCDEventsStorage(etcd)
 		})
 	})
@@ -234,10 +216,6 @@ var _ = Describe("Ensurer", func() {
 func checkETCDMainStorage(etcd *druidcorev1alpha1.Etcd) {
 	Expect(*etcd.Spec.StorageClass).To(Equal("gardener.cloud-fast"))
 	Expect(*etcd.Spec.StorageCapacity).To(Equal(resource.MustParse("25Gi")))
-}
-
-func checkETCDMainBackup(etcd *druidcorev1alpha1.Etcd) {
-	Expect(*etcd.Spec.Backup.Store.Endpoint).To(Equal("https://storage.me-central2.rep.googleapis.com"))
 }
 
 func checkETCDEventsStorage(etcd *druidcorev1alpha1.Etcd) {

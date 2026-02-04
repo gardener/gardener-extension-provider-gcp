@@ -96,7 +96,7 @@ var _ = Describe("BackupBucket", func() {
 					Store: &apisgcp.Store{
 						Endpoint: ptr.To("https://storage.me-central2.rep.googleapis.com"),
 					},
-				}, false, "invalid URL"),
+				}, false, ""),
 		)
 	})
 
