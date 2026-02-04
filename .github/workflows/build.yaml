@@ -131,7 +131,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir /tmp/blobs.d
-          .ci/verify |& tee verify-log.txt
+          .ci/verify |& tee /tmp/blobs.d/verify-log.txt
           tar czf /tmp/blobs.d/verify-log.tar.gz verify-log.txt
           # verify calls `make sast-report`, which generates `gosec-report.sarif`
           tar czf /tmp/blobs.d/gosec-report.tar.gz gosec-report.sarif
