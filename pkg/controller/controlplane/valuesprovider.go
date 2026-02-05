@@ -6,7 +6,6 @@ package controlplane
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -46,6 +45,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/internal/apihelper"
+	networking "github.com/gardener/gardener-extension-provider-gcp/pkg/utils/networking"
 )
 
 const (
@@ -253,9 +253,9 @@ var (
 				},
 			},
 			{
-				Name: "calico-network-policy",
+				Name: "calico-mutating-admission-policy",
 				Objects: []*chart.Object{
-					{Type: &admissionregistrationv1alpha1.MutatingAdmissionPolicy{}, Name: "block-calico-network-unavailable"},
+					{Type: &admissionregistrationv1alpha1.MutatingAdmissionPolicy{}, Name: "calico-mutating-admission-policy"},
 					{Type: &admissionregistrationv1alpha1.MutatingAdmissionPolicyBinding{}, Name: "block-calico-network-unavailable-binding"},
 				},
 			},
@@ -384,13 +384,13 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 			k8sclient.ObjectKeyFromObject(cp), err)
 	}
 
-	overlayEnabled, err := vp.isOverlayEnabled(cluster.Shoot.Spec.Networking)
+	overlayEnabled, err := networking.IsOverlayEnabled(cluster.Shoot.Spec.Networking)
 	if err != nil {
 		return nil, fmt.Errorf("could not determine if overlay is enabled: %w", err)
 	}
 
 	// Only enable MutatingAdmissionPolicy if overlay is disabled AND all other conditions are met
-	mapEnabled := !overlayEnabled && isMutatingAdmissionPolicyEnabled(cluster)
+	mutatingAdmissionPolicyEnabled := !overlayEnabled && isUsingCalico(cluster) && isMutatingAdmissionPolicyEnabled(cluster)
 
 	return map[string]interface{}{
 		gcp.CloudControllerManagerName: map[string]interface{}{"enabled": true},
@@ -405,8 +405,8 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 		"default-http-backend": map[string]interface{}{
 			"enabled": IsDualStackEnabled(cluster.Shoot.Spec.Networking, nil),
 		},
-		"calico-network-policy": map[string]interface{}{
-			"enabled": mapEnabled,
+		"calico-mutating-admission-policy": map[string]interface{}{
+			"enabled": mutatingAdmissionPolicyEnabled,
 		},
 	}, nil
 }
@@ -546,7 +546,7 @@ func (vp *valuesProvider) getCCMChartValues(
 		values["featureGates"] = cpConfig.CloudControllerManager.FeatureGates
 	}
 
-	overlayEnabled, err := vp.isOverlayEnabled(cluster.Shoot.Spec.Networking)
+	overlayEnabled, err := networking.IsOverlayEnabled(cluster.Shoot.Spec.Networking)
 	if err != nil {
 		return nil, err
 	}
@@ -732,40 +732,13 @@ func getNetworkNames(
 	return networkName, subNetworkName, subNetworkNameNodes
 }
 
-func (vp *valuesProvider) isOverlayEnabled(network *gardencorev1beta1.Networking) (bool, error) {
-	if network == nil || network.ProviderConfig == nil {
-		return true, nil
-	}
-
-	// should not happen in practice because we will receive a RawExtension with Raw populated in production.
-	networkProviderConfig, err := network.ProviderConfig.MarshalJSON()
-	if err != nil {
-		return false, err
-	}
-
-	if string(networkProviderConfig) == "null" {
-		return true, nil
-	}
-
-	var networkConfig map[string]interface{}
-	if err := json.Unmarshal(networkProviderConfig, &networkConfig); err != nil {
-		return false, err
-	}
-
-	if overlay, ok := networkConfig["overlay"].(map[string]interface{}); ok {
-		return overlay["enabled"].(bool), nil
-	}
-
-	return true, nil
+func isUsingCalico(cluster *extensionscontroller.Cluster) bool {
+	return cluster.Shoot.Spec.Networking != nil &&
+		cluster.Shoot.Spec.Networking.Type != nil &&
+		*cluster.Shoot.Spec.Networking.Type == "calico"
 }
 
 func isMutatingAdmissionPolicyEnabled(cluster *extensionscontroller.Cluster) bool {
-	if cluster.Shoot.Spec.Networking == nil ||
-		cluster.Shoot.Spec.Networking.Type == nil ||
-		*cluster.Shoot.Spec.Networking.Type != "calico" {
-		return false
-	}
-
 	if cluster.Shoot.Spec.Kubernetes.KubeAPIServer == nil {
 		return false
 	}
