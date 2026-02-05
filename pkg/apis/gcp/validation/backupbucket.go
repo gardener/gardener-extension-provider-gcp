@@ -7,6 +7,7 @@ package validation
 import (
 	"fmt"
 	"net/url"
+	"slices"
 	"time"
 
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
@@ -26,7 +27,7 @@ var (
 )
 
 // ValidateBackupBucketConfig validates a BackupBucketConfig object.
-func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, fldPath *field.Path) field.ErrorList {
+func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, allowedEndpointOverrideURLs []string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if config != nil && config.Immutability != nil {
@@ -43,9 +44,15 @@ func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, fldPath *fie
 	}
 
 	if config.Store != nil && config.Store.EndpointOverride != nil {
-		_, err := url.Parse(*config.Store.EndpointOverride)
+		endpoint, err := url.Parse(*config.Store.EndpointOverride)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("store", "endpointOverride"), *config.Store.EndpointOverride, fmt.Sprintf("invalid URL, parsing failed with error: %s", err.Error())))
+		}
+		if endpoint != nil && endpoint.Scheme != "https" {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("store", "endpointOverride"), *config.Store.EndpointOverride, "must use https scheme"))
+		}
+		if !slices.Contains(allowedEndpointOverrideURLs, *config.Store.EndpointOverride) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("store", "endpointOverride"), *config.Store.EndpointOverride, "must be one of the explicitly allowed endpoint override urls"))
 		}
 	}
 
