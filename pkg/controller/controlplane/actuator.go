@@ -46,6 +46,8 @@ const (
 	MutatingAdmissionPolicyName = "block-calico-network-unavailable"
 	// MutatingAdmissionPolicyBindingName is the name of the MutatingAdmissionPolicyBinding
 	MutatingAdmissionPolicyBindingName = "block-calico-network-unavailable-binding"
+	// AnnotationCalicoCleanupCompleted indicates that Calico condition cleanup has been completed
+	AnnotationCalicoCleanupCompleted = "gcp.provider.extensions.gardener.cloud/calico-cleanup-completed"
 )
 
 // NewActuator creates a new Actuator that acts upon and updates the status of ControlPlane resources.
@@ -108,10 +110,23 @@ func (a *actuator) Reconcile(
 	}
 
 	// Clean up NetworkUnavailable conditions set by Calico only when overlay is disabled
-	if !overlayEnabled {
+	// Only run cleanup if it hasn't been completed yet (annotation not present)
+	if !overlayEnabled && cp.Annotations[AnnotationCalicoCleanupCompleted] != "true" {
 		if err := a.cleanupCalicoNetworkUnavailableConditions(ctx, log, cp.Namespace, cluster); err != nil {
 			log.Error(err, "Failed to cleanup Calico NetworkUnavailable conditions")
 			// Don't fail the reconciliation if cleanup fails
+		} else {
+			// Mark cleanup as completed
+			if err := a.markCleanupCompleted(ctx, cp); err != nil {
+				log.Error(err, "Failed to mark cleanup as completed")
+			}
+		}
+	}
+
+	// Remove cleanup annotation when overlay is enabled so cleanup can run again if overlay is disabled later
+	if overlayEnabled && cp.Annotations[AnnotationCalicoCleanupCompleted] == "true" {
+		if err := a.removeCleanupAnnotation(ctx, cp); err != nil {
+			log.Error(err, "Failed to remove cleanup annotation")
 		}
 	}
 
@@ -298,4 +313,21 @@ func (a *actuator) cleanupMutatingAdmissionPolicy(
 	}
 
 	return nil
+}
+
+// markCleanupCompleted marks the cleanup as completed by adding an annotation to the ControlPlane resource.
+func (a *actuator) markCleanupCompleted(ctx context.Context, cp *extensionsv1alpha1.ControlPlane) error {
+	patch := client.MergeFrom(cp.DeepCopy())
+	if cp.Annotations == nil {
+		cp.Annotations = make(map[string]string)
+	}
+	cp.Annotations[AnnotationCalicoCleanupCompleted] = "true"
+	return a.client.Patch(ctx, cp, patch)
+}
+
+// removeCleanupAnnotation removes the cleanup completion annotation from the ControlPlane resource.
+func (a *actuator) removeCleanupAnnotation(ctx context.Context, cp *extensionsv1alpha1.ControlPlane) error {
+	patch := client.MergeFrom(cp.DeepCopy())
+	delete(cp.Annotations, AnnotationCalicoCleanupCompleted)
+	return a.client.Patch(ctx, cp, patch)
 }
