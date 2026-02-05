@@ -52,8 +52,11 @@ func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddO
 		return err
 	}
 
+	// Wrap the generic actuator with our custom actuator for cleanup logic
+	wrappedActuator := NewActuator(mgr, genericActuator, GracefulDeletionTimeout, GracefulDeletionWaitInterval)
+
 	return controlplane.Add(mgr, controlplane.AddArgs{
-		Actuator:          NewActuator(mgr, genericActuator, GracefulDeletionTimeout, GracefulDeletionWaitInterval),
+		Actuator:          wrappedActuator,
 		ControllerOptions: opts.Controller,
 		Predicates:        controlplane.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
 		Type:              gcp.Type,
