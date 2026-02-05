@@ -23,20 +23,22 @@ import (
 
 // backupBucketValidator validates create and update operations on BackupBucket resources,
 type backupBucketValidator struct {
-	decoder        runtime.Decoder
-	lenientDecoder runtime.Decoder
+	decoder                     runtime.Decoder
+	lenientDecoder              runtime.Decoder
+	allowedEndpointOverrideURLs []string
 }
 
 // NewBackupBucketValidator returns a new instance of backupBucket validator.
-func NewBackupBucketValidator(mgr manager.Manager) extensionswebhook.Validator {
+func NewBackupBucketValidator(mgr manager.Manager, allowedEndpointOverrideURLs []string) extensionswebhook.Validator {
 	return &backupBucketValidator{
-		decoder:        serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
-		lenientDecoder: serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
+		decoder:                     serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
+		lenientDecoder:              serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
+		allowedEndpointOverrideURLs: allowedEndpointOverrideURLs,
 	}
 }
 
 // Validate validates the BackupBucket resource during create or update operations.
-func (s *backupBucketValidator) Validate(_ context.Context, newObj, oldObj client.Object) error {
+func (b *backupBucketValidator) Validate(_ context.Context, newObj, oldObj client.Object) error {
 	newBackupBucket, ok := newObj.(*gardencore.BackupBucket)
 	if !ok {
 		return fmt.Errorf("wrong object type %T for new object", newObj)
@@ -47,10 +49,10 @@ func (s *backupBucketValidator) Validate(_ context.Context, newObj, oldObj clien
 		if !ok {
 			return fmt.Errorf("wrong object type %T for old object", oldObj)
 		}
-		return s.validateUpdate(oldBackupBucket, newBackupBucket).ToAggregate()
+		return b.validateUpdate(oldBackupBucket, newBackupBucket).ToAggregate()
 	}
 
-	return s.validateCreate(newBackupBucket).ToAggregate()
+	return b.validateCreate(newBackupBucket).ToAggregate()
 }
 
 // validateCreate validates the BackupBucket object upon creation.
@@ -66,7 +68,7 @@ func (b *backupBucketValidator) validateCreate(backupBucket *gardencore.BackupBu
 			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode provider config: %s", err.Error())))
 		}
 
-		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(config, providerConfigPath)...)
+		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(config, b.allowedEndpointOverrideURLs, providerConfigPath)...)
 	}
 	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketCredentialsRef(backupBucket.Spec.CredentialsRef, field.NewPath("spec", "credentialsRef"))...)
 	return allErrs
@@ -87,7 +89,7 @@ func (b *backupBucketValidator) validateUpdate(oldBackupBucket, backupBucket *ga
 			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
 		}
 
-		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(config, providerConfigPath)...)
+		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(config, b.allowedEndpointOverrideURLs, providerConfigPath)...)
 	}
 
 	allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketCredentialsRef(backupBucket.Spec.CredentialsRef, field.NewPath("spec", "credentialsRef"))...)
