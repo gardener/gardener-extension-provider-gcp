@@ -50,7 +50,7 @@ var _ = Describe("BackupBucket Validator", func() {
 			mgr = mockmanager.NewMockManager(ctrl)
 			mgr.EXPECT().GetScheme().Return(scheme).AnyTimes()
 
-			backupBucketValidator = validator.NewBackupBucketValidator(mgr)
+			backupBucketValidator = validator.NewBackupBucketValidator(mgr, nil)
 		})
 
 		It("should return err when obj is not a gardencore.BackupBucket", func() {
