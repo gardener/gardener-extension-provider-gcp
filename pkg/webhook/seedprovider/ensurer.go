@@ -60,7 +60,7 @@ func (e *ensurer) EnsureETCD(ctx context.Context, _ gcontext.GardenContext, newE
 
 	backupBucket := &extensionsv1alpha1.BackupBucket{}
 	if err := e.reader.Get(ctx, client.ObjectKey{Name: *newEtcd.Spec.Backup.Store.Container}, backupBucket); err != nil {
-		return fmt.Errorf("failed to fetch the seed's backupbucket to find the endpoint with error: %w", err)
+		return fmt.Errorf("failed to fetch the seed's backupbucket to find the endpoint override with error: %w", err)
 	}
 
 	backupBucketConfig, err := helper.BackupBucketConfigFromBackupBucket(backupBucket)
@@ -69,7 +69,7 @@ func (e *ensurer) EnsureETCD(ctx context.Context, _ gcontext.GardenContext, newE
 	}
 
 	if backupBucketConfig.Store != nil {
-		newEtcd.Spec.Backup.Store.Endpoint = backupBucketConfig.Store.Endpoint
+		newEtcd.Spec.Backup.Store.EndpointOverride = backupBucketConfig.Store.EndpointOverride
 	}
 
 	return nil

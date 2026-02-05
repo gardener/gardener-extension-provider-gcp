@@ -42,10 +42,10 @@ func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, fldPath *fie
 		}
 	}
 
-	if config.Store != nil && config.Store.Endpoint != nil {
-		_, err := url.Parse(*config.Store.Endpoint)
+	if config.Store != nil && config.Store.EndpointOverride != nil {
+		_, err := url.Parse(*config.Store.EndpointOverride)
 		if err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("store", "endpoint"), *config.Store.Endpoint, fmt.Sprintf("invalid URL, parsing failed with error: %s", err.Error())))
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("store", "endpointOverride"), *config.Store.EndpointOverride, fmt.Sprintf("invalid URL, parsing failed with error: %s", err.Error())))
 		}
 	}
 

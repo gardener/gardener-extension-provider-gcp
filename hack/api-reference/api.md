@@ -1697,14 +1697,14 @@ CSIFilestore
 <tbody>
 <tr>
 <td>
-<code>endpoint</code></br>
+<code>endpointOverride</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Endpoint is the endpoint at which the GCS bucket is hosted. Necessary for regional endpoints.</p>
+<p>EndpointOverride specifies the overriding endpoint at which the GCS bucket is hosted. Necessary for regional endpoints.</p>
 </td>
 </tr>
 </tbody>

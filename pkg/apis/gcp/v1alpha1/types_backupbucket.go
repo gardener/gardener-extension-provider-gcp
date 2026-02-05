@@ -42,7 +42,7 @@ type ImmutableConfig struct {
 
 // Store holds the configuration of the backup store
 type Store struct {
-	// Endpoint is the endpoint at which the GCS bucket is hosted. Necessary for regional endpoints.
+	// EndpointOverride specifies the overriding endpoint at which the GCS bucket is hosted. Necessary for regional endpoints.
 	// +optional
-	Endpoint *string `json:"endpoint,omitempty"`
+	EndpointOverride *string `json:"endpointOverride,omitempty"`
 }

@@ -98,7 +98,7 @@ var _ = Describe("Ensurer", func() {
 			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(HaveOccurred())
 		})
 
-		It("should add or modify backup endpoint of the etcd spec", func() {
+		It("should add or modify backup endpointOverride of the etcd spec", func() {
 			etcd := &druidcorev1alpha1.Etcd{
 				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
 				Spec: druidcorev1alpha1.EtcdSpec{
@@ -117,7 +117,7 @@ var _ = Describe("Ensurer", func() {
 				Spec: extensionsv1alpha1.BackupBucketSpec{
 					DefaultSpec: extensionsv1alpha1.DefaultSpec{
 						ProviderConfig: &runtime.RawExtension{
-							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "store": {"endpoint": "https://storage.me-central2.rep.googleapis.com"}}`),
+							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "store": {"endpointOverride": "https://storage.me-central2.rep.googleapis.com"}}`),
 						},
 					},
 				},
@@ -132,7 +132,7 @@ var _ = Describe("Ensurer", func() {
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
 			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
-			Expect(*etcd.Spec.Backup.Store.Endpoint).To(Equal("https://storage.me-central2.rep.googleapis.com"))
+			Expect(*etcd.Spec.Backup.Store.EndpointOverride).To(Equal("https://storage.me-central2.rep.googleapis.com"))
 		})
 
 		It("should modify existing elements of etcd-main statefulset", func() {
@@ -149,14 +149,14 @@ var _ = Describe("Ensurer", func() {
 			checkETCDMainStorage(etcd)
 		})
 
-		It("should modify existing backup endpoint of the etcd spec", func() {
+		It("should modify existing backup endpointOverride of the etcd spec", func() {
 			etcd := &druidcorev1alpha1.Etcd{
 				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
 				Spec: druidcorev1alpha1.EtcdSpec{
 					Backup: druidcorev1alpha1.BackupSpec{
 						Store: &druidcorev1alpha1.StoreSpec{
-							Container: ptr.To(backupBucketName),
-							Endpoint:  ptr.To("https://storage.me-central1.rep.googleapis.com"),
+							Container:        ptr.To(backupBucketName),
+							EndpointOverride: ptr.To("https://storage.me-central1.rep.googleapis.com"),
 						},
 					},
 				},
@@ -169,7 +169,7 @@ var _ = Describe("Ensurer", func() {
 				Spec: extensionsv1alpha1.BackupBucketSpec{
 					DefaultSpec: extensionsv1alpha1.DefaultSpec{
 						ProviderConfig: &runtime.RawExtension{
-							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "store": {"endpoint": "https://storage.me-central2.rep.googleapis.com"}}`),
+							Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "store": {"endpointOverride": "https://storage.me-central2.rep.googleapis.com"}}`),
 						},
 					},
 				},
@@ -184,7 +184,7 @@ var _ = Describe("Ensurer", func() {
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
 			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
-			Expect(*etcd.Spec.Backup.Store.Endpoint).To(Equal("https://storage.me-central2.rep.googleapis.com"))
+			Expect(*etcd.Spec.Backup.Store.EndpointOverride).To(Equal("https://storage.me-central2.rep.googleapis.com"))
 		})
 
 		It("should add or modify elements to etcd-events statefulset", func() {

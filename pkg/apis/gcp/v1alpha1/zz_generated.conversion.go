@@ -1074,7 +1074,7 @@ func Convert_gcp_Storage_To_v1alpha1_Storage(in *gcp.Storage, out *Storage, s co
 }
 
 func autoConvert_v1alpha1_Store_To_gcp_Store(in *Store, out *gcp.Store, s conversion.Scope) error {
-	out.Endpoint = (*string)(unsafe.Pointer(in.Endpoint))
+	out.EndpointOverride = (*string)(unsafe.Pointer(in.EndpointOverride))
 	return nil
 }
 
@@ -1084,7 +1084,7 @@ func Convert_v1alpha1_Store_To_gcp_Store(in *Store, out *gcp.Store, s conversion
 }
 
 func autoConvert_gcp_Store_To_v1alpha1_Store(in *gcp.Store, out *Store, s conversion.Scope) error {
-	out.Endpoint = (*string)(unsafe.Pointer(in.Endpoint))
+	out.EndpointOverride = (*string)(unsafe.Pointer(in.EndpointOverride))
 	return nil
 }
 

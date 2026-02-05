@@ -85,16 +85,16 @@ var _ = Describe("BackupBucket", func() {
 						RetentionPeriod: metav1.Duration{Duration: 23 * time.Hour},
 					},
 				}, true, "must be a positive duration greater than 24h"),
-			Entry("endpoint URL invalid",
+			Entry("endpointOverride URL invalid",
 				&apisgcp.BackupBucketConfig{
 					Store: &apisgcp.Store{
-						Endpoint: ptr.To("https://gardener.cloud:invalidport"),
+						EndpointOverride: ptr.To("https://gardener.cloud:invalidport"),
 					},
 				}, true, "invalid URL"),
-			Entry("endpoint URL valid",
+			Entry("endpointOverride URL valid",
 				&apisgcp.BackupBucketConfig{
 					Store: &apisgcp.Store{
-						Endpoint: ptr.To("https://storage.me-central2.rep.googleapis.com"),
+						EndpointOverride: ptr.To("https://storage.me-central2.rep.googleapis.com"),
 					},
 				}, false, ""),
 		)
