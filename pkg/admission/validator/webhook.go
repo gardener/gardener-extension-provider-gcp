@@ -30,6 +30,8 @@ var (
 type AddOptions struct {
 	// WorkloadIdentity is the workload identity validation configuration.
 	WorkloadIdentity config.WorkloadIdentity
+	// BackupBucket is the backup bucket validation configuration.
+	BackupBucket config.BackupBucket
 }
 
 const (
