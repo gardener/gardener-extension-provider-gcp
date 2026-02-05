@@ -1,0 +1,15 @@
+ocm:
+  component_name: github.com/gardener/machine-controller-manager-provider-gcp
+  component_version: v0.27.0
+release_notes:
+- audience: developer
+  author:
+    hostname: github.com
+    type: githubUser
+    username: gagan16k
+  category: improvement
+  contents: Add pagination support to GCP mock server with a unit test to verify multi-page
+    instance listing.
+  mimetype: text/markdown
+  reference: '[#178](https://github.com/gardener/machine-controller-manager-provider-gcp/pull/178)'
+  type: standard
