@@ -25,6 +25,7 @@ func GardenWebhookSwitchOptions() *webhookcmd.SwitchOptions {
 // ConfigOptions are command line options that can be set for admission webhooks.
 type ConfigOptions struct {
 	WorkloadIdentityOptions WorkloadIdentityOptions
+	BackupBucketOptions     BackupBucketOptions
 
 	config *Config
 }
@@ -32,6 +33,7 @@ type ConfigOptions struct {
 // Config is a completed admission configuration.
 type Config struct {
 	WorkloadIdentity config.WorkloadIdentity
+	BackupBucket     config.BackupBucket
 }
 
 // WorkloadIdentityOptions are options that specify how workload identities should be validated.
@@ -40,6 +42,12 @@ type WorkloadIdentityOptions struct {
 	AllowedTokenURLs []string
 	// AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.
 	AllowedServiceAccountImpersonationURLRegExps []string
+}
+
+// BackupBucketOptions are options that specify how backupbuckets should be validated.
+type BackupBucketOptions struct {
+	// AllowedEndpointOverrideURLs are the allowed endpointOverride URLs.
+	AllowedEndpointOverrideURLs []string
 }
 
 // AddFlags implements Flagger.AddFlags.
@@ -58,12 +66,25 @@ func (w *WorkloadIdentityOptions) AddFlags(fs *pflag.FlagSet) {
 	)
 }
 
+// AddFlags implements Flagger.AddFlags.
+func (b *BackupBucketOptions) AddFlags(fs *pflag.FlagSet) {
+	fs.StringSliceVar(
+		&b.AllowedEndpointOverrideURLs,
+		"bb-allowed-endpoint-override-url",
+		[]string{"https://storage.googleapis.com/storage/v1/"},
+		"Endpoint override URL that is allowed to be configured with backup buckets. Can be set multiple times.",
+	)
+}
+
 // Complete implements RESTCompleter.Complete.
 func (c *ConfigOptions) Complete() error {
 	c.config = &Config{
 		WorkloadIdentity: config.WorkloadIdentity{
 			AllowedTokenURLs: c.WorkloadIdentityOptions.AllowedTokenURLs,
 			AllowedServiceAccountImpersonationURLRegExps: c.WorkloadIdentityOptions.AllowedServiceAccountImpersonationURLRegExps,
+		},
+		BackupBucket: config.BackupBucket{
+			AllowedEndpointOverrideURLs: c.BackupBucketOptions.AllowedEndpointOverrideURLs,
 		},
 	}
 	return nil
@@ -77,9 +98,15 @@ func (c *ConfigOptions) Completed() *Config {
 // AddFlags implements Flagger.AddFlags.
 func (c *ConfigOptions) AddFlags(fs *pflag.FlagSet) {
 	c.WorkloadIdentityOptions.AddFlags(fs)
+	c.BackupBucketOptions.AddFlags(fs)
 }
 
 // ApplyWorkloadIdentity sets the values of this Config in the given config.WorkloadIdentity.
 func (c *Config) ApplyWorkloadIdentity(cfg *config.WorkloadIdentity) {
 	*cfg = c.WorkloadIdentity
+}
+
+// ApplyBackupBucket sets the values of this Config in the given config.BackupBucket.
+func (c *Config) ApplyBackupBucket(cfg *config.BackupBucket) {
+	*cfg = c.BackupBucket
 }

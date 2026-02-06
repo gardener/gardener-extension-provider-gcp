@@ -8,7 +8,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/coreos/go-systemd/v22 v22.6.0
-	github.com/gardener/etcd-druid/api v0.34.0
+	github.com/gardener/etcd-druid/api v0.35.0
 	github.com/gardener/gardener v1.134.3
 	github.com/gardener/machine-controller-manager v0.61.1
 	github.com/go-logr/logr v1.4.3
@@ -33,7 +33,7 @@ require (
 	k8s.io/code-generator v0.34.3
 	k8s.io/component-base v0.34.3
 	k8s.io/kubelet v0.34.3
-	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
+	k8s.io/utils v0.0.0-20260108192941-914a6e750570
 	sigs.k8s.io/controller-runtime v0.22.4
 	sigs.k8s.io/controller-tools v0.19.0
 )
