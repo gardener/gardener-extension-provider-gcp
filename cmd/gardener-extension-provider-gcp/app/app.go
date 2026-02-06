@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"slices"
 
 	druidcorev1alpha1 "github.com/gardener/etcd-druid/api/core/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -121,6 +122,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			gcp.Name,
 			genericactuator.ShootWebhooksResourceName,
 			genericactuator.ShootWebhookNamespaceSelector(gcp.Type),
+			generalOpts,
 			webhookServerOptions,
 			webhookSwitches,
 		)
@@ -235,17 +237,17 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			controlPlaneCtrlOpts.Completed().Apply(&gcpcontrolplane.DefaultAddOptions.Controller)
 			dnsRecordCtrlOpts.Completed().Apply(&gcpdnsrecord.DefaultAddOptions.Controller)
 			infraCtrlOpts.Completed().Apply(&gcpinfrastructure.DefaultAddOptions.Controller)
-			reconcileOpts.Completed().Apply(&gcpinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation, &gcpinfrastructure.DefaultAddOptions.ExtensionClass)
-			reconcileOpts.Completed().Apply(&gcpcontrolplane.DefaultAddOptions.IgnoreOperationAnnotation, &gcpcontrolplane.DefaultAddOptions.ExtensionClass)
-			reconcileOpts.Completed().Apply(&gcpworker.DefaultAddOptions.IgnoreOperationAnnotation, &gcpworker.DefaultAddOptions.ExtensionClass)
-			reconcileOpts.Completed().Apply(&gcpbastion.DefaultAddOptions.IgnoreOperationAnnotation, &gcpbastion.DefaultAddOptions.ExtensionClass)
-			reconcileOpts.Completed().Apply(&gcpdnsrecord.DefaultAddOptions.IgnoreOperationAnnotation, &gcpdnsrecord.DefaultAddOptions.ExtensionClass)
-			reconcileOpts.Completed().Apply(&gcpbackupbucket.DefaultAddOptions.IgnoreOperationAnnotation, &gcpbackupbucket.DefaultAddOptions.ExtensionClass)
+			reconcileOpts.Completed().Apply(&gcpinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation, &gcpinfrastructure.DefaultAddOptions.ExtensionClasses)
+			reconcileOpts.Completed().Apply(&gcpcontrolplane.DefaultAddOptions.IgnoreOperationAnnotation, &gcpcontrolplane.DefaultAddOptions.ExtensionClasses)
+			reconcileOpts.Completed().Apply(&gcpworker.DefaultAddOptions.IgnoreOperationAnnotation, &gcpworker.DefaultAddOptions.ExtensionClasses)
+			reconcileOpts.Completed().Apply(&gcpbastion.DefaultAddOptions.IgnoreOperationAnnotation, &gcpbastion.DefaultAddOptions.ExtensionClasses)
+			reconcileOpts.Completed().Apply(&gcpdnsrecord.DefaultAddOptions.IgnoreOperationAnnotation, &gcpdnsrecord.DefaultAddOptions.ExtensionClasses)
+			reconcileOpts.Completed().Apply(&gcpbackupbucket.DefaultAddOptions.IgnoreOperationAnnotation, &gcpbackupbucket.DefaultAddOptions.ExtensionClasses)
 			workerCtrlOpts.Completed().Apply(&gcpworker.DefaultAddOptions.Controller)
 			gcpworker.DefaultAddOptions.GardenCluster = gardenCluster
 			gcpworker.DefaultAddOptions.SelfHostedShootCluster = generalOpts.Completed().SelfHostedShootCluster
 
-			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil, generalOpts.Completed().SelfHostedShootCluster)
+			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil)
 			if err != nil {
 				return fmt.Errorf("could not add webhooks to manager: %w", err)
 			}
@@ -268,7 +270,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 				return fmt.Errorf("could not add ready check for webhook server to manager: %w", err)
 			}
 
-			if reconcileOpts.ExtensionClass != "garden" {
+			if !slices.Contains(reconcileOpts.ExtensionClasses, "garden") {
 				// TODO (kon-angelo): Remove after the release of version 1.46.0
 				if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 					return purgeTerraformerRBACResources(ctx, mgr.GetClient(), log)
