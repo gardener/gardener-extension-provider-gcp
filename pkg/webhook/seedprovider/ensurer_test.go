@@ -72,7 +72,7 @@ var _ = Describe("Ensurer", func() {
 			}
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Succeed())
 			checkETCDMainStorage(etcd)
 		})
 
@@ -131,7 +131,7 @@ var _ = Describe("Ensurer", func() {
 			)
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Succeed())
 			Expect(*etcd.Spec.Backup.Store.EndpointOverride).To(Equal("https://storage.me-central2.rep.googleapis.com"))
 		})
 
@@ -145,7 +145,7 @@ var _ = Describe("Ensurer", func() {
 			}
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Succeed())
 			checkETCDMainStorage(etcd)
 		})
 
@@ -183,7 +183,7 @@ var _ = Describe("Ensurer", func() {
 			)
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Succeed())
 			Expect(*etcd.Spec.Backup.Store.EndpointOverride).To(Equal("https://storage.me-central2.rep.googleapis.com"))
 		})
 
@@ -193,7 +193,7 @@ var _ = Describe("Ensurer", func() {
 			}
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Succeed())
 			checkETCDEventsStorage(etcd)
 		})
 
@@ -207,7 +207,7 @@ var _ = Describe("Ensurer", func() {
 			}
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
-			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Not(HaveOccurred()))
+			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Succeed())
 			checkETCDEventsStorage(etcd)
 		})
 	})

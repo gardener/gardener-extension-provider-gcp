@@ -156,7 +156,8 @@ These details include:
 ### BackupBucketConfig
 
 The `BackupBucketConfig` represents the configuration for a backup bucket.
-It includes an optional immutability configuration that enforces retention policies on the backup bucket.
+- It includes an optional immutability configuration that enforces retention policies on the backup bucket.
+- It includes an optional configuration to override the endpoint at which the GCS bucket is hosted at. This information is passed to the `Etcd` resource.
 
 The Gardener extension provider for GCP supports creating and managing immutable backup buckets by leveraging the [bucket lock](https://cloud.google.com/storage/docs/bucket-lock) feature.
 Immutability ensures that once data is written to the bucket, it cannot be modified or deleted for a specified period.
@@ -171,6 +172,8 @@ immutability:
   retentionType: bucket
   retentionPeriod: "24h"
   locked: false
+store:
+  endpointOverride: "https://storage.me-central2.rep.googleapis.com/storage/v1/"
 ```
 
 - **`retentionType`**: Specifies the type of retention policy.
@@ -183,6 +186,7 @@ immutability:
 - **`locked`**: A boolean indicating whether the retention policy is locked.
   Once locked, the policy cannot be removed or shortened, ensuring immutability.
   Learn more about locking policies [here](https://cloud.google.com/storage/docs/bucket-lock#policy-locks).
+- **`endpointOverride`**: Specifies the endpoint at which the GCS bucket is hosted.
 
 To configure a `BackupBucket` with immutability, include the `BackupBucketConfig` in the `providerConfig` of the `BackupBucket` resource.
 If the `locked` field is set to `true`, the retention policy will be locked, preventing the retention policy from being removed and the retention period from being reduced.

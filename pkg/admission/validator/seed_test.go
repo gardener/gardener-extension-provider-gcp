@@ -158,7 +158,7 @@ var _ = Describe("Seed Validator", func() {
 						},
 					},
 				}
-				Expect(seedValidator.Validate(ctx, seed, nil)).ToNot(HaveOccurred())
+				Expect(seedValidator.Validate(ctx, seed, nil)).To(Succeed())
 			})
 		})
 
