@@ -23,8 +23,9 @@ var (
 	VolumeSourceImageRegex = `^[a-z0-9\-/]+$`
 	// VolumeKmsKeyNameRegex matches e.g. projects/projectId/locations/<zoneName>/keyRings/<keyRingName>/cryptoKeys/alpha
 	VolumeKmsKeyNameRegex = `^[a-zA-Z0-9\-_/]+$`
-	// ServiceAccountRegex matches e.g. user@projectId.iam.gserviceaccount.com
-	ServiceAccountRegex = `^[a-zA-Z0-9\-_]+@[a-z0-9\-]+\.iam\.gserviceaccount\.com$`
+	// ServiceAccountRegex matches all valid GCP service account email formats
+	// Covers user-managed, Google-managed, and special service accounts
+	ServiceAccountRegex = `^[a-zA-Z0-9\-_\.]+@[a-zA-Z0-9\-\.]+\.gserviceaccount\.com$`
 	// ServiceAccountScopeRegex matches e.g.https://www.googleapis.com/auth/cloud-platform
 	ServiceAccountScopeRegex = `^https:\/\/www\.googleapis\.com\/[a-z0-9\-\.\/_]+$`
 	// ProjectIDRegex matches GCP project IDs (6-30 chars, lowercase alphanumeric + hyphens, must start with letter, end with alphanumeric)
