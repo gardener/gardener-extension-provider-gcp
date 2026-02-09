@@ -52,7 +52,7 @@ func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, allowedEndpo
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("store", "endpointOverride"), *config.Store.EndpointOverride, "must use https scheme"))
 		}
 		if !slices.Contains(allowedEndpointOverrideURLs, *config.Store.EndpointOverride) {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("store", "endpointOverride"), *config.Store.EndpointOverride, "must be one of the explicitly allowed endpoint override urls"))
+			allErrs = append(allErrs, field.NotSupported(fldPath.Child("store", "endpointOverride"), *config.Store.EndpointOverride, allowedEndpointOverrideURLs))
 		}
 	}
 

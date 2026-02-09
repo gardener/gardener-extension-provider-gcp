@@ -108,7 +108,7 @@ var _ = Describe("BackupBucket", func() {
 					Store: &apisgcp.Store{
 						EndpointOverride: ptr.To("https://not.explicitly.allowed.endpointurl"),
 					},
-				}, true, "must be one of the explicitly allowed endpoint override urls"),
+				}, true, "endpointOverride: Unsupported value"),
 			Entry("endpointOverride URL valid and explicitly allowed",
 				&apisgcp.BackupBucketConfig{
 					Store: &apisgcp.Store{

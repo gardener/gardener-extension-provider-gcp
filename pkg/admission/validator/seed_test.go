@@ -144,6 +144,7 @@ var _ = Describe("Seed Validator", func() {
 				}
 				err := seedValidator.Validate(ctx, seed, nil)
 				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("endpointOverride: Unsupported value")))
 			})
 
 			It("should succeed to create seed when specified endpoint override is explicitly allowed", func() {
@@ -157,8 +158,7 @@ var _ = Describe("Seed Validator", func() {
 						},
 					},
 				}
-				err := seedValidator.Validate(ctx, seed, nil)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(seedValidator.Validate(ctx, seed, nil)).ToNot(HaveOccurred())
 			})
 		})
 
