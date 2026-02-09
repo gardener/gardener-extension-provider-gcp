@@ -33,7 +33,7 @@ var _ genericactuator.BackupEntryDelegate = (*actuator)(nil)
 
 func newActuator(mgr manager.Manager) genericactuator.BackupEntryDelegate {
 	return &actuator{
-		reader: mgr.GetAPIReader(),
+		reader: mgr.GetClient(),
 	}
 }
 

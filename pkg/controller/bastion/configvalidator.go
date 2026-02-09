@@ -33,7 +33,7 @@ type configValidator struct {
 // NewConfigValidator creates a new ConfigValidator.
 func NewConfigValidator(mgr manager.Manager, logger logr.Logger, gcpClientFactory gcpclient.Factory) bastion.ConfigValidator {
 	return &configValidator{
-		reader:           mgr.GetAPIReader(),
+		reader:           mgr.GetClient(),
 		gcpClientFactory: gcpClientFactory,
 		logger:           logger.WithName("gcp-bastion-config-validator"),
 	}

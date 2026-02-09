@@ -38,7 +38,7 @@ const (
 var _ = Describe("ConfigValidator", func() {
 	var (
 		ctrl             *gomock.Controller
-		r                *mockclient.MockReader
+		c                *mockclient.MockClient
 		mgr              *mockmanager.MockManager
 		gcpClientFactory *mockgcpclient.MockFactory
 		gcpComputeClient *mockgcpclient.MockComputeClient
@@ -54,7 +54,7 @@ var _ = Describe("ConfigValidator", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 
-		r = mockclient.NewMockReader(ctrl)
+		c = mockclient.NewMockClient(ctrl)
 		gcpClientFactory = mockgcpclient.NewMockFactory(ctrl)
 		gcpComputeClient = mockgcpclient.NewMockComputeClient(ctrl)
 
@@ -62,7 +62,7 @@ var _ = Describe("ConfigValidator", func() {
 		logger = log.Log.WithName("test")
 
 		mgr = mockmanager.NewMockManager(ctrl)
-		mgr.EXPECT().GetAPIReader().Return(r)
+		mgr.EXPECT().GetClient().Return(c)
 		cv = NewConfigValidator(mgr, logger, gcpClientFactory)
 
 		bastion = &extensionsv1alpha1.Bastion{}
@@ -109,12 +109,12 @@ var _ = Describe("ConfigValidator", func() {
 		BeforeEach(func() {
 			cluster = createClusters()
 			key := client.ObjectKey{Namespace: cluster.ObjectMeta.Name, Name: cluster.Shoot.Name}
-			r.EXPECT().Get(ctx, key, &extensionsv1alpha1.Worker{}).DoAndReturn(
+			c.EXPECT().Get(ctx, key, &extensionsv1alpha1.Worker{}).DoAndReturn(
 				func(_ context.Context, _ client.ObjectKey, obj *extensionsv1alpha1.Worker, _ ...client.GetOption) error {
 					worker.DeepCopyInto(obj)
 					return nil
 				})
-			gcpClientFactory.EXPECT().Compute(ctx, r, secretBinding.SecretRef).Return(gcpComputeClient, nil)
+			gcpClientFactory.EXPECT().Compute(ctx, c, secretBinding.SecretRef).Return(gcpComputeClient, nil)
 		})
 
 		It("should succeed if there are infrastructureStatus passed", func() {

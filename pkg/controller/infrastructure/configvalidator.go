@@ -31,7 +31,7 @@ type configValidator struct {
 // NewConfigValidator creates a new ConfigValidator.
 func NewConfigValidator(mgr manager.Manager, logger logr.Logger, gcpClientFactory gcpclient.Factory) infrastructure.ConfigValidator {
 	return &configValidator{
-		reader:           mgr.GetAPIReader(),
+		reader:           mgr.GetClient(),
 		logger:           logger.WithName("gcp-infrastructure-config-validator"),
 		gcpClientFactory: gcpClientFactory,
 	}

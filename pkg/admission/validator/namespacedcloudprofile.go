@@ -29,7 +29,7 @@ import (
 // NewNamespacedCloudProfileValidator returns a new instance of a namespaced cloud profile validator.
 func NewNamespacedCloudProfileValidator(mgr manager.Manager) extensionswebhook.Validator {
 	return &namespacedCloudProfile{
-		reader:  mgr.GetAPIReader(),
+		reader:  mgr.GetClient(),
 		decoder: serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 	}
 }
