@@ -180,14 +180,14 @@ func validatePEMPrivateKey(key string, fldPath *field.Path) field.ErrorList {
 
 	const (
 		pemHeader = "-----BEGIN PRIVATE KEY-----"
-		pemFooter = "-----END PRIVATE KEY-----\n"
+		pemFooter = "-----END PRIVATE KEY-----"
 	)
 
 	if !strings.HasPrefix(key, pemHeader) {
 		allErrs = append(allErrs, field.Invalid(fldPath, "(hidden)", "must start with '-----BEGIN PRIVATE KEY-----'"))
 	}
 
-	if !strings.HasSuffix(key, pemFooter) {
+	if !strings.HasSuffix(strings.TrimSpace(key), pemFooter) {
 		allErrs = append(allErrs, field.Invalid(fldPath, "(hidden)", "must end with '-----END PRIVATE KEY-----'"))
 	}
 
