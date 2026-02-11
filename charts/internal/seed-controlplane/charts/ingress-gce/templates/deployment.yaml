@@ -35,24 +35,25 @@ spec:
       containers:
         - name: glbc
           image: {{ index .Values.images "ingress-gce" }}
-          command:
-            - /glbc
+          args:
             - --config-file-path=/etc/kubernetes/cloudprovider/cloudprovider.conf
             - --healthz-port=8086
             - --logtostderr
             - --sync-period=600s
-            - --default-backend-service=kube-system/default-http-backend
             - --running-in-cluster=false
             - --run-l4-netlb-controller=true
             - --enable-l4ilb-dual-stack=true
             - --enable-l4netlb-dual-stack=true
-            # services of Type:LoadBalancer with Internal annotation `cloud.google.com/l4-rbs: enabled`
-            # will be processed by this controller
-            # it is disabled to let ccm provision internal ipv4 loadbalancers
-            - --run-l4-controller=false
             - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
             - --leader-elect=true
             - --v=2
+            # services of Type:LoadBalancer with Internal annotation `cloud.google.com/l4-rbs: enabled`
+            # will be processed by this controller
+            # it is disabled to let ccm provision internal ipv4 loadbalancers.
+            - --run-l4-controller=false
+            # need both following options disabled together to disable ingress controller.
+            - --run-ingress-controller=false
+            - --enable-negs-for-ingress=false
           env:
             - name: GOOGLE_APPLICATION_CREDENTIALS
               {{- if .Values.useWorkloadIdentity }}
