@@ -65,7 +65,6 @@ Please find below an example `CloudProfile` manifest:
 
 #### New: with `spec.machineCapabilities`:
 
-#### Without `spec.machineCapabilities`:
 ```yaml
 apiVersion: core.gardener.cloud/v1beta1
 kind: CloudProfile
@@ -73,6 +72,16 @@ metadata:
   name: gcp
 spec:
   type: gcp
+  machineCapabilities:
+    - name: architecture
+      values:
+        - amd64
+        - arm64
+    - name: your-capability
+      values:
+        - value1
+        - value2
+        - value3
   kubernetes:
     versions:
     - version: 1.32.0
@@ -84,6 +93,7 @@ spec:
     - version: 1877.5.0
       capabilityFlavors:
       - architecture: [amd64]
+        your-capability: [value1, value2]
       - architecture: [arm64]
   machineTypes:
   - name: n1-standard-4
@@ -92,13 +102,12 @@ spec:
     memory: 15Gi
     capabilities:
       architecture: [amd64]
+      your-capability: [value1, value3]
   volumeTypes:
   - name: pd-standard
     class: standard
   - name: pd-ssd
     class: premium
-  - name: SCRATCH
-    class: standard
   regions:
   - region: europe-west1
     names:
@@ -116,9 +125,60 @@ spec:
               - image: projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-f03494b5e33cba13-1877-5-7a907e4e
                 capabilities:
                   architecture: [amd64]
+                  your-capability: [value1, value2]
               - image: projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-e4c18db54c0e1287-1877-5-7a907e4e
                 capabilities:
                   architecture: [arm64]
+```
+#### Without `spec.machineCapabilities`:
+
+```yaml
+apiVersion: core.gardener.cloud/v1beta1
+kind: CloudProfile
+metadata:
+  name: gcp-legacy
+spec:
+  type: gcp
+  kubernetes:
+    versions:
+      - version: 1.32.0
+      - version: 1.31.2
+        expirationDate: "2026-03-31T23:59:59Z"
+  machineImages:
+    - name: gardenlinux
+      versions:
+        - version: 1877.5.0
+          architectures:
+            - amd64
+            - arm64
+  machineTypes:
+    - name: n1-standard-4
+      cpu: "4"
+      gpu: "0"
+      memory: 15Gi
+  volumeTypes:
+    - name: pd-standard
+      class: standard
+    - name: pd-ssd
+      class: premium
+  regions:
+    - name: europe-west1
+      zones:
+        - name: europe-west1-b
+        - name: europe-west1-c
+        - name: europe-west1-d
+  providerConfig:
+    apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+    kind: CloudProfileConfig
+    machineImages:
+      - name: gardenlinux
+        versions:
+          - version: 1877.5.0
+            image: projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-f03494b5e33cba13-1877-5-7a907e4e
+            architecture: amd64
+          - version: 1877.5.0
+            image: projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-f03494b5e33cba13-1877-5-7a907e4e
+            architecture: amd64
 ```
 
 ## `Seed` resource
