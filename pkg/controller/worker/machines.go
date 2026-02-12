@@ -316,8 +316,10 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 			if workerConfig.MinCpuPlatform != nil {
 				machineClassSpec["minCpuPlatform"] = *workerConfig.MinCpuPlatform
 			}
-
-			nodeTemplate := pool.NodeTemplate.DeepCopy()
+			var nodeTemplate *v1alpha1.NodeTemplate
+			if pool.NodeTemplate != nil {
+				nodeTemplate = pool.NodeTemplate.DeepCopy()
+			}
 			if workerConfig.NodeTemplate != nil {
 				// Support extended resources by copying into nodeTemplate.Capacity and virtualCapacity, overriding if needed
 				maps.Copy(nodeTemplate.Capacity, workerConfig.NodeTemplate.Capacity)
