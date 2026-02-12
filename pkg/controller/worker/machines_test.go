@@ -40,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
-	api "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/worker"
@@ -1102,7 +1101,7 @@ var _ = Describe("Machines", func() {
 			DescribeTable("should generate same worker pool hash even when virtualCapacity is newly added or changed", Label("virtualCapacity"),
 				func(w1Def string, w2Def string) {
 					var w1, w2 extensionsv1alpha1.Worker
-					var w1Config, w2Config *api.WorkerConfig
+					var w1Config, w2Config *apisgcp.WorkerConfig
 					err := loadDecodeWorker(decoder, w1Def, &w1)
 					Expect(err).ToNot(HaveOccurred())
 
@@ -1135,7 +1134,7 @@ var _ = Describe("Machines", func() {
 
 			Describe("ComputeAdditionalHashDataV2", func() {
 				var (
-					workerConfig     api.WorkerConfig
+					workerConfig     apisgcp.WorkerConfig
 					workerConfigData []byte
 					pool             extensionsv1alpha1.WorkerPool
 				)
@@ -1161,20 +1160,20 @@ var _ = Describe("Machines", func() {
 							},
 						},
 					}
-					workerConfig = api.WorkerConfig{
-						GPU: &api.GPU{
+					workerConfig = apisgcp.WorkerConfig{
+						GPU: &apisgcp.GPU{
 							AcceleratorType: "gpu-accel",
 							Count:           4,
 						},
-						Volume: &api.Volume{
+						Volume: &apisgcp.Volume{
 							LocalSSDInterface: ptr.To("ssd-interface"),
-							Encryption: &api.DiskEncryption{
+							Encryption: &apisgcp.DiskEncryption{
 								KmsKeyName:           ptr.To("vol-enc-kms-name"),
 								KmsKeyServiceAccount: ptr.To("vol-enc-kms-sa"),
 							},
 						},
 						MinCpuPlatform: ptr.To("min-cpu-platform"),
-						ServiceAccount: &api.ServiceAccount{
+						ServiceAccount: &apisgcp.ServiceAccount{
 							Email: serviceAccountEmail,
 							Scopes: []string{
 								"scope-a",
@@ -1288,8 +1287,8 @@ func loadDecodeWorker(decoder runtime.Decoder, filePath string, w *extensionsv1a
 	return nil
 }
 
-func decodePoolProviderConfig(decoder runtime.Decoder, pool extensionsv1alpha1.WorkerPool) (workerConfig *api.WorkerConfig, err error) {
-	workerConfig = &api.WorkerConfig{}
+func decodePoolProviderConfig(decoder runtime.Decoder, pool extensionsv1alpha1.WorkerPool) (workerConfig *apisgcp.WorkerConfig, err error) {
+	workerConfig = &apisgcp.WorkerConfig{}
 	if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
 		if _, _, err = decoder.Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
 			err = fmt.Errorf("could not decode provider config: %+v", err)

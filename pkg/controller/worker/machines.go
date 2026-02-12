@@ -383,6 +383,8 @@ func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, worker
 	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalDataV2, []string{})
 }
 
+// WorkerPoolHashDataV2 computes additional hash data for the worker pool. It returns a slice of strings containing the
+// additional data used for hashing.
 func WorkerPoolHashDataV2(pool v1alpha1.WorkerPool, workerConfig *apisgcp.WorkerConfig) ([]string, error) {
 	var useNewHashData bool
 	if pool.KubernetesVersion != nil {
@@ -588,8 +590,17 @@ func hashDataForWorkerConfig(workerConfig *apisgcp.WorkerConfig) (hashData []str
 		if workerConfig.Volume.Encryption != nil {
 			hashData = append(hashData, ptr.Deref(workerConfig.Volume.Encryption.KmsKeyName, ""))
 			hashData = append(hashData, ptr.Deref(workerConfig.Volume.Encryption.KmsKeyServiceAccount, ""))
-
 		}
+	}
+
+	if workerConfig.BootVolume != nil {
+		if workerConfig.BootVolume.ProvisionedIops != nil {
+			hashData = append(hashData, strconv.FormatInt(*workerConfig.BootVolume.ProvisionedIops, 10))
+		}
+		if workerConfig.BootVolume.ProvisionedThroughput != nil {
+			hashData = append(hashData, strconv.FormatInt(*workerConfig.BootVolume.ProvisionedThroughput, 10))
+		}
+		hashData = append(hashData, ptr.Deref(workerConfig.BootVolume.StoragePool, ""))
 	}
 
 	if workerConfig.DataVolumes != nil {
