@@ -23,18 +23,20 @@ import (
 
 // NewSeedValidator returns a new Validator for Seed resources,
 // ensuring backup configuration immutability according to policy.
-func NewSeedValidator(mgr manager.Manager) extensionswebhook.Validator {
+func NewSeedValidator(mgr manager.Manager, allowedEndpointOverrideURLs []string) extensionswebhook.Validator {
 	return &seedValidator{
-		decoder:        serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
-		lenientDecoder: serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
+		decoder:                     serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
+		lenientDecoder:              serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
+		allowedEndpointOverrideURLs: allowedEndpointOverrideURLs,
 	}
 }
 
 // seedValidator validates create and update operations on Seed resources,
 // enforcing immutability of backup configurations.
 type seedValidator struct {
-	decoder        runtime.Decoder
-	lenientDecoder runtime.Decoder
+	decoder                     runtime.Decoder
+	lenientDecoder              runtime.Decoder
+	allowedEndpointOverrideURLs []string
 }
 
 // Validate validates the Seed resource during create or update operations.
@@ -73,7 +75,7 @@ func (s *seedValidator) validateCreate(seed *core.Seed) field.ErrorList {
 				return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(seed.Spec.Backup.ProviderConfig), fmt.Errorf("failed to decode provider config: %w", err).Error()))
 			}
 
-			allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(backupBucketConfig, providerConfigPath)...)
+			allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(backupBucketConfig, s.allowedEndpointOverrideURLs, providerConfigPath)...)
 		}
 	}
 
@@ -100,7 +102,7 @@ func (s *seedValidator) validateUpdate(oldSeed, newSeed *core.Seed) field.ErrorL
 			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(newSeed.Spec.Backup.ProviderConfig), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
 		}
 
-		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(newBackupBucketConfig, providerConfigPath)...)
+		allErrs = append(allErrs, gcpvalidation.ValidateBackupBucketConfig(newBackupBucketConfig, s.allowedEndpointOverrideURLs, providerConfigPath)...)
 	}
 
 	if oldSeed.Spec.Backup != nil && oldSeed.Spec.Backup.ProviderConfig != nil {

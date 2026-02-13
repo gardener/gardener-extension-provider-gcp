@@ -28,7 +28,7 @@ var _ = Describe("BackupBucket", func() {
 	Describe("ValidateBackupBucketConfig", func() {
 		DescribeTable("validation cases",
 			func(config *apisgcp.BackupBucketConfig, wantErr bool, errMsg string) {
-				errs := ValidateBackupBucketConfig(config, fldPath)
+				errs := ValidateBackupBucketConfig(config, []string{"https://storage.me-central2.rep.googleapis.com"}, fldPath)
 				if wantErr {
 					Expect(errs).NotTo(BeEmpty())
 					Expect(errs[0].Error()).To(ContainSubstring(errMsg))
@@ -85,6 +85,36 @@ var _ = Describe("BackupBucket", func() {
 						RetentionPeriod: metav1.Duration{Duration: 23 * time.Hour},
 					},
 				}, true, "must be a positive duration greater than 24h"),
+			Entry("endpointOverride URL invalid",
+				&apisgcp.BackupBucketConfig{
+					Store: &apisgcp.Store{
+						EndpointOverride: ptr.To("https://gardener.cloud:invalidport"),
+					},
+				}, true, "invalid URL"),
+			Entry("endpointOverride URL with http scheme",
+				&apisgcp.BackupBucketConfig{
+					Store: &apisgcp.Store{
+						EndpointOverride: ptr.To("http://storage.googleapis.com"),
+					},
+				}, true, "must use https scheme"),
+			Entry("endpointOverride URL with no scheme",
+				&apisgcp.BackupBucketConfig{
+					Store: &apisgcp.Store{
+						EndpointOverride: ptr.To("storage.googleapis.com"),
+					},
+				}, true, "must use https scheme"),
+			Entry("endpointOverride URL not explicitly allowed",
+				&apisgcp.BackupBucketConfig{
+					Store: &apisgcp.Store{
+						EndpointOverride: ptr.To("https://not.explicitly.allowed.endpointurl"),
+					},
+				}, true, "endpointOverride: Unsupported value"),
+			Entry("endpointOverride URL valid and explicitly allowed",
+				&apisgcp.BackupBucketConfig{
+					Store: &apisgcp.Store{
+						EndpointOverride: ptr.To("https://storage.me-central2.rep.googleapis.com"),
+					},
+				}, false, ""),
 		)
 	})
 

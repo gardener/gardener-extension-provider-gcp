@@ -52,7 +52,7 @@ var _ = Describe("Seed Validator", func() {
 
 			mgr = mockmanager.NewMockManager(ctrl)
 			mgr.EXPECT().GetScheme().Return(scheme).AnyTimes()
-			seedValidator = validator.NewSeedValidator(mgr)
+			seedValidator = validator.NewSeedValidator(mgr, []string{"https://storage.me-central2.rep.googleapis.com"})
 		})
 
 		It("should return err when obj is not a gardencore.Seed", func() {
@@ -128,6 +128,36 @@ var _ = Describe("Seed Validator", func() {
 					},
 				}
 
+				Expect(seedValidator.Validate(ctx, seed, nil)).To(Succeed())
+			})
+
+			It("should fail to create seed when specified endpoint override is not explicitly allowed", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: &gardencore.Backup{
+							CredentialsRef: credentialsRef,
+							ProviderConfig: &runtime.RawExtension{
+								Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "store": {"endpointOverride": "https://not.explicitly.allowed.endpointurl"}}`),
+							},
+						},
+					},
+				}
+				err := seedValidator.Validate(ctx, seed, nil)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("endpointOverride: Unsupported value")))
+			})
+
+			It("should succeed to create seed when specified endpoint override is explicitly allowed", func() {
+				seed := &gardencore.Seed{
+					Spec: gardencore.SeedSpec{
+						Backup: &gardencore.Backup{
+							CredentialsRef: credentialsRef,
+							ProviderConfig: &runtime.RawExtension{
+								Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig", "store": {"endpointOverride": "https://storage.me-central2.rep.googleapis.com"}}`),
+							},
+						},
+					},
+				}
 				Expect(seedValidator.Validate(ctx, seed, nil)).To(Succeed())
 			})
 		})

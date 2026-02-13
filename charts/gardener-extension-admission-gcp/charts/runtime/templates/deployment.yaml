@@ -69,6 +69,11 @@ spec:
         - --wi-allowed-service-account-impersonation-url-regexp={{ . }}
         {{- end }}
         {{- end }}
+        {{- if .Values.backupBucket.allowedEndpointOverrideURLs }}
+        {{- range .Values.backupBucket.allowedEndpointOverrideURLs }}
+        - --bb-allowed-endpoint-override-url={{ . }}
+        {{- end }}
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
         livenessProbe:
