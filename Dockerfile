@@ -1,5 +1,5 @@
 ############# builder
-FROM golang:1.25.6 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25.6 AS builder
 
 WORKDIR /go/src/github.com/gardener/gardener-extension-provider-gcp
 
@@ -11,8 +11,10 @@ RUN go mod download
 COPY . .
 
 ARG EFFECTIVE_VERSION
+ARG TARGETOS
+ARG TARGETARCH
 
-RUN make install EFFECTIVE_VERSION=$EFFECTIVE_VERSION
+RUN make build GOOS=$TARGETOS GOARCH=$TARGETARCH EFFECTIVE_VERSION=$EFFECTIVE_VERSION BUILD_OUTPUT_FILE="/output/bin/"
 
 ############# base image
 FROM gcr.io/distroless/static-debian12:nonroot AS base
@@ -21,12 +23,12 @@ FROM gcr.io/distroless/static-debian12:nonroot AS base
 FROM base AS gardener-extension-provider-gcp
 WORKDIR /
 
-COPY --from=builder /go/bin/gardener-extension-provider-gcp /gardener-extension-provider-gcp
+COPY --from=builder /output/bin/gardener-extension-provider-gcp /gardener-extension-provider-gcp
 ENTRYPOINT ["/gardener-extension-provider-gcp"]
 
 ############# gardener-extension-admission-gcp
 FROM base AS gardener-extension-admission-gcp
 WORKDIR /
 
-COPY --from=builder /go/bin/gardener-extension-admission-gcp /gardener-extension-admission-gcp
+COPY --from=builder /output/bin/gardener-extension-admission-gcp /gardener-extension-admission-gcp
 ENTRYPOINT ["/gardener-extension-admission-gcp"]
