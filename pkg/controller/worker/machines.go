@@ -392,7 +392,7 @@ func WorkerPoolHashDataV2(pool v1alpha1.WorkerPool, workerConfig *apisgcp.Worker
 		if err != nil {
 			return nil, err
 		}
-		useNewHashData = versionutils.ConstraintK8sGreaterEqual134.Check(poolK8sVersion)
+		useNewHashData = versionutils.ConstraintK8sGreaterEqual135.Check(poolK8sVersion)
 	}
 	if useNewHashData && workerConfig != nil {
 		return hashDataForWorkerConfig(workerConfig), nil

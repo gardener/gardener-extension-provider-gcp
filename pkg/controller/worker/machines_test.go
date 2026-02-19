@@ -1187,8 +1187,8 @@ var _ = Describe("Machines", func() {
 					}
 				})
 
-				It("should return the expected hash data when k8s version >= 1.34 ", func() {
-					pool.KubernetesVersion = ptr.To("1.34.0") // new hash data strategy for ProviderConfig beginning from 1.34.0 onwards
+				It("should return the expected hash data when k8s version >= 1.35 ", func() {
+					pool.KubernetesVersion = ptr.To("1.35.0") // new hash data strategy for ProviderConfig beginning from 1.35.0 onwards
 					workerConfig.NodeTemplate = &extensionsv1alpha1.NodeTemplate{
 						Capacity: w.Spec.Pools[0].NodeTemplate.Capacity.DeepCopy(),
 					}
