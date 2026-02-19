@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane"
 	genericcontrolplaneactuator "github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
@@ -21,6 +19,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow"
+	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 const (
