@@ -176,6 +176,10 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 		}
 
 		isLiveMigrationAllowed := true
+		// bare metal machines don't support live migration
+		if strings.Contains(pool.MachineType, "metal") {
+			isLiveMigrationAllowed = false
+		}
 
 		userData, err := worker.FetchUserData(ctx, w.client, w.worker.Namespace, pool)
 		if err != nil {

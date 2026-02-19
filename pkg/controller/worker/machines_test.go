@@ -1089,6 +1089,54 @@ var _ = Describe("Machines", func() {
 				Expect(result[1].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUnreadyTimeAnnotation]).To(Equal("3m0s"))
 				Expect(result[1].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUtilizationThresholdAnnotation]).To(Equal("0.5"))
 			})
+
+			It("should set onHostMaintenance to TERMINATE for metal machine types", func() {
+				metalMachineType := "c3-highcpu-192-metal"
+				w.Spec.Pools = []extensionsv1alpha1.WorkerPool{
+					{
+						Name:           namePool1,
+						Minimum:        minPool1,
+						Maximum:        maxPool1,
+						MaxSurge:       maxSurgePool1,
+						MaxUnavailable: maxUnavailablePool1,
+						MachineType:    metalMachineType,
+						Architecture:   ptr.To(archAMD),
+						MachineImage: extensionsv1alpha1.MachineImage{
+							Name:    machineImageName,
+							Version: machineImageVersion,
+						},
+						NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+							Capacity: nodeCapacity,
+						},
+						UserDataSecretRef: corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: userDataSecretName},
+							Key:                  userDataSecretDataKey,
+						},
+						Volume: &extensionsv1alpha1.Volume{
+							Type: &volumeType,
+							Size: fmt.Sprintf("%dGi", volumeSize),
+						},
+						Zones: []string{
+							zone1,
+						},
+						Labels: poolLabels,
+					},
+				}
+
+				wd, err := NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
+				Expect(err).NotTo(HaveOccurred())
+				expectedUserDataSecretRefRead()
+				_, err = wd.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				workerDelegate := wd.(*WorkerDelegate)
+				mClasses := workerDelegate.GetMachineClasses()
+				Expect(mClasses).To(HaveLen(1))
+				scheduling, ok := mClasses[0]["scheduling"].(map[string]interface{})
+				Expect(ok).To(BeTrue())
+				Expect(scheduling["onHostMaintenance"]).To(Equal("TERMINATE"))
+				Expect(scheduling["automaticRestart"]).To(BeTrue())
+				Expect(scheduling["preemptible"]).To(BeFalse())
+			})
 		})
 	})
 
