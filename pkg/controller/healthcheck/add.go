@@ -44,7 +44,11 @@ var (
 
 // RegisterHealthChecks registers health checks for each extension resource
 func RegisterHealthChecks(_ context.Context, mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
-	gceIngressControllerPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, cluster *extensionscontroller.Cluster) bool {
+	gceIngressControllerPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, obj any) bool {
+		cluster, ok := obj.(*extensionscontroller.Cluster)
+		if !ok || cluster == nil {
+			return false
+		}
 		return controlplane.IsDualStackEnabled(cluster.Shoot.Spec.Networking, nil)
 	}
 	if err := healthcheck.DefaultRegistration(
