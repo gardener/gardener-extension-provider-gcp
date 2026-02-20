@@ -96,6 +96,10 @@ const (
 	// See also https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver/releases/tag/v1.17.0
 	AnnotationEnableCSIDataCache = "gcp.provider.extensions.gardener.cloud/enable-csi-data-cache"
 
+	// AnnotationRemoveIgnore is a state annotation that triggers the removal of an ignore annotation
+	// when found during reconciliation.
+	AnnotationRemoveIgnore = "gcp.provider.extensions.gardener.cloud/remove-ignore"
+
 	// WorkloadIdentityMountPath is the path where the workload identity token and GCP config file are usually mounted.
 	WorkloadIdentityMountPath = "/var/run/secrets/gardener.cloud/workload-identity"
 
