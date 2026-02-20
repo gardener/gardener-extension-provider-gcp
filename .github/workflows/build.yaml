@@ -23,6 +23,7 @@ jobs:
       version-commit-callback-action-path: .github/actions/prepare-release
     permissions:
       id-token: write
+      pull-requests: write
 
   oci-images:
     name: Build OCI-Images
