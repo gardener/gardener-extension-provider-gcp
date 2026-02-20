@@ -20,8 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/mutator"
@@ -31,7 +29,6 @@ import (
 
 var _ = Describe("NamespacedCloudProfile Mutator", func() {
 	var (
-		fakeClient  client.Client
 		fakeManager manager.Manager
 		namespace   string
 		ctx         = context.Background()
@@ -45,9 +42,7 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 		scheme := runtime.NewScheme()
 		utilruntime.Must(install.AddToScheme(scheme))
 		utilruntime.Must(v1beta1.AddToScheme(scheme))
-		fakeClient = fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 		fakeManager = &test.FakeManager{
-			Client: fakeClient,
 			Scheme: scheme,
 		}
 		namespace = "garden-dev"

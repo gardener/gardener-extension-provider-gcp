@@ -25,7 +25,7 @@ import (
 )
 
 type configValidator struct {
-	client           client.Client
+	reader           client.Reader
 	gcpClientFactory gcpclient.Factory
 	logger           logr.Logger
 }
@@ -33,7 +33,7 @@ type configValidator struct {
 // NewConfigValidator creates a new ConfigValidator.
 func NewConfigValidator(mgr manager.Manager, logger logr.Logger, gcpClientFactory gcpclient.Factory) bastion.ConfigValidator {
 	return &configValidator{
-		client:           mgr.GetClient(),
+		reader:           mgr.GetClient(),
 		gcpClientFactory: gcpClientFactory,
 		logger:           logger.WithName("gcp-bastion-config-validator"),
 	}
@@ -45,7 +45,7 @@ func (c *configValidator) Validate(ctx context.Context, bastion *extensionsv1alp
 
 	logger := c.logger.WithValues("bastion", client.ObjectKeyFromObject(bastion))
 
-	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, c.client, cluster)
+	infrastructureStatus, subnet, err := getInfrastructureStatus(ctx, c.reader, cluster)
 	if err != nil {
 		allErrs = append(allErrs, field.InternalError(nil, err))
 		return allErrs
@@ -57,7 +57,7 @@ func (c *configValidator) Validate(ctx context.Context, bastion *extensionsv1alp
 	}
 
 	// Create GCP compute client
-	computeClient, err := c.gcpClientFactory.Compute(ctx, c.client, secretReference)
+	computeClient, err := c.gcpClientFactory.Compute(ctx, c.reader, secretReference)
 	if err != nil {
 		allErrs = append(allErrs, field.InternalError(nil, err))
 		return allErrs
@@ -70,13 +70,13 @@ func (c *configValidator) Validate(ctx context.Context, bastion *extensionsv1alp
 	return allErrs
 }
 
-func getInfrastructureStatus(ctx context.Context, c client.Client, cluster *extensions.Cluster) (*gcp.InfrastructureStatus, string, error) {
+func getInfrastructureStatus(ctx context.Context, reader client.Reader, cluster *extensions.Cluster) (*gcp.InfrastructureStatus, string, error) {
 	var infrastructureStatus *gcp.InfrastructureStatus
 	var nodeSubnet string
 
 	worker := &extensionsv1alpha1.Worker{}
 
-	err := c.Get(ctx, client.ObjectKey{Namespace: cluster.ObjectMeta.Name, Name: cluster.Shoot.Name}, worker)
+	err := reader.Get(ctx, client.ObjectKey{Namespace: cluster.ObjectMeta.Name, Name: cluster.Shoot.Name}, worker)
 	if err != nil {
 		return nil, "", err
 	}
