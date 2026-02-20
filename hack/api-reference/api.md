@@ -1183,6 +1183,58 @@ string
 <p>Architecture is the CPU architecture of the machine image.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>capabilities</code></br>
+<em>
+github.com/gardener/gardener/pkg/apis/core/v1beta1.Capabilities
+</em>
+</td>
+<td>
+<p>Capabilities of the machine image.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImageFlavor">MachineImageFlavor
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion</a>)
+</p>
+<p>
+<p>MachineImageFlavor is a flavor of the machine image version that supports a specific set of capabilities.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>capabilities</code></br>
+<em>
+github.com/gardener/gardener/pkg/apis/core/v1beta1.Capabilities
+</em>
+</td>
+<td>
+<p>Capabilities is the set of capabilities that are supported by the AMIs in this set.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Image is the path to the image.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion
@@ -1221,6 +1273,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Image is the path to the image.</p>
 </td>
 </tr>
@@ -1234,6 +1287,19 @@ string
 <td>
 <em>(Optional)</em>
 <p>Architecture is the CPU architecture of the machine image.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>capabilityFlavors</code></br>
+<em>
+<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImageFlavor">
+[]MachineImageFlavor
+</a>
+</em>
+</td>
+<td>
+<p>CapabilityFlavors is a collection of all images for that version with capabilities.</p>
 </td>
 </tr>
 </tbody>
