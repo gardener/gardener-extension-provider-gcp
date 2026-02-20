@@ -69,41 +69,6 @@ func (a *actuator) Reconcile(
 	return ok, a.removeIgnoreAnnotations(ctx, log, cluster)
 }
 
-// Delete reconciles the given controlplane and cluster, deleting the additional
-// control plane components as needed.
-func (a *actuator) Delete(
-	ctx context.Context,
-	log logr.Logger,
-	cp *extensionsv1alpha1.ControlPlane,
-	cluster *extensionscontroller.Cluster,
-) error {
-	// Call Delete on the composed Actuator
-	return a.Actuator.Delete(ctx, log, cp, cluster)
-}
-
-// ForceDelete forcefully deletes the controlplane.
-func (a *actuator) ForceDelete(
-	ctx context.Context,
-	log logr.Logger,
-	cp *extensionsv1alpha1.ControlPlane,
-	cluster *extensionscontroller.Cluster,
-) error {
-	// Call Delete on the composed Actuator
-	return a.Actuator.Delete(ctx, log, cp, cluster)
-}
-
-// Migrate reconciles the given controlplane and cluster, migrating the additional
-// control plane components as needed.
-func (a *actuator) Migrate(
-	ctx context.Context,
-	log logr.Logger,
-	cp *extensionsv1alpha1.ControlPlane,
-	cluster *extensionscontroller.Cluster,
-) error {
-	// Call Migrate on the composed Actuator so that the controlplane chart is deleted
-	return a.Actuator.Migrate(ctx, log, cp, cluster)
-}
-
 // removeIgnoreAnnotations removes the ignore annotation from the control plane managed resource
 // if the remove-ignore annotation is found on it.
 func (a *actuator) removeIgnoreAnnotations(ctx context.Context, log logr.Logger, cluster *extensionscontroller.Cluster) error {
