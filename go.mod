@@ -4,7 +4,7 @@ module github.com/gardener/gardener-extension-provider-gcp
 go 1.25.6
 
 require (
-	cloud.google.com/go/storage v1.59.1
+	cloud.google.com/go/storage v1.60.0
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/coreos/go-systemd/v22 v22.7.0
@@ -21,10 +21,10 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96
-	golang.org/x/oauth2 v0.34.0
+	golang.org/x/oauth2 v0.35.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/tools v0.42.0
-	google.golang.org/api v0.262.0
+	google.golang.org/api v0.265.0
 	k8s.io/api v0.34.3
 	k8s.io/apiextensions-apiserver v0.34.3
 	k8s.io/apimachinery v0.34.3
@@ -49,8 +49,8 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.30.0 // indirect
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0 // indirect
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.54.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.55.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.55.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/PaesslerAG/gval v1.2.4 // indirect
@@ -129,7 +129,7 @@ require (
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.11 // indirect
-	github.com/googleapis/gax-go/v2 v2.16.0 // indirect
+	github.com/googleapis/gax-go/v2 v2.17.0 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -210,7 +210,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.38.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.61.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.14.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.38.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.39.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.38.0 // indirect
 	go.opentelemetry.io/otel/log v0.14.0 // indirect
 	go.opentelemetry.io/otel/metric v1.39.0 // indirect
@@ -233,9 +233,9 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
-	google.golang.org/genproto v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120174246-409b4a993575 // indirect
+	google.golang.org/genproto v0.0.0-20260128011058-8636f8732409 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260203192932-546029d2fa20 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260203192932-546029d2fa20 // indirect
 	google.golang.org/grpc v1.78.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
