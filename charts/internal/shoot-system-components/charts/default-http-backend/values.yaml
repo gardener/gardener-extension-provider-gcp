@@ -1,7 +1,0 @@
-replicas: 1
-
-images:
-  default-http-backend: image-repository:image-tag
-
-podAnnotations: {}
-podLabels: {}
