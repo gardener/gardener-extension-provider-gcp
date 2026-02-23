@@ -26,14 +26,14 @@ import (
 )
 
 type actuator struct {
-	client client.Client
+	reader client.Reader
 }
 
 var _ genericactuator.BackupEntryDelegate = (*actuator)(nil)
 
 func newActuator(mgr manager.Manager) genericactuator.BackupEntryDelegate {
 	return &actuator{
-		client: mgr.GetClient(),
+		reader: mgr.GetClient(),
 	}
 }
 
@@ -45,7 +45,7 @@ func (a *actuator) GetETCDSecretData(ctx context.Context, _ logr.Logger, be *ext
 }
 
 func (a *actuator) Delete(ctx context.Context, _ logr.Logger, be *extensionsv1alpha1.BackupEntry) error {
-	storageClient, err := gcpclient.NewStorageClientFromSecretRef(ctx, a.client, be.Spec.SecretRef)
+	storageClient, err := gcpclient.NewStorageClientFromSecretRef(ctx, a.reader, be.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
@@ -55,7 +55,7 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, be *extensionsv1al
 
 func (a *actuator) injectWorkloadIdentityData(ctx context.Context, be *extensionsv1alpha1.BackupEntry, data map[string][]byte) error {
 	backupEntrySecret := &corev1.Secret{}
-	if err := a.client.Get(ctx, kutil.ObjectKeyFromSecretRef(be.Spec.SecretRef), backupEntrySecret); err != nil {
+	if err := a.reader.Get(ctx, kutil.ObjectKeyFromSecretRef(be.Spec.SecretRef), backupEntrySecret); err != nil {
 		return err
 	}
 

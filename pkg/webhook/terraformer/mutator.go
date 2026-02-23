@@ -23,7 +23,7 @@ import (
 
 type mutator struct {
 	logger logr.Logger
-	client client.Client
+	reader client.Reader
 }
 
 const (
@@ -32,9 +32,9 @@ const (
 )
 
 // New returns a new Terraformer mutator that uses mutateFunc to perform the mutation.
-func New(c client.Client, logger logr.Logger) extensionswebhook.Mutator {
+func New(r client.Reader, logger logr.Logger) extensionswebhook.Mutator {
 	return &mutator{
-		client: c,
+		reader: r,
 		logger: logger,
 	}
 }
@@ -56,7 +56,7 @@ func (m *mutator) Mutate(ctx context.Context, newObj, oldObj client.Object) erro
 			Namespace: pod.Namespace,
 		},
 	}
-	if err := m.client.Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret); err != nil {
+	if err := m.reader.Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret); err != nil {
 		return fmt.Errorf("failed getting cloudprovider secret: %w", err)
 	}
 

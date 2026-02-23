@@ -75,8 +75,8 @@ type CredentialsConfig struct {
 }
 
 // GetCredentialsConfigFromSecretReference retrieves the credentials config from the secret with the given secret reference.
-func GetCredentialsConfigFromSecretReference(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (*CredentialsConfig, error) {
-	secret, err := extensionscontroller.GetSecretByReference(ctx, c, &secretRef)
+func GetCredentialsConfigFromSecretReference(ctx context.Context, reader client.Reader, secretRef corev1.SecretReference) (*CredentialsConfig, error) {
+	secret, err := extensionscontroller.GetSecretByReference(ctx, reader, &secretRef)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func GetCredentialsConfigFromSecretReference(ctx context.Context, c client.Clien
 
 	if credentialsConfig.Type == ExternalAccountCredentialType {
 		credentialsConfig.TokenRetriever = &tokenRetriever{
-			c:               c,
+			r:               reader,
 			secretName:      secretRef.Name,
 			secretNamespace: secretRef.Namespace,
 		}
@@ -159,7 +159,7 @@ func GetCredentialsConfigFromJSON(data []byte) (*CredentialsConfig, error) {
 }
 
 type tokenRetriever struct {
-	c               client.Client
+	r               client.Reader
 	secretName      string
 	secretNamespace string
 }
@@ -174,7 +174,7 @@ func (t *tokenRetriever) SubjectToken(ctx context.Context, _ externalaccount.Sup
 		},
 	}
 
-	if err := t.c.Get(ctx, client.ObjectKeyFromObject(secret), secret); err != nil {
+	if err := t.r.Get(ctx, client.ObjectKeyFromObject(secret), secret); err != nil {
 		return "", err
 	}
 
