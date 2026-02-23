@@ -6,7 +6,10 @@ import (
 	"strings"
 	"sync"
 
+	genericcontrolplaneactuator "github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	resourcesv1alpha1 "github.com/gardener/gardener/pkg/apis/resources/v1alpha1"
+	"github.com/go-logr/logr"
 	"google.golang.org/api/compute/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -131,7 +134,7 @@ func (fctx *FlowContext) ensureIPv6CIDRs(ctx context.Context) error {
 	return nil
 }
 
-func (fctx *FlowContext) ensureKubernetesRoutesCleanupForDualStackMigration(ctx context.Context) error {
+func (fctx *FlowContext) ensureKubernetesRoutesCleanupForDualStackMigration(ctx context.Context) (err error) {
 	if err := fctx.ensureObjectKeys(ObjectKeyVPC); err != nil {
 		return err
 	}
@@ -164,14 +167,45 @@ func (fctx *FlowContext) ensureKubernetesRoutesCleanupForDualStackMigration(ctx 
 		})
 	}
 
-	originalScale := ccmScale.Spec.Replicas
+	seedControlPlaneMr := resourcesv1alpha1.ManagedResource{}
+	err = fctx.runtimeClient.Get(ctx, ctclient.ObjectKey{
+		Namespace: fctx.clusterName,
+		Name:      genericcontrolplaneactuator.ControlPlaneSeedChartResourceName}, &seedControlPlaneMr)
+	// also error if not found - a workerless cluster has no infra resource so the mr should always exist
+	if err != nil {
+		return fmt.Errorf("failed to get control plane managed resource: %w", err)
+	}
+
+	// add ignore annotation to be able to scale CCM
+	fctx.log.Info("Adding ignore annotation to control plane chart to be able to scale down CCM for route deletion")
+	patch := ctclient.MergeFrom(seedControlPlaneMr.DeepCopy())
+	if seedControlPlaneMr.Annotations == nil {
+		seedControlPlaneMr.Annotations = map[string]string{}
+	}
+	seedControlPlaneMr.Annotations[gcp.AnnotationRemoveIgnore] = "true" // removes ignore annotation on cp reconciliation
+	seedControlPlaneMr.Annotations[resourcesv1alpha1.Ignore] = "true"
+	err = fctx.runtimeClient.Patch(ctx, &seedControlPlaneMr, patch)
+	if err != nil {
+		return fmt.Errorf("failed to patch control plane managed resource with ignore annotation: %w", err)
+	}
+
+	// Scale CCM back by removing the ignore annotation on the managed resource if any error occurs
+	defer func() {
+		if err != nil {
+			rollBackErr := DeleteControlPlaneMrIgnoreAnnotation(ctx, fctx.log, fctx.runtimeClient, &seedControlPlaneMr)
+			if rollBackErr != nil {
+				fctx.log.Error(rollBackErr, "failed to roll back ignore annotation on control plane managed resource")
+			}
+		}
+	}()
 
 	// scale CCM to zero
+	fctx.log.Info("Scaling CCM down to 0 to be able to delete routes")
 	if err = scaleCCMto(0); err != nil {
 		return err
 	}
 
-	routes := []v1alpha1.Route{}
+	var routes []v1alpha1.Route
 	// Safely retrieve and cast the routes object
 	if routesObj := fctx.whiteboard.GetObject(ObjectKeyRoutes); routesObj != nil {
 		if castedRoutes, ok := routesObj.([]v1alpha1.Route); ok {
@@ -235,16 +269,7 @@ func (fctx *FlowContext) ensureKubernetesRoutesCleanupForDualStackMigration(ctx 
 		combinedErr = fmt.Errorf("%v; %w", combinedErr, err)
 	}
 
-	// Scale CCM back to originalScale if there were errors
-	if combinedErr != nil {
-		if originalScale > 0 {
-			_ = scaleCCMto(originalScale)
-		} else {
-			_ = scaleCCMto(1)
-		}
-		return combinedErr
-	}
-	return nil
+	return combinedErr
 }
 
 func (fctx *FlowContext) ensureNodesSubnet(ctx context.Context) error {
@@ -738,4 +763,28 @@ func (fctx *FlowContext) ensureAliasIpRanges(ctx context.Context) error {
 		fctx.log.Error(err, "failed to persist state")
 	}
 	return nil
+}
+
+// DeleteControlPlaneMrIgnoreAnnotation deletes the ignore annotation from the control plane managed resource to trigger
+// reconciliation of the control plane chart in case of migration from or to dual-stack.
+func DeleteControlPlaneMrIgnoreAnnotation(ctx context.Context, log logr.Logger, client ctclient.Client,
+	seedControlPlaneMr *resourcesv1alpha1.ManagedResource) error {
+	if seedControlPlaneMr.Annotations == nil {
+		return nil
+	}
+
+	log.Info("Deleting control plane chart ignore annotation")
+	patch := ctclient.MergeFrom(seedControlPlaneMr.DeepCopy())
+
+	delete(seedControlPlaneMr.Annotations, gcp.AnnotationRemoveIgnore)
+	delete(seedControlPlaneMr.Annotations, resourcesv1alpha1.Ignore)
+
+	if data, err := patch.Data(seedControlPlaneMr); err != nil {
+		return fmt.Errorf("failed getting patch data for mr %s: %w", seedControlPlaneMr.Name, err)
+	} else if string(data) == `{}` {
+		log.Info("The patch data is empty, no need to update the control plane chart")
+		return nil
+	}
+
+	return client.Patch(ctx, seedControlPlaneMr, patch)
 }
