@@ -17,6 +17,9 @@ type BackupBucketConfig struct {
 
 	// Immutability defines the immutability config for the backup bucket.
 	Immutability *ImmutableConfig
+
+	// Store holds the configuration of the backup store
+	Store *Store
 }
 
 // ImmutableConfig represents the immutability configuration for a backup bucket.
@@ -34,4 +37,11 @@ type ImmutableConfig struct {
 	// Locked indicates whether the immutable retention policy is locked for the backup bucket.
 	// If set to true, the retention policy cannot be removed or the retention period reduced, enforcing immutability.
 	Locked bool
+}
+
+// Store holds the configuration of the backup store
+type Store struct {
+	// EndpointOverride specifies the overriding endpoint at which the GCS bucket is hosted. Necessary for regional endpoints.
+	// +optional
+	EndpointOverride *string
 }

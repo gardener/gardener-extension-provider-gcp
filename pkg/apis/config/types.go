@@ -73,3 +73,9 @@ type WorkloadIdentity struct {
 	// AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.
 	AllowedServiceAccountImpersonationURLRegExps []string
 }
+
+// BackupBucket is a configuration that specifies how backupbucket configs should be validated.
+type BackupBucket struct {
+	// AllowedEndpointOverrideURLs are the allowed endpointOverride URLs.
+	AllowedEndpointOverrideURLs []string
+}

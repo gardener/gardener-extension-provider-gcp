@@ -6,6 +6,8 @@ package validation
 
 import (
 	"fmt"
+	"net/url"
+	"slices"
 	"time"
 
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
@@ -25,7 +27,7 @@ var (
 )
 
 // ValidateBackupBucketConfig validates a BackupBucketConfig object.
-func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, fldPath *field.Path) field.ErrorList {
+func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, allowedEndpointOverrideURLs []string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if config != nil && config.Immutability != nil {
@@ -38,6 +40,19 @@ func ValidateBackupBucketConfig(config *apisgcp.BackupBucketConfig, fldPath *fie
 		// Reference: https://github.com/googleapis/google-cloud-go/blob/3005f5a86c18254e569b8b1782bf014aa62f33cc/storage/bucket.go#L1430-L1434
 		if config.Immutability.RetentionPeriod.Duration < 24*time.Hour {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("immutability", "retentionPeriod"), config.Immutability.RetentionPeriod.Duration.String(), "must be a positive duration greater than 24h"))
+		}
+	}
+
+	if config.Store != nil && config.Store.EndpointOverride != nil {
+		endpoint, err := url.Parse(*config.Store.EndpointOverride)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("store", "endpointOverride"), *config.Store.EndpointOverride, fmt.Sprintf("invalid URL, parsing failed with error: %s", err.Error())))
+		}
+		if endpoint != nil && endpoint.Scheme != "https" {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("store", "endpointOverride"), *config.Store.EndpointOverride, "must use https scheme"))
+		}
+		if !slices.Contains(allowedEndpointOverrideURLs, *config.Store.EndpointOverride) {
+			allErrs = append(allErrs, field.NotSupported(fldPath.Child("store", "endpointOverride"), *config.Store.EndpointOverride, allowedEndpointOverrideURLs))
 		}
 	}
 

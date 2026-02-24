@@ -43,3 +43,6 @@ workloadIdentity:
     # - https://sts.googleapis.com/v1/token
   allowedServiceAccountImpersonationURLRegExps: []
     # - ^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$
+
+backupBucket:
+  allowedEndpointOverrideURLs: [] # example: [ "https://storage.googleapis.com/storage/v1/", "https://storage.me-central2.rep.googleapis.com/storage/v1/" ]

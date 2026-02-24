@@ -30,6 +30,8 @@ var (
 type AddOptions struct {
 	// WorkloadIdentity is the workload identity validation configuration.
 	WorkloadIdentity config.WorkloadIdentity
+	// BackupBucket is the backup bucket validation configuration.
+	BackupBucket config.BackupBucket
 }
 
 const (
@@ -48,6 +50,7 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	var (
 		allowedTokenURLs                             = slices.Clone(DefaultAddOptions.WorkloadIdentity.AllowedTokenURLs)
 		allowedServiceAccountImpersonationURLRegExps = make([]*regexp.Regexp, 0, len(DefaultAddOptions.WorkloadIdentity.AllowedServiceAccountImpersonationURLRegExps))
+		allowedEndpointOverrideURLs                  = slices.Clone(DefaultAddOptions.BackupBucket.AllowedEndpointOverrideURLs)
 	)
 
 	for _, regExp := range DefaultAddOptions.WorkloadIdentity.AllowedServiceAccountImpersonationURLRegExps {
@@ -59,6 +62,7 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	}
 
 	logger.Info("Initializing workload identity validator config", "allowed_token_urls", allowedTokenURLs, "allowed_service_account_impersonation_url_regexps", allowedServiceAccountImpersonationURLRegExps)
+	logger.Info("Initializing backup bucket validator config", "allowed_endpoint_override_urls", allowedEndpointOverrideURLs)
 
 	return extensionswebhook.New(mgr, extensionswebhook.Args{
 		Provider: gcp.Type,
@@ -74,12 +78,12 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 				allowedTokenURLs,
 				allowedServiceAccountImpersonationURLRegExps,
 			): {{Obj: &security.CredentialsBinding{}}},
-			NewSeedValidator(mgr): {{Obj: &core.Seed{}}},
+			NewSeedValidator(mgr, allowedEndpointOverrideURLs): {{Obj: &core.Seed{}}},
 			NewWorkloadIdentityValidator(
 				allowedTokenURLs,
 				allowedServiceAccountImpersonationURLRegExps,
 			): {{Obj: &securityv1alpha1.WorkloadIdentity{}}},
-			NewBackupBucketValidator(mgr): {{Obj: &core.BackupBucket{}}},
+			NewBackupBucketValidator(mgr, allowedEndpointOverrideURLs): {{Obj: &core.BackupBucket{}}},
 		},
 		Target: extensionswebhook.TargetSeed,
 		ObjectSelector: &metav1.LabelSelector{

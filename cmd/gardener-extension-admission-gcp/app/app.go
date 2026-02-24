@@ -102,6 +102,7 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 
 			admissionConfig := admissionOpts.Completed()
 			admissionConfig.ApplyWorkloadIdentity(&validator.DefaultAddOptions.WorkloadIdentity)
+			admissionConfig.ApplyBackupBucket(&validator.DefaultAddOptions.BackupBucket)
 
 			// Operators can enable the source cluster option via SOURCE_CLUSTER environment variable.
 			// In-cluster config will be used if no SOURCE_KUBECONFIG is specified.
