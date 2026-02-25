@@ -45,6 +45,7 @@ const (
 )
 
 // NewActuator creates a new Actuator that acts upon and updates the status of ControlPlane resources.
+// Furthermore, it implements cleanup logic for Calico NetworkUnavailable conditions when overlay networking is disabled.
 func NewActuator(
 	mgr manager.Manager,
 	a controlplane.Actuator,
