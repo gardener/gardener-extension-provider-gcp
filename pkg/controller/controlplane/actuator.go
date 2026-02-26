@@ -153,7 +153,6 @@ func (a *actuator) cleanupCalicoNetworkUnavailableConditions(
 	log logr.Logger,
 	namespace string,
 ) error {
-
 	_, shootClient, err := util.NewClientForShoot(ctx, a.client, namespace, client.Options{}, extensionsconfigv1alpha1.RESTOptions{})
 	if err != nil {
 		return fmt.Errorf("could not create shoot client: %w", err)
