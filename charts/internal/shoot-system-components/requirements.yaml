@@ -11,7 +11,3 @@ dependencies:
   repository: http://locwalhost:10191
   version: 0.1.0
   condition: csi-driver-filestore-node.enabled
-- name: default-http-backend
-  repository: http://localhost:10191
-  version: 0.1.0
-  condition: default-http-backend.enabled

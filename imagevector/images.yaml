@@ -272,8 +272,8 @@ images:
     signing: false
 - name: ingress-gce
   sourceRepository: github.com/kubernetes/ingress-gce
-  repository: ghcr.io/gardener/ingress-gce
-  tag: v1.30.5
+  repository: europe-docker.pkg.dev/gardener-project/releases/gardener/extensions/ingress-gce
+  tag: v1.38.2
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
