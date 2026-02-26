@@ -492,6 +492,9 @@ var _ = Describe("ValuesProvider", func() {
 				"default-http-backend": map[string]interface{}{
 					"enabled": IsDualStackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
 				},
+				"calico-mutating-admission-policy": map[string]interface{}{
+					"enabled": false,
+				},
 			}))
 		})
 	})
