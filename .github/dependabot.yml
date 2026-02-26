@@ -18,6 +18,9 @@ updates:
       applies-to: "version-updates"
       patterns:
       - "cloud.google.com/go/*"
+  labels:
+  - area/compliance
+  - kind/enhancement
   ignore:
   - dependency-name: "k8s.io/*"
   - dependency-name: "sigs.k8s.io/*"
@@ -27,3 +30,6 @@ updates:
   directory: "/"
   schedule:
     interval: "weekly"
+  labels:
+  - area/compliance
+  - kind/enhancement
