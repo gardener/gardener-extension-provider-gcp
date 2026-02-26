@@ -21,8 +21,8 @@ import (
 )
 
 var (
-	// scheme is a scheme with the types relevant for GCP actuators.
-	scheme *runtime.Scheme
+	// Scheme is a Scheme with the types relevant for GCP actuators.
+	Scheme *runtime.Scheme
 
 	decoder runtime.Decoder
 
@@ -31,11 +31,11 @@ var (
 )
 
 func init() {
-	scheme = runtime.NewScheme()
-	utilruntime.Must(install.AddToScheme(scheme))
+	Scheme = runtime.NewScheme()
+	utilruntime.Must(install.AddToScheme(Scheme))
 
-	decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
-	lenientDecoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
+	decoder = serializer.NewCodecFactory(Scheme, serializer.EnableStrict).UniversalDecoder()
+	lenientDecoder = serializer.NewCodecFactory(Scheme).UniversalDecoder()
 }
 
 // InfrastructureConfigFromInfrastructure extracts the InfrastructureConfig from the

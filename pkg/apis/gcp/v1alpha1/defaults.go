@@ -16,8 +16,10 @@ func addDefaultingFuncs(scheme *runtime.Scheme) error {
 
 // SetDefaults_MachineImageVersion set the architecture of machine image.
 func SetDefaults_MachineImageVersion(obj *MachineImageVersion) {
-	if obj.Architecture == nil {
-		obj.Architecture = ptr.To(v1beta1constants.ArchitectureAMD64)
+	if len(obj.CapabilityFlavors) == 0 {
+		if obj.Architecture == nil {
+			obj.Architecture = ptr.To(v1beta1constants.ArchitectureAMD64)
+		}
 	}
 }
 
