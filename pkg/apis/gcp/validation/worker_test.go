@@ -476,17 +476,82 @@ var _ = Describe("#ValidateWorkerConfig", func() {
 		}))))
 	})
 
-	It("should fail because WorkerConfig NodeTemplate is specified with empty capacity", func() {
+	It("should not fail for WorkerConfig NodeTemplate with empty capacity", func() {
 		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
 			NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 				Capacity: corev1.ResourceList{},
 			},
 		}, nil, nil, nilPath)
 
+		Expect(errorList).To(BeEmpty())
+	})
+
+	It("should not fail for WorkerConfig NodeTemplate with non-whole capacities", func() {
+		workerConfig.NodeTemplate = &extensionsv1alpha1.NodeTemplate{
+			Capacity: corev1.ResourceList{
+				"gpu": resource.MustParse("200m"),
+				"foo": resource.MustParse("1.5"),
+			},
+		}
+		Expect(ValidateWorkerConfig(workerConfig, nil, nil, nilPath)).To(BeEmpty())
+	})
+
+	It("should not fail for WorkerConfig NodeTemplate with only virtualCapacities set", func() {
+		workerConfig.NodeTemplate = &extensionsv1alpha1.NodeTemplate{
+			VirtualCapacity: corev1.ResourceList{
+				"foo": resource.MustParse("1"),
+				"bar": resource.MustParse("50Gi"),
+			},
+		}
+		Expect(ValidateWorkerConfig(workerConfig, nil, nil, nilPath)).To(BeEmpty())
+	})
+
+	It("should not fail for WorkerConfig NodeTemplate with both capacity and virtualCapacities set", func() {
+		workerConfig.NodeTemplate = &extensionsv1alpha1.NodeTemplate{
+			Capacity: corev1.ResourceList{
+				"cpu":    resource.MustParse("1"),
+				"memory": resource.MustParse("50Gi"),
+				"gpu":    resource.MustParse("0"),
+			},
+			VirtualCapacity: corev1.ResourceList{
+				"foo":    resource.MustParse("1"),
+				"bar":    resource.MustParse("50Gi"),
+				"foobar": resource.MustParse("0"),
+			},
+		}
+		Expect(ValidateWorkerConfig(workerConfig, nil, nil, nilPath)).To(BeEmpty())
+	})
+
+	It("should fail for WorkerConfig NodeTemplate with negative virtualCapacities", func() {
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+			NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+				VirtualCapacity: corev1.ResourceList{
+					"foo": resource.MustParse("-1"),
+					"bar": resource.MustParse("50Gi"),
+				},
+			},
+		}, nil, nil, nilPath)
+
 		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-			"Type":   Equal(field.ErrorTypeRequired),
-			"Field":  Equal("nodeTemplate.capacity"),
-			"Detail": Equal("capacity must not be empty"),
+			"Type":   Equal(field.ErrorTypeInvalid),
+			"Field":  Equal("nodeTemplate.virtualCapacity.foo"),
+			"Detail": Equal("foo value must not be negative"),
+		}))))
+	})
+
+	It("should fail for WorkerConfig NodeTemplate with virtualCapacities which are not whole numbers", func() {
+		errorList := ValidateWorkerConfig(apisgcp.WorkerConfig{
+			NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+				VirtualCapacity: corev1.ResourceList{
+					"foo": resource.MustParse("1500m"), // equal to 1.5 and thus not a whole number
+				},
+			},
+		}, nil, nil, nilPath)
+
+		Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+			"Type":   Equal(field.ErrorTypeInvalid),
+			"Field":  Equal("nodeTemplate.virtualCapacity.foo"),
+			"Detail": Equal("foo value must be a whole number"),
 		}))))
 	})
 

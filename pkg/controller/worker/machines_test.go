@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,6 +57,7 @@ var _ = Describe("Machines", func() {
 
 		workerDelegate genericworkeractuator.WorkerDelegate
 		scheme         *runtime.Scheme
+		decoder        runtime.Decoder
 	)
 
 	BeforeEach(func() {
@@ -67,6 +70,7 @@ var _ = Describe("Machines", func() {
 		scheme = runtime.NewScheme()
 		_ = apisgcp.AddToScheme(scheme)
 		_ = apiv1alpha1.AddToScheme(scheme)
+		decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
 	})
 
 	AfterEach(func() {
@@ -101,7 +105,7 @@ var _ = Describe("Machines", func() {
 				volumeType string
 				volumeSize int
 
-				minCpuPlatform string
+				minCPUPlatform string
 
 				localVolumeType      string
 				localVolumeInterface string
@@ -179,7 +183,7 @@ var _ = Describe("Machines", func() {
 				volumeType = "normal"
 				volumeSize = 20
 
-				minCpuPlatform = "Foo"
+				minCPUPlatform = "Foo"
 
 				localVolumeType = VolumeTypeScratch
 				localVolumeInterface = "SCSI"
@@ -389,7 +393,7 @@ var _ = Describe("Machines", func() {
 										Volume: &apisgcp.Volume{
 											LocalSSDInterface: &localVolumeInterface,
 										},
-										MinCpuPlatform: &minCpuPlatform,
+										MinCpuPlatform: &minCPUPlatform,
 										GPU: &apisgcp.GPU{
 											AcceleratorType: acceleratorTypeName,
 											Count:           acceleratorCount,
@@ -427,7 +431,7 @@ var _ = Describe("Machines", func() {
 											Email:  "foo",
 											Scopes: []string{"bar"},
 										},
-										MinCpuPlatform: &minCpuPlatform,
+										MinCpuPlatform: &minCPUPlatform,
 									}),
 								},
 								UserDataSecretRef: corev1.SecretKeySelector{
@@ -486,7 +490,7 @@ var _ = Describe("Machines", func() {
 										Volume: &apisgcp.Volume{
 											LocalSSDInterface: &localVolumeInterface,
 										},
-										MinCpuPlatform: &minCpuPlatform,
+										MinCpuPlatform: &minCPUPlatform,
 										GPU: &apisgcp.GPU{
 											AcceleratorType: acceleratorTypeName,
 											Count:           acceleratorCount,
@@ -503,8 +507,8 @@ var _ = Describe("Machines", func() {
 					},
 				}
 
-				additionalData1 := []string{fmt.Sprintf("%dGi", volumeSize), minCpuPlatform, acceleratorTypeName, strconv.Itoa(int(acceleratorCount)), localVolumeInterface}
-				additionalData2 := []string{fmt.Sprintf("%dGi", volumeSize), minCpuPlatform, "foo", "bar", localVolumeInterface}
+				additionalData1 := []string{fmt.Sprintf("%dGi", volumeSize), minCPUPlatform, acceleratorTypeName, strconv.Itoa(int(acceleratorCount)), localVolumeInterface}
+				additionalData2 := []string{fmt.Sprintf("%dGi", volumeSize), minCPUPlatform, "foo", "bar", localVolumeInterface}
 				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, []string{}, additionalData1, nil)
 				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, []string{}, additionalData2, nil)
 				workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, nil, nil, nil)
@@ -567,7 +571,7 @@ var _ = Describe("Machines", func() {
 							},
 						},
 						"machineType":    machineType,
-						"minCpuPlatform": minCpuPlatform,
+						"minCpuPlatform": minCPUPlatform,
 						"networkInterfaces": []map[string]interface{}{
 							{
 								"subnetwork":        subnetName,
@@ -1015,18 +1019,21 @@ var _ = Describe("Machines", func() {
 				Expect(resultSettings.NodeConditions).To(Equal(&resultNodeConditions))
 			})
 
-			It("should return generate machine classes with core and extended resources in the nodeTemplate", func() {
-				ephemeralStorageQuant := resource.MustParse("30Gi")
+			It("should return generate machine classes with core, extended and virtual resources in the nodeTemplate", func() {
 				dongleName := corev1.ResourceName("resources.com/dongle")
-				dongleQuant := resource.MustParse("4")
+				virtualResourceName := corev1.ResourceName("subdomain.domain.com/virtual-resource-name")
 				customResources := corev1.ResourceList{
-					corev1.ResourceEphemeralStorage: ephemeralStorageQuant,
-					dongleName:                      dongleQuant,
+					corev1.ResourceEphemeralStorage: resource.MustParse("30Gi"),
+					dongleName:                      resource.MustParse("4"),
+				}
+				customVirtualResources := corev1.ResourceList{
+					virtualResourceName: resource.MustParse("1024"),
 				}
 				w.Spec.Pools[0].ProviderConfig = &runtime.RawExtension{
 					Raw: encode(&apisgcp.WorkerConfig{
 						NodeTemplate: &extensionsv1alpha1.NodeTemplate{
-							Capacity: customResources,
+							Capacity:        customResources,
+							VirtualCapacity: customVirtualResources,
 						},
 					}),
 				}
@@ -1041,11 +1048,12 @@ var _ = Describe("Machines", func() {
 				Expect(err).NotTo(HaveOccurred())
 				workerDelegate := wd.(*WorkerDelegate)
 				mClasses := workerDelegate.GetMachineClasses()
-				for _, mClz := range mClasses {
-					className := mClz["name"].(string)
+				for _, mClass := range mClasses {
+					className := mClass["name"].(string)
 					if strings.Contains(className, namePool1) {
-						nt := mClz["nodeTemplate"].(machinev1alpha1.NodeTemplate)
+						nt := mClass["nodeTemplate"].(machinev1alpha1.NodeTemplate)
 						Expect(nt.Capacity).To(Equal(expectedCapacity))
+						Expect(nt.VirtualCapacity).To(Equal(customVirtualResources))
 					}
 				}
 			})
@@ -1089,7 +1097,136 @@ var _ = Describe("Machines", func() {
 				Expect(result[1].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUnreadyTimeAnnotation]).To(Equal("3m0s"))
 				Expect(result[1].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUtilizationThresholdAnnotation]).To(Equal("0.5"))
 			})
+
+			DescribeTable("should generate same worker pool hash even when virtualCapacity is newly added or changed", Label("virtualCapacity"),
+				func(w1Def string, w2Def string) {
+					var w1, w2 extensionsv1alpha1.Worker
+					var w1Config, w2Config *apisgcp.WorkerConfig
+					err := loadDecodeWorker(decoder, w1Def, &w1)
+					Expect(err).ToNot(HaveOccurred())
+
+					err = loadDecodeWorker(decoder, w2Def, &w2)
+					Expect(err).ToNot(HaveOccurred())
+
+					w1Config, err = decodePoolProviderConfig(decoder, w1.Spec.Pools[0])
+					Expect(err).ToNot(HaveOccurred())
+
+					w2Config, err = decodePoolProviderConfig(decoder, w2.Spec.Pools[0])
+					Expect(err).ToNot(HaveOccurred())
+
+					w1PoolHashDataV2, err := WorkerPoolHashDataV2(w1.Spec.Pools[0], w1Config)
+					Expect(err).ToNot(HaveOccurred())
+
+					w2PoolHashDataV2, err := WorkerPoolHashDataV2(w2.Spec.Pools[0], w2Config)
+					Expect(err).ToNot(HaveOccurred())
+
+					w1Hash, err := worker.WorkerPoolHash(w1.Spec.Pools[0], cluster, nil, w1PoolHashDataV2, nil)
+					Expect(err).ToNot(HaveOccurred())
+
+					w2Hash, err := worker.WorkerPoolHash(w2.Spec.Pools[0], cluster, nil, w2PoolHashDataV2, nil)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(w1Hash).To(Equal(w2Hash), fmt.Sprintf("w1Def: %q, w2Def:%q, w1Hash: %q, w2Hash: %q", w1Def, w2Def, w1Hash, w2Hash))
+				},
+				Entry("with existing providerConfig but no existing nodeTemplate", "testdata/worker-a1.yaml", "testdata/worker-a2.yaml"),
+				Entry("with existing providerConfig and nodeTemplate", "testdata/worker-b1.yaml", "testdata/worker-b2.yaml"),
+				Entry("with existing virtualCapacity that changes", "testdata/worker-c1.yaml", "testdata/worker-c2.yaml"))
+
+			Describe("ComputeAdditionalHashDataV2", func() {
+				var (
+					workerConfig     apisgcp.WorkerConfig
+					workerConfigData []byte
+					pool             extensionsv1alpha1.WorkerPool
+				)
+
+				BeforeEach(func() {
+					pool = extensionsv1alpha1.WorkerPool{
+						Name: "pool1",
+						Volume: &extensionsv1alpha1.Volume{
+							Encrypted: ptr.To(true),
+						},
+						DataVolumes: []extensionsv1alpha1.DataVolume{
+							{
+								Name:      "data-volume-1",
+								Encrypted: ptr.To(true),
+								Size:      "10Gi",
+								Type:      ptr.To("type1"),
+							},
+							{
+								Name:      "data-volume-2",
+								Encrypted: ptr.To(false),
+								Size:      "20Gi",
+								Type:      ptr.To("type2"),
+							},
+						},
+					}
+					workerConfig = apisgcp.WorkerConfig{
+						GPU: &apisgcp.GPU{
+							AcceleratorType: "gpu-accel",
+							Count:           4,
+						},
+						Volume: &apisgcp.Volume{
+							LocalSSDInterface: ptr.To("ssd-interface"),
+							Encryption: &apisgcp.DiskEncryption{
+								KmsKeyName:           ptr.To("vol-enc-kms-name"),
+								KmsKeyServiceAccount: ptr.To("vol-enc-kms-sa"),
+							},
+						},
+						MinCpuPlatform: ptr.To("min-cpu-platform"),
+						ServiceAccount: &apisgcp.ServiceAccount{
+							Email: serviceAccountEmail,
+							Scopes: []string{
+								"scope-a",
+								"scope-b",
+							},
+						},
+					}
+					workerConfigData = encode(&workerConfig)
+					pool.ProviderConfig = &runtime.RawExtension{
+						Raw: workerConfigData,
+					}
+				})
+
+				It("should return the expected hash data when k8s version >= 1.35 ", func() {
+					pool.KubernetesVersion = ptr.To("1.35.0") // new hash data strategy for ProviderConfig beginning from 1.35.0 onwards
+					workerConfig.NodeTemplate = &extensionsv1alpha1.NodeTemplate{
+						Capacity: w.Spec.Pools[0].NodeTemplate.Capacity.DeepCopy(),
+					}
+					got, err := WorkerPoolHashDataV2(pool, &workerConfig)
+					Expect(err).NotTo(HaveOccurred())
+					want := []string{
+						"cpu=8",
+						"gpu=0",
+						"memory=137438953472",
+						"gpu-accel",
+						"4",
+						"ssd-interface",
+						"vol-enc-kms-name",
+						"vol-enc-kms-sa",
+						"min-cpu-platform",
+						"service@account.com",
+						"scope-a",
+						"scope-b",
+					}
+					Expect(got).To(Equal(want))
+
+					// Now add some virtual resources to workerConfig.NodeTemplate.VirtualCapacity
+					// This should not change the hash data.
+					virtualResourceName := corev1.ResourceName("subdomain.domain.com/virtual-resource-name")
+					virtualResourceQuant := resource.MustParse("1024")
+					customVirtualResources := corev1.ResourceList{
+						virtualResourceName: virtualResourceQuant,
+					}
+					workerConfig.NodeTemplate.VirtualCapacity = customVirtualResources.DeepCopy()
+
+					got, err = WorkerPoolHashDataV2(pool, &workerConfig)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(got).To(Equal(want))
+				})
+			})
+
 		})
+
 	})
 
 	Describe("sanitize gcp label/value ", func() {
@@ -1136,4 +1273,27 @@ func addNameAndSecretToMachineClass(class map[string]interface{}, name string, c
 		"name":      credentialsSecretRef.Name,
 		"namespace": credentialsSecretRef.Namespace,
 	}
+}
+
+func loadDecodeWorker(decoder runtime.Decoder, filePath string, w *extensionsv1alpha1.Worker) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	_, _, err = decoder.Decode(data, nil, w)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func decodePoolProviderConfig(decoder runtime.Decoder, pool extensionsv1alpha1.WorkerPool) (workerConfig *apisgcp.WorkerConfig, err error) {
+	workerConfig = &apisgcp.WorkerConfig{}
+	if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
+		if _, _, err = decoder.Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
+			err = fmt.Errorf("could not decode provider config: %+v", err)
+			return
+		}
+	}
+	return
 }

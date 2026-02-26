@@ -11,8 +11,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -22,6 +24,7 @@ import (
 	extensionsv1alpha1helper "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1/helper"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils"
+	versionutils "github.com/gardener/gardener/pkg/utils/version"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	computev1 "google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -313,21 +316,29 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 			if workerConfig.MinCpuPlatform != nil {
 				machineClassSpec["minCpuPlatform"] = *workerConfig.MinCpuPlatform
 			}
-
-			nodeTemplate := pool.NodeTemplate.DeepCopy()
+			var nodeTemplate *v1alpha1.NodeTemplate
+			if pool.NodeTemplate != nil {
+				nodeTemplate = pool.NodeTemplate.DeepCopy()
+			}
 			if workerConfig.NodeTemplate != nil {
-				// Support extended resources by copying into nodeTemplate.Capacity overriding if needed
+				// Support extended resources by copying into nodeTemplate.Capacity and virtualCapacity, overriding if needed
 				maps.Copy(nodeTemplate.Capacity, workerConfig.NodeTemplate.Capacity)
+				if nodeTemplate.VirtualCapacity == nil {
+					nodeTemplate.VirtualCapacity = corev1.ResourceList{}
+				}
+				maps.Copy(nodeTemplate.VirtualCapacity, workerConfig.NodeTemplate.VirtualCapacity)
 			}
 			if nodeTemplate != nil {
 				template := machinev1alpha1.NodeTemplate{
 					// always overwrite the GPU count if it was provided in the WorkerConfig.
-					Capacity:     initializeCapacity(nodeTemplate.Capacity, gpuCount),
-					InstanceType: pool.MachineType,
-					Region:       w.worker.Spec.Region,
-					Zone:         zone,
-					Architecture: ptr.To(arch),
+					Capacity:        initializeCapacity(nodeTemplate.Capacity, gpuCount),
+					VirtualCapacity: nodeTemplate.VirtualCapacity,
+					InstanceType:    pool.MachineType,
+					Region:          w.worker.Spec.Region,
+					Zone:            zone,
+					Architecture:    ptr.To(arch),
 				}
+
 				machineClassSpec["nodeTemplate"] = template
 				numGpus := template.Capacity[ResourceGPU]
 				if !numGpus.IsZero() {
@@ -347,7 +358,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 	return nil
 }
 
-func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, _ apisgcp.WorkerConfig) (string, error) {
+func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, workerConfig apisgcp.WorkerConfig) (string, error) {
 	var additionalData []string
 
 	volumes := slices.Clone(pool.DataVolumes)
@@ -363,21 +374,45 @@ func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, _ apis
 		// and the field does not influence disk encryption behavior.
 	}
 
-	additionalDataV2 := append(additionalData, workerPoolHashDataV2(pool)...)
+	v2HashData, err := WorkerPoolHashDataV2(pool, &workerConfig)
+	if err != nil {
+		return "", err
+	}
+	additionalDataV2 := append(additionalData, v2HashData...)
 
 	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalDataV2, []string{})
 }
 
-func workerPoolHashDataV2(pool v1alpha1.WorkerPool) []string {
+// WorkerPoolHashDataV2 computes additional hash data for the worker pool. It returns a slice of strings containing the
+// additional data used for hashing.
+func WorkerPoolHashDataV2(pool v1alpha1.WorkerPool, workerConfig *apisgcp.WorkerConfig) ([]string, error) {
+	var useNewHashData bool
+	if pool.KubernetesVersion != nil {
+		poolK8sVersion, err := semver.NewVersion(*pool.KubernetesVersion)
+		if err != nil {
+			return nil, err
+		}
+		useNewHashData = versionutils.ConstraintK8sGreaterEqual135.Check(poolK8sVersion)
+	}
+	if useNewHashData && workerConfig != nil {
+		return hashDataForWorkerConfig(workerConfig), nil
+	}
+
+	// Addition or Change in VirtualCapacity should NOT cause existing hash to change to prevent trigger of rollout.
+	if workerConfig != nil && workerConfig.NodeTemplate != nil && workerConfig.NodeTemplate.VirtualCapacity != nil {
+		modifiedWorkerConfigJSON := stripVirtualCapacity(pool.ProviderConfig.Raw)
+		return []string{string(modifiedWorkerConfigJSON)}, nil
+	}
+
 	// in the future, we may not calculate a hash for the whole ProviderConfig
 	// for example volume field changes could be done in place, but MCM needs to support it
 	// see https://cloud.google.com/compute/docs/instances/update-instance-properties?hl=de#updatable-properties
 	// for a list of properties that requires a restart.
 	if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
-		return []string{string(pool.ProviderConfig.Raw)}
+		return []string{string(pool.ProviderConfig.Raw)}, nil
 	}
 
-	return []string{}
+	return []string{}, nil
 }
 
 func createDiskSpecBootVolume(volume *v1alpha1.Volume, image string, workerConfig *apisgcp.WorkerConfig, labels map[string]interface{}) (map[string]interface{}, error) {
@@ -534,4 +569,63 @@ func sanitizeGcpLabelOrValue(label string, startWithCharacter bool) string {
 
 func addTopologyLabel(labels map[string]string, zone string) map[string]string {
 	return utils.MergeStringMaps(labels, map[string]string{gcp.CSIDiskDriverTopologyKey: zone})
+}
+
+func hashDataForWorkerConfig(workerConfig *apisgcp.WorkerConfig) (hashData []string) {
+	if workerConfig.NodeTemplate != nil {
+		keys := slices.Sorted(maps.Keys(workerConfig.NodeTemplate.Capacity)) // ensure order
+		for _, k := range keys {
+			q := workerConfig.NodeTemplate.Capacity[k]
+			hashData = append(hashData, fmt.Sprintf("%s=%d", k, q.Value()))
+		}
+	}
+
+	if workerConfig.GPU != nil {
+		hashData = append(hashData, workerConfig.GPU.AcceleratorType)
+		hashData = append(hashData, strconv.FormatInt(int64(workerConfig.GPU.Count), 10))
+	}
+
+	if workerConfig.Volume != nil {
+		hashData = append(hashData, ptr.Deref(workerConfig.Volume.LocalSSDInterface, ""))
+		if workerConfig.Volume.Encryption != nil {
+			hashData = append(hashData, ptr.Deref(workerConfig.Volume.Encryption.KmsKeyName, ""))
+			hashData = append(hashData, ptr.Deref(workerConfig.Volume.Encryption.KmsKeyServiceAccount, ""))
+		}
+	}
+
+	if workerConfig.BootVolume != nil {
+		if workerConfig.BootVolume.ProvisionedIops != nil {
+			hashData = append(hashData, strconv.FormatInt(*workerConfig.BootVolume.ProvisionedIops, 10))
+		}
+		if workerConfig.BootVolume.ProvisionedThroughput != nil {
+			hashData = append(hashData, strconv.FormatInt(*workerConfig.BootVolume.ProvisionedThroughput, 10))
+		}
+		hashData = append(hashData, ptr.Deref(workerConfig.BootVolume.StoragePool, ""))
+	}
+
+	if workerConfig.DataVolumes != nil {
+		for _, dv := range workerConfig.DataVolumes {
+			hashData = append(hashData, dv.Name)
+			if dv.ProvisionedIops != nil {
+				hashData = append(hashData, strconv.FormatInt(*dv.ProvisionedIops, 10))
+			}
+			if dv.ProvisionedThroughput != nil {
+				hashData = append(hashData, strconv.FormatInt(*dv.ProvisionedThroughput, 10))
+			}
+			if dv.SourceImage != nil {
+				hashData = append(hashData, *dv.SourceImage)
+			}
+		}
+	}
+
+	if workerConfig.MinCpuPlatform != nil {
+		hashData = append(hashData, *workerConfig.MinCpuPlatform)
+	}
+
+	if workerConfig.ServiceAccount != nil {
+		hashData = append(hashData, workerConfig.ServiceAccount.Email)
+		hashData = append(hashData, workerConfig.ServiceAccount.Scopes...)
+	}
+
+	return
 }

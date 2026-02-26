@@ -11,6 +11,7 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"golang.org/x/exp/slices"
+	"gopkg.in/inf.v0"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -217,10 +218,6 @@ func validateNodeTemplate(nt *extensionsv1alpha1.NodeTemplate, fldPath *field.Pa
 		return allErrs
 	}
 
-	if len(nt.Capacity) == 0 {
-		allErrs = append(allErrs, field.Required(fldPath.Child("capacity"), "capacity must not be empty"))
-	}
-
 	for _, capacityAttribute := range []corev1.ResourceName{"cpu", "gpu", "memory"} {
 		value, ok := nt.Capacity[capacityAttribute]
 		if !ok {
@@ -231,6 +228,11 @@ func validateNodeTemplate(nt *extensionsv1alpha1.NodeTemplate, fldPath *field.Pa
 		allErrs = append(allErrs, validateResourceQuantityValue(capacityAttribute, value, fldPath.Child("capacity").Child(string(capacityAttribute)))...)
 	}
 
+	for capacityAttribute, value := range nt.VirtualCapacity {
+		// extended resources are required to be whole numbers https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#consuming-extended-resources
+		allErrs = append(allErrs, validateResourceQuantityWholeNumber(capacityAttribute, value, fldPath.Child("virtualCapacity").Child(string(capacityAttribute)))...)
+	}
+
 	return allErrs
 }
 
@@ -239,6 +241,18 @@ func validateResourceQuantityValue(key corev1.ResourceName, value resource.Quant
 
 	if value.Cmp(resource.Quantity{}) < 0 {
 		allErrs = append(allErrs, field.Invalid(fldPath, value.String(), fmt.Sprintf("%s value must not be negative", key)))
+	}
+
+	return allErrs
+}
+
+func validateResourceQuantityWholeNumber(key corev1.ResourceName, value resource.Quantity, fldPath *field.Path) field.ErrorList {
+	allErrs := validateResourceQuantityValue(key, value, fldPath)
+
+	dec := value.AsDec()
+	var roundedDec inf.Dec
+	if roundedDec.Round(dec, 0, inf.RoundExact) == nil {
+		allErrs = append(allErrs, field.Invalid(fldPath, value.String(), fmt.Sprintf("%s value must be a whole number", key)))
 	}
 
 	return allErrs
