@@ -414,6 +414,12 @@ nodeTemplate: # (to be specified only if the node capacity would be different fr
     gpu: 1
     memory: 50Gi
 ```
+
+The `nodeTemplate.virtualCapacity` can be used to specify [node extended resources](https://kubernetes.io/docs/tasks/administer-cluster/extended-resource-node/) that are _hot-updated_ on nodes belonging to the pool. There are currently some caveats wrt rollouts
+ - If the `providerConfig` section has not yet been defined for the pool, then a rollout is un-avoidable.
+ - If the `providerConfig` is already present for the pool, then `nodeTemplate.virtualCapacity` can be added without triggering a rollout as long as the `virtualCapacity` is either the only element of the `nodeTemplate` or the last element.
+ - If the `providerConfig` is already present for the pool along with a previously defined `nodeTemplate.virtualCapacity`, then further extended resource attributes may be freely added/modified within `virtualCapacity` without triggering a rollout.
+
 ## Example `Shoot` manifest
 
 Please find below an example `Shoot` manifest:
