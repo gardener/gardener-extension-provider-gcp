@@ -34,7 +34,7 @@ func (m *mutator) WantsShootClient() bool {
 }
 
 // Mutate mutates resources.
-func (m *mutator) Mutate(ctx context.Context, newObj, _ client.Object) error {
+func (m *mutator) Mutate(ctx context.Context, newObj, oldObj client.Object) error {
 	service, ok := newObj.(*corev1.Service)
 	if !ok {
 		return fmt.Errorf("could not mutate: object is not of type corev1.Service")
@@ -44,6 +44,11 @@ func (m *mutator) Mutate(ctx context.Context, newObj, _ client.Object) error {
 	if service.GetDeletionTimestamp() != nil {
 		return nil
 	}
+	// only mutate new services, not existing ones
+	if oldObj != nil {
+		return nil
+	}
+
 	extensionswebhook.LogMutation(m.logger, service.Kind, service.Namespace, service.Name)
 
 	if service.Spec.Type != corev1.ServiceTypeLoadBalancer {
