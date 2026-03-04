@@ -10,14 +10,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"slices"
 
 	extensionsbastion "github.com/gardener/gardener/extensions/pkg/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 
-	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
 )
 
@@ -99,7 +97,12 @@ func NewOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, p
 		return nil, fmt.Errorf("failed to extract cloud provider config from cluster: %w", err)
 	}
 
-	image, err := getProviderSpecificImage(cloudProfileConfig.MachineImages, bastionVmDetails)
+	// Normalize capability definitions and machine type capabilities to ensure
+	// capability-based selection is always used
+	capabilityDefinitions := helper.NormalizeCapabilityDefinitions(cluster.CloudProfile.Spec.MachineCapabilities)
+	machineTypeCapabilities := helper.NormalizeMachineTypeCapabilities(bastionVmDetails.MachineTypeCapabilities, &bastionVmDetails.Architecture, capabilityDefinitions)
+
+	imageFlavor, err := helper.FindImageInCloudProfile(cloudProfileConfig, bastionVmDetails.ImageBaseName, bastionVmDetails.ImageVersion, &bastionVmDetails.Architecture, machineTypeCapabilities, capabilityDefinitions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract image from provider config: %w", err)
 	}
@@ -110,7 +113,7 @@ func NewOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, p
 		Network:     fmt.Sprintf("projects/%s/global/networks/%s", projectID, vNetworkName),
 		WorkersCIDR: workersCidr,
 		MachineName: bastionVmDetails.MachineTypeName,
-		ImagePath:   image.Image,
+		ImagePath:   imageFlavor.Image,
 	}, nil
 }
 
@@ -206,29 +209,4 @@ func FirewallEgressAllowOnlyResourceName(baseName string) string {
 // FirewallEgressDenyAllResourceName is Firewall egress deny all rule resource name
 func FirewallEgressDenyAllResourceName(baseName string) string {
 	return fmt.Sprintf("%s-deny-all", baseName)
-}
-
-// getProviderSpecificImage returns the provider specific MachineImageVersion that matches with the given MachineSpec
-func getProviderSpecificImage(images []apisgcp.MachineImages, vm extensionsbastion.MachineSpec) (apisgcp.MachineImageVersion, error) {
-	imageIndex := slices.IndexFunc(images, func(image apisgcp.MachineImages) bool {
-		return image.Name == vm.ImageBaseName
-	})
-
-	if imageIndex == -1 {
-		return apisgcp.MachineImageVersion{},
-			fmt.Errorf("machine image with name %s not found in cloudProfileConfig", vm.ImageBaseName)
-	}
-
-	versions := images[imageIndex].Versions
-	versionIndex := slices.IndexFunc(versions, func(version apisgcp.MachineImageVersion) bool {
-		return version.Version == vm.ImageVersion && version.Architecture != nil && *version.Architecture == vm.Architecture
-	})
-
-	if versionIndex == -1 {
-		return apisgcp.MachineImageVersion{},
-			fmt.Errorf("version %s for arch %s of image %s not found in cloudProfileConfig",
-				vm.ImageVersion, vm.Architecture, vm.ImageBaseName)
-	}
-
-	return versions[versionIndex], nil
 }
