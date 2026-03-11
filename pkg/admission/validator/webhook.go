@@ -69,7 +69,11 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		Name:     Name,
 		Path:     "/webhooks/validate",
 		Validators: map[extensionswebhook.Validator][]extensionswebhook.Type{
-			NewShootValidator(mgr):                  {{Obj: &core.Shoot{}}},
+			NewShootValidator(
+				mgr,
+				allowedTokenURLs,
+				allowedServiceAccountImpersonationURLRegExps,
+			): {{Obj: &core.Shoot{}}},
 			NewCloudProfileValidator(mgr):           {{Obj: &core.CloudProfile{}}},
 			NewNamespacedCloudProfileValidator(mgr): {{Obj: &core.NamespacedCloudProfile{}}},
 			NewSecretBindingValidator(mgr):          {{Obj: &core.SecretBinding{}}},
