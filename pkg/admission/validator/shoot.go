@@ -8,13 +8,16 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"regexp"
 
 	"github.com/Masterminds/semver/v3"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorehelper "github.com/gardener/gardener/pkg/apis/core/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/gardener"
+	"github.com/gardener/gardener/pkg/utils/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -38,15 +41,22 @@ type shoot struct {
 	apiReader      client.Reader
 	decoder        runtime.Decoder
 	lenientDecoder runtime.Decoder
+
+	// Used to validate WorkloadIdentities in spec.dns.providers[].credentialsRef
+	allowedTokenURLs                             []string
+	allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp
 }
 
 // NewShootValidator returns a new instance of a shoot validator.
-func NewShootValidator(mgr manager.Manager) extensionswebhook.Validator {
+func NewShootValidator(mgr manager.Manager, allowedTokenURLs []string, allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp) extensionswebhook.Validator {
 	return &shoot{
 		reader:         mgr.GetClient(),
 		apiReader:      mgr.GetAPIReader(),
 		decoder:        serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 		lenientDecoder: serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
+
+		allowedTokenURLs: allowedTokenURLs,
+		allowedServiceAccountImpersonationURLRegExps: allowedServiceAccountImpersonationURLRegExps,
 	}
 }
 
@@ -215,25 +225,59 @@ func (s *shoot) validateDNS(ctx context.Context, shoot *core.Shoot) field.ErrorL
 
 		providerFldPath := providersPath.Index(i)
 
-		if ptr.Deref(p.SecretName, "") == "" {
-			allErrs = append(allErrs, field.Required(providerFldPath.Child("secretName"),
-				fmt.Sprintf("secretName must be specified for %v provider", gcp.DNSType)))
-			continue
-		}
+		// TODO(vpnachev): Enable this validation once the extension does not support github.com/gardener/gardener < v1.135.0
+		// if p.CredentialsRef == nil {
+		// 	allErrs = append(allErrs, field.Required(providerFldPath.Child("credentialsRef"), "must be set"))
+		// }
 
-		secret := &corev1.Secret{}
-		key := client.ObjectKey{Namespace: shoot.Namespace, Name: *p.SecretName}
-		if err := s.apiReader.Get(ctx, key, secret); err != nil {
-			if apierrors.IsNotFound(err) {
-				allErrs = append(allErrs, field.Invalid(providerFldPath.Child("secretName"),
-					*p.SecretName, "referenced secret not found"))
-			} else {
-				allErrs = append(allErrs, field.InternalError(providerFldPath.Child("secretName"), err))
+		if p.CredentialsRef != nil {
+			credentialsFldPath := providerFldPath.Child("credentialsRef")
+
+			credentials, err := kubernetes.GetCredentialsByCrossVersionObjectReference(ctx, s.apiReader, *p.CredentialsRef, shoot.GetNamespace())
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					allErrs = append(allErrs, field.NotFound(credentialsFldPath, p.CredentialsRef.String()))
+				} else {
+					allErrs = append(allErrs, field.InternalError(credentialsFldPath, err))
+				}
+				continue
 			}
-			continue
-		}
 
-		allErrs = append(allErrs, gcpvalidation.ValidateCloudProviderSecret(secret, providerFldPath)...)
+			switch creds := credentials.(type) {
+			case *securityv1alpha1.WorkloadIdentity:
+				if err := ValidateWorkloadIdentity(creds, nil, s.allowedTokenURLs, s.allowedServiceAccountImpersonationURLRegExps); err != nil {
+					allErrs = append(allErrs, field.Invalid(credentialsFldPath, p.CredentialsRef.String(), err.Error()))
+				}
+			case *corev1.Secret:
+				if err := ValidateSecret(creds, nil); err != nil {
+					allErrs = append(allErrs, field.Invalid(credentialsFldPath, p.CredentialsRef.String(), err.Error()))
+				}
+			default:
+				allErrs = append(allErrs, field.Invalid(credentialsFldPath, p.CredentialsRef.String(), "supported credentials types are Secret and WorkloadIdentity"))
+			}
+		} else { // TODO(vpnachev): Remove the else block once the extension does not support github.com/gardener/gardener < v1.135.0
+			secretNameFldPath := providerFldPath.Child("secretName")
+			if ptr.Deref(p.SecretName, "") == "" {
+				allErrs = append(allErrs, field.Required(secretNameFldPath,
+					fmt.Sprintf("secretName must be specified for %v provider", gcp.DNSType)))
+				continue
+			}
+
+			secret := &corev1.Secret{}
+			key := client.ObjectKey{Namespace: shoot.Namespace, Name: *p.SecretName}
+			if err := s.apiReader.Get(ctx, key, secret); err != nil {
+				if apierrors.IsNotFound(err) {
+					allErrs = append(allErrs, field.Invalid(secretNameFldPath,
+						*p.SecretName, "referenced secret not found"))
+				} else {
+					allErrs = append(allErrs, field.InternalError(secretNameFldPath, err))
+				}
+				continue
+			}
+			if err := ValidateSecret(secret, nil); err != nil {
+				allErrs = append(allErrs, field.Invalid(secretNameFldPath, p.SecretName, err.Error()))
+			}
+		}
 	}
 
 	return allErrs

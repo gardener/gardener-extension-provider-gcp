@@ -34,6 +34,11 @@ func NewWorkloadIdentityValidator(allowedTokenURLs []string, allowedServiceAccou
 
 // Validate checks whether the given new workloadidentity contains a valid GCP configuration.
 func (wi *workloadIdentity) Validate(_ context.Context, newObj, oldObj client.Object) error {
+	return ValidateWorkloadIdentity(newObj, oldObj, wi.allowedTokenURLs, wi.allowedServiceAccountImpersonationURLRegExps)
+}
+
+// ValidateWorkloadIdentity checks whether the given new workloadidentity contains a valid GCP configuration.
+func ValidateWorkloadIdentity(newObj, oldObj client.Object, allowedTokenURLs []string, allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp) error {
 	workloadIdentity, ok := newObj.(*securityv1alpha1.WorkloadIdentity)
 	if !ok {
 		return fmt.Errorf("wrong object type %T", newObj)
@@ -59,14 +64,14 @@ func (wi *workloadIdentity) Validate(_ context.Context, newObj, oldObj client.Ob
 		if err != nil {
 			return fmt.Errorf("cannot decode the old target system's configuration: %w", err)
 		}
-		errList := gcpvalidation.ValidateWorkloadIdentityConfigUpdate(oldConfig, newConfig, fieldPath, wi.allowedTokenURLs, wi.allowedServiceAccountImpersonationURLRegExps)
+		errList := gcpvalidation.ValidateWorkloadIdentityConfigUpdate(oldConfig, newConfig, fieldPath, allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)
 		if len(errList) > 0 {
 			return fmt.Errorf("validation of target system's configuration failed: %w", errList.ToAggregate())
 		}
 		return nil
 	}
 
-	errList := gcpvalidation.ValidateWorkloadIdentityConfig(newConfig, fieldPath, wi.allowedTokenURLs, wi.allowedServiceAccountImpersonationURLRegExps)
+	errList := gcpvalidation.ValidateWorkloadIdentityConfig(newConfig, fieldPath, allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)
 	if len(errList) > 0 {
 		return fmt.Errorf("validation of target system's configuration failed: %w", errList.ToAggregate())
 	}
