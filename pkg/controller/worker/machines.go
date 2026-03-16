@@ -175,8 +175,6 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 			})
 		}
 
-		isLiveMigrationAllowed := true
-
 		userData, err := worker.FetchUserData(ctx, w.client, w.worker.Namespace, pool)
 		if err != nil {
 			return err
@@ -319,6 +317,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 				// Support extended resources by copying into nodeTemplate.Capacity overriding if needed
 				maps.Copy(nodeTemplate.Capacity, workerConfig.NodeTemplate.Capacity)
 			}
+			hasGpus := false
 			if nodeTemplate != nil {
 				template := machinev1alpha1.NodeTemplate{
 					// always overwrite the GPU count if it was provided in the WorkerConfig.
@@ -330,12 +329,19 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 				machineClassSpec["nodeTemplate"] = template
 				numGpus := template.Capacity[ResourceGPU]
-				if !numGpus.IsZero() {
-					isLiveMigrationAllowed = false
-				}
+				hasGpus = !numGpus.IsZero()
 			}
 
-			setSchedulingPolicy(machineClassSpec, isLiveMigrationAllowed)
+			onHostMaintenance := "MIGRATE"
+			if !isLiveMigrationSupported(pool.MachineType, hasGpus) {
+				onHostMaintenance = "TERMINATE"
+			}
+			machineClassSpec["scheduling"] = map[string]interface{}{
+				"automaticRestart":  true,
+				"onHostMaintenance": onHostMaintenance,
+				"preemptible":       false,
+			}
+
 			machineClasses = append(machineClasses, machineClassSpec)
 		}
 	}
@@ -489,20 +495,40 @@ func initializeCapacity(capacityList corev1.ResourceList, gpuCount int32) corev1
 	return resultCapacity
 }
 
-func setSchedulingPolicy(machineClassSpec map[string]interface{}, isLiveMigrationAllowed bool) {
-	if isLiveMigrationAllowed {
-		machineClassSpec["scheduling"] = map[string]interface{}{
-			"automaticRestart":  true,
-			"onHostMaintenance": "MIGRATE",
-			"preemptible":       false,
-		}
-	} else {
-		machineClassSpec["scheduling"] = map[string]interface{}{
-			"automaticRestart":  true,
-			"onHostMaintenance": "TERMINATE",
-			"preemptible":       false,
+// isLiveMigrationSupported determines if live migration is supported by the selected machine type based on the
+// GCP documentation: https://docs.cloud.google.com/compute/docs/instances/live-migration-process#limitations
+func isLiveMigrationSupported(machineType string, hasGPU bool) bool {
+	if hasGPU {
+		return false
+	}
+	// bare metal machines don't support live migration
+	if strings.HasSuffix(machineType, "-metal") {
+		return false
+	}
+	// H4D machines don't support live migration
+	if strings.HasPrefix(machineType, "h4d-") {
+		return false
+	}
+	// Z3 machines with more than 18TiB of storage
+	// https://docs.cloud.google.com/compute/docs/storage-optimized-machines#z3_limitations
+	unsupportedZ3Machines := []string{"z3-highmem-176-standardlssd", "z3-highmem-88-highlssd", "z3-highmem-192-highlssd-metal"}
+	if slices.Contains(unsupportedZ3Machines, machineType) {
+		return false
+	}
+	// Machines with TPUs
+	// https://docs.cloud.google.com/kubernetes-engine/docs/concepts/plan-tpus#standard
+	tpuSuffixes := []string{"-1t", "-4t", "-8t"}
+	for _, suffix := range tpuSuffixes {
+		if strings.HasSuffix(machineType, suffix) {
+			return false
 		}
 	}
+	// TODO: Check for confidential VMs
+	// https://docs.cloud.google.com/confidential-computing/confidential-vm/docs/supported-configurations#machine-type-cpu-zone
+	// Since this is more complex we might want to use another mechanism like machine capibilities:
+	// https://github.com/gardener/enhancements/tree/main/geps/0033-machine-image-capabilities
+
+	return true
 }
 
 // SanitizeGcpLabel will sanitize the label base on the gcp label Restrictions
