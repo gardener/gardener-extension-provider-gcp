@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/api/core/v1beta1/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	"google.golang.org/api/compute/v1"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"

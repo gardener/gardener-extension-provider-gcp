@@ -11,8 +11,8 @@ import (
 	"slices"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/gardener/gardener/pkg/api/core/helper"
 	"github.com/gardener/gardener/pkg/apis/core"
-	"github.com/gardener/gardener/pkg/apis/core/helper"
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
