@@ -87,7 +87,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-  tag: v35.0.0
+  tag: v35.0.2
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -102,7 +102,7 @@ images:
 - name: csi-attacher
   sourceRepository: github.com/kubernetes-csi/external-attacher
   repository: registry.k8s.io/sig-storage/csi-attacher
-  tag: v4.10.0
+  tag: v4.11.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -130,7 +130,7 @@ images:
 - name: csi-driver-filestore
   sourceRepository: github.com/kubernetes-sigs/gcp-filestore-csi-driver
   repository: registry.k8s.io/cloud-provider-gcp/gcp-filestore-csi-driver
-  tag: v1.11.4
+  tag: v1.12.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -144,7 +144,7 @@ images:
 - name: csi-liveness-probe
   sourceRepository: github.com/kubernetes-csi/livenessprobe
   repository: registry.k8s.io/sig-storage/livenessprobe
-  tag: v2.17.0
+  tag: v2.18.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -158,7 +158,7 @@ images:
 - name: csi-node-driver-registrar
   sourceRepository: github.com/kubernetes-csi/node-driver-registrar
   repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-  tag: v2.15.0
+  tag: v2.16.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -186,7 +186,7 @@ images:
 - name: csi-provisioner
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: registry.k8s.io/sig-storage/csi-provisioner
-  tag: v6.1.0
+  tag: v6.2.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -215,7 +215,7 @@ images:
 - name: csi-resizer
   sourceRepository: github.com/kubernetes-csi/external-resizer
   repository: registry.k8s.io/sig-storage/csi-resizer
-  tag: v2.0.0
+  tag: v2.1.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -230,7 +230,7 @@ images:
 - name: csi-snapshot-controller
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/snapshot-controller
-  tag: v8.4.0
+  tag: v8.5.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -244,7 +244,7 @@ images:
 - name: csi-snapshotter
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/csi-snapshotter
-  tag: v8.4.0
+  tag: v8.5.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -258,7 +258,7 @@ images:
 - name: ingress-default-backend
   sourceRepository: github.com/gardener/ingress-default-backend
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/ingress-default-backend
-  tag: "0.25.0"
+  tag: 0.25.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -287,7 +287,7 @@ images:
 - name: machine-controller-manager-provider-gcp
   sourceRepository: github.com/gardener/machine-controller-manager-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/machine-controller-manager-provider-gcp
-  tag: "v0.27.0"
+  tag: v0.27.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
