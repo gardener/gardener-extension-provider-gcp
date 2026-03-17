@@ -148,7 +148,9 @@ spec:
   type: LoadBalancer
 ```
 
-The required annotation `cloud.google.com/l4-rbs: enabled` for ingress-gce is added automatically via webhook for services of `type: LoadBalancer`.
+The required annotation `cloud.google.com/l4-rbs: enabled` for ingress-gce is added automatically via webhook for services of `type: LoadBalancer` for new services.
+
+**Note:** Existing LoadBalancer services cannot be migrated to dual-stack. They must be deleted and recreated.
 
 ### Internal Load Balancer
 - Internal IPv6 LoadBalancers are currently **not supported**.
