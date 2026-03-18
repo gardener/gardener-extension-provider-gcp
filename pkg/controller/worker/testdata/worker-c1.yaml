@@ -1,0 +1,66 @@
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: Worker
+metadata:
+  annotations:
+    gardener.cloud/timestamp: "2026-02-02T14:21:10.179746615Z"
+  creationTimestamp: "2026-02-02T08:52:05Z"
+  finalizers:
+    - extensions.gardener.cloud/worker
+  name: testworker
+  namespace: shootns
+  resourceVersion: "1"
+  uid: f434b0b9-4de8-4092-9122-188b32c403da
+spec:
+  pools:
+    - architecture: amd64
+      kubernetesVersion: 1.33.7
+      labels:
+        kubernetes.io/arch: amd64
+        networking.gardener.cloud/node-local-dns-enabled: "true"
+        node.kubernetes.io/role: node
+        worker.garden.sapcloud.io/group: xyz
+        worker.gardener.cloud/cri-name: containerd
+        worker.gardener.cloud/gardener-node-agent-secret-name: dummy
+        worker.gardener.cloud/pool: xyz
+        worker.gardener.cloud/system-components: "true"
+      machineImage:
+        name: gardenlinux
+        version: 1877.9.0
+      machineType: n1-standard-4
+      maxSurge: 1
+      maxUnavailable: 0
+      maximum: 2
+      minimum: 1
+      name: xyz
+      nodeAgentSecretName: dummy
+      nodeTemplate:
+        capacity:
+          cpu: "4"
+          gpu: "0"
+          memory: 15Gi
+      providerConfig:
+        apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+        kind: WorkerConfig
+        nodeTemplate:
+          capacity:
+            cpu: "4"
+            gpu: "0"
+            memory: 12Gi
+          virtualCapacity:
+            subdomain.domain.com/cpu: "2"
+            subdomain.domain.com/memory: 2048Mi
+      updateStrategy: AutoRollingUpdate
+      userDataSecretRef:
+        key: cloud_config
+        name: dummy
+      volume:
+        size: 50Gi
+        type: pd-balanced
+      zones:
+        - europe-west1-b
+  region: europe-west1
+  secretRef:
+    name: cloudprovider
+    namespace: shootns
+  sshPublicKey: c3NoLXJzYSB0ZXN0
+  type: gcp
