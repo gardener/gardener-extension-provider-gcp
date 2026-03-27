@@ -17,12 +17,30 @@ The cloud profile configuration contains information about the real machine imag
 You have to map every version that you specify in `.spec.machineImages[].versions` here such that the GCP extension knows the image URL for every version you want to offer.
 
 #### NEW: MachineCapabilities
-With the introduction of `spec.machineCapabilities` in Gardener *v1.131.0* you have to map every `capabilityFlavor` in `.spec.machineImages[].versions` here to an available Image ID in GCP.
+
+With the introduction of `spec.machineCapabilities` in Gardener *v1.131.0*, you can define capability-based matching between machine images and machine types. This enables fine-grained control over which images can be used with which machine types.
+
+**Purpose and Behavior:**
+
+The `machineCapabilities` feature allows you to:
+- Define available capabilities and their values in the CloudProfile (e.g., `architecture`, `gpu`, `hypervisorType`)
+- Associate machine images with specific capability combinations via `capabilityFlavors`
+- Optionally restrict machine types to specific capabilities via `machineTypes.capabilities`
+
+**Default & Override Behavior:**
+
+- **Image capability flavors** (`.spec.machineImages[].versions[].capabilityFlavors`): Define what capabilities each machine image variant supports. Each flavor maps to a specific GCP image URL.
+- **Machine type capabilities** (`.spec.machineTypes[].capabilities`): When specified, these **restrict** which image flavors can be used with that machine type. Only image flavors whose capabilities are compatible (match or are subsets of) the machine type's capabilities can be selected.
+- **When machine type capabilities are NOT specified**: The machine type can use any image flavor without capability restrictions.
+
+**Example:** If a machine type specifies `capabilities: {architecture: [amd64], gpu: [enabled]}`, only image flavors that have matching or subset capabilities (e.g., `architecture: [amd64]` and `gpu: [enabled]`) can be used with that machine type. Image flavors with `arm64` or without GPU support would be incompatible.
+
+**Required Capability:**
 
 Always required is the architecture capability:
 - `architecture`: `amd64` and `arm64` (specifies the CPU architecture of the machine on which given machine image can be used)
 
-But any other capability can be mapped here as well, e.g. `gpu`, `networkPerformance`, etc. with any value that makes sense for your environment.
+But any other capability can be mapped here as well, e.g. `gpu`, `hypervisortype`, etc. with any value that makes sense for your environment.
 
 An example `CloudProfileConfig` for the GCP extension looks as follows:
 
@@ -108,6 +126,8 @@ spec:
     class: standard
   - name: pd-ssd
     class: premium
+  - name: SCRATCH
+    class: standard
   regions:
   - region: europe-west1
     names:
