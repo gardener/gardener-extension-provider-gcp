@@ -79,16 +79,12 @@ var (
 	project        string
 	computeService *compute.Service
 
-	extensionscluster *extensionsv1alpha1.Cluster
-	worker            *extensionsv1alpha1.Worker
-	controllercluster *controller.Cluster
+	worker *extensionsv1alpha1.Worker
 
 	secret    *corev1.Secret
 	testEnv   *envtest.Environment
 	mgrCancel context.CancelFunc
 	c         client.Client
-	options   *bastionctrl.Options
-	bastion   *extensionsv1alpha1.Bastion
 
 	name       string
 	vNetName   string
@@ -184,9 +180,7 @@ var _ = BeforeSuite(func() {
 	computeService, err = compute.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(compute.CloudPlatformScope))
 	Expect(err).NotTo(HaveOccurred())
 
-	extensionscluster, controllercluster = createClusters(name)
 	worker = createWorker(name, vNetName, subnetName)
-	bastion, options = createBastion(controllercluster, name, project, vNetName, subnetName)
 
 	secret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -200,52 +194,93 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = Describe("Bastion tests", func() {
-	It("should successfully create and delete", func() {
-		By("setup Infrastructure")
-		err := prepareNewNetwork(ctx, log, project, computeService, vNetName, routerName, subnetName)
-		Expect(err).NotTo(HaveOccurred())
-		framework.AddCleanupAction(func() {
-			err = teardownNetwork(ctx, log, project, computeService, vNetName, routerName, subnetName)
+	DescribeTable("should successfully create and delete with different CloudProfile formats",
+		func(createCloudProfileFunc func() *gardencorev1beta1.CloudProfile, testDescription string) {
+			By(fmt.Sprintf("testing with %s", testDescription))
+
+			// Create fresh cluster objects with the specified CloudProfile format
+			cloudProfile := createCloudProfileFunc()
+			infrastructureConfig := createInfrastructureConfig()
+			infrastructureConfigJSON, _ := json.Marshal(&infrastructureConfig)
+			shoot := createShoot(infrastructureConfigJSON)
+			shootJSON, _ := json.Marshal(shoot)
+			cloudProfileJSON, _ := json.Marshal(cloudProfile)
+
+			testExtensionsCluster := &extensionsv1alpha1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: name,
+				},
+				Spec: extensionsv1alpha1.ClusterSpec{
+					CloudProfile: runtime.RawExtension{
+						Object: cloudProfile,
+						Raw:    cloudProfileJSON,
+					},
+					Seed: runtime.RawExtension{
+						Raw: []byte("{}"),
+					},
+					Shoot: runtime.RawExtension{
+						Object: shoot,
+						Raw:    shootJSON,
+					},
+				},
+			}
+
+			testControllerCluster := &controller.Cluster{
+				ObjectMeta:   metav1.ObjectMeta{Name: name},
+				Shoot:        shoot,
+				CloudProfile: cloudProfile,
+			}
+
+			testBastion, testOptions := createBastion(testControllerCluster, name, project, vNetName, subnetName)
+
+			By("setup Infrastructure")
+			err := prepareNewNetwork(ctx, log, project, computeService, vNetName, routerName, subnetName)
 			Expect(err).NotTo(HaveOccurred())
-		})
+			framework.AddCleanupAction(func() {
+				err = teardownNetwork(ctx, log, project, computeService, vNetName, routerName, subnetName)
+				Expect(err).NotTo(HaveOccurred())
+			})
 
-		By("create namespace for test execution")
-		setupEnvironmentObjects(ctx, c, namespace(name), secret, extensionscluster, worker)
-		framework.AddCleanupAction(func() {
-			teardownShootEnvironment(ctx, c, namespace(name), secret, extensionscluster, worker)
-		})
+			By("create namespace for test execution")
+			setupEnvironmentObjects(ctx, c, namespace(name), secret, testExtensionsCluster, worker)
+			framework.AddCleanupAction(func() {
+				teardownShootEnvironment(ctx, c, namespace(name), secret, testExtensionsCluster, worker)
+			})
 
-		By("setup bastion")
-		err = c.Create(ctx, bastion)
-		Expect(err).NotTo(HaveOccurred())
+			By("setup bastion")
+			err = c.Create(ctx, testBastion)
+			Expect(err).NotTo(HaveOccurred())
 
-		framework.AddCleanupAction(func() {
-			teardownBastion(ctx, log, c, bastion)
+			framework.AddCleanupAction(func() {
+				teardownBastion(ctx, log, c, testBastion)
 
-			By("verify bastion deletion")
-			verifyDeletion(ctx, project, computeService, options)
-		})
+				By("verify bastion deletion")
+				verifyDeletion(ctx, project, computeService, testOptions)
+			})
 
-		By("wait until bastion is reconciled")
-		Expect(extensions.WaitUntilExtensionObjectReady(
-			ctx,
-			c,
-			log,
-			bastion,
-			extensionsv1alpha1.BastionResource,
-			15*time.Second,
-			60*time.Second,
-			5*time.Minute,
-			nil,
-		)).To(Succeed())
+			By("wait until bastion is reconciled")
+			Expect(extensions.WaitUntilExtensionObjectReady(
+				ctx,
+				c,
+				log,
+				testBastion,
+				extensionsv1alpha1.BastionResource,
+				15*time.Second,
+				60*time.Second,
+				5*time.Minute,
+				nil,
+			)).To(Succeed())
 
-		time.Sleep(60 * time.Second)
-		verifyPort22IsOpen(ctx, c, bastion)
-		verifyPort42IsClosed(ctx, c, bastion)
+			time.Sleep(60 * time.Second)
+			verifyPort22IsOpen(ctx, c, testBastion)
+			verifyPort42IsClosed(ctx, c, testBastion)
 
-		By("verify cloud resources")
-		verifyCreation(ctx, project, computeService, options)
-	})
+			By("verify cloud resources")
+			verifyCreation(ctx, project, computeService, testOptions)
+		},
+		Entry("with legacy architecture field format", createCloudProfileLegacy, "legacy architecture field"),
+		Entry("with capability-based format", createCloudProfileWithCapabilities, "capability-based format"),
+	)
 })
 
 func verifyPort22IsOpen(ctx context.Context, c client.Client, bastion *extensionsv1alpha1.Bastion) {
@@ -498,13 +533,88 @@ func createShoot(infrastructureConfig []byte) *gardencorev1beta1.Shoot {
 	}
 }
 
-func createCloudProfile() *gardencorev1beta1.CloudProfile {
+// createCloudProfileWithCapabilities creates a CloudProfile using the new capability-based format
+func createCloudProfileWithCapabilities() *gardencorev1beta1.CloudProfile {
+	profileConfig := &apisgcp.CloudProfileConfig{MachineImages: []apisgcp.MachineImages{{
+		Name: imageName,
+		Versions: []apisgcp.MachineImageVersion{{
+			Version: "1443.9.0",
+			CapabilityFlavors: []apisgcp.MachineImageFlavor{
+				{
+					Capabilities: gardencorev1beta1.Capabilities{"architecture": []string{"amd64"}},
+					Image:        "projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-gcp-gardener-prod-amd64-1443-9-a9c614dc",
+				},
+				{
+					Capabilities: gardencorev1beta1.Capabilities{"architecture": []string{"arm64"}},
+					Image:        "projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-gcp-gardener-prod-arm64-1443-9-a9c614dc",
+				},
+			},
+		}},
+	}}}
+
+	profileConfigData, err := json.Marshal(profileConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	cloudProfile := &gardencorev1beta1.CloudProfile{
+		Spec: gardencorev1beta1.CloudProfileSpec{
+			MachineCapabilities: []gardencorev1beta1.CapabilityDefinition{
+				{
+					Name:   "architecture",
+					Values: []string{"amd64", "arm64"},
+				},
+				{
+					Name:   "cap-1",
+					Values: []string{"value-1", "value-2"},
+				},
+			},
+			Regions: []gardencorev1beta1.Region{
+				{Name: *region},
+				{Name: *region, Zones: []gardencorev1beta1.AvailabilityZone{
+					{Name: *region + "-b"},
+					{Name: *region + "-c"},
+				}},
+			},
+			Bastion: &gardencorev1beta1.Bastion{
+				MachineImage: &gardencorev1beta1.BastionMachineImage{
+					Name: imageName,
+				},
+			},
+			MachineTypes: []gardencorev1beta1.MachineType{{
+				CPU:          resource.MustParse("1"),
+				Name:         "n1-standard-1",
+				Architecture: ptr.To("amd64"),
+			}},
+			MachineImages: []gardencorev1beta1.MachineImage{{
+				Name: imageName,
+				Versions: []gardencorev1beta1.MachineImageVersion{
+					{
+						ExpirableVersion: gardencorev1beta1.ExpirableVersion{
+							Version:        "1443.9.0",
+							Classification: ptr.To(gardencorev1beta1.ClassificationSupported),
+						},
+						CapabilityFlavors: []gardencorev1beta1.MachineImageFlavor{
+							{Capabilities: gardencorev1beta1.Capabilities{"architecture": []string{"amd64"}}},
+							{Capabilities: gardencorev1beta1.Capabilities{"architecture": []string{"arm64"}}},
+						},
+						Architectures: []string{"amd64", "arm64"},
+					}},
+			}},
+			ProviderConfig: &runtime.RawExtension{
+				Raw: profileConfigData,
+			},
+		},
+	}
+	return cloudProfile
+}
+
+// createCloudProfileLegacy creates a CloudProfile using the legacy architecture field format
+func createCloudProfileLegacy() *gardencorev1beta1.CloudProfile {
 	profileConfig := &apisgcp.CloudProfileConfig{MachineImages: []apisgcp.MachineImages{{
 		Name: imageName,
 		Versions: []apisgcp.MachineImageVersion{{
 			Version:      "1443.9.0",
-			Image:        "projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-gcp-gardener-prod-amd64-1443-9-a9c614dc",
 			Architecture: ptr.To("amd64"),
+			Image:        "projects/sap-se-gcp-gardenlinux/global/images/gardenlinux-gcp-gardener-prod-amd64-1443-9-a9c614dc",
 		}},
 	}}}
 
@@ -538,7 +648,7 @@ func createCloudProfile() *gardencorev1beta1.CloudProfile {
 							Version:        "1443.9.0",
 							Classification: ptr.To(gardencorev1beta1.ClassificationSupported),
 						},
-						Architectures: []string{"amd64", "arm64"},
+						Architectures: []string{"amd64"},
 					}},
 			}},
 			ProviderConfig: &runtime.RawExtension{
@@ -547,43 +657,6 @@ func createCloudProfile() *gardencorev1beta1.CloudProfile {
 		},
 	}
 	return cloudProfile
-}
-
-func createClusters(name string) (*extensionsv1alpha1.Cluster, *controller.Cluster) {
-	infrastructureConfig := createInfrastructureConfig()
-	infrastructureConfigJSON, _ := json.Marshal(&infrastructureConfig)
-
-	shoot := createShoot(infrastructureConfigJSON)
-	shootJSON, _ := json.Marshal(shoot)
-
-	cloudProfile := createCloudProfile()
-	cloudProfileJSON, _ := json.Marshal(cloudProfile)
-
-	extensionscluster := &extensionsv1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Spec: extensionsv1alpha1.ClusterSpec{
-			CloudProfile: runtime.RawExtension{
-				Object: cloudProfile,
-				Raw:    cloudProfileJSON,
-			},
-			Seed: runtime.RawExtension{
-				Raw: []byte("{}"),
-			},
-			Shoot: runtime.RawExtension{
-				Object: shoot,
-				Raw:    shootJSON,
-			},
-		},
-	}
-
-	cluster := &controller.Cluster{
-		ObjectMeta:   metav1.ObjectMeta{Name: name},
-		Shoot:        shoot,
-		CloudProfile: cloudProfile,
-	}
-	return extensionscluster, cluster
 }
 
 func teardownBastion(ctx context.Context, log logr.Logger, c client.Client, bastion *extensionsv1alpha1.Bastion) {
