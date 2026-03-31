@@ -29,11 +29,11 @@ The `machineCapabilities` feature allows you to:
 
 **Default & Override Behavior:**
 
-- **Image capability flavors** (`.spec.machineImages[].versions[].capabilityFlavors`): Define what capabilities each machine image variant supports. Each flavor maps to a specific GCP image URL.
-- **Machine type capabilities** (`.spec.machineTypes[].capabilities`): When specified, these **restrict** which image flavors can be used with that machine type. Only image flavors whose capabilities are compatible (match or are subsets of) the machine type's capabilities can be selected.
-- **When machine type capabilities are NOT specified**: The machine type can use any image flavor without capability restrictions.
+The capability system uses **automatic defaulting** from `.spec.machineCapabilities`:
 
-**Example:** If a machine type specifies `capabilities: {architecture: [amd64], gpu: [enabled]}`, only image flavors that have matching or subset capabilities (e.g., `architecture: [amd64]` and `gpu: [enabled]`) can be used with that machine type. Image flavors with `arm64` or without GPU support would be incompatible.
+- **`.spec.machineCapabilities`**: Defines all available capability keys and their possible values (e.g., `architecture: [amd64, arm64]`, `gpu: [enabled, disabled]`)
+- Any capability **not explicitly specified** in `.spec.machineImages[].versions[].capabilityFlavors[].capabilities` or `.spec.machineTypes[].capabilities` automatically gets **all values** from `.spec.machineCapabilities`
+- If no capabilities are defined all will be defaulted.
 
 **Required Capability:**
 
