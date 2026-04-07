@@ -7,6 +7,7 @@ package bastion_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -22,7 +23,6 @@ import (
 	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/gardener/gardener/pkg/logger"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
-	"github.com/gardener/gardener/test/framework"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -57,8 +57,6 @@ const (
 )
 
 var (
-	myPublicIP = ""
-
 	serviceAccount = flag.String("service-account", "", "Service account containing credentials for the GCP API")
 	region         = flag.String("region", "", "GCP region")
 )
@@ -73,26 +71,17 @@ func validateFlags() {
 }
 
 var (
-	ctx = context.Background()
-
+	ctx            context.Context
 	log            logr.Logger
 	project        string
 	computeService *compute.Service
-
-	worker *extensionsv1alpha1.Worker
-
-	secret    *corev1.Secret
-	testEnv   *envtest.Environment
-	mgrCancel context.CancelFunc
-	c         client.Client
-
-	name       string
-	vNetName   string
-	routerName string
-	subnetName string
+	testEnv        *envtest.Environment
+	mgrCancel      context.CancelFunc
+	c              client.Client
 )
 
 var _ = BeforeSuite(func() {
+	ctx = context.Background()
 	repoRoot := filepath.Join("..", "..", "..")
 
 	// enable manager logs
@@ -106,24 +95,9 @@ var _ = BeforeSuite(func() {
 			mgrCancel()
 		}()
 
-		By("running cleanup actions")
-		framework.RunCleanupActions()
-
 		By("stopping test environment")
 		Expect(testEnv.Stop()).To(Succeed())
 	})
-
-	By("generating randomized test resource identifiers")
-	randString, err := randomString()
-	Expect(err).NotTo(HaveOccurred())
-
-	name = fmt.Sprintf("gcp-bastion-it--%s", randString)
-	vNetName = name
-	routerName = vNetName + "-cloud-router"
-	subnetName = vNetName + "-nodes"
-
-	myPublicIP, err = getMyPublicIPWithMask()
-	Expect(err).ToNot(HaveOccurred())
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
@@ -179,18 +153,6 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	computeService, err = compute.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(compute.CloudPlatformScope))
 	Expect(err).NotTo(HaveOccurred())
-
-	worker = createWorker(name, vNetName, subnetName)
-
-	secret = &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "cloudprovider",
-			Namespace: name,
-		},
-		Data: map[string][]byte{
-			gcp.ServiceAccountJSONField: []byte(*serviceAccount),
-		},
-	}
 })
 
 var _ = Describe("Bastion tests", func() {
@@ -198,11 +160,35 @@ var _ = Describe("Bastion tests", func() {
 		func(createCloudProfileFunc func() *gardencorev1beta1.CloudProfile, testDescription string) {
 			By(fmt.Sprintf("testing with %s", testDescription))
 
+			By("generating randomized test resource identifiers")
+			randString, err := randomString()
+			Expect(err).NotTo(HaveOccurred())
+
+			name := fmt.Sprintf("gcp-bastion-it--%s", randString)
+			networkName := name + "-network"
+			routerName := name + "-cloud-router"
+			subnetName := name + "-nodes"
+
+			worker := createWorker(name, networkName, subnetName)
+
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cloudprovider",
+					Namespace: name,
+				},
+				Data: map[string][]byte{
+					gcp.ServiceAccountJSONField: []byte(*serviceAccount),
+				},
+			}
+
+			myPublicIP, err := getMyPublicIPWithMask()
+			Expect(err).ToNot(HaveOccurred())
+
 			// Create fresh cluster objects with the specified CloudProfile format
 			cloudProfile := createCloudProfileFunc()
 			infrastructureConfig := createInfrastructureConfig()
 			infrastructureConfigJSON, _ := json.Marshal(&infrastructureConfig)
-			shoot := createShoot(infrastructureConfigJSON)
+			shoot := createShoot(name, infrastructureConfigJSON)
 			shootJSON, _ := json.Marshal(shoot)
 			cloudProfileJSON, _ := json.Marshal(cloudProfile)
 
@@ -231,19 +217,19 @@ var _ = Describe("Bastion tests", func() {
 				CloudProfile: cloudProfile,
 			}
 
-			testBastion, testOptions := createBastion(testControllerCluster, name, project, vNetName, subnetName)
+			testBastion, testOptions := createBastion(testControllerCluster, name, project, networkName, subnetName, myPublicIP)
 
 			By("setup Infrastructure")
-			err := prepareNewNetwork(ctx, log, project, computeService, vNetName, routerName, subnetName)
+			err = prepareNewNetwork(ctx, log, project, computeService, networkName, routerName, subnetName)
 			Expect(err).NotTo(HaveOccurred())
-			framework.AddCleanupAction(func() {
-				err = teardownNetwork(ctx, log, project, computeService, vNetName, routerName, subnetName)
-				Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				cleanupErr := teardownNetwork(ctx, log, project, computeService, networkName, routerName, subnetName)
+				Expect(cleanupErr).NotTo(HaveOccurred())
 			})
 
 			By("create namespace for test execution")
 			setupEnvironmentObjects(ctx, c, namespace(name), secret, testExtensionsCluster, worker)
-			framework.AddCleanupAction(func() {
+			DeferCleanup(func() {
 				teardownShootEnvironment(ctx, c, namespace(name), secret, testExtensionsCluster, worker)
 			})
 
@@ -251,7 +237,7 @@ var _ = Describe("Bastion tests", func() {
 			err = c.Create(ctx, testBastion)
 			Expect(err).NotTo(HaveOccurred())
 
-			framework.AddCleanupAction(func() {
+			DeferCleanup(func() {
 				teardownBastion(ctx, log, c, testBastion)
 
 				By("verify bastion deletion")
@@ -276,7 +262,7 @@ var _ = Describe("Bastion tests", func() {
 			verifyPort42IsClosed(ctx, c, testBastion)
 
 			By("verify cloud resources")
-			verifyCreation(ctx, project, computeService, testOptions)
+			verifyCreation(ctx, project, myPublicIP, computeService, testOptions)
 		},
 		Entry("with legacy architecture field format", createCloudProfileLegacy, "legacy architecture field"),
 		Entry("with capability-based format", createCloudProfileWithCapabilities, "capability-based format"),
@@ -425,7 +411,7 @@ func getResourceNameFromSelfLink(link string) string {
 	return parts[len(parts)-1]
 }
 
-func createBastion(cluster *controller.Cluster, name, project, vNet, subnet string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {
+func createBastion(cluster *controller.Cluster, name, project, networkName, subnet, publicIP string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {
 	bastion := &extensionsv1alpha1.Bastion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "-bastion",
@@ -438,13 +424,13 @@ func createBastion(cluster *controller.Cluster, name, project, vNet, subnet stri
 			UserData: []byte(userDataConst),
 			Ingress: []extensionsv1alpha1.BastionIngressPolicy{
 				{IPBlock: networkingv1.IPBlock{
-					CIDR: myPublicIP,
+					CIDR: publicIP,
 				}},
 			},
 		},
 	}
 
-	options, err := bastionctrl.NewOpts(bastion, cluster, project, vNet, subnet)
+	options, err := bastionctrl.NewOpts(bastion, cluster, project, networkName, subnet)
 	Expect(err).NotTo(HaveOccurred())
 
 	return bastion, options
@@ -462,8 +448,8 @@ func createInfrastructureConfig() *gcpv1alpha1.InfrastructureConfig {
 	}
 }
 
-func createWorker(name, vNetName, subnetName string) *extensionsv1alpha1.Worker {
-	infrastructureProviderStatus := createInfrastructureStatus(vNetName, subnetName)
+func createWorker(name, vpcName, subnetName string) *extensionsv1alpha1.Worker {
+	infrastructureProviderStatus := createInfrastructureStatus(vpcName, subnetName)
 	json, err := json.Marshal(infrastructureProviderStatus)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -489,7 +475,7 @@ func createWorker(name, vNetName, subnetName string) *extensionsv1alpha1.Worker 
 	}
 }
 
-func createInfrastructureStatus(vNetName, subnetName string) *gcpv1alpha1.InfrastructureStatus {
+func createInfrastructureStatus(vpcName, subnetName string) *gcpv1alpha1.InfrastructureStatus {
 	return &gcpv1alpha1.InfrastructureStatus{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: gcpv1alpha1.SchemeGroupVersion.String(),
@@ -497,7 +483,7 @@ func createInfrastructureStatus(vNetName, subnetName string) *gcpv1alpha1.Infras
 		},
 		Networks: gcpv1alpha1.NetworkStatus{
 			VPC: gcpv1alpha1.VPC{
-				Name: vNetName,
+				Name: vpcName,
 			},
 			Subnets: []gcpv1alpha1.Subnet{
 				{
@@ -513,7 +499,7 @@ func createInfrastructureStatus(vNetName, subnetName string) *gcpv1alpha1.Infras
 	}
 }
 
-func createShoot(infrastructureConfig []byte) *gardencorev1beta1.Shoot {
+func createShoot(name string, infrastructureConfig []byte) *gardencorev1beta1.Shoot {
 	return &gardencorev1beta1.Shoot{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "core.gardener.cloud/v1beta1",
@@ -668,7 +654,7 @@ func teardownBastion(ctx context.Context, log logr.Logger, c client.Client, bast
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func verifyCreation(ctx context.Context, project string, computeService *compute.Service, options *bastionctrl.Options) {
+func verifyCreation(ctx context.Context, project, publicIP string, computeService *compute.Service, options *bastionctrl.Options) {
 	By("checkFirewallExists")
 	// bastion firewall - Check Ingress / Egress firewalls created
 	checkFirewallExists(ctx, project, computeService, bastionctrl.FirewallIngressAllowSSHResourceName(options.BastionInstanceName))
@@ -679,7 +665,7 @@ func verifyCreation(ctx context.Context, project string, computeService *compute
 	firewall, err := computeService.Firewalls.Get(project, bastionctrl.FirewallIngressAllowSSHResourceName(options.BastionInstanceName)).Context(ctx).Do()
 	Expect(ignoreNotFoundError(err)).NotTo(HaveOccurred())
 	Expect(firewall.Allowed[0].Ports[0]).To(Equal("22"))
-	Expect(firewall.SourceRanges[0]).To(Equal(myPublicIP))
+	Expect(firewall.SourceRanges[0]).To(Equal(publicIP))
 
 	By("checking Firewall-deny-all rule")
 	firewall, err = computeService.Firewalls.Get(project, bastionctrl.FirewallEgressDenyAllResourceName(options.BastionInstanceName)).Context(ctx).Do()
@@ -821,7 +807,8 @@ func ignoreNotFoundError(err error) error {
 	if err == nil {
 		return nil
 	}
-	if googleError, ok := err.(*googleapi.Error); ok && googleError.Code == http.StatusNotFound {
+	var googleError *googleapi.Error
+	if errors.As(err, &googleError) && googleError.Code == http.StatusNotFound {
 		return nil
 	}
 	return err
