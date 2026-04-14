@@ -145,6 +145,24 @@ var _ = DescribeTableSubtree("NamespacedCloudProfile Validator", func(isCapabili
 			Expect(namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)).To(MatchError(ContainSubstring("parent reference must be of kind CloudProfile")))
 		})
 
+		It("should succeed if NamespacedCloudProfile only overrides expirationDate for an existing parent machine image version without providerConfig", func() {
+			expirationDate := metav1.Now()
+			cloudProfile.Spec.MachineImages = []v1beta1.MachineImage{
+				{Name: "image-1", Versions: []v1beta1.MachineImageVersion{{ExpirableVersion: v1beta1.ExpirableVersion{Version: "1.0"}}}},
+			}
+			namespacedCloudProfile.Spec.MachineImages = []core.MachineImage{
+				{
+					Name: "image-1",
+					Versions: []core.MachineImageVersion{
+						{ExpirableVersion: core.ExpirableVersion{Version: "1.0", ExpirationDate: &expirationDate}, Architectures: []string{"amd64"}},
+					},
+				},
+			}
+
+			Expect(fakeClient.Create(ctx, cloudProfile)).To(Succeed())
+			Expect(namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)).To(Succeed())
+		})
+
 		It("should fail for NamespacedCloudProfile trying to override an already existing machine image version", func() {
 			cloudProfile.Spec.MachineImages = []v1beta1.MachineImage{
 				{Name: "image-1", Versions: []v1beta1.MachineImageVersion{{ExpirableVersion: v1beta1.ExpirableVersion{Version: "1.0"}}}},
