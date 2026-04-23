@@ -14,6 +14,7 @@ images:
       availability_requirement: low
     signing: false
   targetVersion: 1.30.x
+# version-mapping
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
@@ -30,15 +31,17 @@ images:
       availability_requirement: low
     signing: false
   targetVersion: 1.31.x
-  # Note: do not use the v32.2.5 image of cloud-controller-manager. Its dockerfile only specifies CMD and does not specify an ENTRYPOINT.
-  # This causes the container's entrypoint to be "ko-runner" instead of "/cloud-controller-manager". Due to this it cannot be used with the current
-  # chart that is used to deploy the cloud-controller-manager. For more information check
-  # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987914997 and
-  # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987998478
-  #
-  # TODO(plkokanov,AndreasBurger,kon-angelo,hebelsan): Bump the patch version of the cloud-controller-manager after the Dockerfile
-  # for the v32.2.* releases has been updated to contain both a CMD and ENTRYPOINT ref:
-  # https://github.com/kubernetes/cloud-provider-gcp/pull/842#issuecomment-2987419314
+# freeze
+# version-mapping
+# Note: do not use the v32.2.5 image of cloud-controller-manager. Its dockerfile only specifies CMD and does not specify an ENTRYPOINT.
+# This causes the container's entrypoint to be "ko-runner" instead of "/cloud-controller-manager". Due to this it cannot be used with the current
+# chart that is used to deploy the cloud-controller-manager. For more information check
+# https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987914997 and
+# https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987998478
+#
+# TODO(plkokanov,AndreasBurger,kon-angelo,hebelsan): Bump the patch version of the cloud-controller-manager after the Dockerfile
+# for the v32.2.* releases has been updated to contain both a CMD and ENTRYPOINT ref:
+# https://github.com/kubernetes/cloud-provider-gcp/pull/842#issuecomment-2987419314
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
@@ -54,6 +57,7 @@ images:
       availability_requirement: low
     signing: false
   targetVersion: 1.32.x
+# version-mapping
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
@@ -69,6 +73,7 @@ images:
       availability_requirement: low
     signing: false
   targetVersion: 1.33.x
+# version-mapping
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
@@ -84,6 +89,8 @@ images:
       availability_requirement: low
     signing: false
   targetVersion: 1.34.x
+# max-supported-k8s
+# version-mapping
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
