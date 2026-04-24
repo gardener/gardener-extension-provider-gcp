@@ -76,8 +76,10 @@ config:
     storage:
       className: gardener.cloud-fast
       capacity: 25Gi
-      provisioner: kubernetes.io/gce-pd
+      provisioner: pd.csi.storage.gke.io
       volumeBindingMode: WaitForFirstConsumer
+      parameters:
+        type: pd-ssd
 #     backup:
 #       schedule: "0 */1 * * *"
   featureGates:

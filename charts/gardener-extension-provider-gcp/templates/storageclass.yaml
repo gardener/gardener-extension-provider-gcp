@@ -10,5 +10,7 @@ allowVolumeExpansion: true
 provisioner: {{ .Values.config.etcd.storage.provisioner }}
 volumeBindingMode: {{ .Values.config.etcd.storage.volumeBindingMode }}
 parameters:
-  type: pd-ssd
+  {{- if .Values.config.etcd.storage.parameters }}
+  {{- toYaml .Values.config.etcd.storage.parameters | nindent 2 }}
+  {{- end }}
 {{- end }}
