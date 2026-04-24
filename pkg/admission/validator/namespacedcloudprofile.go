@@ -117,10 +117,16 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *apisgcp.C
 			continue
 		}
 		for _, version := range machineImage.Versions {
+			// If this specific version already exists in the parent CloudProfile, no provider config entry is needed
+			// as the provider-specific image mapping is inherited. Only metadata (e.g. expirationDate) may be overridden.
+			_, versionExistsInParent := parentImages.GetImageVersion(machineImage.Name, version.Version)
+			if versionExistsInParent {
+				continue
+			}
 			if len(capabilityDefinitions) == 0 {
 				// check that each architecture defined has a corresponding entry in the providerConfig
 				for _, expectedArchitecture := range version.Architectures {
-					if _, exists := providerImages.GetImageVersion(machineImage.Name, validation.VersionArchitectureKey(version.Version, expectedArchitecture)); !existsInParent && !exists {
+					if _, exists := providerImages.GetImageVersion(machineImage.Name, validation.VersionArchitectureKey(version.Version, expectedArchitecture)); !exists {
 						allErrs = append(allErrs, field.Required(imagesPath,
 							fmt.Sprintf("machine image version %s@%s and architecture: %q is not defined in the NamespacedCloudProfile providerConfig",
 								machineImage.Name, version.Version, expectedArchitecture),
