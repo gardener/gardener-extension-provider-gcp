@@ -4,29 +4,26 @@
 <a href="#gcp.provider.extensions.gardener.cloud%2fv1alpha1">gcp.provider.extensions.gardener.cloud/v1alpha1</a>
 </li>
 </ul>
+
 <h2 id="gcp.provider.extensions.gardener.cloud/v1alpha1">gcp.provider.extensions.gardener.cloud/v1alpha1</h2>
 <p>
-<p>Package v1alpha1 contains the GCP provider API resources.</p>
+
 </p>
 Resource Types:
-<ul><li>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>
-</li><li>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>
-</li><li>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig</a>
-</li><li>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig</a>
-</li><li>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>
-</li><li>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkloadIdentityConfig">WorkloadIdentityConfig</a>
-</li></ul>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig
+<ul>
+<li>
+<a href="#flowlogs">FlowLogs</a>
+</li>
+</ul>
+
+<h3 id="backupbucketconfig">BackupBucketConfig
 </h3>
+
+
 <p>
-<p>BackupBucketConfig represents the configuration for a backup bucket.</p>
+BackupBucketConfig represents the configuration for a backup bucket.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -35,30 +32,12 @@ Resource Types:
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-gcp.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>BackupBucketConfig</code></td>
-</tr>
+
 <tr>
 <td>
 <code>immutability</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">
-ImmutableConfig
-</a>
+<a href="#immutableconfig">ImmutableConfig</a>
 </em>
 </td>
 <td>
@@ -69,9 +48,7 @@ ImmutableConfig
 <td>
 <code>store</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Store">
-Store
-</a>
+<a href="#store">Store</a>
 </em>
 </td>
 <td>
@@ -79,14 +56,23 @@ Store
 <p>Store holds the configuration of the backup store</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig
+
+
+<h3 id="bootvolume">BootVolume
 </h3>
+
+
 <p>
-<p>CloudProfileConfig contains provider-specific configuration that is embedded into Gardener&rsquo;s <code>CloudProfile</code>
-resource.</p>
+(<em>Appears on:</em><a href="#workerconfig">WorkerConfig</a>)
 </p>
+
+<p>
+BootVolume contains configuration for the boot volume attached to VMs.
+</p>
+
 <table>
 <thead>
 <tr>
@@ -95,44 +81,289 @@ resource.</p>
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
-<code>apiVersion</code></br>
-string</td>
+<code>DiskSettings</code></br>
+<em>
+<a href="#disksettings">DiskSettings</a>
+</em>
+</td>
 <td>
-<code>
-gcp.provider.extensions.gardener.cloud/v1alpha1
-</code>
+<p></p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="csifilestore">CSIFilestore
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#storage">Storage</a>)
+</p>
+
+<p>
+CSIFilestore contains configuration for CSI Filestore driver
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+boolean
+</em>
+</td>
+<td>
+<p>Enabled is the switch to enable the CSI Manila driver support</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="cloudcontrollermanagerconfig">CloudControllerManagerConfig
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#controlplaneconfig">ControlPlaneConfig</a>)
+</p>
+
+<p>
+CloudControllerManagerConfig contains configuration settings for the cloud-controller-manager.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>featureGates</code></br>
+<em>
+object (keys:string, values:boolean)
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FeatureGates contains information about enabled feature gates.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="cloudnat">CloudNAT
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#networkconfig">NetworkConfig</a>)
+</p>
+
+<p>
+CloudNAT contains configuration about the CloudNAT resource
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>endpointIndependentMapping</code></br>
+<em>
+<a href="#endpointindependentmapping">EndpointIndependentMapping</a>
+</em>
+</td>
+<td>
+<p>EndpointIndependentMapping controls if endpoint independent mapping is enabled.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>kind</code></br>
-string
+<code>minPortsPerVM</code></br>
+<em>
+integer
+</em>
 </td>
-<td><code>CloudProfileConfig</code></td>
+<td>
+<em>(Optional)</em>
+<p>MinPortsPerVM is the minimum number of ports allocated to a VM in the NAT config.<br />The default value is 2048 ports.</p>
+</td>
 </tr>
+<tr>
+<td>
+<code>maxPortsPerVM</code></br>
+<em>
+integer
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxPortsPerVM is the maximum number of ports allocated to a VM in the NAT config.<br />The default value is 65536 ports.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableDynamicPortAllocation</code></br>
+<em>
+boolean
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDynamicPortAllocation controls port allocation behavior for the CloudNAT.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>natIPNames</code></br>
+<em>
+<a href="#natipname">NatIPName</a> array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NatIPNames is a list of all user provided external premium ips which can be used by the nat gateway</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>icmpIdleTimeoutSec</code></br>
+<em>
+integer
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IcmpIdleTimeoutSec is the timeout (in seconds) for ICMP connections. Defaults to 30.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tcpEstablishedIdleTimeoutSec</code></br>
+<em>
+integer
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TcpEstablishedIdleTimeoutSec is the timeout (in seconds) for established TCP connections. Defaults to 1200.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tcpTimeWaitTimeoutSec</code></br>
+<em>
+integer
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TcpTimeWaitTimeoutSec is the timeout (in seconds) for TCP connections in 'TIME_WAIT' state. Defaults to 120.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tcpTransitoryIdleTimeoutSec</code></br>
+<em>
+integer
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TcpTransitoryIdleTimeoutSec is the timeout (in seconds) for transitory TCP connections. Defaults to 30.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>udpIdleTimeoutSec</code></br>
+<em>
+integer
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>UdpIdleTimeoutSec is the timeout (in seconds) for UDP connections. Defaults to 30.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="cloudprofileconfig">CloudProfileConfig
+</h3>
+
+
+<p>
+CloudProfileConfig contains provider-specific configuration that is embedded into Gardener's `CloudProfile`
+resource.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
 <tr>
 <td>
 <code>machineImages</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImages">
-[]MachineImages
-</a>
+<a href="#machineimages">MachineImages</a> array
 </em>
 </td>
 <td>
-<p>MachineImages is the list of machine images that are understood by the controller. It maps
-logical names and versions to provider-specific identifiers.</p>
+<p>MachineImages is the list of machine images that are understood by the controller. It maps<br />logical names and versions to provider-specific identifiers.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig
+
+
+<h3 id="cloudrouter">CloudRouter
 </h3>
+
+
 <p>
-<p>ControlPlaneConfig contains configuration settings for the control plane.</p>
+(<em>Appears on:</em><a href="#vpc">VPC</a>)
 </p>
+
+<p>
+CloudRouter contains information about the CloudRouter configuration
+</p>
+
 <table>
 <thead>
 <tr>
@@ -141,23 +372,40 @@ logical names and versions to provider-specific identifiers.</p>
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-gcp.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
+<code>name</code></br>
+<em>
 string
+</em>
 </td>
-<td><code>ControlPlaneConfig</code></td>
+<td>
+<p>Name is the CloudRouter name.</p>
+</td>
 </tr>
+
+</tbody>
+</table>
+
+
+<h3 id="controlplaneconfig">ControlPlaneConfig
+</h3>
+
+
+<p>
+ControlPlaneConfig contains configuration settings for the control plane.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
 <tr>
 <td>
 <code>zone</code></br>
@@ -173,9 +421,7 @@ string
 <td>
 <code>cloudControllerManager</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CloudControllerManagerConfig">
-CloudControllerManagerConfig
-</a>
+<a href="#cloudcontrollermanagerconfig">CloudControllerManagerConfig</a>
 </em>
 </td>
 <td>
@@ -187,22 +433,30 @@ CloudControllerManagerConfig
 <td>
 <code>storage</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Storage">
-Storage
-</a>
+<a href="#storage">Storage</a>
 </em>
 </td>
 <td>
 <p>Storage contains configuration for the storage in the cluster.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig
+
+
+<h3 id="datavolume">DataVolume
 </h3>
+
+
 <p>
-<p>InfrastructureConfig infrastructure configuration resource</p>
+(<em>Appears on:</em><a href="#workerconfig">WorkerConfig</a>)
 </p>
+
+<p>
+DataVolume contains configuration for data volumes attached to VMs.
+</p>
+
 <table>
 <thead>
 <tr>
@@ -211,506 +465,7 @@ Storage
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-gcp.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>InfrastructureConfig</code></td>
-</tr>
-<tr>
-<td>
-<code>networks</code></br>
-<em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">
-NetworkConfig
-</a>
-</em>
-</td>
-<td>
-<p>Networks is the network configuration (VPC, subnets, etc.)</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig
-</h3>
-<p>
-<p>WorkerConfig contains configuration settings for the worker nodes.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-gcp.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>WorkerConfig</code></td>
-</tr>
-<tr>
-<td>
-<code>gpu</code></br>
-<em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.GPU">
-GPU
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>GPU contains configuration for the GPU attached to VMs.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>volume</code></br>
-<em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Volume">
-Volume
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Volume contains general configuration for the disks attached to VMs.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>bootVolume</code></br>
-<em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.BootVolume">
-BootVolume
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>BootVolume contains configuration for the root disks attached to VMs.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>dataVolumes</code></br>
-<em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.DataVolume">
-[]DataVolume
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>DataVolumes contains configuration for the additional disks attached to VMs.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>minCpuPlatform</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>MinCpuPlatform is the name of the minimum CPU platform that is to be
-requested for the VM.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>serviceAccount</code></br>
-<em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.ServiceAccount">
-ServiceAccount
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Service account, with their specified scopes, authorized for this worker.
-Service accounts generate access tokens that can be accessed through
-the metadata server and used to authenticate applications on the
-instance.
-This service account should be created in advance.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>nodeTemplate</code></br>
-<em>
-github.com/gardener/gardener/pkg/apis/extensions/v1alpha1.NodeTemplate
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.WorkloadIdentityConfig">WorkloadIdentityConfig
-</h3>
-<p>
-<p>WorkloadIdentityConfig contains configuration settings for workload identity.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-gcp.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>WorkloadIdentityConfig</code></td>
-</tr>
-<tr>
-<td>
-<code>projectID</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>ProjectID is the ID of the GCP project.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>credentialsConfig</code></br>
-<em>
-k8s.io/apimachinery/pkg/runtime.RawExtension
-</em>
-</td>
-<td>
-<p>CredentialsConfig contains information for workload authentication against GCP.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.BootVolume">BootVolume
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
-</p>
-<p>
-<p>BootVolume contains configuration for the boot volume attached to VMs.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>DiskSettings</code></br>
-<em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.DiskSettings">
-DiskSettings
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CSIFilestore">CSIFilestore
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Storage">Storage</a>)
-</p>
-<p>
-<p>CSIFilestore contains configuration for CSI Filestore driver</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>enabled</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<p>Enabled is the switch to enable the CSI Manila driver support</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CloudControllerManagerConfig">CloudControllerManagerConfig
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig</a>)
-</p>
-<p>
-<p>CloudControllerManagerConfig contains configuration settings for the cloud-controller-manager.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>featureGates</code></br>
-<em>
-map[string]bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>FeatureGates contains information about enabled feature gates.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CloudNAT">CloudNAT
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
-</p>
-<p>
-<p>CloudNAT contains configuration about the CloudNAT resource</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>endpointIndependentMapping</code></br>
-<em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.EndpointIndependentMapping">
-EndpointIndependentMapping
-</a>
-</em>
-</td>
-<td>
-<p>EndpointIndependentMapping controls if endpoint independent mapping is enabled.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>minPortsPerVM</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>MinPortsPerVM is the minimum number of ports allocated to a VM in the NAT config.
-The default value is 2048 ports.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>maxPortsPerVM</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>MaxPortsPerVM is the maximum number of ports allocated to a VM in the NAT config.
-The default value is 65536 ports.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>enableDynamicPortAllocation</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>EnableDynamicPortAllocation controls port allocation behavior for the CloudNAT.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>natIPNames</code></br>
-<em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NatIPName">
-[]NatIPName
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>NatIPNames is a list of all user provided external premium ips which can be used by the nat gateway</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>icmpIdleTimeoutSec</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>IcmpIdleTimeoutSec is the timeout (in seconds) for ICMP connections. Defaults to 30.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tcpEstablishedIdleTimeoutSec</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TcpEstablishedIdleTimeoutSec is the timeout (in seconds) for established TCP connections. Defaults to 1200.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tcpTimeWaitTimeoutSec</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TcpTimeWaitTimeoutSec is the timeout (in seconds) for TCP connections in &lsquo;TIME_WAIT&rsquo; state. Defaults to 120.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tcpTransitoryIdleTimeoutSec</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TcpTransitoryIdleTimeoutSec is the timeout (in seconds) for transitory TCP connections. Defaults to 30.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>udpIdleTimeoutSec</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>UdpIdleTimeoutSec is the timeout (in seconds) for UDP connections. Defaults to 30.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.CloudRouter">CloudRouter
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.VPC">VPC</a>)
-</p>
-<p>
-<p>CloudRouter contains information about the CloudRouter configuration</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name is the CloudRouter name.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.DataVolume">DataVolume
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
-</p>
-<p>
-<p>DataVolume contains configuration for data volumes attached to VMs.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -731,36 +486,37 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>SourceImage is the image to create this disk
-However, this parameter should only be used with particular caution.
-For example GardenLinux works with filesystem LABELs only and creating
-another disk form the very same image causes the LABELs to be duplicated.
-See: <a href="https://github.com/gardener/gardener-extension-provider-gcp/issues/323">https://github.com/gardener/gardener-extension-provider-gcp/issues/323</a></p>
+<p>SourceImage is the image to create this disk<br />However, this parameter should only be used with particular caution.<br />For example GardenLinux works with filesystem LABELs only and creating<br />another disk form the very same image causes the LABELs to be duplicated.<br />See: https://github.com/gardener/gardener-extension-provider-gcp/issues/323</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>DiskSettings</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.DiskSettings">
-DiskSettings
-</a>
+<a href="#disksettings">DiskSettings</a>
 </em>
 </td>
 <td>
+<p></p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.DiskEncryption">DiskEncryption
+
+
+<h3 id="diskencryption">DiskEncryption
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Volume">Volume</a>)
+(<em>Appears on:</em><a href="#volume">Volume</a>)
 </p>
+
 <p>
-<p>DiskEncryption encapsulates the encryption configuration for a disk.</p>
+DiskEncryption encapsulates the encryption configuration for a disk.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -769,6 +525,7 @@ DiskSettings
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>kmsKeyName</code></br>
@@ -778,11 +535,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>KmsKeyName specifies the customer-managed encryption key (CMEK) used for encryption of the volume.
-For creating keys, see <a href="https://cloud.google.com/kms/docs/create-key">https://cloud.google.com/kms/docs/create-key</a>.
-For using keys to encrypt resources, see:
-<a href="https://cloud.google.com/compute/docs/disks/customer-managed-encryption#encrypt_a_new_persistent_disk_with_your_own_keys">https://cloud.google.com/compute/docs/disks/customer-managed-encryption#encrypt_a_new_persistent_disk_with_your_own_keys</a>
-This field is being kept optional since this would allow CSEK fields in future in lieu of CMEK fields</p>
+<p>KmsKeyName specifies the customer-managed encryption key (CMEK) used for encryption of the volume.<br />For creating keys, see https://cloud.google.com/kms/docs/create-key.<br />For using keys to encrypt resources, see:<br />https://cloud.google.com/compute/docs/disks/customer-managed-encryption#encrypt_a_new_persistent_disk_with_your_own_keys<br />This field is being kept optional since this would allow CSEK fields in future in lieu of CMEK fields</p>
 </td>
 </tr>
 <tr>
@@ -794,27 +547,26 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>KmsKeyServiceAccount specifies the service account granted the <code>roles/cloudkms.cryptoKeyEncrypterDecrypter</code> for the key name.
-If nil/empty, then the role should be given to the Compute Engine Service Agent Account. The CESA usually has the format
-service-PROJECT_NUMBER@compute-system.iam.gserviceaccount.com.
-See: <a href="https://cloud.google.com/iam/docs/service-agents#compute-engine-service-agent">https://cloud.google.com/iam/docs/service-agents#compute-engine-service-agent</a>
-One can add IAM roles using the gcloud CLI:
-gcloud projects add-iam-policy-binding projectId &ndash;member
-serviceAccount:name@projectIdgserviceaccount.com &ndash;role roles/cloudkms.cryptoKeyEncrypterDecrypter</p>
+<p>KmsKeyServiceAccount specifies the service account granted the `roles/cloudkms.cryptoKeyEncrypterDecrypter` for the key name.<br />If nil/empty, then the role should be given to the Compute Engine Service Agent Account. The CESA usually has the format<br />service-PROJECT_NUMBER@compute-system.iam.gserviceaccount.com.<br /> See: https://cloud.google.com/iam/docs/service-agents#compute-engine-service-agent<br />One can add IAM roles using the gcloud CLI:<br /> gcloud projects add-iam-policy-binding projectId --member<br />	serviceAccount:name@projectIdgserviceaccount.com --role roles/cloudkms.cryptoKeyEncrypterDecrypter</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.DiskSettings">DiskSettings
+
+
+<h3 id="disksettings">DiskSettings
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.BootVolume">BootVolume</a>, 
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.DataVolume">DataVolume</a>)
+(<em>Appears on:</em><a href="#bootvolume">BootVolume</a>, <a href="#datavolume">DataVolume</a>)
 </p>
+
 <p>
-<p>DiskSettings stores single disk specific information.</p>
+DiskSettings stores single disk specific information.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -823,37 +575,29 @@ serviceAccount:name@projectIdgserviceaccount.com &ndash;role roles/cloudkms.cryp
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>provisionedIops</code></br>
 <em>
-int64
+integer
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ProvisionedIops of disk to create.
-Only for certain types of disk, see worker.AllowedTypesIops
-The IOPS must be specified within defined limits.
-If not set gcp calculates a default value taking the disk size into consideration.
-Hyperdisk Extreme volumes can&rsquo;t be used as boot disks.</p>
+<p>ProvisionedIops of disk to create.<br />Only for certain types of disk, see worker.AllowedTypesIops<br />The IOPS must be specified within defined limits.<br />If not set gcp calculates a default value taking the disk size into consideration.<br />Hyperdisk Extreme volumes can't be used as boot disks.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>provisionedThroughput</code></br>
 <em>
-int64
+integer
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ProvisionedThroughput of disk to create.
-Only for certain types of disk, see worker.AllowedTypesThroughput
-measured in MiB per second, that the disk can handle.
-The throughput must be specified within defined limits.
-If not set gcp calculates a default value taking the disk size into consideration.
-Hyperdisk Throughput volumes can&rsquo;t be used as boot disks.</p>
+<p>ProvisionedThroughput of disk to create.<br />Only for certain types of disk, see worker.AllowedTypesThroughput<br />measured in MiB per second, that the disk can handle.<br />The throughput must be specified within defined limits.<br />If not set gcp calculates a default value taking the disk size into consideration.<br />Hyperdisk Throughput volumes can't be used as boot disks.</p>
 </td>
 </tr>
 <tr>
@@ -868,17 +612,23 @@ string
 <p>StoragePool in which the new disk is created.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.EndpointIndependentMapping">EndpointIndependentMapping
+
+
+<h3 id="endpointindependentmapping">EndpointIndependentMapping
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CloudNAT">CloudNAT</a>)
+(<em>Appears on:</em><a href="#cloudnat">CloudNAT</a>)
 </p>
+
 <p>
-<p>EndpointIndependentMapping contains endpoint independent mapping options.</p>
+EndpointIndependentMapping contains endpoint independent mapping options.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -887,28 +637,35 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>enabled</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
 <p>Enabled controls if endpoint independent mapping is enabled. Default is false.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.FlowLogs">FlowLogs
+
+
+<h3 id="flowlogs">FlowLogs
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
+(<em>Appears on:</em><a href="#networkconfig">NetworkConfig</a>)
 </p>
+
 <p>
-<p>FlowLogs contains the configuration options for the vpc flow logs.</p>
+FlowLogs contains the configuration options for the vpc flow logs.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -917,6 +674,7 @@ bool
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>aggregationInterval</code></br>
@@ -933,7 +691,7 @@ string
 <td>
 <code>flowSampling</code></br>
 <em>
-float32
+float
 </em>
 </td>
 <td>
@@ -949,21 +707,26 @@ string
 </em>
 </td>
 <td>
-<em>(Optional)</em>
-<p>Metadata configures whether metadata fields should be added to the reported VPC flow logs.</p>
+Refer to the Kubernetes API documentation for the fields of the <code>metadata</code> field.
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.GPU">GPU
+
+
+<h3 id="gpu">GPU
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+(<em>Appears on:</em><a href="#workerconfig">WorkerConfig</a>)
 </p>
+
 <p>
-<p>GPU is the configuration of the GPU to be attached</p>
+GPU is the configuration of the GPU to be attached
 </p>
+
 <table>
 <thead>
 <tr>
@@ -972,6 +735,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>acceleratorType</code></br>
@@ -987,24 +751,30 @@ string
 <td>
 <code>count</code></br>
 <em>
-int32
+integer
 </em>
 </td>
 <td>
 <p>Count is the number of accelerator to be attached</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">ImmutableConfig
+
+
+<h3 id="immutableconfig">ImmutableConfig
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>)
+(<em>Appears on:</em><a href="#backupbucketconfig">BackupBucketConfig</a>)
 </p>
+
 <p>
-<p>ImmutableConfig represents the immutability configuration for a backup bucket.</p>
+ImmutableConfig represents the immutability configuration for a backup bucket.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1013,6 +783,7 @@ int32
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>retentionType</code></br>
@@ -1021,45 +792,44 @@ string
 </em>
 </td>
 <td>
-<p>RetentionType specifies the type of retention for the backup bucket.
-Currently allowed values are:
-- &ldquo;bucket&rdquo;: The retention policy applies to the entire bucket.</p>
+<p>RetentionType specifies the type of retention for the backup bucket.<br />Currently allowed values are:<br />- "bucket": The retention policy applies to the entire bucket.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>retentionPeriod</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#duration-v1-meta">
-Kubernetes meta/v1.Duration
-</a>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta">Duration</a>
 </em>
 </td>
 <td>
-<p>RetentionPeriod specifies the immutability retention period for the backup bucket.
-The minimum retention period is 24 hours as per Google Cloud Storage requirements.
-Reference: <a href="https://github.com/googleapis/google-cloud-go/blob/3005f5a86c18254e569b8b1782bf014aa62f33cc/storage/bucket.go#L1430-L1434">https://github.com/googleapis/google-cloud-go/blob/3005f5a86c18254e569b8b1782bf014aa62f33cc/storage/bucket.go#L1430-L1434</a></p>
+<p>RetentionPeriod specifies the immutability retention period for the backup bucket.<br />The minimum retention period is 24 hours as per Google Cloud Storage requirements.<br />Reference: https://github.com/googleapis/google-cloud-go/blob/3005f5a86c18254e569b8b1782bf014aa62f33cc/storage/bucket.go#L1430-L1434</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>locked</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
-<p>Locked indicates whether the immutable retention policy is locked for the backup bucket.
-If set to true, the retention policy cannot be removed or the retention period reduced, enforcing immutability.</p>
+<p>Locked indicates whether the immutable retention policy is locked for the backup bucket.<br />If set to true, the retention policy cannot be removed or the retention period reduced, enforcing immutability.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.InfrastructureState">InfrastructureState
+
+
+<h3 id="infrastructureconfig">InfrastructureConfig
 </h3>
+
+
 <p>
-<p>InfrastructureState contains state information of the infrastructure resource.</p>
+InfrastructureConfig infrastructure configuration resource
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1068,11 +838,45 @@ If set to true, the retention policy cannot be removed or the retention period r
 </tr>
 </thead>
 <tbody>
+
+<tr>
+<td>
+<code>networks</code></br>
+<em>
+<a href="#networkconfig">NetworkConfig</a>
+</em>
+</td>
+<td>
+<p>Networks is the network configuration (VPC, subnets, etc.)</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="infrastructurestate">InfrastructureState
+</h3>
+
+
+<p>
+InfrastructureState contains state information of the infrastructure resource.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
 <tr>
 <td>
 <code>data</code></br>
 <em>
-map[string]string
+object (keys:string, values:string)
 </em>
 </td>
 <td>
@@ -1084,9 +888,7 @@ map[string]string
 <td>
 <code>routes</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Route">
-[]Route
-</a>
+<a href="#route">Route</a> array
 </em>
 </td>
 <td>
@@ -1094,13 +896,19 @@ map[string]string
 <p>Routes contains information about cluster routes</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.InfrastructureStatus">InfrastructureStatus
+
+
+<h3 id="infrastructurestatus">InfrastructureStatus
 </h3>
+
+
 <p>
-<p>InfrastructureStatus contains information about created infrastructure resources.</p>
+InfrastructureStatus contains information about created infrastructure resources.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1109,13 +917,12 @@ map[string]string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>networks</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">
-NetworkStatus
-</a>
+<a href="#networkstatus">NetworkStatus</a>
 </em>
 </td>
 <td>
@@ -1133,17 +940,23 @@ string
 <p>ServiceAccountEmail is the email address of the service account.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImage">MachineImage
+
+
+<h3 id="machineimage">MachineImage
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus</a>)
+(<em>Appears on:</em><a href="#workerstatus">WorkerStatus</a>)
 </p>
+
 <p>
-<p>MachineImage is a mapping from logical names and versions to GCP-specific identifiers.</p>
+MachineImage is a mapping from logical names and versions to GCP-specific identifiers.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1152,6 +965,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -1201,24 +1015,30 @@ string
 <td>
 <code>capabilities</code></br>
 <em>
-github.com/gardener/gardener/pkg/apis/core/v1beta1.Capabilities
+<a href="#capabilities">Capabilities</a>
 </em>
 </td>
 <td>
 <p>Capabilities of the machine image.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImageFlavor">MachineImageFlavor
+
+
+<h3 id="machineimageflavor">MachineImageFlavor
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion</a>)
+(<em>Appears on:</em><a href="#machineimageversion">MachineImageVersion</a>)
 </p>
+
 <p>
-<p>MachineImageFlavor is a flavor of the machine image version that supports a specific set of capabilities.</p>
+MachineImageFlavor is a flavor of the machine image version that supports a specific set of capabilities.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1227,11 +1047,12 @@ github.com/gardener/gardener/pkg/apis/core/v1beta1.Capabilities
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>capabilities</code></br>
 <em>
-github.com/gardener/gardener/pkg/apis/core/v1beta1.Capabilities
+<a href="#capabilities">Capabilities</a>
 </em>
 </td>
 <td>
@@ -1249,17 +1070,23 @@ string
 <p>Image is the path to the image.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion
+
+
+<h3 id="machineimageversion">MachineImageVersion
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImages">MachineImages</a>)
+(<em>Appears on:</em><a href="#machineimages">MachineImages</a>)
 </p>
+
 <p>
-<p>MachineImageVersion contains a version and a provider-specific identifier.</p>
+MachineImageVersion contains a version and a provider-specific identifier.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1268,6 +1095,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>version</code></br>
@@ -1307,26 +1135,30 @@ string
 <td>
 <code>capabilityFlavors</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImageFlavor">
-[]MachineImageFlavor
-</a>
+<a href="#machineimageflavor">MachineImageFlavor</a> array
 </em>
 </td>
 <td>
 <p>CapabilityFlavors is a collection of all images for that version with capabilities.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImages">MachineImages
+
+
+<h3 id="machineimages">MachineImages
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>)
+(<em>Appears on:</em><a href="#cloudprofileconfig">CloudProfileConfig</a>)
 </p>
+
 <p>
-<p>MachineImages is a mapping from logical names and versions to provider-specific identifiers.</p>
+MachineImages is a mapping from logical names and versions to provider-specific identifiers.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1335,6 +1167,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -1350,26 +1183,30 @@ string
 <td>
 <code>versions</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">
-[]MachineImageVersion
-</a>
+<a href="#machineimageversion">MachineImageVersion</a> array
 </em>
 </td>
 <td>
 <p>Versions contains versions and a provider-specific identifier.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.NatIP">NatIP
+
+
+<h3 id="natip">NatIP
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
+(<em>Appears on:</em><a href="#networkstatus">NetworkStatus</a>)
 </p>
+
 <p>
-<p>NatIP is a user provided external ip which can be used by the nat gateway</p>
+NatIP is a user provided external ip which can be used by the nat gateway
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1378,6 +1215,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>ip</code></br>
@@ -1389,17 +1227,23 @@ string
 <p>IP is the external premium IP address used in GCP</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.NatIPName">NatIPName
+
+
+<h3 id="natipname">NatIPName
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CloudNAT">CloudNAT</a>)
+(<em>Appears on:</em><a href="#cloudnat">CloudNAT</a>)
 </p>
+
 <p>
-<p>NatIPName is the name of a user provided external ip address which can be used by the nat gateway</p>
+NatIPName is the name of a user provided external ip address which can be used by the nat gateway
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1408,6 +1252,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -1419,17 +1264,23 @@ string
 <p>Name of the external premium ip address which is used in gcp</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig
+
+
+<h3 id="networkconfig">NetworkConfig
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig</a>)
+(<em>Appears on:</em><a href="#infrastructureconfig">InfrastructureConfig</a>)
 </p>
+
 <p>
-<p>NetworkConfig holds information about the Kubernetes and infrastructure networks.</p>
+NetworkConfig holds information about the Kubernetes and infrastructure networks.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1438,13 +1289,12 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>vpc</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.VPC">
-VPC
-</a>
+<a href="#vpc">VPC</a>
 </em>
 </td>
 <td>
@@ -1456,9 +1306,7 @@ VPC
 <td>
 <code>cloudNAT</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CloudNAT">
-CloudNAT
-</a>
+<a href="#cloudnat">CloudNAT</a>
 </em>
 </td>
 <td>
@@ -1486,8 +1334,7 @@ string
 </em>
 </td>
 <td>
-<p>Worker is the worker subnet range to create (used for the VMs).
-Deprecated - use <code>workers</code> instead.</p>
+<p>Worker is the worker subnet range to create (used for the VMs).<br />Deprecated - use `workers` instead.</p>
 </td>
 </tr>
 <tr>
@@ -1505,9 +1352,7 @@ string
 <td>
 <code>flowLogs</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.FlowLogs">
-FlowLogs
-</a>
+<a href="#flowlogs">FlowLogs</a>
 </em>
 </td>
 <td>
@@ -1515,17 +1360,23 @@ FlowLogs
 <p>FlowLogs contains the flow log configuration for the subnet.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus
+
+
+<h3 id="networkstatus">NetworkStatus
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.InfrastructureStatus">InfrastructureStatus</a>)
+(<em>Appears on:</em><a href="#infrastructurestatus">InfrastructureStatus</a>)
 </p>
+
 <p>
-<p>NetworkStatus is the current status of the infrastructure networks.</p>
+NetworkStatus is the current status of the infrastructure networks.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1534,13 +1385,12 @@ FlowLogs
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>vpc</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.VPC">
-VPC
-</a>
+<a href="#vpc">VPC</a>
 </em>
 </td>
 <td>
@@ -1551,9 +1401,7 @@ VPC
 <td>
 <code>subnets</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Subnet">
-[]Subnet
-</a>
+<a href="#subnet">Subnet</a> array
 </em>
 </td>
 <td>
@@ -1564,9 +1412,7 @@ VPC
 <td>
 <code>natIPs</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NatIP">
-[]NatIP
-</a>
+<a href="#natip">NatIP</a> array
 </em>
 </td>
 <td>
@@ -1578,24 +1424,30 @@ VPC
 <td>
 <code>ipfamilies</code></br>
 <em>
-[]github.com/gardener/gardener/pkg/apis/core/v1beta1.IPFamily
+IPFamily array
 </em>
 </td>
 <td>
 <p>IPFamilies is the list of the used ip families.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.Route">Route
+
+
+<h3 id="route">Route
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.InfrastructureState">InfrastructureState</a>)
+(<em>Appears on:</em><a href="#infrastructurestate">InfrastructureState</a>)
 </p>
+
 <p>
-<p>Route is a structure containing information about the routes.</p>
+Route is a structure containing information about the routes.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1604,6 +1456,7 @@ VPC
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>instanceName</code></br>
@@ -1637,17 +1490,23 @@ string
 <p>Zone is the zone of the route</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.ServiceAccount">ServiceAccount
+
+
+<h3 id="serviceaccount">ServiceAccount
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+(<em>Appears on:</em><a href="#workerconfig">WorkerConfig</a>)
 </p>
+
 <p>
-<p>ServiceAccount is a GCP service account.</p>
+ServiceAccount is a GCP service account.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1656,6 +1515,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>email</code></br>
@@ -1671,25 +1531,30 @@ string
 <td>
 <code>scopes</code></br>
 <em>
-[]string
+string array
 </em>
 </td>
 <td>
-<p>Scopes is the list of scopes to be made available for this service.
-account.</p>
+<p>Scopes is the list of scopes to be made available for this service.<br />account.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.Storage">Storage
+
+
+<h3 id="storage">Storage
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig</a>)
+(<em>Appears on:</em><a href="#controlplaneconfig">ControlPlaneConfig</a>)
 </p>
+
 <p>
-<p>Storage contains settings for the default StorageClass and VolumeSnapshotClass</p>
+Storage contains settings for the default StorageClass and VolumeSnapshotClass
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1698,43 +1563,36 @@ account.</p>
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>managedDefaultStorageClass</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ManagedDefaultStorageClass controls if the &lsquo;default&rsquo; StorageClass would be marked as default. Set to false to
-suppress marking the &lsquo;default&rsquo; StorageClass as default, allowing another StorageClass not managed by Gardener
-to be set as default by the user.
-Defaults to true.</p>
+<p>ManagedDefaultStorageClass controls if the 'default' StorageClass would be marked as default. Set to false to<br />suppress marking the 'default' StorageClass as default, allowing another StorageClass not managed by Gardener<br />to be set as default by the user.<br />Defaults to true.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>managedDefaultVolumeSnapshotClass</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ManagedDefaultVolumeSnapshotClass controls if the &lsquo;default&rsquo; VolumeSnapshotClass would be marked as default.
-Set to false to suppress marking the &lsquo;default&rsquo; VolumeSnapshotClass as default, allowing another VolumeSnapshotClass
-not managed by Gardener to be set as default by the user.
-Defaults to true.</p>
+<p>ManagedDefaultVolumeSnapshotClass controls if the 'default' VolumeSnapshotClass would be marked as default.<br />Set to false to suppress marking the 'default' VolumeSnapshotClass as default, allowing another VolumeSnapshotClass<br />not managed by Gardener to be set as default by the user.<br />Defaults to true.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>csiFilestore</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CSIFilestore">
-CSIFilestore
-</a>
+<a href="#csifilestore">CSIFilestore</a>
 </em>
 </td>
 <td>
@@ -1742,17 +1600,23 @@ CSIFilestore
 <p>CSIFilestore contains configuration for CSI Filestore driver (support for NFS volumes)</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.Store">Store
+
+
+<h3 id="store">Store
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>)
+(<em>Appears on:</em><a href="#backupbucketconfig">BackupBucketConfig</a>)
 </p>
+
 <p>
-<p>Store holds the configuration of the backup store</p>
+Store holds the configuration of the backup store
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1761,6 +1625,7 @@ CSIFilestore
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>endpointOverride</code></br>
@@ -1773,17 +1638,23 @@ string
 <p>EndpointOverride specifies the overriding endpoint at which the GCS bucket is hosted. Necessary for regional endpoints.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.Subnet">Subnet
+
+
+<h3 id="subnet">Subnet
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
+(<em>Appears on:</em><a href="#networkstatus">NetworkStatus</a>)
 </p>
+
 <p>
-<p>Subnet is a subnet that was created.</p>
+Subnet is a subnet that was created.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1792,6 +1663,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -1807,36 +1679,44 @@ string
 <td>
 <code>purpose</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.SubnetPurpose">
-SubnetPurpose
-</a>
+<a href="#subnetpurpose">SubnetPurpose</a>
 </em>
 </td>
 <td>
 <p>Purpose is the purpose for which the subnet was created.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.SubnetPurpose">SubnetPurpose
-(<code>string</code> alias)</p></h3>
-<p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.Subnet">Subnet</a>)
-</p>
-<p>
-<p>SubnetPurpose is a purpose of a subnet.</p>
-</p>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.VPC">VPC
+
+
+<h3 id="subnetpurpose">SubnetPurpose
 </h3>
+<p><em>Underlying type: string</em></p>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>, 
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
+(<em>Appears on:</em><a href="#subnet">Subnet</a>)
 </p>
+
 <p>
-<p>VPC contains information about the VPC and some related resources.</p>
+SubnetPurpose is a purpose of a subnet.
 </p>
+
+
+<h3 id="vpc">VPC
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#networkconfig">NetworkConfig</a>, <a href="#networkstatus">NetworkStatus</a>)
+</p>
+
+<p>
+VPC contains information about the VPC and some related resources.
+</p>
+
 <table>
 <thead>
 <tr>
@@ -1845,6 +1725,7 @@ SubnetPurpose
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -1860,9 +1741,7 @@ string
 <td>
 <code>cloudRouter</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.CloudRouter">
-CloudRouter
-</a>
+<a href="#cloudrouter">CloudRouter</a>
 </em>
 </td>
 <td>
@@ -1870,17 +1749,23 @@ CloudRouter
 <p>CloudRouter indicates whether to use an existing CloudRouter or create a new one</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.Volume">Volume
+
+
+<h3 id="volume">Volume
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+(<em>Appears on:</em><a href="#workerconfig">WorkerConfig</a>)
 </p>
+
 <p>
-<p>Volume contains general configuration for all disks attached to VMs.</p>
+Volume contains general configuration for all disks attached to VMs.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1889,6 +1774,7 @@ CloudRouter
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>interface</code></br>
@@ -1905,9 +1791,7 @@ string
 <td>
 <code>encryption</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.DiskEncryption">
-DiskEncryption
-</a>
+<a href="#diskencryption">DiskEncryption</a>
 </em>
 </td>
 <td>
@@ -1915,13 +1799,19 @@ DiskEncryption
 <p>Encryption refers to the disk encryption details</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="gcp.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus
+
+
+<h3 id="workerconfig">WorkerConfig
 </h3>
+
+
 <p>
-<p>WorkerStatus contains information about created worker resources.</p>
+WorkerConfig contains configuration settings for the worker nodes.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1930,27 +1820,171 @@ DiskEncryption
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
-<code>machineImages</code></br>
+<code>gpu</code></br>
 <em>
-<a href="#gcp.provider.extensions.gardener.cloud/v1alpha1.MachineImage">
-[]MachineImage
-</a>
+<a href="#gpu">GPU</a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>MachineImages is a list of machine images that have been used in this worker. Usually, the extension controller
-gets the mapping from name/version to the provider-specific machine image data in its componentconfig. However, if
-a version that is still in use gets removed from this componentconfig it cannot reconcile anymore existing <code>Worker</code>
-resources that are still using this version. Hence, it stores the used versions in the provider status to ensure
-reconciliation is possible.</p>
+<p>GPU contains configuration for the GPU attached to VMs.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>volume</code></br>
+<em>
+<a href="#volume">Volume</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Volume contains general configuration for the disks attached to VMs.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>bootVolume</code></br>
+<em>
+<a href="#bootvolume">BootVolume</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BootVolume contains configuration for the root disks attached to VMs.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dataVolumes</code></br>
+<em>
+<a href="#datavolume">DataVolume</a> array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DataVolumes contains configuration for the additional disks attached to VMs.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>minCpuPlatform</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MinCpuPlatform is the name of the minimum CPU platform that is to be<br />requested for the VM.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+<a href="#serviceaccount">ServiceAccount</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Service account, with their specified scopes, authorized for this worker.<br />Service accounts generate access tokens that can be accessed through<br />the metadata server and used to authenticate applications on the<br />instance.<br />This service account should be created in advance.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nodeTemplate</code></br>
+<em>
+<a href="#nodetemplate">NodeTemplate</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.</p>
+</td>
+</tr>
+
 </tbody>
 </table>
-<hr/>
-<p><em>
-Generated with <a href="https://github.com/ahmetb/gen-crd-api-reference-docs">gen-crd-api-reference-docs</a>
-</em></p>
+
+
+<h3 id="workerstatus">WorkerStatus
+</h3>
+
+
+<p>
+WorkerStatus contains information about created worker resources.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>machineImages</code></br>
+<em>
+<a href="#machineimage">MachineImage</a> array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MachineImages is a list of machine images that have been used in this worker. Usually, the extension controller<br />gets the mapping from name/version to the provider-specific machine image data in its componentconfig. However, if<br />a version that is still in use gets removed from this componentconfig it cannot reconcile anymore existing `Worker`<br />resources that are still using this version. Hence, it stores the used versions in the provider status to ensure<br />reconciliation is possible.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="workloadidentityconfig">WorkloadIdentityConfig
+</h3>
+
+
+<p>
+WorkloadIdentityConfig contains configuration settings for workload identity.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>projectID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ProjectID is the ID of the GCP project.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>credentialsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#rawextension-runtime-pkg">RawExtension</a>
+</em>
+</td>
+<td>
+<p>CredentialsConfig contains information for workload authentication against GCP.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
