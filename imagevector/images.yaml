@@ -45,7 +45,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-  tag: v32.2.4
+  tag: v32.2.5
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -61,7 +61,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-  tag: v33.1.1
+  tag: v33.4.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -94,7 +94,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-  tag: v35.0.2
+  tag: v35.0.8
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
