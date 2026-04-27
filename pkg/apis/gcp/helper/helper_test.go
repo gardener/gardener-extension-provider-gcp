@@ -57,6 +57,7 @@ var _ = Describe("Helper", func() {
 		DescribeTable("#FindImageInWorkerStatus",
 			func(machineImages []apisgcp.MachineImage, name, version string, architecture *string, expectedMachineImage *apisgcp.MachineImage, expectErr bool) {
 				// Normalize capability definitions and machine type capabilities as the caller would do
+
 				normalizedCapDefs := NormalizeCapabilityDefinitions(capabilityDefinitions)
 				normalizedMachineTypeCaps := NormalizeMachineTypeCapabilities(machineTypeCapabilities, architecture, normalizedCapDefs)
 
@@ -79,6 +80,9 @@ var _ = Describe("Helper", func() {
 
 		DescribeTable("#FindImageInCloudProfile",
 			func(profileImages []apisgcp.MachineImages, imageName, version string, architecture *string, expectedImage string) {
+				normalizedCapDefs := NormalizeCapabilityDefinitions(capabilityDefinitions)
+				normalizedMachineTypeCaps := NormalizeMachineTypeCapabilities(machineTypeCapabilities, architecture, normalizedCapDefs)
+
 				if hasCapabilities {
 					machineTypeCapabilities["architecture"] = []string{*architecture}
 				}
@@ -86,7 +90,7 @@ var _ = Describe("Helper", func() {
 				cfg := &apisgcp.CloudProfileConfig{}
 				cfg.MachineImages = profileImages
 
-				image, err := FindImageInCloudProfile(cfg, imageName, version, architecture, machineTypeCapabilities, capabilityDefinitions)
+				image, err := FindImageInCloudProfile(cfg, imageName, version, architecture, normalizedMachineTypeCaps, normalizedCapDefs)
 
 				if expectedImage != "" {
 					Expect(err).NotTo(HaveOccurred())
