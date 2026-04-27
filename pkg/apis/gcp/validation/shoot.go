@@ -14,7 +14,6 @@ import (
 	"github.com/gardener/gardener/pkg/api/core/helper"
 	"github.com/gardener/gardener/pkg/apis/core"
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
-	versionutils "github.com/gardener/gardener/pkg/utils/version"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,7 +28,7 @@ const (
 )
 
 // ValidateNetworking validates the network settings of a Shoot.
-func ValidateNetworking(networking *core.Networking, fldPath *field.Path, k8sVersion *semver.Version) field.ErrorList {
+func ValidateNetworking(networking *core.Networking, fldPath *field.Path, _ *semver.Version) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if networking.Nodes == nil {
@@ -38,10 +37,6 @@ func ValidateNetworking(networking *core.Networking, fldPath *field.Path, k8sVer
 
 	if core.IsIPv6SingleStack(networking.IPFamilies) {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("ipFamilies"), networking.IPFamilies, "IPv6 single-stack networking is not supported"))
-	}
-
-	if len(networking.IPFamilies) > 1 && versionutils.ConstraintK8sLess131.Check(k8sVersion) {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("ipFamilies"), networking.IPFamilies, "dual-stack is not supported for Kubernetes versions < 1.31"))
 	}
 
 	if networking.IPFamilies != nil && slices.Contains(networking.IPFamilies, core.IPFamilyIPv6) {

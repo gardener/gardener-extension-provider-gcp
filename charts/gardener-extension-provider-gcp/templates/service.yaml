@@ -12,9 +12,6 @@ metadata:
 {{- if .Values.ignoreResources }}
     resources.gardener.cloud/ignore: "true"
 {{- end }}
-{{- if and (include "topologyAwareRouting.enabled" .) (semverCompare "< 1.31-0" .Capabilities.KubeVersion.Version) }}
-    service.kubernetes.io/topology-mode: "auto"
-{{- end }}
   labels: {{- include "labels" . | nindent 4 }}
 {{- if and (include "topologyAwareRouting.enabled" .) (semverCompare "< 1.32-0" .Capabilities.KubeVersion.Version) }}
     endpoint-slice-hints.resources.gardener.cloud/consider: "true"

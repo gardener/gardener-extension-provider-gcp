@@ -10,10 +10,9 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
+	"github.com/gardener/gardener/pkg/utils/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -27,8 +26,7 @@ var _ = Describe("Seed Validator", func() {
 		var (
 			ctx            context.Context
 			credentialsRef *corev1.ObjectReference
-			ctrl           *gomock.Controller
-			mgr            *mockmanager.MockManager
+			mgr            *test.FakeManager
 			seedValidator  extensionswebhook.Validator
 			scheme         *runtime.Scheme
 		)
@@ -42,16 +40,13 @@ var _ = Describe("Seed Validator", func() {
 				Name:       "backup-credentials",
 			}
 
-			ctrl = gomock.NewController(GinkgoT())
-
 			scheme = runtime.NewScheme()
 			Expect(gardencore.AddToScheme(scheme)).To(Succeed())
 			Expect(apisgcp.AddToScheme(scheme)).To(Succeed())
 			Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
 			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
 
-			mgr = mockmanager.NewMockManager(ctrl)
-			mgr.EXPECT().GetScheme().Return(scheme).AnyTimes()
+			mgr = &test.FakeManager{Scheme: scheme}
 			seedValidator = validator.NewSeedValidator(mgr, []string{"https://storage.me-central2.rep.googleapis.com"})
 		})
 

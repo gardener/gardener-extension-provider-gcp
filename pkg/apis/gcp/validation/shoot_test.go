@@ -46,9 +46,8 @@ var _ = Describe("Shoot validation", func() {
 
 		Describe("dual-stack", func() {
 			var (
-				networking              *core.Networking
-				validDualStackVersion   *semver.Version
-				invalidDualStackVersion *semver.Version
+				networking            *core.Networking
+				validDualStackVersion *semver.Version
 			)
 
 			BeforeEach(func() {
@@ -63,23 +62,6 @@ var _ = Describe("Shoot validation", func() {
 				var err error
 				validDualStackVersion, err = semver.NewVersion("1.31.7")
 				Expect(err).To(Succeed())
-				invalidDualStackVersion, err = semver.NewVersion("1.30.12")
-				Expect(err).To(Succeed())
-			})
-
-			It("should return an error for dual-stack because kubernetes release is too old", func() {
-				networking.ProviderConfig = &runtime.RawExtension{
-					Raw: []byte(`{"overlay":{"enabled":false}}`),
-				}
-
-				errorList := ValidateNetworking(networking, networkingPath, invalidDualStackVersion)
-
-				Expect(errorList).To(ConsistOf(
-					PointTo(MatchFields(IgnoreExtras, Fields{
-						"Type":  Equal(field.ErrorTypeInvalid),
-						"Field": Equal("spec.networking.ipFamilies"),
-					})),
-				))
 			})
 
 			It("should pass dual-stack", func() {

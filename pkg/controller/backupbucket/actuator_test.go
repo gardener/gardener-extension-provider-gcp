@@ -12,8 +12,8 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils/test"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -21,6 +21,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -32,14 +34,14 @@ import (
 var _ = Describe("Actuator", func() {
 	var (
 		ctrl             *gomock.Controller
-		c                *mockclient.MockClient
+		fakeClient       client.Client
 		sw               *mockclient.MockStatusWriter
 		gcpClientFactory *mockgcpclient.MockFactory
 		gcpStorageClient *mockgcpclient.MockStorageClient
 		ctx              context.Context
 		logger           logr.Logger
 		a                backupbucket.Actuator
-		mgr              *mockmanager.MockManager
+		mgr              *test.FakeManager
 
 		secretRef             = corev1.SecretReference{Name: "backup-gcp-ha", Namespace: "garden"}
 		bucketName            = "test-bucket"
@@ -66,16 +68,13 @@ var _ = Describe("Actuator", func() {
 		Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
 		Expect(apisgcp.AddToScheme(scheme)).To(Succeed())
 
-		c = mockclient.NewMockClient(ctrl)
-		mgr = mockmanager.NewMockManager(ctrl)
-		mgr.EXPECT().GetClient().Return(c).AnyTimes()
-		c.EXPECT().Scheme().Return(scheme).MaxTimes(1)
+		fakeClient = fakeclient.NewClientBuilder().WithScheme(scheme).Build()
+		mgr = &test.FakeManager{Scheme: scheme, Client: fakeClient}
 
 		sw = mockclient.NewMockStatusWriter(ctrl)
 		gcpClientFactory = mockgcpclient.NewMockFactory(ctrl)
 		gcpStorageClient = mockgcpclient.NewMockStorageClient(ctrl)
 
-		c.EXPECT().Status().Return(sw).AnyTimes()
 		sw.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 		ctx = context.TODO()
@@ -109,7 +108,7 @@ var _ = Describe("Actuator", func() {
 			})
 
 			It("should create the bucket", func() {
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(nil, storage.ErrBucketNotExist).MaxTimes(2)
 				gcpStorageClient.EXPECT().CreateBucket(ctx, gomock.Any()).Return(nil)
 				err := a.Reconcile(ctx, logger, backupBucket)
@@ -117,7 +116,7 @@ var _ = Describe("Actuator", func() {
 			})
 
 			It("should return error if creating bucket fails", func() {
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				gcpStorageClient.EXPECT().Attrs(ctx, bucketName).Return(nil, storage.ErrBucketNotExist)
 				gcpStorageClient.EXPECT().CreateBucket(ctx, gomock.Any()).Return(fmt.Errorf("creation error"))
 
@@ -144,7 +143,7 @@ var _ = Describe("Actuator", func() {
 			})
 
 			It("should not make any changes if the bucket has the correct lifecycle and retention policies", func() {
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				existingAttrs := &storage.BucketAttrs{
 					Location: region,
 					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
@@ -165,7 +164,7 @@ var _ = Describe("Actuator", func() {
 			})
 
 			It("should update the bucket if the lifecycle policy is different", func() {
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				existingAttrs := &storage.BucketAttrs{
 					Location: region,
 					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
@@ -198,7 +197,7 @@ var _ = Describe("Actuator", func() {
 			})
 
 			It("should update the bucket if the retention policy is different", func() {
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				existingAttrs := &storage.BucketAttrs{
 					Location: region,
 					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
@@ -233,7 +232,7 @@ var _ = Describe("Actuator", func() {
 			})
 
 			It("should update the bucket if both lifecycle and retention policies are different", func() {
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				existingAttrs := &storage.BucketAttrs{
 					Location: region,
 					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
@@ -269,7 +268,7 @@ var _ = Describe("Actuator", func() {
 			})
 
 			It("should return an error if updating the bucket fails", func() {
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				existingAttrs := &storage.BucketAttrs{
 					Location: region,
 					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
@@ -294,7 +293,7 @@ var _ = Describe("Actuator", func() {
 
 				backupBucket.Spec.ProviderConfig = nil
 
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				existingAttrs := &storage.BucketAttrs{
 					Location: region,
 					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
@@ -332,7 +331,7 @@ var _ = Describe("Actuator", func() {
 					Raw: []byte(`{"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1","kind": "BackupBucketConfig"}`),
 				}
 
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				existingAttrs := &storage.BucketAttrs{
 					Location: region,
 					UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
@@ -383,7 +382,7 @@ var _ = Describe("Actuator", func() {
 			})
 
 			It("should lock the bucket if required", func() {
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				existingAttrs := &storage.BucketAttrs{
 					Location: region,
 					RetentionPolicy: &storage.RetentionPolicy{
@@ -402,7 +401,7 @@ var _ = Describe("Actuator", func() {
 			})
 
 			It("should return an error if locking fails", func() {
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				existingAttrs := &storage.BucketAttrs{
 					Location: region,
 					RetentionPolicy: &storage.RetentionPolicy{
@@ -439,7 +438,7 @@ var _ = Describe("Actuator", func() {
 			})
 
 			It("should return an error if decoding fails", func() {
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).To(HaveOccurred())
 			})
@@ -463,7 +462,7 @@ var _ = Describe("Actuator", func() {
 			})
 
 			It("should return an error if storage client creation fails", func() {
-				gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(nil, fmt.Errorf("client error"))
+				gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(nil, fmt.Errorf("client error"))
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).To(HaveOccurred())
 			})
@@ -487,7 +486,7 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should delete the bucket successfully", func() {
-			gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+			gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 			gcpStorageClient.EXPECT().DeleteBucketIfExists(ctx, bucketName).Return(nil)
 
 			err := a.Delete(ctx, logger, backupBucket)
@@ -495,7 +494,7 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should return error if deleting bucket fails", func() {
-			gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(gcpStorageClient, nil)
+			gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(gcpStorageClient, nil)
 			gcpStorageClient.EXPECT().DeleteBucketIfExists(ctx, bucketName).Return(fmt.Errorf("deletion error"))
 
 			err := a.Delete(ctx, logger, backupBucket)
@@ -503,7 +502,7 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should return error if storage client creation fails on delete", func() {
-			gcpClientFactory.EXPECT().Storage(ctx, c, secretRef).Return(nil, fmt.Errorf("client error"))
+			gcpClientFactory.EXPECT().Storage(ctx, fakeClient, secretRef).Return(nil, fmt.Errorf("client error"))
 			err := a.Delete(ctx, logger, backupBucket)
 			Expect(err).To(HaveOccurred())
 		})

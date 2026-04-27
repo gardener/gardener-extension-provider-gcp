@@ -18,7 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/config"
-	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
 )
 
 var (
@@ -65,9 +64,8 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	logger.Info("Initializing backup bucket validator config", "allowed_endpoint_override_urls", allowedEndpointOverrideURLs)
 
 	return extensionswebhook.New(mgr, extensionswebhook.Args{
-		Provider: gcp.Type,
-		Name:     Name,
-		Path:     "/webhooks/validate",
+		Name: Name,
+		Path: "/webhooks/validate",
 		Validators: map[extensionswebhook.Validator][]extensionswebhook.Type{
 			NewShootValidator(
 				mgr,
@@ -101,9 +99,8 @@ func NewSecretsWebhook(mgr manager.Manager) (*extensionswebhook.Webhook, error) 
 	logger.Info("Setting up webhook", "name", SecretsValidatorName)
 
 	return extensionswebhook.New(mgr, extensionswebhook.Args{
-		Provider: gcp.Type,
-		Name:     SecretsValidatorName,
-		Path:     "/webhooks/validate/secrets",
+		Name: SecretsValidatorName,
+		Path: "/webhooks/validate/secrets",
 		Validators: map[extensionswebhook.Validator][]extensionswebhook.Type{
 			NewSecretValidator(): {{Obj: &corev1.Secret{}}},
 		},

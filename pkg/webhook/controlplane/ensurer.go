@@ -238,11 +238,7 @@ func (e *ensurer) EnsureClusterAutoscalerDeployment(ctx context.Context,
 }
 
 func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
-	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginGCEUnregister=true", ",")
-	}
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
+	if versionutils.ConstraintK8sLess134.Check(k8sVersion) {
 		if gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
@@ -250,31 +246,17 @@ func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 				"storage.k8s.io/v1beta1=true", ",")
 		}
 	}
-
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-provider=")
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-config=")
-	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureNoStringWithPrefixContains(c.Command, "--enable-admission-plugins=",
-			"PersistentVolumeLabel", ",")
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--disable-admission-plugins=",
-			"PersistentVolumeLabel", ",")
-	}
 }
 
 func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
 	c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--cloud-provider=", "external")
 
-	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--allocate-node-cidrs=", strconv.FormatBool(true))
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginGCEUnregister=true", ",")
-	}
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) {
-		// allocate-node-cidrs is a boolean flag and could be enabled by name without an explicit value passed. Therefore, we delete all prefixes (without including "=" in the prefix)
-		c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--allocate-node-cidrs")
-		c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--allocate-node-cidrs=", strconv.FormatBool(false))
-	}
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
+	// allocate-node-cidrs is a boolean flag and could be enabled by name without an explicit value passed. Therefore, we delete all prefixes (without including "=" in the prefix)
+	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--allocate-node-cidrs")
+	c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--allocate-node-cidrs=", strconv.FormatBool(false))
+	if versionutils.ConstraintK8sLess134.Check(k8sVersion) {
 		if gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
@@ -286,11 +268,7 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 }
 
 func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
-	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginGCEUnregister=true", ",")
-	}
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
+	if versionutils.ConstraintK8sLess134.Check(k8sVersion) {
 		if gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
@@ -300,11 +278,7 @@ func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 
 // ensureClusterAutoscalerCommandLineArgs ensures the cluster-autoscaler command line args.
 func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
-	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginGCEUnregister=true", ",")
-	}
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
+	if versionutils.ConstraintK8sLess134.Check(k8sVersion) {
 		if gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 				"VolumeAttributesClass=true", ",")
@@ -397,23 +371,10 @@ func ensureKubeletCommandLineArgs(command []string) []string {
 func (e *ensurer) EnsureKubeletConfiguration(
 	_ context.Context,
 	_ gcontext.GardenContext,
-	kubeletVersion *semver.Version,
+	_ *semver.Version,
 	newKubeletConfiguration, _ *kubeletconfigv1beta1.KubeletConfiguration) error {
-	if versionutils.ConstraintK8sLess131.Check(kubeletVersion) {
-		setKubletConfigurationFeatureGate(newKubeletConfiguration, "InTreePluginGCEUnregister", true)
-	}
-
 	newKubeletConfiguration.EnableControllerAttachDetach = ptr.To(true)
-
 	return nil
-}
-
-func setKubletConfigurationFeatureGate(kubeletConfiguration *kubeletconfigv1beta1.KubeletConfiguration, featureGate string, value bool) {
-	if kubeletConfiguration.FeatureGates == nil {
-		kubeletConfiguration.FeatureGates = make(map[string]bool)
-	}
-
-	kubeletConfiguration.FeatureGates[featureGate] = value
 }
 
 var regexFindProperty = regexp.MustCompile("net.ipv4.ip_forward[[:space:]]*=[[:space:]]*([[:alnum:]]+)")

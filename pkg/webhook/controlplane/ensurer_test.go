@@ -183,13 +183,6 @@ var _ = Describe("Ensurer", func() {
 			ensurer = NewEnsurer(fakeClient, logger)
 		})
 
-		It("should add missing elements to kube-apiserver deployment (k8s < 1.31)", func() {
-			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s130, dep, nil)
-			Expect(err).To(Not(HaveOccurred()))
-
-			checkKubeAPIServerDeployment(dep, "1.30.1", false)
-		})
-
 		It("should add missing elements to kube-apiserver deployment (k8s >= 1.31)", func() {
 			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s131, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
@@ -218,35 +211,6 @@ var _ = Describe("Ensurer", func() {
 
 				checkKubeAPIServerDeployment(dep, "1.34.0", false)
 			})
-		})
-
-		It("should modify existing elements of kube-apiserver deployment", func() {
-			var (
-				dep = &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: v1beta1constants.DeploymentNameKubeAPIServer},
-					Spec: appsv1.DeploymentSpec{
-						Template: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
-								Containers: []corev1.Container{
-									{
-										Name: "kube-apiserver",
-										Command: []string{
-											"--cloud-provider=?",
-											"--cloud-config=?",
-											"--enable-admission-plugins=Priority,NamespaceLifecycle",
-											"--disable-admission-plugins=PersistentVolumeLabel",
-										},
-									},
-								},
-							},
-						},
-					},
-				}
-			)
-
-			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s130, dep, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			checkKubeAPIServerDeployment(dep, "1.30.1", false)
 		})
 	})
 
@@ -282,13 +246,6 @@ var _ = Describe("Ensurer", func() {
 			ensurer = NewEnsurer(fakeClient, logger)
 		})
 
-		It("should add missing elements to kube-controller-manager deployment (k8s < 1.31)", func() {
-			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s130, dep, nil)
-			Expect(err).To(Not(HaveOccurred()))
-
-			checkKubeControllerManagerDeployment(dep, "1.30.1", false)
-		})
-
 		It("should add missing elements to kube-controller-manager deployment (k8s >= 1.31)", func() {
 			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s131, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
@@ -318,47 +275,6 @@ var _ = Describe("Ensurer", func() {
 				checkKubeControllerManagerDeployment(dep, "1.34.0", false)
 			})
 		})
-
-		It("should modify existing elements of kube-controller-manager deployment", func() {
-			var (
-				dep = &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: v1beta1constants.DeploymentNameKubeControllerManager},
-					Spec: appsv1.DeploymentSpec{
-						Template: corev1.PodTemplateSpec{
-							ObjectMeta: metav1.ObjectMeta{
-								Labels: map[string]string{
-									v1beta1constants.LabelNetworkPolicyToBlockedCIDRs: v1beta1constants.LabelNetworkPolicyAllowed,
-								},
-							},
-							Spec: corev1.PodSpec{
-								Containers: []corev1.Container{
-									{
-										Name: "kube-controller-manager",
-										Command: []string{
-											"--cloud-provider=?",
-											"--cloud-config=?",
-											"--external-cloud-volume-plugin=?",
-										},
-										VolumeMounts: []corev1.VolumeMount{
-											{Name: usrShareCaCerts, MountPath: "?"},
-											{Name: etcSSLName, MountPath: "?"},
-										},
-									},
-								},
-								Volumes: []corev1.Volume{
-									{Name: usrShareCaCerts},
-									{Name: etcSSLName},
-								},
-							},
-						},
-					},
-				}
-			)
-
-			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s130, dep, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			checkKubeControllerManagerDeployment(dep, "1.30.1", false)
-		})
 	})
 
 	Describe("#EnsureKubeSchedulerDeployment", func() {
@@ -384,13 +300,6 @@ var _ = Describe("Ensurer", func() {
 			}
 
 			ensurer = NewEnsurer(fakeClient, logger)
-		})
-
-		It("should add missing elements to kube-scheduler deployment (k8s < 1.31)", func() {
-			err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s130, dep, nil)
-			Expect(err).To(Not(HaveOccurred()))
-
-			checkKubeSchedulerDeployment(dep, "1.30.1", false)
 		})
 
 		It("should add missing elements to kube-scheduler deployment (k8s >= 1.31)", func() {
@@ -447,13 +356,6 @@ var _ = Describe("Ensurer", func() {
 			}
 
 			ensurer = NewEnsurer(fakeClient, logger)
-		})
-
-		It("should add missing elements to cluster-autoscaler deployment (k8s < 1.31)", func() {
-			err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s130, dep, nil)
-			Expect(err).To(Not(HaveOccurred()))
-
-			checkClusterAutoscalerDeployment(dep, "1.30.1", false)
 		})
 
 		It("should add missing elements to cluster-autoscaler deployment (k8s >= 1.31)", func() {
@@ -563,7 +465,6 @@ var _ = Describe("Ensurer", func() {
 				Expect(err).To(Not(HaveOccurred()))
 				Expect(&kubeletConfig).To(Equal(newKubeletConfig))
 			},
-			Entry("kubelet < 1.31", eContextK8s130, semver.MustParse("1.30.1"), map[string]bool{"InTreePluginGCEUnregister": true}),
 			Entry("kubelet >= 1.31", eContextK8s131, semver.MustParse("1.31.1"), map[string]bool{}),
 		)
 	})

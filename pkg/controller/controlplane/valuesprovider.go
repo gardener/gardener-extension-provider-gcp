@@ -459,10 +459,7 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 		return nil, err
 	}
 
-	csiFilestore, err := getCSIFilestoreControllerChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
-	if err != nil {
-		return nil, err
-	}
+	csiFilestore := getCSIFilestoreControllerChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
 
 	replicas := 0
 	if IsDualStackEnabled(cluster.Shoot.Spec.Networking, nil) {
@@ -598,8 +595,8 @@ func getCSIControllerChartValues(
 	}
 
 	// Configure VolumeAttributesClass feature for CSI driver if enabled.
-	lessThan134VACEnabled := versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot)
-	if versionutils.ConstraintK8sGreaterEqual134.Check(k8sVersion) || lessThan134VACEnabled {
+	vacEnabled := gcp.VolumeAttributesClassBetaEnabled(cluster.Shoot)
+	if versionutils.ConstraintK8sGreaterEqual134.Check(k8sVersion) || vacEnabled {
 		values["csiDriver"] = map[string]interface{}{
 			"storage": map[string]interface{}{
 				"supportsDynamicIopsProvisioning":       []string{gcp.HyperDiskBalanced, gcp.HyperDiskExtreme},
@@ -607,7 +604,7 @@ func getCSIControllerChartValues(
 			},
 		}
 	}
-	if lessThan134VACEnabled {
+	if vacEnabled {
 		values["csiResizer"] = map[string]interface{}{
 			"featureGates": map[string]string{
 				"VolumeAttributesClass": "true",
@@ -632,7 +629,7 @@ func getCSIFilestoreControllerChartValues(
 	credentialsConfig *gcp.CredentialsConfig,
 	checksums map[string]string,
 	scaledDown bool,
-) (map[string]interface{}, error) {
+) map[string]interface{} {
 	values := map[string]interface{}{
 		"enabled":   isCSIFilestoreEnabled(cpConfig),
 		"replicas":  extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
@@ -644,26 +641,20 @@ func getCSIFilestoreControllerChartValues(
 		"useWorkloadIdentity": shouldUseWorkloadIdentity(credentialsConfig),
 	}
 
-	k8sVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
-	if err != nil {
-		return nil, err
-	}
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) {
-		if _, ok := cluster.Shoot.Annotations[gcp.AnnotationEnableVolumeAttributesClass]; ok {
-			values["csiResizer"] = map[string]interface{}{
-				"featureGates": map[string]string{
-					"VolumeAttributesClass": "true",
-				},
-			}
-			values["csiProvisioner"] = map[string]interface{}{
-				"featureGates": map[string]string{
-					"VolumeAttributesClass": "true",
-				},
-			}
+	if _, ok := cluster.Shoot.Annotations[gcp.AnnotationEnableVolumeAttributesClass]; ok {
+		values["csiResizer"] = map[string]interface{}{
+			"featureGates": map[string]string{
+				"VolumeAttributesClass": "true",
+			},
+		}
+		values["csiProvisioner"] = map[string]interface{}{
+			"featureGates": map[string]string{
+				"VolumeAttributesClass": "true",
+			},
 		}
 	}
 
-	return values, nil
+	return values
 }
 
 // GetStorageClassesChartValues collects and returns the shoot storage-class chart values.
