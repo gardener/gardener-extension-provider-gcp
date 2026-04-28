@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/Masterminds/semver/v3"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorehelper "github.com/gardener/gardener/pkg/api/core/helper"
 	"github.com/gardener/gardener/pkg/apis/core"
@@ -131,13 +130,8 @@ func (s *shoot) validateContext(ctx context.Context, valContext *validationConte
 		allowedZones = getAllowedRegionZonesFromCloudProfile(valContext.shoot, valContext.cloudProfileSpec)
 	)
 
-	k8sVersion, err := semver.NewVersion(valContext.shoot.Spec.Kubernetes.Version)
-	if err != nil {
-		allErrors = append(allErrors, field.Invalid(specPath.Child("kubernetes", "version"), valContext.shoot.Spec.Kubernetes.Version, fmt.Sprintf("invalid kubernetes version: %s", err.Error())))
-	}
-
 	if valContext.shoot.Spec.Networking != nil {
-		allErrors = append(allErrors, gcpvalidation.ValidateNetworking(valContext.shoot.Spec.Networking, networkPath, k8sVersion)...)
+		allErrors = append(allErrors, gcpvalidation.ValidateNetworking(valContext.shoot.Spec.Networking, networkPath)...)
 		allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfig(valContext.infrastructureConfig, valContext.shoot.Spec.Networking.Nodes, valContext.shoot.Spec.Networking.Pods, valContext.shoot.Spec.Networking.Services, infrastructureConfigPath)...)
 	}
 

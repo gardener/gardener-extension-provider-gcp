@@ -10,7 +10,6 @@ import (
 	"math"
 	"slices"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/gardener/gardener/pkg/api/core/helper"
 	"github.com/gardener/gardener/pkg/apis/core"
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
@@ -28,7 +27,7 @@ const (
 )
 
 // ValidateNetworking validates the network settings of a Shoot.
-func ValidateNetworking(networking *core.Networking, fldPath *field.Path, _ *semver.Version) field.ErrorList {
+func ValidateNetworking(networking *core.Networking, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if networking.Nodes == nil {
