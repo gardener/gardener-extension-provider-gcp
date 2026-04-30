@@ -1,21 +1,4 @@
 images:
-# version-mapping
-- name: cloud-controller-manager
-  sourceRepository: github.com/kubernetes/cloud-provider-gcp
-  repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-  # TODO(AndreasBurger,kon-angelo): Update to v31.x.y image of the cloud-controller-manager when it is available.
-  tag: v30.0.0
-  labels:
-  - name: gardener.cloud/cve-categorisation
-    value:
-      network_exposure: protected
-      authentication_enforced: false
-      user_interaction: gardener-operator
-      confidentiality_requirement: high
-      integrity_requirement: high
-      availability_requirement: low
-    signing: false
-  targetVersion: 1.31.x
 # freeze
 # version-mapping
 # Note: do not use the v32.2.5 image of cloud-controller-manager. Its dockerfile only specifies CMD and does not specify an ENTRYPOINT.

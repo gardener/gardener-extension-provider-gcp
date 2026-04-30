@@ -102,8 +102,8 @@ spec:
         - value3
   kubernetes:
     versions:
-    - version: 1.32.0
-    - version: 1.31.2
+    - version: 1.33.0
+    - version: 1.32.2
       expirationDate: "2026-03-31T23:59:59Z"
   machineImages:
   - name: gardenlinux
@@ -161,8 +161,8 @@ spec:
   type: gcp
   kubernetes:
     versions:
-      - version: 1.32.0
-      - version: 1.31.2
+      - version: 1.33.0
+      - version: 1.32.2
         expirationDate: "2026-03-31T23:59:59Z"
   machineImages:
     - name: gardenlinux

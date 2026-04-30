@@ -37,15 +37,10 @@ spec:
       - name: gcp-cloud-controller-manager
         image: {{ index .Values.images "cloud-controller-manager" }}
         imagePullPolicy: IfNotPresent
-        {{- if semverCompare "~ 1.31.x-0" .Values.kubernetesVersion }}
-        command: ["/cloud-controller-manager"]
-        {{- end }}
         args:
-        {{- if semverCompare ">= 1.31" .Values.kubernetesVersion }}
         - --service-cluster-ip-range={{ .Values.serviceNetwork }}
         {{- if .Values.nodeCIDRMaskSizeIPv4 }}
         - --node-cidr-mask-size-ipv4={{ .Values.nodeCIDRMaskSizeIPv4 }}
-        {{- end}}
         {{- end}}
         - --allocate-node-cidrs=true
         - --cloud-provider=gce

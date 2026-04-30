@@ -110,7 +110,7 @@ var _ = Describe("Shoot validator", func() {
 						Nodes: ptr.To("10.250.0.0/16"),
 					},
 					Kubernetes: core.Kubernetes{
-						Version: "1.31.17",
+						Version: "1.34.2",
 					},
 				},
 			}
