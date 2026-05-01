@@ -248,6 +248,12 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			gcpworker.DefaultAddOptions.GardenCluster = gardenCluster
 			generalCfg := generalOpts.Completed()
 			gcpworker.DefaultAddOptions.SelfHostedShootCluster = generalCfg.SelfHostedShootCluster
+			gcpinfrastructure.DefaultAddOptions.ExtensionClasses = slices.Clone(generalCfg.ExtensionClasses)
+			gcpcontrolplane.DefaultAddOptions.ExtensionClasses = slices.Clone(generalCfg.ExtensionClasses)
+			gcpworker.DefaultAddOptions.ExtensionClasses = slices.Clone(generalCfg.ExtensionClasses)
+			gcpbastion.DefaultAddOptions.ExtensionClasses = slices.Clone(generalCfg.ExtensionClasses)
+			gcpdnsrecord.DefaultAddOptions.ExtensionClasses = slices.Clone(generalCfg.ExtensionClasses)
+			gcpbackupbucket.DefaultAddOptions.ExtensionClasses = slices.Clone(generalCfg.ExtensionClasses)
 
 			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil)
 			if err != nil {
