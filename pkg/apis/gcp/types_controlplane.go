@@ -51,6 +51,23 @@ type Storage struct {
 	ManagedDefaultVolumeSnapshotClass *bool
 	// CSIFilestore contains configuration for CSI Filestore driver (support for NFS volumes)
 	CSIFilestore *CSIFilestore
+	// HyperDiskBalanced contains configuration for the hyperdisk-balanced StorageClass (gce-sc-hd-balanced).
+	HyperDiskBalanced *HyperDiskConfig
+	// HyperDiskThroughput contains configuration for the hyperdisk-throughput StorageClass (gce-sc-hd-throughput).
+	HyperDiskThroughput *HyperDiskConfig
+	// HyperDiskExtreme contains configuration for the hyperdisk-extreme StorageClass (gce-sc-hd-extreme).
+	HyperDiskExtreme *HyperDiskConfig
+}
+
+// HyperDiskConfig contains performance parameters for a hyperdisk StorageClass.
+type HyperDiskConfig struct {
+	// ProvisionedIopsOnCreate sets the provisioned-iops-on-create StorageClass parameter.
+	// Supported for hyperdisk-balanced and hyperdisk-extreme.
+	ProvisionedIopsOnCreate *int64
+	// ProvisionedThroughputOnCreate sets the provisioned-throughput-on-create StorageClass parameter.
+	// Supported for hyperdisk-balanced and hyperdisk-throughput.
+	// Value must be a valid quantity string (e.g. "140Mi").
+	ProvisionedThroughputOnCreate *string
 }
 
 // CSIFilestore contains configuration for CSI Filestore driver

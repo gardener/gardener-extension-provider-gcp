@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	. "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/validation"
@@ -115,6 +116,83 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 			Entry("valid: gce-sc-hd-throughput", "gce-sc-hd-throughput", false),
 			Entry("valid: gce-sc-hd-extreme", "gce-sc-hd-extreme", false),
 			Entry("invalid: unknown", "pd-ssd", true),
+		)
+
+		DescribeTable("should validate HyperDiskBalanced",
+			func(iops *int64, throughput *string, expectErrFields []string) {
+				controlPlane.Storage = &apisgcp.Storage{
+					HyperDiskBalanced: &apisgcp.HyperDiskConfig{
+						ProvisionedIopsOnCreate:       iops,
+						ProvisionedThroughputOnCreate: throughput,
+					},
+				}
+				errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "", fldPath)
+				if len(expectErrFields) == 0 {
+					Expect(errorList).To(BeEmpty())
+				} else {
+					fields := make([]interface{}, 0, len(expectErrFields))
+					for _, f := range expectErrFields {
+						f := f
+						fields = append(fields, PointTo(MatchFields(IgnoreExtras, Fields{"Field": Equal(f)})))
+					}
+					Expect(errorList).To(ConsistOf(fields...))
+				}
+			},
+			Entry("valid: iops only", ptr.To[int64](3000), nil, nil),
+			Entry("valid: throughput only", nil, ptr.To("140Mi"), nil),
+			Entry("valid: both iops and throughput", ptr.To[int64](3000), ptr.To("140Mi"), nil),
+			Entry("invalid: iops <= 0", ptr.To[int64](0), nil, []string{"storage.hyperDiskBalanced.provisionedIopsOnCreate"}),
+			Entry("invalid: bad throughput quantity", nil, ptr.To("notaquantity!"), []string{"storage.hyperDiskBalanced.provisionedThroughputOnCreate"}),
+		)
+
+		DescribeTable("should validate HyperDiskThroughput",
+			func(iops *int64, throughput *string, expectErrFields []string) {
+				controlPlane.Storage = &apisgcp.Storage{
+					HyperDiskThroughput: &apisgcp.HyperDiskConfig{
+						ProvisionedIopsOnCreate:       iops,
+						ProvisionedThroughputOnCreate: throughput,
+					},
+				}
+				errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "", fldPath)
+				if len(expectErrFields) == 0 {
+					Expect(errorList).To(BeEmpty())
+				} else {
+					fields := make([]interface{}, 0, len(expectErrFields))
+					for _, f := range expectErrFields {
+						f := f
+						fields = append(fields, PointTo(MatchFields(IgnoreExtras, Fields{"Field": Equal(f)})))
+					}
+					Expect(errorList).To(ConsistOf(fields...))
+				}
+			},
+			Entry("valid: throughput only", nil, ptr.To("140Mi"), nil),
+			Entry("invalid: iops not supported", ptr.To[int64](3000), nil, []string{"storage.hyperDiskThroughput.provisionedIopsOnCreate"}),
+			Entry("invalid: bad throughput quantity", nil, ptr.To("notaquantity!"), []string{"storage.hyperDiskThroughput.provisionedThroughputOnCreate"}),
+		)
+
+		DescribeTable("should validate HyperDiskExtreme",
+			func(iops *int64, throughput *string, expectErrFields []string) {
+				controlPlane.Storage = &apisgcp.Storage{
+					HyperDiskExtreme: &apisgcp.HyperDiskConfig{
+						ProvisionedIopsOnCreate:       iops,
+						ProvisionedThroughputOnCreate: throughput,
+					},
+				}
+				errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "", fldPath)
+				if len(expectErrFields) == 0 {
+					Expect(errorList).To(BeEmpty())
+				} else {
+					fields := make([]interface{}, 0, len(expectErrFields))
+					for _, f := range expectErrFields {
+						f := f
+						fields = append(fields, PointTo(MatchFields(IgnoreExtras, Fields{"Field": Equal(f)})))
+					}
+					Expect(errorList).To(ConsistOf(fields...))
+				}
+			},
+			Entry("valid: iops only", ptr.To[int64](10000), nil, nil),
+			Entry("invalid: throughput not supported", nil, ptr.To("140Mi"), []string{"storage.hyperDiskExtreme.provisionedThroughputOnCreate"}),
+			Entry("invalid: iops <= 0", ptr.To[int64](-1), nil, []string{"storage.hyperDiskExtreme.provisionedIopsOnCreate"}),
 		)
 	})
 

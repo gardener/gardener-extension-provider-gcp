@@ -60,6 +60,12 @@ allowVolumeExpansion: true
 provisioner: pd.csi.storage.gke.io
 parameters:
   type: hyperdisk-balanced
+  {{- if .Values.hyperdisk.balanced.provisionedIopsOnCreate }}
+  provisioned-iops-on-create: {{ .Values.hyperdisk.balanced.provisionedIopsOnCreate | quote }}
+  {{- end }}
+  {{- if .Values.hyperdisk.balanced.provisionedThroughputOnCreate }}
+  provisioned-throughput-on-create: {{ .Values.hyperdisk.balanced.provisionedThroughputOnCreate | quote }}
+  {{- end }}
 volumeBindingMode: WaitForFirstConsumer
 
 ---
@@ -76,6 +82,9 @@ allowVolumeExpansion: true
 provisioner: pd.csi.storage.gke.io
 parameters:
   type: hyperdisk-throughput
+  {{- if .Values.hyperdisk.throughput.provisionedThroughputOnCreate }}
+  provisioned-throughput-on-create: {{ .Values.hyperdisk.throughput.provisionedThroughputOnCreate | quote }}
+  {{- end }}
 volumeBindingMode: WaitForFirstConsumer
 
 ---
@@ -92,6 +101,9 @@ allowVolumeExpansion: true
 provisioner: pd.csi.storage.gke.io
 parameters:
   type: hyperdisk-extreme
+  {{- if .Values.hyperdisk.extreme.provisionedIopsOnCreate }}
+  provisioned-iops-on-create: {{ .Values.hyperdisk.extreme.provisionedIopsOnCreate | quote }}
+  {{- end }}
 volumeBindingMode: WaitForFirstConsumer
 
 ---

@@ -699,6 +699,11 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 			"enabled": isCSIFilestoreEnabled(cpConfig),
 			"network": infraStatus.Networks.VPC.Name,
 		},
+		"hyperdisk": map[string]interface{}{
+			"balanced":   hyperDiskConfigToValues(hyperDiskField(cpConfig.Storage, func(s *apisgcp.Storage) *apisgcp.HyperDiskConfig { return s.HyperDiskBalanced })),
+			"throughput": hyperDiskConfigToValues(hyperDiskField(cpConfig.Storage, func(s *apisgcp.Storage) *apisgcp.HyperDiskConfig { return s.HyperDiskThroughput })),
+			"extreme":    hyperDiskConfigToValues(hyperDiskField(cpConfig.Storage, func(s *apisgcp.Storage) *apisgcp.HyperDiskConfig { return s.HyperDiskExtreme })),
+		},
 	}, nil
 }
 
@@ -758,6 +763,30 @@ func isMutatingAdmissionPolicyEnabled(cluster *extensionscontroller.Cluster) boo
 	}
 
 	return true
+}
+
+// hyperDiskField safely retrieves a HyperDiskConfig field from a potentially nil Storage.
+func hyperDiskField(storage *apisgcp.Storage, fn func(*apisgcp.Storage) *apisgcp.HyperDiskConfig) *apisgcp.HyperDiskConfig {
+	if storage == nil {
+		return nil
+	}
+	return fn(storage)
+}
+
+// hyperDiskConfigToValues converts a HyperDiskConfig to a map for Helm chart values.
+// Returns an empty map when cfg is nil, so the chart receives a valid (empty) object.
+func hyperDiskConfigToValues(cfg *apisgcp.HyperDiskConfig) map[string]interface{} {
+	if cfg == nil {
+		return map[string]interface{}{}
+	}
+	vals := map[string]interface{}{}
+	if cfg.ProvisionedIopsOnCreate != nil {
+		vals["provisionedIopsOnCreate"] = *cfg.ProvisionedIopsOnCreate
+	}
+	if cfg.ProvisionedThroughputOnCreate != nil {
+		vals["provisionedThroughputOnCreate"] = *cfg.ProvisionedThroughputOnCreate
+	}
+	return vals
 }
 
 func cleanupSeedLegacyCSISnapshotValidation(

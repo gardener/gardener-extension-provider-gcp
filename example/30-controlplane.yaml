@@ -64,6 +64,13 @@ spec:
       managedDefaultStorageClass: true
       managedDefaultVolumeSnapshotClass: true
     # defaultStorageClass: gce-sc-hd-balanced  # allowed: default, gce-sc-hdd, gce-sc-fast, gce-sc-hd-balanced, gce-sc-hd-throughput, gce-sc-hd-extreme
+    # hyperDiskBalanced:
+    #   provisionedIopsOnCreate: 3000
+    #   provisionedThroughputOnCreate: "140Mi"
+    # hyperDiskThroughput:
+    #   provisionedThroughputOnCreate: "250Mi"
+    # hyperDiskExtreme:
+    #   provisionedIopsOnCreate: 10000
   infrastructureProviderStatus:
     apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
     kind: InfrastructureStatus

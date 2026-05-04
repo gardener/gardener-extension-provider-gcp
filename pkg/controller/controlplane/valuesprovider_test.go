@@ -507,6 +507,11 @@ var _ = Describe("ValuesProvider", func() {
 					"enabled": false,
 					"network": "vpc-1234",
 				},
+				"hyperdisk": map[string]interface{}{
+					"balanced":   map[string]interface{}{},
+					"throughput": map[string]interface{}{},
+					"extreme":    map[string]interface{}{},
+				},
 			}))
 		})
 
@@ -527,6 +532,11 @@ var _ = Describe("ValuesProvider", func() {
 					"enabled": false,
 					"network": "vpc-1234",
 				},
+				"hyperdisk": map[string]interface{}{
+					"balanced":   map[string]interface{}{},
+					"throughput": map[string]interface{}{},
+					"extreme":    map[string]interface{}{},
+				},
 			}))
 		})
 
@@ -545,6 +555,11 @@ var _ = Describe("ValuesProvider", func() {
 				"filestore": map[string]interface{}{
 					"enabled": false,
 					"network": "vpc-1234",
+				},
+				"hyperdisk": map[string]interface{}{
+					"balanced":   map[string]interface{}{},
+					"throughput": map[string]interface{}{},
+					"extreme":    map[string]interface{}{},
 				},
 			}))
 		})
@@ -565,6 +580,51 @@ var _ = Describe("ValuesProvider", func() {
 				"filestore": map[string]interface{}{
 					"enabled": false,
 					"network": "vpc-1234",
+				},
+				"hyperdisk": map[string]interface{}{
+					"balanced":   map[string]interface{}{},
+					"throughput": map[string]interface{}{},
+					"extreme":    map[string]interface{}{},
+				},
+			}))
+		})
+
+		It("should return hyperdisk parameters in storage class chart values", func() {
+			cp.Spec.ProviderConfig.Raw = encode(&apisgcp.ControlPlaneConfig{
+				Storage: &apisgcp.Storage{
+					HyperDiskBalanced: &apisgcp.HyperDiskConfig{
+						ProvisionedIopsOnCreate:       ptr.To[int64](3000),
+						ProvisionedThroughputOnCreate: ptr.To("140Mi"),
+					},
+					HyperDiskThroughput: &apisgcp.HyperDiskConfig{
+						ProvisionedThroughputOnCreate: ptr.To("250Mi"),
+					},
+					HyperDiskExtreme: &apisgcp.HyperDiskConfig{
+						ProvisionedIopsOnCreate: ptr.To[int64](10000),
+					},
+				},
+			})
+
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"defaultStorageClass":               "default",
+				"managedDefaultVolumeSnapshotClass": true,
+				"filestore": map[string]interface{}{
+					"enabled": false,
+					"network": "vpc-1234",
+				},
+				"hyperdisk": map[string]interface{}{
+					"balanced": map[string]interface{}{
+						"provisionedIopsOnCreate":       int64(3000),
+						"provisionedThroughputOnCreate": "140Mi",
+					},
+					"throughput": map[string]interface{}{
+						"provisionedThroughputOnCreate": "250Mi",
+					},
+					"extreme": map[string]interface{}{
+						"provisionedIopsOnCreate": int64(10000),
+					},
 				},
 			}))
 		})

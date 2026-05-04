@@ -57,6 +57,28 @@ type Storage struct {
 	// CSIFilestore contains configuration for CSI Filestore driver (support for NFS volumes)
 	// +optional
 	CSIFilestore *CSIFilestore `json:"csiFilestore,omitempty"`
+	// HyperDiskBalanced contains configuration for the hyperdisk-balanced StorageClass (gce-sc-hd-balanced).
+	// +optional
+	HyperDiskBalanced *HyperDiskConfig `json:"hyperDiskBalanced,omitempty"`
+	// HyperDiskThroughput contains configuration for the hyperdisk-throughput StorageClass (gce-sc-hd-throughput).
+	// +optional
+	HyperDiskThroughput *HyperDiskConfig `json:"hyperDiskThroughput,omitempty"`
+	// HyperDiskExtreme contains configuration for the hyperdisk-extreme StorageClass (gce-sc-hd-extreme).
+	// +optional
+	HyperDiskExtreme *HyperDiskConfig `json:"hyperDiskExtreme,omitempty"`
+}
+
+// HyperDiskConfig contains performance parameters for a hyperdisk StorageClass.
+type HyperDiskConfig struct {
+	// ProvisionedIopsOnCreate sets the provisioned-iops-on-create StorageClass parameter.
+	// Supported for hyperdisk-balanced and hyperdisk-extreme.
+	// +optional
+	ProvisionedIopsOnCreate *int64 `json:"provisionedIopsOnCreate,omitempty"`
+	// ProvisionedThroughputOnCreate sets the provisioned-throughput-on-create StorageClass parameter.
+	// Supported for hyperdisk-balanced and hyperdisk-throughput.
+	// Value must be a valid quantity string (e.g. "140Mi").
+	// +optional
+	ProvisionedThroughputOnCreate *string `json:"provisionedThroughputOnCreate,omitempty"`
 }
 
 // CSIFilestore contains configuration for CSI Filestore driver

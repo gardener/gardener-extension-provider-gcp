@@ -3,3 +3,7 @@ managedDefaultVolumeSnapshotClass: true
 filestore:
   enabled: false
   network: default
+hyperdisk:
+  balanced: {}
+  throughput: {}
+  extreme: {}

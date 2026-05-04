@@ -264,6 +264,13 @@ storage:
   managedDefaultStorageClass: true
   managedDefaultVolumeSnapshotClass: true
 # defaultStorageClass: gce-sc-hd-balanced  # allowed: default, gce-sc-hdd, gce-sc-fast, gce-sc-hd-balanced, gce-sc-hd-throughput, gce-sc-hd-extreme
+# hyperDiskBalanced:
+#   provisionedIopsOnCreate: 3000
+#   provisionedThroughputOnCreate: "140Mi"
+# hyperDiskThroughput:
+#   provisionedThroughputOnCreate: "250Mi"
+# hyperDiskExtreme:
+#   provisionedIopsOnCreate: 10000
 #  csiFilestore:
 #    enabled: true
 ```
@@ -294,6 +301,18 @@ The following values are supported:
 | `gce-sc-hd-extreme` | Hyperdisk Extreme |
 
 Setting `storage.defaultStorageClass` has no effect when `storage.managedDefaultStorageClass` is `false`.
+
+The `storage.hyperDiskBalanced`, `storage.hyperDiskThroughput`, and `storage.hyperDiskExtreme` fields allow configuring performance parameters for the respective hyperdisk StorageClasses.
+These map directly to GCP CSI driver StorageClass parameters.
+The following parameters are supported per disk type:
+
+| Field | `hyperDiskBalanced` | `hyperDiskThroughput` | `hyperDiskExtreme` |
+|---|---|---|---|
+| `provisionedIopsOnCreate` | supported | not supported | supported |
+| `provisionedThroughputOnCreate` | supported | supported | not supported |
+
+`provisionedIopsOnCreate` is a positive integer (e.g. `3000`).
+`provisionedThroughputOnCreate` is a quantity string (e.g. `"140Mi"`).
 
 Furthermore, the `storage.csiFilestore.enabled` field can be set to `true` to
 enable the [GCP Filestore CSI driver](https://cloud.google.com/filestore/docs/csi-driver).
