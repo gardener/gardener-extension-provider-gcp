@@ -543,14 +543,14 @@ var _ = Describe("ValuesProvider", func() {
 		It("should return correct storage class chart values when using hyperdisk-balanced as default", func() {
 			cp.Spec.ProviderConfig.Raw = encode(&apisgcp.ControlPlaneConfig{
 				Storage: &apisgcp.Storage{
-					DefaultStorageClass: ptr.To("hyperdisk-balanced"),
+					DefaultStorageClass: ptr.To("gce-sc-hd-balanced"),
 				},
 			})
 
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"defaultStorageClass":               "hyperdisk-balanced",
+				"defaultStorageClass":               "gce-sc-hd-balanced",
 				"managedDefaultVolumeSnapshotClass": true,
 				"filestore": map[string]interface{}{
 					"enabled": false,
@@ -568,7 +568,7 @@ var _ = Describe("ValuesProvider", func() {
 			cp.Spec.ProviderConfig.Raw = encode(&apisgcp.ControlPlaneConfig{
 				Storage: &apisgcp.Storage{
 					ManagedDefaultStorageClass: ptr.To(false),
-					DefaultStorageClass:        ptr.To("hyperdisk-balanced"),
+					DefaultStorageClass:        ptr.To("gce-sc-hd-balanced"),
 				},
 			})
 
