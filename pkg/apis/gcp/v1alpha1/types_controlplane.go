@@ -41,6 +41,13 @@ type Storage struct {
 	// Defaults to true.
 	// +optional
 	ManagedDefaultStorageClass *bool `json:"managedDefaultStorageClass,omitempty"`
+	// DefaultStorageClass controls which storage class is marked as default.
+	// Allowed values: "default" (pd-balanced), "gce-sc-hdd" (pd-standard), "gce-sc-fast" (pd-ssd),
+	// "gce-sc-hd-balanced", "gce-sc-hd-throughput", "gce-sc-hd-extreme".
+	// If not set, the "default" (pd-balanced) storage class is marked as default (unless ManagedDefaultStorageClass is false).
+	// If ManagedDefaultStorageClass is false, this field has no effect.
+	// +optional
+	DefaultStorageClass *string `json:"defaultStorageClass,omitempty"`
 	// ManagedDefaultVolumeSnapshotClass controls if the 'default' VolumeSnapshotClass would be marked as default.
 	// Set to false to suppress marking the 'default' VolumeSnapshotClass as default, allowing another VolumeSnapshotClass
 	// not managed by Gardener to be set as default by the user.

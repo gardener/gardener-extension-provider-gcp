@@ -761,6 +761,11 @@ func (in *Storage) DeepCopyInto(out *Storage) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.DefaultStorageClass != nil {
+		in, out := &in.DefaultStorageClass, &out.DefaultStorageClass
+		*out = new(string)
+		**out = **in
+	}
 	if in.ManagedDefaultVolumeSnapshotClass != nil {
 		in, out := &in.ManagedDefaultVolumeSnapshotClass, &out.ManagedDefaultVolumeSnapshotClass
 		*out = new(bool)

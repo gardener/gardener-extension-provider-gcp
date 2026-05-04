@@ -663,8 +663,10 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 	cp *extensionsv1alpha1.ControlPlane,
 	_ *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
-	managedDefaultStorageClass := true
 	managedDefaultVolumeSnapshotClass := true
+	// defaultStorageClass is the name of the storage class to mark as default.
+	// Empty string means no storage class is marked as default.
+	defaultStorageClass := "default"
 
 	// Decode providerConfig
 	cpConfig := &apisgcp.ControlPlaneConfig{}
@@ -681,12 +683,17 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 	}
 
 	if cpConfig.Storage != nil {
-		managedDefaultStorageClass = ptr.Deref(cpConfig.Storage.ManagedDefaultStorageClass, true)
 		managedDefaultVolumeSnapshotClass = ptr.Deref(cpConfig.Storage.ManagedDefaultVolumeSnapshotClass, true)
+		// ManagedDefaultStorageClass=false suppresses any default annotation, takes priority over DefaultStorageClass.
+		if !ptr.Deref(cpConfig.Storage.ManagedDefaultStorageClass, true) {
+			defaultStorageClass = ""
+		} else if cpConfig.Storage.DefaultStorageClass != nil {
+			defaultStorageClass = *cpConfig.Storage.DefaultStorageClass
+		}
 	}
 
 	return map[string]interface{}{
-		"managedDefaultStorageClass":        managedDefaultStorageClass,
+		"defaultStorageClass":               defaultStorageClass,
 		"managedDefaultVolumeSnapshotClass": managedDefaultVolumeSnapshotClass,
 		"filestore": map[string]interface{}{
 			"enabled": isCSIFilestoreEnabled(cpConfig),

@@ -1578,6 +1578,18 @@ boolean
 </tr>
 <tr>
 <td>
+<code>defaultStorageClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DefaultStorageClass controls which storage class is marked as default.<br />Allowed values: "default" (pd-balanced), "gce-sc-hdd" (pd-standard), "gce-sc-fast" (pd-ssd),<br />"gce-sc-hd-balanced", "gce-sc-hd-throughput", "gce-sc-hd-extreme".<br />If not set, the "default" (pd-balanced) storage class is marked as default (unless ManagedDefaultStorageClass is false).<br />If ManagedDefaultStorageClass is false, this field has no effect.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>managedDefaultVolumeSnapshotClass</code></br>
 <em>
 boolean

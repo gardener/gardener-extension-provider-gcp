@@ -1087,6 +1087,7 @@ func Convert_gcp_ServiceAccount_To_v1alpha1_ServiceAccount(in *gcp.ServiceAccoun
 
 func autoConvert_v1alpha1_Storage_To_gcp_Storage(in *Storage, out *gcp.Storage, s conversion.Scope) error {
 	out.ManagedDefaultStorageClass = (*bool)(unsafe.Pointer(in.ManagedDefaultStorageClass))
+	out.DefaultStorageClass = (*string)(unsafe.Pointer(in.DefaultStorageClass))
 	out.ManagedDefaultVolumeSnapshotClass = (*bool)(unsafe.Pointer(in.ManagedDefaultVolumeSnapshotClass))
 	out.CSIFilestore = (*gcp.CSIFilestore)(unsafe.Pointer(in.CSIFilestore))
 	return nil
@@ -1099,6 +1100,7 @@ func Convert_v1alpha1_Storage_To_gcp_Storage(in *Storage, out *gcp.Storage, s co
 
 func autoConvert_gcp_Storage_To_v1alpha1_Storage(in *gcp.Storage, out *Storage, s conversion.Scope) error {
 	out.ManagedDefaultStorageClass = (*bool)(unsafe.Pointer(in.ManagedDefaultStorageClass))
+	out.DefaultStorageClass = (*string)(unsafe.Pointer(in.DefaultStorageClass))
 	out.ManagedDefaultVolumeSnapshotClass = (*bool)(unsafe.Pointer(in.ManagedDefaultVolumeSnapshotClass))
 	out.CSIFilestore = (*CSIFilestore)(unsafe.Pointer(in.CSIFilestore))
 	return nil

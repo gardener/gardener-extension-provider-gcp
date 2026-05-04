@@ -13,6 +13,15 @@ import (
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 )
 
+var validStorageClassNames = sets.New(
+	"default",
+	"gce-sc-hdd",
+	"gce-sc-fast",
+	"gce-sc-hd-balanced",
+	"gce-sc-hd-throughput",
+	"gce-sc-hd-extreme",
+)
+
 // ValidateControlPlaneConfig validates a ControlPlaneConfig object.
 func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, allowedZones, workerZones sets.Set[string], version string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
@@ -29,6 +38,12 @@ func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, 
 
 	if controlPlaneConfig.CloudControllerManager != nil {
 		allErrs = append(allErrs, featurevalidation.ValidateFeatureGates(controlPlaneConfig.CloudControllerManager.FeatureGates, version, fldPath.Child("cloudControllerManager", "featureGates"))...)
+	}
+
+	if controlPlaneConfig.Storage != nil && controlPlaneConfig.Storage.DefaultStorageClass != nil {
+		if !validStorageClassNames.Has(*controlPlaneConfig.Storage.DefaultStorageClass) {
+			allErrs = append(allErrs, field.NotSupported(fldPath.Child("storage", "defaultStorageClass"), *controlPlaneConfig.Storage.DefaultStorageClass, sets.List(validStorageClassNames)))
+		}
 	}
 
 	return allErrs

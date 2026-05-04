@@ -1,4 +1,4 @@
-managedDefaultStorageClass: true
+defaultStorageClass: default
 managedDefaultVolumeSnapshotClass: true
 filestore:
   enabled: false

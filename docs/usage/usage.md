@@ -263,6 +263,7 @@ cloudControllerManager:
 storage:
   managedDefaultStorageClass: true
   managedDefaultVolumeSnapshotClass: true
+# defaultStorageClass: gce-sc-hd-balanced  # allowed: default, gce-sc-hdd, gce-sc-fast, gce-sc-hd-balanced, gce-sc-hd-throughput, gce-sc-hd-extreme
 #  csiFilestore:
 #    enabled: true
 ```
@@ -279,6 +280,20 @@ The members of the `storage` allows to configure the provided storage classes fu
 If `storage.managedDefaultStorageClass` is enabled (the default), the `default` StorageClass deployed will be marked as default (via `storageclass.kubernetes.io/is-default-class` annotation).
 Similarly, if `storage.managedDefaultVolumeSnapshotClass` is enabled (the default), the `default` VolumeSnapshotClass deployed will be marked as default.
 In case you want to set a different StorageClass or VolumeSnapshotClass as default you need to set the corresponding option to `false` as at most one class should be marked as default in each case and the ResourceManager will prevent any changes from the Gardener managed classes to take effect.
+
+The `storage.defaultStorageClass` field allows selecting which of the Gardener-managed storage classes is marked as default.
+The following values are supported:
+
+| Value | Disk type |
+|---|---|
+| `default` | `pd-balanced` (default if unset) |
+| `gce-sc-hdd` | `pd-standard` |
+| `gce-sc-fast` | `pd-ssd` |
+| `gce-sc-hd-balanced` | Hyperdisk Balanced |
+| `gce-sc-hd-throughput` | Hyperdisk Throughput |
+| `gce-sc-hd-extreme` | Hyperdisk Extreme |
+
+Setting `storage.defaultStorageClass` has no effect when `storage.managedDefaultStorageClass` is `false`.
 
 Furthermore, the `storage.csiFilestore.enabled` field can be set to `true` to
 enable the [GCP Filestore CSI driver](https://cloud.google.com/filestore/docs/csi-driver).

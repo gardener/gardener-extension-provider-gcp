@@ -63,6 +63,7 @@ spec:
     storage:
       managedDefaultStorageClass: true
       managedDefaultVolumeSnapshotClass: true
+    # defaultStorageClass: gce-sc-hd-balanced  # allowed: default, gce-sc-hdd, gce-sc-fast, gce-sc-hd-balanced, gce-sc-hd-throughput, gce-sc-hd-extreme
   infrastructureProviderStatus:
     apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
     kind: InfrastructureStatus

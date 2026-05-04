@@ -94,6 +94,28 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 				})),
 			))
 		})
+
+		DescribeTable("should validate DefaultStorageClass",
+			func(name string, expectErr bool) {
+				controlPlane.Storage = &apisgcp.Storage{DefaultStorageClass: &name}
+				errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "", fldPath)
+				if expectErr {
+					Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeNotSupported),
+						"Field": Equal("storage.defaultStorageClass"),
+					}))))
+				} else {
+					Expect(errorList).To(BeEmpty())
+				}
+			},
+			Entry("valid: default", "default", false),
+			Entry("valid: gce-sc-hdd", "gce-sc-hdd", false),
+			Entry("valid: gce-sc-fast", "gce-sc-fast", false),
+			Entry("valid: gce-sc-hd-balanced", "gce-sc-hd-balanced", false),
+			Entry("valid: gce-sc-hd-throughput", "gce-sc-hd-throughput", false),
+			Entry("valid: gce-sc-hd-extreme", "gce-sc-hd-extreme", false),
+			Entry("invalid: unknown", "pd-ssd", true),
+		)
 	})
 
 	Describe("#ValidateControlPlaneConfigUpdate", func() {
