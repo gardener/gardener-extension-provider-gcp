@@ -4,7 +4,7 @@ metadata:
   name: csi-driver-filestore-controller
   namespace: {{ .Release.Namespace }}
   labels:
-    app: csi
+    app: csi-filestore
     role: controller
     high-availability-config.resources.gardener.cloud/type: controller
 spec:
@@ -12,7 +12,7 @@ spec:
   revisionHistoryLimit: 0
   selector:
     matchLabels:
-      app: csi
+      app: csi-filestore
       role: controller
   strategy:
     rollingUpdate:
@@ -27,7 +27,7 @@ spec:
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
       labels:
-        app: csi
+        app: csi-filestore
         role: controller
         gardener.cloud/role: controlplane
         networking.gardener.cloud/to-dns: allowed
