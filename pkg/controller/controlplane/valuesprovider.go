@@ -780,6 +780,8 @@ func cleanupSeedLegacyCSISnapshotValidation(
 // deleteFilestoreControllerDeploymentWithOldSelector deletes the csi-driver-filestore-controller Deployment
 // if it exists with the old selector (app: csi), so it can be recreated with the new selector
 // (app: csi-filestore) that differentiates it from csi-driver-controller for health checks.
+// Returns an error after deletion to force a requeue, since the apply in the same reconcile cycle
+// would otherwise fail due to the immutable spec.selector field.
 func deleteFilestoreControllerDeploymentWithOldSelector(
 	ctx context.Context,
 	c k8sclient.Client,
@@ -794,5 +796,8 @@ func deleteFilestoreControllerDeploymentWithOldSelector(
 		return nil
 	}
 
-	return k8sclient.IgnoreNotFound(c.Delete(ctx, deployment))
+	if err := c.Delete(ctx, deployment); k8sclient.IgnoreNotFound(err) != nil {
+		return err
+	}
+	return fmt.Errorf("deleted %s Deployment with outdated selector, requeueing to recreate it", gcp.CSIFilestoreControllerName)
 }
