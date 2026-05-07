@@ -269,6 +269,64 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 		})
 
+		Context("MTU", func() {
+			It("should allow valid MTU values for Gardener-managed VPC", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.VPC = nil
+				for _, mtu := range []int32{1300, 1460, 1500, 8896} {
+					mtuVal := mtu
+					newInfrastructureConfig.Networks.MTU = &mtuVal
+					errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+					Expect(errorList).To(BeEmpty())
+				}
+			})
+
+			It("should forbid MTU below 1300", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.VPC = nil
+				newInfrastructureConfig.Networks.MTU = ptr.To[int32](1299)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.mtu"),
+					"Detail": Equal("mtu must be between 1300 and 8896"),
+				}))
+			})
+
+			It("should forbid MTU above 8896", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.VPC = nil
+				newInfrastructureConfig.Networks.MTU = ptr.To[int32](8897)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.mtu"),
+					"Detail": Equal("mtu must be between 1300 and 8896"),
+				}))
+			})
+
+			It("should forbid MTU when using an existing VPC", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.MTU = ptr.To[int32](8896)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeForbidden),
+					"Field":  Equal("networks.mtu"),
+					"Detail": Equal("mtu cannot be configured when using an existing VPC"),
+				}))
+			})
+
+			It("should allow nil MTU", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.MTU = nil
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(BeEmpty())
+			})
+		})
+
 		Context("CloudNAT and Flowlogs", func() {
 			It("should allow correct flowlogs config", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
@@ -461,6 +519,29 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				"Field":  Equal("networks.workers"),
 				"Detail": Equal("worker CIDR blocks can only be expanded"),
 			}))
+		})
+
+		It("should forbid changing MTU", func() {
+			oldConfig := infrastructureConfig.DeepCopy()
+			oldConfig.Networks.MTU = ptr.To[int32](1500)
+			newConfig := oldConfig.DeepCopy()
+			newConfig.Networks.MTU = ptr.To[int32](8896)
+			errorList := ValidateInfrastructureConfigUpdate(oldConfig, newConfig, fldPath)
+
+			Expect(errorList).To(ConsistOfFields(Fields{
+				"Type":   Equal(field.ErrorTypeInvalid),
+				"Field":  Equal("networks.mtu"),
+				"Detail": Equal("field is immutable"),
+			}))
+		})
+
+		It("should allow unchanged MTU on update", func() {
+			oldConfig := infrastructureConfig.DeepCopy()
+			oldConfig.Networks.MTU = ptr.To[int32](8896)
+			newConfig := oldConfig.DeepCopy()
+			errorList := ValidateInfrastructureConfigUpdate(oldConfig, newConfig, fldPath)
+
+			Expect(errorList).To(BeEmpty())
 		})
 	})
 })

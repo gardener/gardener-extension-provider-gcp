@@ -39,6 +39,11 @@ type NetworkConfig struct {
 	// FlowLogs contains the flow log configuration for the subnet.
 	// +optional
 	FlowLogs *FlowLogs `json:"flowLogs,omitempty"`
+	// MTU is the maximum transmission unit size (in bytes) for the VPC network.
+	// Only applicable for Gardener-managed VPCs (i.e., when VPC field is not set).
+	// Valid values: 1300 to 8896. If unspecified, GCP defaults to 1460.
+	// +optional
+	MTU *int32 `json:"mtu,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
