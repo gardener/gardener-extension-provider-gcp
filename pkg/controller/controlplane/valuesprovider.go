@@ -771,4 +771,3 @@ func cleanupSeedLegacyCSISnapshotValidation(
 
 	return nil
 }
-
