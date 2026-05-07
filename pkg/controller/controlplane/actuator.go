@@ -17,6 +17,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	resourcesv1alpha1 "github.com/gardener/gardener/pkg/apis/resources/v1alpha1"
 	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -81,6 +82,13 @@ func (a *actuator) Reconcile(
 
 	// Remove ignore annotations from the control plane managed resource
 	if err := a.removeIgnoreAnnotations(ctx, log, cluster); err != nil {
+		return ok, err
+	}
+
+	// TODO: rm in future release.
+	// Delete the csi-driver-filestore-controller Deployment if it still has the old selector,
+	// so the newly applied chart (with the correct selector) can take over without conflict.
+	if err := a.deleteFilestoreControllerDeploymentWithOldSelector(ctx, cp.Namespace); err != nil {
 		return ok, err
 	}
 
@@ -241,4 +249,20 @@ func (a *actuator) removeCleanupAnnotation(ctx context.Context, cp *extensionsv1
 	patch := client.MergeFrom(cp.DeepCopy())
 	delete(cp.Annotations, AnnotationCalicoCleanupCompleted)
 	return a.client.Patch(ctx, cp, patch)
+}
+
+// deleteFilestoreControllerDeploymentWithOldSelector deletes the csi-driver-filestore-controller Deployment
+// if it still has the old selector (app: csi). This is called post-reconcile so the chart with the new
+// selector (app: csi-filestore) has already been applied, and the stale Deployment can be safely removed.
+func (a *actuator) deleteFilestoreControllerDeploymentWithOldSelector(ctx context.Context, namespace string) error {
+	deployment := &appsv1.Deployment{}
+	if err := a.client.Get(ctx, client.ObjectKey{Name: gcp.CSIFilestoreControllerName, Namespace: namespace}, deployment); err != nil {
+		return client.IgnoreNotFound(err)
+	}
+
+	if deployment.Spec.Selector.MatchLabels["app"] == "csi-filestore" {
+		return nil
+	}
+
+	return client.IgnoreNotFound(a.client.Delete(ctx, deployment))
 }

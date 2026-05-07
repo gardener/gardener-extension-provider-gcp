@@ -364,11 +364,6 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, err
 	}
 
-	// TODO: rm in future release.
-	if err := deleteFilestoreControllerDeploymentWithOldSelector(ctx, vp.client, cp.Namespace); err != nil {
-		return nil, err
-	}
-
 	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
 }
 
@@ -777,27 +772,3 @@ func cleanupSeedLegacyCSISnapshotValidation(
 	return nil
 }
 
-// deleteFilestoreControllerDeploymentWithOldSelector deletes the csi-driver-filestore-controller Deployment
-// if it exists with the old selector (app: csi), so it can be recreated with the new selector
-// (app: csi-filestore) that differentiates it from csi-driver-controller for health checks.
-// Returns an error after deletion to force a requeue, since the apply in the same reconcile cycle
-// would otherwise fail due to the immutable spec.selector field.
-func deleteFilestoreControllerDeploymentWithOldSelector(
-	ctx context.Context,
-	c k8sclient.Client,
-	namespace string,
-) error {
-	deployment := &appsv1.Deployment{}
-	if err := c.Get(ctx, k8sclient.ObjectKey{Name: gcp.CSIFilestoreControllerName, Namespace: namespace}, deployment); err != nil {
-		return k8sclient.IgnoreNotFound(err)
-	}
-
-	if deployment.Spec.Selector.MatchLabels["app"] == "csi-filestore" {
-		return nil
-	}
-
-	if err := c.Delete(ctx, deployment); k8sclient.IgnoreNotFound(err) != nil {
-		return err
-	}
-	return fmt.Errorf("deleted %s Deployment with outdated selector, requeueing to recreate it", gcp.CSIFilestoreControllerName)
-}
