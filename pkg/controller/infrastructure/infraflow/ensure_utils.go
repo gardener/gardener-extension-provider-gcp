@@ -81,8 +81,8 @@ func (fctx *FlowContext) cloudNatNameFromConfig() string {
 	return fmt.Sprintf("%s-cloud-nat", fctx.clusterName)
 }
 
-func targetNetwork(name string) *compute.Network {
-	return &compute.Network{
+func targetNetwork(name string, mtu *int32) *compute.Network {
+	nw := &compute.Network{
 		Name:                  name,
 		AutoCreateSubnetworks: false,
 		RoutingConfig: &compute.NetworkRoutingConfig{
@@ -90,6 +90,10 @@ func targetNetwork(name string) *compute.Network {
 		},
 		ForceSendFields: []string{"AutoCreateSubnetworks"},
 	}
+	if mtu != nil {
+		nw.Mtu = int64(*mtu)
+	}
+	return nw
 }
 
 func targetSubnetState(name, description, cidr, networkName string, flowLogs *gcp.FlowLogs, dualStack bool, secondaryRange *string) *compute.Subnetwork {

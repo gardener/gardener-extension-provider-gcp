@@ -978,6 +978,7 @@ func autoConvert_v1alpha1_NetworkConfig_To_gcp_NetworkConfig(in *NetworkConfig, 
 	} else {
 		out.FlowLogs = nil
 	}
+	out.MTU = (*int32)(unsafe.Pointer(in.MTU))
 	return nil
 }
 
@@ -1001,6 +1002,7 @@ func autoConvert_gcp_NetworkConfig_To_v1alpha1_NetworkConfig(in *gcp.NetworkConf
 	} else {
 		out.FlowLogs = nil
 	}
+	out.MTU = (*int32)(unsafe.Pointer(in.MTU))
 	return nil
 }
 

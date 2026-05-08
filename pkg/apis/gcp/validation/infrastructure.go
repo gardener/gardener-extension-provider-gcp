@@ -121,6 +121,16 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 		allErrs = append(allErrs, ValidateCloudNatConfig(infra.Networks.CloudNAT, networksPath)...)
 	}
 
+	if infra.Networks.MTU != nil {
+		mtuPath := networksPath.Child("mtu")
+		if infra.Networks.VPC != nil && len(infra.Networks.VPC.Name) > 0 {
+			allErrs = append(allErrs, field.Forbidden(mtuPath, "mtu cannot be configured when using an existing VPC"))
+		}
+		if *infra.Networks.MTU < 1300 || *infra.Networks.MTU > 8896 {
+			allErrs = append(allErrs, field.Invalid(mtuPath, *infra.Networks.MTU, "mtu must be between 1300 and 8896"))
+		}
+	}
+
 	return allErrs
 }
 
@@ -231,6 +241,8 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.Infrastruc
 	if len(newWorker.ValidateSubset(oldWorker)) > 0 {
 		allErrs = append(allErrs, field.Invalid(newWorker.GetFieldPath(), newWorker.GetCIDR(), "worker CIDR blocks can only be expanded"))
 	}
+
+	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.MTU, oldConfig.Networks.MTU, networksPath.Child("mtu"))...)
 
 	return allErrs
 }

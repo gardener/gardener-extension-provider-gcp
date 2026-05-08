@@ -69,7 +69,7 @@ func (fctx *FlowContext) ensureVPC(ctx context.Context) error {
 		return err
 	}
 
-	targetVPC := targetNetwork(vpcName)
+	targetVPC := targetNetwork(vpcName, fctx.config.Networks.MTU)
 	if current == nil {
 		current, err = fctx.computeClient.InsertNetwork(ctx, targetVPC)
 		if err != nil {

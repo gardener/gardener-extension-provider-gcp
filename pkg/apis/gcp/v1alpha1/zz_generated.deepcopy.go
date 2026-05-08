@@ -671,6 +671,11 @@ func (in *NetworkConfig) DeepCopyInto(out *NetworkConfig) {
 		*out = new(FlowLogs)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.MTU != nil {
+		in, out := &in.MTU, &out.MTU
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 

@@ -1360,6 +1360,18 @@ string
 <p>FlowLogs contains the flow log configuration for the subnet.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>mtu</code></br>
+<em>
+integer
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MTU is the maximum transmission unit size (in bytes) for the VPC network.<br />Only applicable for Gardener-managed VPCs (i.e., when VPC field is not set).<br />Valid values: 1300 to 8896. If unspecified, GCP defaults to 1460.</p>
+</td>
+</tr>
 
 </tbody>
 </table>
