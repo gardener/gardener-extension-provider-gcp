@@ -125,13 +125,13 @@ docker-images: docker-image-provider docker-image-admission
 
 .PHONY: docker-push-provider
 docker-push-provider: $(KUBECTL)
-	$(eval REGISTRY_URL := $(shell $(KUBECTL) cluster-info | head -1 | grep -oP 'https://\K[^:]+' | sed 's/^api\./reg./'))
+	$(eval REGISTRY_URL := $(shell $(KUBECTL) cluster-info | head -1 | sed 's|.*https://\([^:/]*\).*|\1|' | sed 's/^api\./reg./'))
 	@docker tag $(IMAGE_PREFIX)/$(NAME):$(VERSION) $(REGISTRY_URL)/$(NAME):$(EFFECTIVE_VERSION)
 	@docker push $(REGISTRY_URL)/$(NAME):$(EFFECTIVE_VERSION)
 
 .PHONY: docker-push-admission
 docker-push-admission: $(KUBECTL)
-	$(eval REGISTRY_URL := $(shell $(KUBECTL) cluster-info | head -1 | grep -oP 'https://\K[^:]+' | sed 's/^api\./reg./'))
+	$(eval REGISTRY_URL := $(shell $(KUBECTL) cluster-info | head -1 | sed 's|.*https://\([^:/]*\).*|\1|' | sed 's/^api\./reg./'))
 	@docker tag $(IMAGE_PREFIX)/$(ADMISSION_NAME):$(VERSION) $(REGISTRY_URL)/$(ADMISSION_NAME):$(EFFECTIVE_VERSION)
 	@docker push $(REGISTRY_URL)/$(ADMISSION_NAME):$(EFFECTIVE_VERSION)
 
@@ -154,12 +154,12 @@ helm-charts: helm-chart-provider helm-chart-admission
 
 .PHONY: helm-push-provider
 helm-push-provider: $(HELM) $(KUBECTL)
-	$(eval REGISTRY_URL := $(shell $(KUBECTL) cluster-info | head -1 | grep -oP 'https://\K[^:]+' | sed 's/^api\./reg./'))
+	$(eval REGISTRY_URL := $(shell $(KUBECTL) cluster-info | head -1 | sed 's|.*https://\([^:/]*\).*|\1|' | sed 's/^api\./reg./'))
 	@$(HELM) push remote/$(EXTENSION_PREFIX)-$(NAME)-$(EFFECTIVE_VERSION).tgz oci://$(REGISTRY_URL)
 
 .PHONY: helm-push-admission
 helm-push-admission: $(HELM) $(KUBECTL)
-	$(eval REGISTRY_URL := $(shell $(KUBECTL) cluster-info | head -1 | grep -oP 'https://\K[^:]+' | sed 's/^api\./reg./'))
+	$(eval REGISTRY_URL := $(shell $(KUBECTL) cluster-info | head -1 | sed 's|.*https://\([^:/]*\).*|\1|' | sed 's/^api\./reg./'))
 	@$(HELM) push remote/$(ADMISSION_NAME)-application-$(EFFECTIVE_VERSION).tgz oci://$(REGISTRY_URL)
 	@$(HELM) push remote/$(ADMISSION_NAME)-runtime-$(EFFECTIVE_VERSION).tgz oci://$(REGISTRY_URL)
 
@@ -168,7 +168,7 @@ helm-push: helm-push-provider helm-push-admission
 
 .PHONY: extension-manifest
 extension-manifest: $(KUBECTL) $(YQ)
-	$(eval REGISTRY_URL := $(shell $(KUBECTL) cluster-info | head -1 | grep -oP 'https://\K[^:]+' | sed 's/^api\./reg./'))
+	$(eval REGISTRY_URL := $(shell $(KUBECTL) cluster-info | head -1 | sed 's|.*https://\([^:/]*\).*|\1|' | sed 's/^api\./reg./'))
 	@mkdir -p remote
 	@$(YQ) eval ".spec.deployment.admission.runtimeCluster.helm.ociRepository.ref = \"$(REGISTRY_URL)/$(ADMISSION_NAME)-runtime:$(EFFECTIVE_VERSION)\" | \
 	          .spec.deployment.admission.runtimeCluster.helm.ociRepository.pullSecretRef.name = \"gardener-images\" | \
