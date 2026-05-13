@@ -26,13 +26,11 @@ import (
 // NewCloudProfileMutator returns a new instance of a CloudProfile mutator.
 func NewCloudProfileMutator(mgr manager.Manager) extensionswebhook.Mutator {
 	return &cloudProfile{
-		client:  mgr.GetClient(),
 		decoder: serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 	}
 }
 
 type cloudProfile struct {
-	client  client.Client
 	decoder runtime.Decoder
 }
 
@@ -53,15 +51,16 @@ func (p *cloudProfile) Mutate(_ context.Context, newObj, _ client.Object) error 
 		return fmt.Errorf("could not decode providerConfig of cloudProfile for '%s': %w", profile.Name, err)
 	}
 
-	overwriteMachineImageCapabilityFlavors(profile, specConfig)
+	mutateMachineImageCapabilityFlavors(profile.Spec.MachineImages, specConfig)
 	return nil
 }
 
-// overwriteMachineImageCapabilityFlavors updates the capability flavors of machine images in the CloudProfile
-func overwriteMachineImageCapabilityFlavors(profile *gardencorev1beta1.CloudProfile, config *v1alpha1.CloudProfileConfig) {
+// mutateMachineImageCapabilityFlavors populates capabilityFlavors on the given machine images
+// based on provider config entries. This is shared between CloudProfile and NamespacedCloudProfile mutators.
+func mutateMachineImageCapabilityFlavors(machineImages []gardencorev1beta1.MachineImage, config *v1alpha1.CloudProfileConfig) {
 	for _, providerMachineImage := range config.MachineImages {
-		// Find the corresponding machine image in the CloudProfile
-		imageIdx := slices.IndexFunc(profile.Spec.MachineImages, func(mi gardencorev1beta1.MachineImage) bool {
+		// Find the corresponding machine image
+		imageIdx := slices.IndexFunc(machineImages, func(mi gardencorev1beta1.MachineImage) bool {
 			return mi.Name == providerMachineImage.Name
 		})
 		if imageIdx == -1 {
@@ -72,8 +71,8 @@ func overwriteMachineImageCapabilityFlavors(profile *gardencorev1beta1.CloudProf
 		groupedVersions := helper.GroupV1alpha1VersionsByVersionString(providerMachineImage.Versions)
 
 		for versionStr, providerVersions := range groupedVersions {
-			// Find the corresponding version in the CloudProfile's machine image
-			versionIdx := slices.IndexFunc(profile.Spec.MachineImages[imageIdx].Versions, func(miv gardencorev1beta1.MachineImageVersion) bool {
+			// Find the corresponding version in the machine image
+			versionIdx := slices.IndexFunc(machineImages[imageIdx].Versions, func(miv gardencorev1beta1.MachineImageVersion) bool {
 				return miv.Version == versionStr
 			})
 			if versionIdx == -1 {
@@ -96,7 +95,7 @@ func overwriteMachineImageCapabilityFlavors(profile *gardencorev1beta1.CloudProf
 				capabilityFlavors = convertVersionsToCapabilityFlavors(providerVersions)
 			}
 
-			profile.Spec.MachineImages[imageIdx].Versions[versionIdx].CapabilityFlavors = capabilityFlavors
+			machineImages[imageIdx].Versions[versionIdx].CapabilityFlavors = capabilityFlavors
 		}
 	}
 }
