@@ -1,4 +1,4 @@
-# [Gardener Extension for GCP provider](https://gardener.cloud)
+# Gardener Extension for GCP provider
 
 [![REUSE status](https://api.reuse.software/badge/github.com/gardener/gardener-extension-provider-gcp)](https://api.reuse.software/info/github.com/gardener/gardener-extension-provider-gcp)
 [![Build](https://github.com/gardener/gardener-extension-provider-gcp/actions/workflows/non-release.yaml/badge.svg)](https://github.com/gardener/gardener-extension-provider-gcp/actions/workflows/non-release.yaml)
