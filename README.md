@@ -31,6 +31,14 @@ This extension controller supports the following Kubernetes versions:
 
 Please take a look [here](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/supported_k8s_versions.md) to see which versions are supported by Gardener in general.
 
+## Compatibility
+
+The following lists known compatibility issues of this extension controller with other Gardener components.
+
+| GCP Extension | Gardener | Action | Notes |
+| ------------- | -------- | ------ | ----- |
+| `>= v1.52.0` | `< v1.135.0` | Please update Gardener to version `>= v1.135.0` | The shoot API field `shoot.spec.dns.providers[].secretName` has been deprecated in favor of `shoot.spec.dns.providers[].credentialsRef` which is available in Gardener `>= v1.135.0`, the provider extension is migrated to use the new field only in `v1.52.0`. |
+
 ----
 
 ## How to start using or developing this extension controller locally
