@@ -6,7 +6,6 @@ images:
 # chart that is used to deploy the cloud-controller-manager. For more information check
 # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987914997 and
 # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987998478
-#
 # TODO(plkokanov,AndreasBurger,kon-angelo,hebelsan): Bump the patch version of the cloud-controller-manager after the Dockerfile
 # for the v32.2.* releases has been updated to contain both a CMD and ENTRYPOINT ref:
 # https://github.com/kubernetes/cloud-provider-gcp/pull/842#issuecomment-2987419314
@@ -233,7 +232,7 @@ images:
 - name: ingress-default-backend
   sourceRepository: github.com/gardener/ingress-default-backend
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/ingress-default-backend
-  tag: 0.25.0
+  tag: 0.26.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -246,7 +245,6 @@ images:
       comment: Show static page when no path is found
     signing: false
 - name: ingress-gce
-  # fork of github.com/kubernetes/ingress-gce to be able to build the images ourselves
   sourceRepository: github.com/gardener/ingress-gce
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/extensions/ingress-gce
   tag: v1.38.2
@@ -263,7 +261,7 @@ images:
 - name: machine-controller-manager-provider-gcp
   sourceRepository: github.com/gardener/machine-controller-manager-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/machine-controller-manager-provider-gcp
-  tag: v0.27.0
+  tag: v0.28.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
