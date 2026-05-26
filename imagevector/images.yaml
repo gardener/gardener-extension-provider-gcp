@@ -6,6 +6,7 @@ images:
 # chart that is used to deploy the cloud-controller-manager. For more information check
 # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987914997 and
 # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987998478
+#
 # TODO(plkokanov,AndreasBurger,kon-angelo,hebelsan): Bump the patch version of the cloud-controller-manager after the Dockerfile
 # for the v32.2.* releases has been updated to contain both a CMD and ENTRYPOINT ref:
 # https://github.com/kubernetes/cloud-provider-gcp/pull/842#issuecomment-2987419314
@@ -245,6 +246,7 @@ images:
       comment: Show static page when no path is found
     signing: false
 - name: ingress-gce
+  # fork of github.com/kubernetes/ingress-gce to be able to build the images ourselves
   sourceRepository: github.com/gardener/ingress-gce
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/extensions/ingress-gce
   tag: v1.38.2
