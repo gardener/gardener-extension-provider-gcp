@@ -740,6 +740,7 @@ func Convert_gcp_GPU_To_v1alpha1_GPU(in *gcp.GPU, out *GPU, s conversion.Scope) 
 }
 
 func autoConvert_v1alpha1_HyperDiskConfig_To_gcp_HyperDiskConfig(in *HyperDiskConfig, out *gcp.HyperDiskConfig, s conversion.Scope) error {
+	out.Enabled = in.Enabled
 	out.ProvisionedIopsOnCreate = (*int64)(unsafe.Pointer(in.ProvisionedIopsOnCreate))
 	out.ProvisionedThroughputOnCreate = (*string)(unsafe.Pointer(in.ProvisionedThroughputOnCreate))
 	return nil
@@ -751,6 +752,7 @@ func Convert_v1alpha1_HyperDiskConfig_To_gcp_HyperDiskConfig(in *HyperDiskConfig
 }
 
 func autoConvert_gcp_HyperDiskConfig_To_v1alpha1_HyperDiskConfig(in *gcp.HyperDiskConfig, out *HyperDiskConfig, s conversion.Scope) error {
+	out.Enabled = in.Enabled
 	out.ProvisionedIopsOnCreate = (*int64)(unsafe.Pointer(in.ProvisionedIopsOnCreate))
 	out.ProvisionedThroughputOnCreate = (*string)(unsafe.Pointer(in.ProvisionedThroughputOnCreate))
 	return nil

@@ -58,24 +58,30 @@ type Storage struct {
 	// +optional
 	CSIFilestore *CSIFilestore `json:"csiFilestore,omitempty"`
 	// HyperDiskBalanced contains configuration for the hyperdisk-balanced StorageClass (gce-sc-hd-balanced).
+	// The StorageClass is only deployed when Enabled is set to true.
 	// +optional
 	HyperDiskBalanced *HyperDiskConfig `json:"hyperDiskBalanced,omitempty"`
 	// HyperDiskThroughput contains configuration for the hyperdisk-throughput StorageClass (gce-sc-hd-throughput).
+	// The StorageClass is only deployed when Enabled is set to true.
 	// +optional
 	HyperDiskThroughput *HyperDiskConfig `json:"hyperDiskThroughput,omitempty"`
 	// HyperDiskExtreme contains configuration for the hyperdisk-extreme StorageClass (gce-sc-hd-extreme).
+	// The StorageClass is only deployed when Enabled is set to true.
 	// +optional
 	HyperDiskExtreme *HyperDiskConfig `json:"hyperDiskExtreme,omitempty"`
 }
 
-// HyperDiskConfig contains performance parameters for a hyperdisk StorageClass.
+// HyperDiskConfig contains configuration for a hyperdisk StorageClass.
 type HyperDiskConfig struct {
+	// Enabled controls whether this hyperdisk StorageClass is deployed.
+	// When true, the required performance parameters for the disk type must be provided.
+	Enabled bool `json:"enabled"`
 	// ProvisionedIopsOnCreate sets the provisioned-iops-on-create StorageClass parameter.
-	// Supported for hyperdisk-balanced and hyperdisk-extreme.
+	// Supported for hyperdisk-balanced and hyperdisk-extreme. Required when Enabled is true for those types.
 	// +optional
 	ProvisionedIopsOnCreate *int64 `json:"provisionedIopsOnCreate,omitempty"`
 	// ProvisionedThroughputOnCreate sets the provisioned-throughput-on-create StorageClass parameter.
-	// Supported for hyperdisk-balanced and hyperdisk-throughput.
+	// Supported for hyperdisk-balanced and hyperdisk-throughput. Required when Enabled is true for those types.
 	// Value must be a valid quantity string (e.g. "140Mi").
 	// +optional
 	ProvisionedThroughputOnCreate *string `json:"provisionedThroughputOnCreate,omitempty"`

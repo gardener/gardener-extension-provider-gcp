@@ -97,31 +97,45 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 		})
 
 		DescribeTable("should validate DefaultStorageClass",
-			func(name string, expectErr bool) {
-				controlPlane.Storage = &apisgcp.Storage{DefaultStorageClass: &name}
+			func(name string, storage *apisgcp.Storage, expectErrType field.ErrorType) {
+				controlPlane.Storage = storage
+				controlPlane.Storage.DefaultStorageClass = &name
 				errorList := ValidateControlPlaneConfig(controlPlane, allowedZones, workerZones, "", fldPath)
-				if expectErr {
+				if expectErrType == "" {
+					Expect(errorList).To(BeEmpty())
+				} else {
 					Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-						"Type":  Equal(field.ErrorTypeNotSupported),
+						"Type":  Equal(expectErrType),
 						"Field": Equal("storage.defaultStorageClass"),
 					}))))
-				} else {
-					Expect(errorList).To(BeEmpty())
 				}
 			},
-			Entry("valid: default", "default", false),
-			Entry("valid: gce-sc-hdd", "gce-sc-hdd", false),
-			Entry("valid: gce-sc-fast", "gce-sc-fast", false),
-			Entry("valid: gce-sc-hd-balanced", "gce-sc-hd-balanced", false),
-			Entry("valid: gce-sc-hd-throughput", "gce-sc-hd-throughput", false),
-			Entry("valid: gce-sc-hd-extreme", "gce-sc-hd-extreme", false),
-			Entry("invalid: unknown", "pd-ssd", true),
+			Entry("valid: default", "default", &apisgcp.Storage{}, field.ErrorType("")),
+			Entry("valid: gce-sc-hdd", "gce-sc-hdd", &apisgcp.Storage{}, field.ErrorType("")),
+			Entry("valid: gce-sc-fast", "gce-sc-fast", &apisgcp.Storage{}, field.ErrorType("")),
+			Entry("valid: gce-sc-hd-balanced with enabled config", "gce-sc-hd-balanced", &apisgcp.Storage{
+				HyperDiskBalanced: &apisgcp.HyperDiskConfig{Enabled: true, ProvisionedIopsOnCreate: ptr.To[int64](3000), ProvisionedThroughputOnCreate: ptr.To("140Mi")},
+			}, field.ErrorType("")),
+			Entry("valid: gce-sc-hd-throughput with enabled config", "gce-sc-hd-throughput", &apisgcp.Storage{
+				HyperDiskThroughput: &apisgcp.HyperDiskConfig{Enabled: true, ProvisionedThroughputOnCreate: ptr.To("250Mi")},
+			}, field.ErrorType("")),
+			Entry("valid: gce-sc-hd-extreme with enabled config", "gce-sc-hd-extreme", &apisgcp.Storage{
+				HyperDiskExtreme: &apisgcp.HyperDiskConfig{Enabled: true, ProvisionedIopsOnCreate: ptr.To[int64](10000)},
+			}, field.ErrorType("")),
+			Entry("invalid: unknown", "pd-ssd", &apisgcp.Storage{}, field.ErrorTypeNotSupported),
+			Entry("invalid: gce-sc-hd-balanced without hyperdisk config", "gce-sc-hd-balanced", &apisgcp.Storage{}, field.ErrorTypeInvalid),
+			Entry("invalid: gce-sc-hd-balanced with disabled config", "gce-sc-hd-balanced", &apisgcp.Storage{
+				HyperDiskBalanced: &apisgcp.HyperDiskConfig{Enabled: false},
+			}, field.ErrorTypeInvalid),
+			Entry("invalid: gce-sc-hd-throughput without hyperdisk config", "gce-sc-hd-throughput", &apisgcp.Storage{}, field.ErrorTypeInvalid),
+			Entry("invalid: gce-sc-hd-extreme without hyperdisk config", "gce-sc-hd-extreme", &apisgcp.Storage{}, field.ErrorTypeInvalid),
 		)
 
 		DescribeTable("should validate HyperDiskBalanced",
-			func(iops *int64, throughput *string, expectErrFields []string) {
+			func(enabled bool, iops *int64, throughput *string, expectErrFields []string) {
 				controlPlane.Storage = &apisgcp.Storage{
 					HyperDiskBalanced: &apisgcp.HyperDiskConfig{
+						Enabled:                       enabled,
 						ProvisionedIopsOnCreate:       iops,
 						ProvisionedThroughputOnCreate: throughput,
 					},
@@ -138,17 +152,20 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 					Expect(errorList).To(ConsistOf(fields...))
 				}
 			},
-			Entry("valid: iops only", ptr.To[int64](3000), nil, nil),
-			Entry("valid: throughput only", nil, ptr.To("140Mi"), nil),
-			Entry("valid: both iops and throughput", ptr.To[int64](3000), ptr.To("140Mi"), nil),
-			Entry("invalid: iops <= 0", ptr.To[int64](0), nil, []string{"storage.hyperDiskBalanced.provisionedIopsOnCreate"}),
-			Entry("invalid: bad throughput quantity", nil, ptr.To("notaquantity!"), []string{"storage.hyperDiskBalanced.provisionedThroughputOnCreate"}),
+			Entry("disabled: no fields required", false, nil, nil, nil),
+			Entry("enabled: iops and throughput provided", true, ptr.To[int64](3000), ptr.To("140Mi"), nil),
+			Entry("enabled: missing iops", true, nil, ptr.To("140Mi"), []string{"storage.hyperDiskBalanced.provisionedIopsOnCreate"}),
+			Entry("enabled: missing throughput", true, ptr.To[int64](3000), nil, []string{"storage.hyperDiskBalanced.provisionedThroughputOnCreate"}),
+			Entry("enabled: missing both", true, nil, nil, []string{"storage.hyperDiskBalanced.provisionedIopsOnCreate", "storage.hyperDiskBalanced.provisionedThroughputOnCreate"}),
+			Entry("enabled: iops <= 0", true, ptr.To[int64](0), ptr.To("140Mi"), []string{"storage.hyperDiskBalanced.provisionedIopsOnCreate"}),
+			Entry("enabled: bad throughput quantity", true, ptr.To[int64](3000), ptr.To("notaquantity!"), []string{"storage.hyperDiskBalanced.provisionedThroughputOnCreate"}),
 		)
 
 		DescribeTable("should validate HyperDiskThroughput",
-			func(iops *int64, throughput *string, expectErrFields []string) {
+			func(enabled bool, iops *int64, throughput *string, expectErrFields []string) {
 				controlPlane.Storage = &apisgcp.Storage{
 					HyperDiskThroughput: &apisgcp.HyperDiskConfig{
+						Enabled:                       enabled,
 						ProvisionedIopsOnCreate:       iops,
 						ProvisionedThroughputOnCreate: throughput,
 					},
@@ -165,15 +182,18 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 					Expect(errorList).To(ConsistOf(fields...))
 				}
 			},
-			Entry("valid: throughput only", nil, ptr.To("140Mi"), nil),
-			Entry("invalid: iops not supported", ptr.To[int64](3000), nil, []string{"storage.hyperDiskThroughput.provisionedIopsOnCreate"}),
-			Entry("invalid: bad throughput quantity", nil, ptr.To("notaquantity!"), []string{"storage.hyperDiskThroughput.provisionedThroughputOnCreate"}),
+			Entry("disabled: no fields required", false, nil, nil, nil),
+			Entry("enabled: throughput provided", true, nil, ptr.To("250Mi"), nil),
+			Entry("enabled: missing throughput", true, nil, nil, []string{"storage.hyperDiskThroughput.provisionedThroughputOnCreate"}),
+			Entry("enabled: iops not supported", true, ptr.To[int64](3000), ptr.To("250Mi"), []string{"storage.hyperDiskThroughput.provisionedIopsOnCreate"}),
+			Entry("enabled: bad throughput quantity", true, nil, ptr.To("notaquantity!"), []string{"storage.hyperDiskThroughput.provisionedThroughputOnCreate"}),
 		)
 
 		DescribeTable("should validate HyperDiskExtreme",
-			func(iops *int64, throughput *string, expectErrFields []string) {
+			func(enabled bool, iops *int64, throughput *string, expectErrFields []string) {
 				controlPlane.Storage = &apisgcp.Storage{
 					HyperDiskExtreme: &apisgcp.HyperDiskConfig{
+						Enabled:                       enabled,
 						ProvisionedIopsOnCreate:       iops,
 						ProvisionedThroughputOnCreate: throughput,
 					},
@@ -190,9 +210,11 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 					Expect(errorList).To(ConsistOf(fields...))
 				}
 			},
-			Entry("valid: iops only", ptr.To[int64](10000), nil, nil),
-			Entry("invalid: throughput not supported", nil, ptr.To("140Mi"), []string{"storage.hyperDiskExtreme.provisionedThroughputOnCreate"}),
-			Entry("invalid: iops <= 0", ptr.To[int64](-1), nil, []string{"storage.hyperDiskExtreme.provisionedIopsOnCreate"}),
+			Entry("disabled: no fields required", false, nil, nil, nil),
+			Entry("enabled: iops provided", true, ptr.To[int64](10000), nil, nil),
+			Entry("enabled: missing iops", true, nil, nil, []string{"storage.hyperDiskExtreme.provisionedIopsOnCreate"}),
+			Entry("enabled: throughput not supported", true, ptr.To[int64](10000), ptr.To("140Mi"), []string{"storage.hyperDiskExtreme.provisionedThroughputOnCreate"}),
+			Entry("enabled: iops <= 0", true, ptr.To[int64](-1), nil, []string{"storage.hyperDiskExtreme.provisionedIopsOnCreate"}),
 		)
 	})
 

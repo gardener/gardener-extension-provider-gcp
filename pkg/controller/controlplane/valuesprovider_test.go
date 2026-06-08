@@ -508,9 +508,9 @@ var _ = Describe("ValuesProvider", func() {
 					"network": "vpc-1234",
 				},
 				"hyperdisk": map[string]interface{}{
-					"balanced":   map[string]interface{}{},
-					"throughput": map[string]interface{}{},
-					"extreme":    map[string]interface{}{},
+					"balanced":   map[string]interface{}(nil),
+					"throughput": map[string]interface{}(nil),
+					"extreme":    map[string]interface{}(nil),
 				},
 			}))
 		})
@@ -533,9 +533,9 @@ var _ = Describe("ValuesProvider", func() {
 					"network": "vpc-1234",
 				},
 				"hyperdisk": map[string]interface{}{
-					"balanced":   map[string]interface{}{},
-					"throughput": map[string]interface{}{},
-					"extreme":    map[string]interface{}{},
+					"balanced":   map[string]interface{}(nil),
+					"throughput": map[string]interface{}(nil),
+					"extreme":    map[string]interface{}(nil),
 				},
 			}))
 		})
@@ -557,9 +557,9 @@ var _ = Describe("ValuesProvider", func() {
 					"network": "vpc-1234",
 				},
 				"hyperdisk": map[string]interface{}{
-					"balanced":   map[string]interface{}{},
-					"throughput": map[string]interface{}{},
-					"extreme":    map[string]interface{}{},
+					"balanced":   map[string]interface{}(nil),
+					"throughput": map[string]interface{}(nil),
+					"extreme":    map[string]interface{}(nil),
 				},
 			}))
 		})
@@ -582,9 +582,9 @@ var _ = Describe("ValuesProvider", func() {
 					"network": "vpc-1234",
 				},
 				"hyperdisk": map[string]interface{}{
-					"balanced":   map[string]interface{}{},
-					"throughput": map[string]interface{}{},
-					"extreme":    map[string]interface{}{},
+					"balanced":   map[string]interface{}(nil),
+					"throughput": map[string]interface{}(nil),
+					"extreme":    map[string]interface{}(nil),
 				},
 			}))
 		})
@@ -593,13 +593,16 @@ var _ = Describe("ValuesProvider", func() {
 			cp.Spec.ProviderConfig.Raw = encode(&apisgcp.ControlPlaneConfig{
 				Storage: &apisgcp.Storage{
 					HyperDiskBalanced: &apisgcp.HyperDiskConfig{
+						Enabled:                       true,
 						ProvisionedIopsOnCreate:       ptr.To[int64](3000),
 						ProvisionedThroughputOnCreate: ptr.To("140Mi"),
 					},
 					HyperDiskThroughput: &apisgcp.HyperDiskConfig{
+						Enabled:                       true,
 						ProvisionedThroughputOnCreate: ptr.To("250Mi"),
 					},
 					HyperDiskExtreme: &apisgcp.HyperDiskConfig{
+						Enabled:                 true,
 						ProvisionedIopsOnCreate: ptr.To[int64](10000),
 					},
 				},

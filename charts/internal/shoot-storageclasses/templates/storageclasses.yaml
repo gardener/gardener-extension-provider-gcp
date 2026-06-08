@@ -46,6 +46,7 @@ parameters:
   type: pd-ssd
 volumeBindingMode: WaitForFirstConsumer
 
+{{- if .Values.hyperdisk.balanced }}
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -67,7 +68,9 @@ parameters:
   provisioned-throughput-on-create: {{ .Values.hyperdisk.balanced.provisionedThroughputOnCreate | quote }}
   {{- end }}
 volumeBindingMode: WaitForFirstConsumer
+{{- end }}
 
+{{- if .Values.hyperdisk.throughput }}
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -86,7 +89,9 @@ parameters:
   provisioned-throughput-on-create: {{ .Values.hyperdisk.throughput.provisionedThroughputOnCreate | quote }}
   {{- end }}
 volumeBindingMode: WaitForFirstConsumer
+{{- end }}
 
+{{- if .Values.hyperdisk.extreme }}
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -105,6 +110,7 @@ parameters:
   provisioned-iops-on-create: {{ .Values.hyperdisk.extreme.provisionedIopsOnCreate | quote }}
   {{- end }}
 volumeBindingMode: WaitForFirstConsumer
+{{- end }}
 
 ---
 apiVersion: snapshot.storage.k8s.io/v1

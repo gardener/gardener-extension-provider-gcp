@@ -265,12 +265,15 @@ storage:
   managedDefaultVolumeSnapshotClass: true
 # defaultStorageClass: gce-sc-hd-balanced  # allowed: default, gce-sc-hdd, gce-sc-fast, gce-sc-hd-balanced, gce-sc-hd-throughput, gce-sc-hd-extreme
 # hyperDiskBalanced:
-#   provisionedIopsOnCreate: 3000
-#   provisionedThroughputOnCreate: "140Mi"
+#   enabled: true
+#   provisionedIopsOnCreate: 3000          # required when enabled
+#   provisionedThroughputOnCreate: "140Mi" # required when enabled
 # hyperDiskThroughput:
-#   provisionedThroughputOnCreate: "250Mi"
+#   enabled: true
+#   provisionedThroughputOnCreate: "250Mi" # required when enabled
 # hyperDiskExtreme:
-#   provisionedIopsOnCreate: 10000
+#   enabled: true
+#   provisionedIopsOnCreate: 10000         # required when enabled
 #  csiFilestore:
 #    enabled: true
 ```
@@ -302,14 +305,16 @@ The following values are supported:
 
 Setting `storage.defaultStorageClass` has no effect when `storage.managedDefaultStorageClass` is `false`.
 
-The `storage.hyperDiskBalanced`, `storage.hyperDiskThroughput`, and `storage.hyperDiskExtreme` fields allow configuring performance parameters for the respective hyperdisk StorageClasses.
-These map directly to GCP CSI driver StorageClass parameters.
+The `storage.hyperDiskBalanced`, `storage.hyperDiskThroughput`, and `storage.hyperDiskExtreme` fields allow deploying and configuring hyperdisk StorageClasses.
+Each field must have `enabled: true` to deploy the corresponding StorageClass; omitting the field or setting `enabled: false` skips deployment.
+When `enabled` is `true`, the required performance parameters for that disk type must be provided.
 The following parameters are supported per disk type:
 
 | Field | `hyperDiskBalanced` | `hyperDiskThroughput` | `hyperDiskExtreme` |
 |---|---|---|---|
-| `provisionedIopsOnCreate` | supported | not supported | supported |
-| `provisionedThroughputOnCreate` | supported | supported | not supported |
+| `enabled` | required | required | required |
+| `provisionedIopsOnCreate` | required when enabled | not supported | required when enabled |
+| `provisionedThroughputOnCreate` | required when enabled | required when enabled | not supported |
 
 `provisionedIopsOnCreate` is a positive integer (e.g. `3000`).
 `provisionedThroughputOnCreate` is a quantity string (e.g. `"140Mi"`).

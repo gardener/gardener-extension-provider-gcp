@@ -772,7 +772,7 @@ integer
 </p>
 
 <p>
-HyperDiskConfig contains performance parameters for a hyperdisk StorageClass.
+HyperDiskConfig contains configuration for a hyperdisk StorageClass.
 </p>
 
 <table>
@@ -786,6 +786,17 @@ HyperDiskConfig contains performance parameters for a hyperdisk StorageClass.
 
 <tr>
 <td>
+<code>enabled</code></br>
+<em>
+boolean
+</em>
+</td>
+<td>
+<p>Enabled controls whether this hyperdisk StorageClass is deployed.<br />When true, the required performance parameters for the disk type must be provided.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>provisionedIopsOnCreate</code></br>
 <em>
 integer
@@ -793,7 +804,7 @@ integer
 </td>
 <td>
 <em>(Optional)</em>
-<p>ProvisionedIopsOnCreate sets the provisioned-iops-on-create StorageClass parameter.<br />Supported for hyperdisk-balanced and hyperdisk-extreme.</p>
+<p>ProvisionedIopsOnCreate sets the provisioned-iops-on-create StorageClass parameter.<br />Supported for hyperdisk-balanced and hyperdisk-extreme. Required when Enabled is true for those types.</p>
 </td>
 </tr>
 <tr>
@@ -805,7 +816,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>ProvisionedThroughputOnCreate sets the provisioned-throughput-on-create StorageClass parameter.<br />Supported for hyperdisk-balanced and hyperdisk-throughput.<br />Value must be a valid quantity string (e.g. "140Mi").</p>
+<p>ProvisionedThroughputOnCreate sets the provisioned-throughput-on-create StorageClass parameter.<br />Supported for hyperdisk-balanced and hyperdisk-throughput. Required when Enabled is true for those types.<br />Value must be a valid quantity string (e.g. "140Mi").</p>
 </td>
 </tr>
 
@@ -1671,7 +1682,7 @@ boolean
 </td>
 <td>
 <em>(Optional)</em>
-<p>HyperDiskBalanced contains configuration for the hyperdisk-balanced StorageClass (gce-sc-hd-balanced).</p>
+<p>HyperDiskBalanced contains configuration for the hyperdisk-balanced StorageClass (gce-sc-hd-balanced).<br />The StorageClass is only deployed when Enabled is set to true.</p>
 </td>
 </tr>
 <tr>
@@ -1683,7 +1694,7 @@ boolean
 </td>
 <td>
 <em>(Optional)</em>
-<p>HyperDiskThroughput contains configuration for the hyperdisk-throughput StorageClass (gce-sc-hd-throughput).</p>
+<p>HyperDiskThroughput contains configuration for the hyperdisk-throughput StorageClass (gce-sc-hd-throughput).<br />The StorageClass is only deployed when Enabled is set to true.</p>
 </td>
 </tr>
 <tr>
@@ -1695,7 +1706,7 @@ boolean
 </td>
 <td>
 <em>(Optional)</em>
-<p>HyperDiskExtreme contains configuration for the hyperdisk-extreme StorageClass (gce-sc-hd-extreme).</p>
+<p>HyperDiskExtreme contains configuration for the hyperdisk-extreme StorageClass (gce-sc-hd-extreme).<br />The StorageClass is only deployed when Enabled is set to true.</p>
 </td>
 </tr>
 

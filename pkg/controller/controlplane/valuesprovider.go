@@ -774,10 +774,10 @@ func hyperDiskField(storage *apisgcp.Storage, fn func(*apisgcp.Storage) *apisgcp
 }
 
 // hyperDiskConfigToValues converts a HyperDiskConfig to a map for Helm chart values.
-// Returns an empty map when cfg is nil, so the chart receives a valid (empty) object.
+// Returns nil when cfg is nil or disabled, so the chart skips deploying that StorageClass.
 func hyperDiskConfigToValues(cfg *apisgcp.HyperDiskConfig) map[string]interface{} {
-	if cfg == nil {
-		return map[string]interface{}{}
+	if cfg == nil || !cfg.Enabled {
+		return nil
 	}
 	vals := map[string]interface{}{}
 	if cfg.ProvisionedIopsOnCreate != nil {

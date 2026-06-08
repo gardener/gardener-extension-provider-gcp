@@ -23,6 +23,14 @@ var validStorageClassNames = sets.New(
 	"gce-sc-hd-extreme",
 )
 
+// hyperDiskStorageClassNames maps each hyperdisk storage class name to the function that
+// retrieves the corresponding HyperDiskConfig from a Storage object.
+var hyperDiskStorageClassNames = map[string]func(*apisgcp.Storage) *apisgcp.HyperDiskConfig{
+	"gce-sc-hd-balanced":   func(s *apisgcp.Storage) *apisgcp.HyperDiskConfig { return s.HyperDiskBalanced },
+	"gce-sc-hd-throughput": func(s *apisgcp.Storage) *apisgcp.HyperDiskConfig { return s.HyperDiskThroughput },
+	"gce-sc-hd-extreme":    func(s *apisgcp.Storage) *apisgcp.HyperDiskConfig { return s.HyperDiskExtreme },
+}
+
 // ValidateControlPlaneConfig validates a ControlPlaneConfig object.
 func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, allowedZones, workerZones sets.Set[string], version string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
@@ -46,6 +54,11 @@ func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, 
 		if controlPlaneConfig.Storage.DefaultStorageClass != nil {
 			if !validStorageClassNames.Has(*controlPlaneConfig.Storage.DefaultStorageClass) {
 				allErrs = append(allErrs, field.NotSupported(storagePath.Child("defaultStorageClass"), *controlPlaneConfig.Storage.DefaultStorageClass, sets.List(validStorageClassNames)))
+			} else if getConfig, ok := hyperDiskStorageClassNames[*controlPlaneConfig.Storage.DefaultStorageClass]; ok {
+				cfg := getConfig(controlPlaneConfig.Storage)
+				if cfg == nil || !cfg.Enabled {
+					allErrs = append(allErrs, field.Invalid(storagePath.Child("defaultStorageClass"), *controlPlaneConfig.Storage.DefaultStorageClass, "the corresponding StorageClass must have enabled set to true"))
+				}
 			}
 		}
 		if controlPlaneConfig.Storage.HyperDiskBalanced != nil {
@@ -62,9 +75,18 @@ func ValidateControlPlaneConfig(controlPlaneConfig *apisgcp.ControlPlaneConfig, 
 	return allErrs
 }
 
-// validateHyperDiskConfig validates a HyperDiskConfig, enforcing which parameters are supported.
+// validateHyperDiskConfig validates a HyperDiskConfig, enforcing which parameters are supported and required.
 func validateHyperDiskConfig(cfg *apisgcp.HyperDiskConfig, iopsAllowed, throughputAllowed bool, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+	if !cfg.Enabled {
+		return allErrs
+	}
+	if iopsAllowed && cfg.ProvisionedIopsOnCreate == nil {
+		allErrs = append(allErrs, field.Required(fldPath.Child("provisionedIopsOnCreate"), "provisionedIopsOnCreate is required when enabled"))
+	}
+	if throughputAllowed && cfg.ProvisionedThroughputOnCreate == nil {
+		allErrs = append(allErrs, field.Required(fldPath.Child("provisionedThroughputOnCreate"), "provisionedThroughputOnCreate is required when enabled"))
+	}
 	if cfg.ProvisionedIopsOnCreate != nil {
 		if !iopsAllowed {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("provisionedIopsOnCreate"), "provisionedIopsOnCreate is not supported for this hyperdisk type"))

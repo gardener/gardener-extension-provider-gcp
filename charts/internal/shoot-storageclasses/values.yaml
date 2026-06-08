@@ -4,6 +4,6 @@ filestore:
   enabled: false
   network: default
 hyperdisk:
-  balanced: {}
-  throughput: {}
-  extreme: {}
+  balanced: null
+  throughput: null
+  extreme: null
