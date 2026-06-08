@@ -16,6 +16,12 @@ rules:
   - list
   - watch
 - apiGroups:
+  - core.gardener.cloud
+  resources:
+  - internalsecrets
+  verbs:
+  - get
+- apiGroups:
   - ""
   resources:
   - secrets

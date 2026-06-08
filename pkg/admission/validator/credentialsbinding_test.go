@@ -6,11 +6,11 @@ package validator_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/apis/security"
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/test"
@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,6 +46,7 @@ var _ = Describe("CredentialsBinding validator", func() {
 			ctx                                = context.TODO()
 			credentialsBindingSecret           *security.CredentialsBinding
 			credentialsBindingWorkloadIdentity *security.CredentialsBinding
+			credentialsBindingInternalSecret   *security.CredentialsBinding
 
 			fakeErr = fmt.Errorf("fake err")
 		)
@@ -77,6 +79,14 @@ var _ = Describe("CredentialsBinding validator", func() {
 					APIVersion: "security.gardener.cloud/v1alpha1",
 				},
 			}
+			credentialsBindingInternalSecret = &security.CredentialsBinding{
+				CredentialsRef: corev1.ObjectReference{
+					Name:       name,
+					Namespace:  namespace,
+					Kind:       "InternalSecret",
+					APIVersion: gardencorev1beta1.SchemeGroupVersion.String(),
+				},
+			}
 		})
 
 		AfterEach(func() {
@@ -96,7 +106,7 @@ var _ = Describe("CredentialsBinding validator", func() {
 		It("should return err if the CredentialsBinding references unknown credentials type", func() {
 			credentialsBindingSecret.CredentialsRef.APIVersion = "unknown"
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingSecret, nil)
-			Expect(err).To(MatchError(errors.New(`unsupported credentials reference: version "unknown", kind "Secret"`)))
+			Expect(err).To(MatchError(ContainSubstring("unsupported credentials reference")))
 		})
 
 		It("should return err if it fails to get the corresponding Secret", func() {
@@ -302,6 +312,54 @@ credentialsConfig:
 
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingWorkloadIdentity, nil)
 			Expect(err.Error()).To(ContainSubstring(`spec.targetSystem.providerConfig.credentialsConfig.token_url: Forbidden: allowed values are ["https://sts.googleapis.com/v1/token" "https://sts.googleapis.com/v1/token/new"]`))
+		})
+
+		Context("InternalSecret", func() {
+			It("should return err if it fails to get the corresponding InternalSecret", func() {
+				apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&gardencorev1beta1.InternalSecret{})).Return(fakeErr)
+
+				err := credentialsBindingValidator.Validate(ctx, credentialsBindingInternalSecret, nil)
+				Expect(err).To(MatchError(fakeErr))
+			})
+
+			It("should return err when the corresponding InternalSecret does not contain a valid 'serviceaccount.json' field", func() {
+				internalSecret := &gardencorev1beta1.InternalSecret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
+					Data: map[string][]byte{
+						"foo": []byte("bar"),
+					},
+				}
+				apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&gardencorev1beta1.InternalSecret{})).
+					SetArg(2, *internalSecret)
+
+				err := credentialsBindingValidator.Validate(ctx, credentialsBindingInternalSecret, nil)
+				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("secret.data[serviceaccount.json]"),
+					"Detail": ContainSubstring("missing required field \"serviceaccount.json\""),
+				}))))
+			})
+
+			It("should succeed when the corresponding InternalSecret is valid", func() {
+				internalSecret := &gardencorev1beta1.InternalSecret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
+					Data: map[string][]byte{
+						gcp.ServiceAccountJSONField: []byte(`{
+							"type":                        "service_account",
+							"project_id":                  "my-project-123",
+							"private_key_id":              "1234567890abcdef1234567890abcdef12345678",
+							"private_key":                 "-----BEGIN PRIVATE KEY-----\nTHIS-IS-A-FAKE-TEST-KEY\n-----END PRIVATE KEY-----\n",
+							"client_email":                "my-service-account@my-project-123.iam.gserviceaccount.com",
+							"client_id":                   "123456789012345678901",
+							"token_uri":                   "https://oauth2.googleapis.com/token"
+						}`),
+					},
+				}
+				apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&gardencorev1beta1.InternalSecret{})).
+					SetArg(2, *internalSecret)
+
+				Expect(credentialsBindingValidator.Validate(ctx, credentialsBindingInternalSecret, nil)).To(Succeed())
+			})
 		})
 	})
 })
