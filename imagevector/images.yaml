@@ -6,7 +6,6 @@ images:
 # chart that is used to deploy the cloud-controller-manager. For more information check
 # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987914997 and
 # https://github.com/gardener/gardener-extension-provider-gcp/pull/1092#issuecomment-2987998478
-#
 # TODO(plkokanov,AndreasBurger,kon-angelo,hebelsan): Bump the patch version of the cloud-controller-manager after the Dockerfile
 # for the v32.2.* releases has been updated to contain both a CMD and ENTRYPOINT ref:
 # https://github.com/kubernetes/cloud-provider-gcp/pull/842#issuecomment-2987419314
@@ -77,7 +76,7 @@ images:
 - name: csi-attacher
   sourceRepository: github.com/kubernetes-csi/external-attacher
   repository: registry.k8s.io/sig-storage/csi-attacher
-  tag: v4.11.0
+  tag: v4.12.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -91,7 +90,7 @@ images:
 - name: csi-driver
   sourceRepository: github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
   repository: registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver
-  tag: v1.23.3
+  tag: v1.26.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -119,7 +118,7 @@ images:
 - name: csi-liveness-probe
   sourceRepository: github.com/kubernetes-csi/livenessprobe
   repository: registry.k8s.io/sig-storage/livenessprobe
-  tag: v2.18.0
+  tag: v2.19.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -133,7 +132,7 @@ images:
 - name: csi-node-driver-registrar
   sourceRepository: github.com/kubernetes-csi/node-driver-registrar
   repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-  tag: v2.16.0
+  tag: v2.17.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -161,7 +160,7 @@ images:
 - name: csi-provisioner
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: registry.k8s.io/sig-storage/csi-provisioner
-  tag: v6.2.0
+  tag: v6.3.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -190,7 +189,7 @@ images:
 - name: csi-resizer
   sourceRepository: github.com/kubernetes-csi/external-resizer
   repository: registry.k8s.io/sig-storage/csi-resizer
-  tag: v2.1.0
+  tag: v2.2.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -205,7 +204,7 @@ images:
 - name: csi-snapshot-controller
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/snapshot-controller
-  tag: v8.5.0
+  tag: v8.6.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -219,7 +218,7 @@ images:
 - name: csi-snapshotter
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/csi-snapshotter
-  tag: v8.5.0
+  tag: v8.6.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -246,7 +245,6 @@ images:
       comment: Show static page when no path is found
     signing: false
 - name: ingress-gce
-  # fork of github.com/kubernetes/ingress-gce to be able to build the images ourselves
   sourceRepository: github.com/gardener/ingress-gce
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/extensions/ingress-gce
   tag: v1.38.2
