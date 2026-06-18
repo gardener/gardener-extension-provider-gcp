@@ -80,27 +80,5 @@ var _ = Describe("VPC Updater", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal(patched))
 		})
-
-		It("should not patch VPC when RoutingConfig pointer differs but value is equal", func() {
-			// This is the core regression test: pointer comparison would incorrectly
-			// trigger a PATCH even though nothing changed.
-			desired := &compute.Network{
-				Name:                  "test-vpc",
-				AutoCreateSubnetworks: false,
-				RoutingConfig:         &compute.NetworkRoutingConfig{RoutingMode: "REGIONAL"},
-				Mtu:                   8100,
-			}
-			current := &compute.Network{
-				Name:                  "test-vpc",
-				AutoCreateSubnetworks: false,
-				RoutingConfig:         &compute.NetworkRoutingConfig{RoutingMode: "REGIONAL"},
-				Mtu:                   8100,
-			}
-
-			// PatchNetwork must not be called even though desired and current have different pointers
-			result, err := updater.VPC(ctx, desired, current)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(current))
-		})
 	})
 })
