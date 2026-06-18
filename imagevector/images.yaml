@@ -244,6 +244,7 @@ images:
       availability_requirement: none
       comment: Show static page when no path is found
     signing: false
+# fork of github.com/kubernetes/ingress-gce to be able to build the images ourselves
 - name: ingress-gce
   sourceRepository: github.com/gardener/ingress-gce
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/extensions/ingress-gce
