@@ -28,10 +28,6 @@ var _ = Describe("VPC Updater", func() {
 		ctx = context.Background()
 	})
 
-	AfterEach(func() {
-		ctrl.Finish()
-	})
-
 	Context("RoutingConfig", func() {
 		It("should not patch VPC when RoutingConfig is unchanged", func() {
 			desired := &compute.Network{
