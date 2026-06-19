@@ -45,24 +45,29 @@ var serviceAccountOptionalFields = sets.New(
 
 // ValidateCloudProviderSecret validates GCP service account credentials
 func ValidateCloudProviderSecret(secret *corev1.Secret, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
 	secretKey := fmt.Sprintf("%s/%s", secret.Namespace, secret.Name)
+	return ValidateCloudProviderSecretData(secret.Data, fldPath, secretKey)
+}
+
+// ValidateCloudProviderSecretData validates GCP service account credentials from a raw data map.
+func ValidateCloudProviderSecretData(data map[string][]byte, fldPath *field.Path, secretKey string) field.ErrorList {
+	allErrs := field.ErrorList{}
 	dataPath := fldPath.Child("data")
 
 	// Ensure that secret contains only allowed fields: serviceaccount.json and optionally storageAPIEndpoint
 	allowedFieldCount := 1
-	if _, hasStorageEndpoint := secret.Data[storageAPIEndpointField]; hasStorageEndpoint {
+	if _, hasStorageEndpoint := data[storageAPIEndpointField]; hasStorageEndpoint {
 		allowedFieldCount = 2
 	}
 
-	if len(secret.Data) > allowedFieldCount {
-		allErrs = append(allErrs, field.Invalid(dataPath, len(secret.Data),
+	if len(data) > allowedFieldCount {
+		allErrs = append(allErrs, field.Invalid(dataPath, len(data),
 			fmt.Sprintf("secret %s must contain only %q (and optionally %q), got %d fields",
-				secretKey, gcp.ServiceAccountJSONField, storageAPIEndpointField, len(secret.Data))))
+				secretKey, gcp.ServiceAccountJSONField, storageAPIEndpointField, len(data))))
 	}
 
 	// Ensure serviceaccount.json field exists and is non-empty
-	serviceAccountJSON, ok := secret.Data[gcp.ServiceAccountJSONField]
+	serviceAccountJSON, ok := data[gcp.ServiceAccountJSONField]
 	if !ok {
 		allErrs = append(allErrs, field.Required(dataPath.Key(gcp.ServiceAccountJSONField),
 			fmt.Sprintf("missing required field %q in secret %s", gcp.ServiceAccountJSONField, secretKey)))
