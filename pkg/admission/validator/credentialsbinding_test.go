@@ -127,7 +127,7 @@ var _ = Describe("CredentialsBinding validator", func() {
 			Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":   Equal(field.ErrorTypeRequired),
 				"Field":  Equal("secret.data[serviceaccount.json]"),
-				"Detail": Equal("missing required field \"serviceaccount.json\" in secret /"),
+				"Detail": Equal("missing required field \"serviceaccount.json\" in secret garden-dev/my-provider-account"),
 			}))))
 		})
 
@@ -142,7 +142,7 @@ var _ = Describe("CredentialsBinding validator", func() {
 			Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":   Equal(field.ErrorTypeInvalid),
 				"Field":  Equal("secret.data[serviceaccount.json]"),
-				"Detail": Equal("field \"serviceaccount.json\" cannot be empty in secret /"),
+				"Detail": Equal("field \"serviceaccount.json\" cannot be empty in secret garden-dev/my-provider-account"),
 			}))))
 		})
 
