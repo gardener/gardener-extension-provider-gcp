@@ -63,11 +63,12 @@ func (cb *credentialsBinding) Validate(ctx context.Context, newObj, oldObj clien
 		return err
 	}
 
+	credentialsKey := client.ObjectKey{Namespace: credentialsBinding.CredentialsRef.Namespace, Name: credentialsBinding.CredentialsRef.Name}
 	switch creds := credentials.(type) {
 	case *corev1.Secret:
-		return gcpvalidation.ValidateCloudProviderSecretData(creds.Data, field.NewPath("secret"), fmt.Sprintf("%s/%s", creds.Namespace, creds.Name)).ToAggregate()
+		return gcpvalidation.ValidateCloudProviderSecretData(creds.Data, field.NewPath("secret"), credentialsKey.String()).ToAggregate()
 	case *gardencorev1beta1.InternalSecret:
-		return gcpvalidation.ValidateCloudProviderSecretData(creds.Data, field.NewPath("secret"), fmt.Sprintf("%s/%s", creds.Namespace, creds.Name)).ToAggregate()
+		return gcpvalidation.ValidateCloudProviderSecretData(creds.Data, field.NewPath("secret"), credentialsKey.String()).ToAggregate()
 	case *securityv1alpha1.WorkloadIdentity:
 		if creds.Spec.TargetSystem.ProviderConfig == nil {
 			return errors.New("the target system is missing configuration")
@@ -78,7 +79,6 @@ func (cb *credentialsBinding) Validate(ctx context.Context, newObj, oldObj clien
 			return fmt.Errorf("target system's configuration is not valid: %w", err)
 		}
 
-		credentialsKey := client.ObjectKey{Namespace: credentialsBinding.CredentialsRef.Namespace, Name: credentialsBinding.CredentialsRef.Name}
 		fieldPath := field.NewPath("spec", "targetSystem", "providerConfig")
 		if errList := gcpvalidation.ValidateWorkloadIdentityConfig(config, fieldPath, cb.allowedTokenURLs, cb.allowedServiceAccountImpersonationURLRegExps); len(errList) > 0 {
 			return fmt.Errorf("referenced workload identity %s is not valid: %w", credentialsKey, errList.ToAggregate())
