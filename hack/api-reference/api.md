@@ -763,6 +763,67 @@ integer
 </table>
 
 
+<h3 id="hyperdiskconfig">HyperDiskConfig
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#storage">Storage</a>)
+</p>
+
+<p>
+HyperDiskConfig contains configuration for a hyperdisk StorageClass.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+boolean
+</em>
+</td>
+<td>
+<p>Enabled controls whether this hyperdisk StorageClass is deployed.<br />When true, the required performance parameters for the disk type must be provided.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>provisionedIopsOnCreate</code></br>
+<em>
+integer
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ProvisionedIopsOnCreate sets the provisioned-iops-on-create StorageClass parameter.<br />Supported for hyperdisk-balanced and hyperdisk-extreme. Required when Enabled is true for those types.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>provisionedThroughputOnCreate</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ProvisionedThroughputOnCreate sets the provisioned-throughput-on-create StorageClass parameter.<br />Supported for hyperdisk-balanced and hyperdisk-throughput. Required when Enabled is true for those types.<br />Value must be a valid quantity string (e.g. "140Mi").</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
 <h3 id="immutableconfig">ImmutableConfig
 </h3>
 
@@ -1590,6 +1651,18 @@ boolean
 </tr>
 <tr>
 <td>
+<code>defaultStorageClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DefaultStorageClass controls which storage class is marked as default.<br />Allowed values: "default" (pd-balanced), "gce-sc-hdd" (pd-standard), "gce-sc-fast" (pd-ssd),<br />"gce-sc-hd-balanced", "gce-sc-hd-throughput", "gce-sc-hd-extreme".<br />If not set, the "default" (pd-balanced) storage class is marked as default (unless ManagedDefaultStorageClass is false).<br />If ManagedDefaultStorageClass is false, this field has no effect.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>managedDefaultVolumeSnapshotClass</code></br>
 <em>
 boolean
@@ -1610,6 +1683,42 @@ boolean
 <td>
 <em>(Optional)</em>
 <p>CSIFilestore contains configuration for CSI Filestore driver (support for NFS volumes)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>hyperDiskBalanced</code></br>
+<em>
+<a href="#hyperdiskconfig">HyperDiskConfig</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>HyperDiskBalanced contains configuration for the hyperdisk-balanced StorageClass (gce-sc-hd-balanced).<br />The StorageClass is only deployed when Enabled is set to true.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>hyperDiskThroughput</code></br>
+<em>
+<a href="#hyperdiskconfig">HyperDiskConfig</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>HyperDiskThroughput contains configuration for the hyperdisk-throughput StorageClass (gce-sc-hd-throughput).<br />The StorageClass is only deployed when Enabled is set to true.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>hyperDiskExtreme</code></br>
+<em>
+<a href="#hyperdiskconfig">HyperDiskConfig</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>HyperDiskExtreme contains configuration for the hyperdisk-extreme StorageClass (gce-sc-hd-extreme).<br />The StorageClass is only deployed when Enabled is set to true.</p>
 </td>
 </tr>
 

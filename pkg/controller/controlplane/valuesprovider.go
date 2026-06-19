@@ -671,8 +671,10 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 	cp *extensionsv1alpha1.ControlPlane,
 	_ *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
-	managedDefaultStorageClass := true
 	managedDefaultVolumeSnapshotClass := true
+	// defaultStorageClass is the name of the storage class to mark as default.
+	// Empty string means no storage class is marked as default.
+	defaultStorageClass := "default"
 
 	// Decode providerConfig
 	cpConfig := &apisgcp.ControlPlaneConfig{}
@@ -689,16 +691,26 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 	}
 
 	if cpConfig.Storage != nil {
-		managedDefaultStorageClass = ptr.Deref(cpConfig.Storage.ManagedDefaultStorageClass, true)
 		managedDefaultVolumeSnapshotClass = ptr.Deref(cpConfig.Storage.ManagedDefaultVolumeSnapshotClass, true)
+		// ManagedDefaultStorageClass=false suppresses any default annotation, takes priority over DefaultStorageClass.
+		if !ptr.Deref(cpConfig.Storage.ManagedDefaultStorageClass, true) {
+			defaultStorageClass = ""
+		} else if cpConfig.Storage.DefaultStorageClass != nil {
+			defaultStorageClass = *cpConfig.Storage.DefaultStorageClass
+		}
 	}
 
 	return map[string]interface{}{
-		"managedDefaultStorageClass":        managedDefaultStorageClass,
+		"defaultStorageClass":               defaultStorageClass,
 		"managedDefaultVolumeSnapshotClass": managedDefaultVolumeSnapshotClass,
 		"filestore": map[string]interface{}{
 			"enabled": isCSIFilestoreEnabled(cpConfig),
 			"network": infraStatus.Networks.VPC.Name,
+		},
+		"hyperdisk": map[string]interface{}{
+			"balanced":   hyperDiskConfigToValues(hyperDiskField(cpConfig.Storage, func(s *apisgcp.Storage) *apisgcp.HyperDiskConfig { return s.HyperDiskBalanced })),
+			"throughput": hyperDiskConfigToValues(hyperDiskField(cpConfig.Storage, func(s *apisgcp.Storage) *apisgcp.HyperDiskConfig { return s.HyperDiskThroughput })),
+			"extreme":    hyperDiskConfigToValues(hyperDiskField(cpConfig.Storage, func(s *apisgcp.Storage) *apisgcp.HyperDiskConfig { return s.HyperDiskExtreme })),
 		},
 	}, nil
 }
@@ -794,6 +806,30 @@ func mutatingAdmissionPolicyAPIVersion(cluster *extensionscontroller.Cluster) st
 	}
 
 	return "v1alpha1"
+}
+
+// hyperDiskField safely retrieves a HyperDiskConfig field from a potentially nil Storage.
+func hyperDiskField(storage *apisgcp.Storage, fn func(*apisgcp.Storage) *apisgcp.HyperDiskConfig) *apisgcp.HyperDiskConfig {
+	if storage == nil {
+		return nil
+	}
+	return fn(storage)
+}
+
+// hyperDiskConfigToValues converts a HyperDiskConfig to a map for Helm chart values.
+// Returns nil when cfg is nil or disabled, so the chart skips deploying that StorageClass.
+func hyperDiskConfigToValues(cfg *apisgcp.HyperDiskConfig) map[string]interface{} {
+	if cfg == nil || !cfg.Enabled {
+		return nil
+	}
+	vals := map[string]interface{}{}
+	if cfg.ProvisionedIopsOnCreate != nil {
+		vals["provisionedIopsOnCreate"] = *cfg.ProvisionedIopsOnCreate
+	}
+	if cfg.ProvisionedThroughputOnCreate != nil {
+		vals["provisionedThroughputOnCreate"] = *cfg.ProvisionedThroughputOnCreate
+	}
+	return vals
 }
 
 func cleanupSeedLegacyCSISnapshotValidation(

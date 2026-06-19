@@ -1,5 +1,9 @@
-managedDefaultStorageClass: true
+defaultStorageClass: default
 managedDefaultVolumeSnapshotClass: true
 filestore:
   enabled: false
   network: default
+hyperdisk:
+  balanced: null
+  throughput: null
+  extreme: null

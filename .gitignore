@@ -26,3 +26,8 @@ TODO
 
 # gosec
 gosec-report.sarif
+
+# AI coding agents
+# Claude
+.claude/
+/skills-lock.json

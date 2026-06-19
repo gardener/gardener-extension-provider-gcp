@@ -41,6 +41,13 @@ type Storage struct {
 	// Defaults to true.
 	// +optional
 	ManagedDefaultStorageClass *bool `json:"managedDefaultStorageClass,omitempty"`
+	// DefaultStorageClass controls which storage class is marked as default.
+	// Allowed values: "default" (pd-balanced), "gce-sc-hdd" (pd-standard), "gce-sc-fast" (pd-ssd),
+	// "gce-sc-hd-balanced", "gce-sc-hd-throughput", "gce-sc-hd-extreme".
+	// If not set, the "default" (pd-balanced) storage class is marked as default (unless ManagedDefaultStorageClass is false).
+	// If ManagedDefaultStorageClass is false, this field has no effect.
+	// +optional
+	DefaultStorageClass *string `json:"defaultStorageClass,omitempty"`
 	// ManagedDefaultVolumeSnapshotClass controls if the 'default' VolumeSnapshotClass would be marked as default.
 	// Set to false to suppress marking the 'default' VolumeSnapshotClass as default, allowing another VolumeSnapshotClass
 	// not managed by Gardener to be set as default by the user.
@@ -50,6 +57,34 @@ type Storage struct {
 	// CSIFilestore contains configuration for CSI Filestore driver (support for NFS volumes)
 	// +optional
 	CSIFilestore *CSIFilestore `json:"csiFilestore,omitempty"`
+	// HyperDiskBalanced contains configuration for the hyperdisk-balanced StorageClass (gce-sc-hd-balanced).
+	// The StorageClass is only deployed when Enabled is set to true.
+	// +optional
+	HyperDiskBalanced *HyperDiskConfig `json:"hyperDiskBalanced,omitempty"`
+	// HyperDiskThroughput contains configuration for the hyperdisk-throughput StorageClass (gce-sc-hd-throughput).
+	// The StorageClass is only deployed when Enabled is set to true.
+	// +optional
+	HyperDiskThroughput *HyperDiskConfig `json:"hyperDiskThroughput,omitempty"`
+	// HyperDiskExtreme contains configuration for the hyperdisk-extreme StorageClass (gce-sc-hd-extreme).
+	// The StorageClass is only deployed when Enabled is set to true.
+	// +optional
+	HyperDiskExtreme *HyperDiskConfig `json:"hyperDiskExtreme,omitempty"`
+}
+
+// HyperDiskConfig contains configuration for a hyperdisk StorageClass.
+type HyperDiskConfig struct {
+	// Enabled controls whether this hyperdisk StorageClass is deployed.
+	// When true, the required performance parameters for the disk type must be provided.
+	Enabled bool `json:"enabled"`
+	// ProvisionedIopsOnCreate sets the provisioned-iops-on-create StorageClass parameter.
+	// Supported for hyperdisk-balanced and hyperdisk-extreme. Required when Enabled is true for those types.
+	// +optional
+	ProvisionedIopsOnCreate *int64 `json:"provisionedIopsOnCreate,omitempty"`
+	// ProvisionedThroughputOnCreate sets the provisioned-throughput-on-create StorageClass parameter.
+	// Supported for hyperdisk-balanced and hyperdisk-throughput. Required when Enabled is true for those types.
+	// Value must be a valid quantity string (e.g. "140Mi").
+	// +optional
+	ProvisionedThroughputOnCreate *string `json:"provisionedThroughputOnCreate,omitempty"`
 }
 
 // CSIFilestore contains configuration for CSI Filestore driver

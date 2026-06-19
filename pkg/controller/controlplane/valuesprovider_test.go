@@ -501,11 +501,16 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"managedDefaultStorageClass":        true,
+				"defaultStorageClass":               "default",
 				"managedDefaultVolumeSnapshotClass": true,
 				"filestore": map[string]interface{}{
 					"enabled": false,
 					"network": "vpc-1234",
+				},
+				"hyperdisk": map[string]interface{}{
+					"balanced":   map[string]interface{}(nil),
+					"throughput": map[string]interface{}(nil),
+					"extreme":    map[string]interface{}(nil),
 				},
 			}))
 		})
@@ -521,11 +526,108 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"managedDefaultStorageClass":        false,
+				"defaultStorageClass":               "",
 				"managedDefaultVolumeSnapshotClass": false,
 				"filestore": map[string]interface{}{
 					"enabled": false,
 					"network": "vpc-1234",
+				},
+				"hyperdisk": map[string]interface{}{
+					"balanced":   map[string]interface{}(nil),
+					"throughput": map[string]interface{}(nil),
+					"extreme":    map[string]interface{}(nil),
+				},
+			}))
+		})
+
+		It("should return correct storage class chart values when using hyperdisk-balanced as default", func() {
+			cp.Spec.ProviderConfig.Raw = encode(&apisgcp.ControlPlaneConfig{
+				Storage: &apisgcp.Storage{
+					DefaultStorageClass: ptr.To("gce-sc-hd-balanced"),
+				},
+			})
+
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"defaultStorageClass":               "gce-sc-hd-balanced",
+				"managedDefaultVolumeSnapshotClass": true,
+				"filestore": map[string]interface{}{
+					"enabled": false,
+					"network": "vpc-1234",
+				},
+				"hyperdisk": map[string]interface{}{
+					"balanced":   map[string]interface{}(nil),
+					"throughput": map[string]interface{}(nil),
+					"extreme":    map[string]interface{}(nil),
+				},
+			}))
+		})
+
+		It("should ignore DefaultStorageClass when ManagedDefaultStorageClass is false", func() {
+			cp.Spec.ProviderConfig.Raw = encode(&apisgcp.ControlPlaneConfig{
+				Storage: &apisgcp.Storage{
+					ManagedDefaultStorageClass: ptr.To(false),
+					DefaultStorageClass:        ptr.To("gce-sc-hd-balanced"),
+				},
+			})
+
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"defaultStorageClass":               "",
+				"managedDefaultVolumeSnapshotClass": true,
+				"filestore": map[string]interface{}{
+					"enabled": false,
+					"network": "vpc-1234",
+				},
+				"hyperdisk": map[string]interface{}{
+					"balanced":   map[string]interface{}(nil),
+					"throughput": map[string]interface{}(nil),
+					"extreme":    map[string]interface{}(nil),
+				},
+			}))
+		})
+
+		It("should return hyperdisk parameters in storage class chart values", func() {
+			cp.Spec.ProviderConfig.Raw = encode(&apisgcp.ControlPlaneConfig{
+				Storage: &apisgcp.Storage{
+					HyperDiskBalanced: &apisgcp.HyperDiskConfig{
+						Enabled:                       true,
+						ProvisionedIopsOnCreate:       ptr.To[int64](3000),
+						ProvisionedThroughputOnCreate: ptr.To("140Mi"),
+					},
+					HyperDiskThroughput: &apisgcp.HyperDiskConfig{
+						Enabled:                       true,
+						ProvisionedThroughputOnCreate: ptr.To("250Mi"),
+					},
+					HyperDiskExtreme: &apisgcp.HyperDiskConfig{
+						Enabled:                 true,
+						ProvisionedIopsOnCreate: ptr.To[int64](10000),
+					},
+				},
+			})
+
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"defaultStorageClass":               "default",
+				"managedDefaultVolumeSnapshotClass": true,
+				"filestore": map[string]interface{}{
+					"enabled": false,
+					"network": "vpc-1234",
+				},
+				"hyperdisk": map[string]interface{}{
+					"balanced": map[string]interface{}{
+						"provisionedIopsOnCreate":       int64(3000),
+						"provisionedThroughputOnCreate": "140Mi",
+					},
+					"throughput": map[string]interface{}{
+						"provisionedThroughputOnCreate": "250Mi",
+					},
+					"extreme": map[string]interface{}{
+						"provisionedIopsOnCreate": int64(10000),
+					},
 				},
 			}))
 		})

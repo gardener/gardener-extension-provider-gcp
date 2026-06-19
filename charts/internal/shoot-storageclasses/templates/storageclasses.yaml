@@ -4,7 +4,7 @@ kind: StorageClass
 metadata:
   name: default
   annotations:
-    {{- if .Values.managedDefaultStorageClass }}
+    {{- if eq .Values.defaultStorageClass "default" }}
     storageclass.kubernetes.io/is-default-class: "true"
     {{- end }}
     resources.gardener.cloud/delete-on-invalid-update: "true"
@@ -20,6 +20,9 @@ kind: StorageClass
 metadata:
   name: gce-sc-hdd
   annotations:
+    {{- if eq .Values.defaultStorageClass "gce-sc-hdd" }}
+    storageclass.kubernetes.io/is-default-class: "true"
+    {{- end }}
     resources.gardener.cloud/delete-on-invalid-update: "true"
 allowVolumeExpansion: true
 provisioner: pd.csi.storage.gke.io
@@ -33,12 +36,81 @@ kind: StorageClass
 metadata:
   name: gce-sc-fast
   annotations:
+    {{- if eq .Values.defaultStorageClass "gce-sc-fast" }}
+    storageclass.kubernetes.io/is-default-class: "true"
+    {{- end }}
     resources.gardener.cloud/delete-on-invalid-update: "true"
 allowVolumeExpansion: true
 provisioner: pd.csi.storage.gke.io
 parameters:
   type: pd-ssd
 volumeBindingMode: WaitForFirstConsumer
+
+{{- if .Values.hyperdisk.balanced }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gce-sc-hd-balanced
+  annotations:
+    {{- if eq .Values.defaultStorageClass "gce-sc-hd-balanced" }}
+    storageclass.kubernetes.io/is-default-class: "true"
+    {{- end }}
+    resources.gardener.cloud/delete-on-invalid-update: "true"
+allowVolumeExpansion: true
+provisioner: pd.csi.storage.gke.io
+parameters:
+  type: hyperdisk-balanced
+  {{- if .Values.hyperdisk.balanced.provisionedIopsOnCreate }}
+  provisioned-iops-on-create: {{ .Values.hyperdisk.balanced.provisionedIopsOnCreate | quote }}
+  {{- end }}
+  {{- if .Values.hyperdisk.balanced.provisionedThroughputOnCreate }}
+  provisioned-throughput-on-create: {{ .Values.hyperdisk.balanced.provisionedThroughputOnCreate | quote }}
+  {{- end }}
+volumeBindingMode: WaitForFirstConsumer
+{{- end }}
+
+{{- if .Values.hyperdisk.throughput }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gce-sc-hd-throughput
+  annotations:
+    {{- if eq .Values.defaultStorageClass "gce-sc-hd-throughput" }}
+    storageclass.kubernetes.io/is-default-class: "true"
+    {{- end }}
+    resources.gardener.cloud/delete-on-invalid-update: "true"
+allowVolumeExpansion: true
+provisioner: pd.csi.storage.gke.io
+parameters:
+  type: hyperdisk-throughput
+  {{- if .Values.hyperdisk.throughput.provisionedThroughputOnCreate }}
+  provisioned-throughput-on-create: {{ .Values.hyperdisk.throughput.provisionedThroughputOnCreate | quote }}
+  {{- end }}
+volumeBindingMode: WaitForFirstConsumer
+{{- end }}
+
+{{- if .Values.hyperdisk.extreme }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gce-sc-hd-extreme
+  annotations:
+    {{- if eq .Values.defaultStorageClass "gce-sc-hd-extreme" }}
+    storageclass.kubernetes.io/is-default-class: "true"
+    {{- end }}
+    resources.gardener.cloud/delete-on-invalid-update: "true"
+allowVolumeExpansion: true
+provisioner: pd.csi.storage.gke.io
+parameters:
+  type: hyperdisk-extreme
+  {{- if .Values.hyperdisk.extreme.provisionedIopsOnCreate }}
+  provisioned-iops-on-create: {{ .Values.hyperdisk.extreme.provisionedIopsOnCreate | quote }}
+  {{- end }}
+volumeBindingMode: WaitForFirstConsumer
+{{- end }}
 
 ---
 apiVersion: snapshot.storage.k8s.io/v1
