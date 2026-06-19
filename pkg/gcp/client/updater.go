@@ -52,9 +52,11 @@ func (u *updater) VPC(ctx context.Context, desired, current *compute.Network) (*
 	}
 	// dismiss non-functional changes that may block update
 	desired.Description = ""
+	// MTU is immutable after VPC creation; zero it out so it is omitted from the PATCH payload
+	desired.Mtu = 0
 
 	var modified bool
-	if desired.RoutingConfig != current.RoutingConfig {
+	if !reflect.DeepEqual(desired.RoutingConfig, current.RoutingConfig) {
 		modified = true
 	}
 
