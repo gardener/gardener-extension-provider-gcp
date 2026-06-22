@@ -17,10 +17,8 @@ import (
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	fakesecretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager/fake"
 	"github.com/gardener/gardener/pkg/utils/test"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -43,14 +41,16 @@ const (
 
 var _ = Describe("ValuesProvider", func() {
 	var (
-		ctrl *gomock.Controller
-		ctx  = context.TODO()
+		ctx = context.TODO()
 
 		scheme = runtime.NewScheme()
 		_      = apisgcp.AddToScheme(scheme)
+		_      = corev1.AddToScheme(scheme)
+		_      = appsv1.AddToScheme(scheme)
+		_      = policyv1.AddToScheme(scheme)
+		_      = vpaautoscalingv1.AddToScheme(scheme)
 
 		vp  genericactuator.ValuesProvider
-		c   *mockclient.MockClient
 		mgr *test.FakeManager
 
 		cp = &extensionsv1alpha1.ControlPlane{
@@ -110,8 +110,7 @@ var _ = Describe("ValuesProvider", func() {
 		projectID = "abc"
 		zone      = "europe-west1a"
 
-		cpSecretKey = client.ObjectKey{Namespace: namespace, Name: v1beta1constants.SecretNameCloudProvider}
-		cpSecret    = &corev1.Secret{
+		cpSecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      v1beta1constants.SecretNameCloudProvider,
 				Namespace: namespace,
@@ -136,9 +135,7 @@ var _ = Describe("ValuesProvider", func() {
 	)
 
 	BeforeEach(func() {
-		ctrl = gomock.NewController(GinkgoT())
-
-		c = mockclient.NewMockClient(ctrl)
+		c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(cpSecret).Build()
 
 		mgr = &test.FakeManager{Client: c, Scheme: scheme}
 		vp = NewValuesProvider(mgr)
@@ -177,14 +174,8 @@ var _ = Describe("ValuesProvider", func() {
 		}
 	})
 
-	AfterEach(func() {
-		ctrl.Finish()
-	})
-
 	Describe("#GetConfigChartValues", func() {
 		It("should return correct config chart values", func() {
-			c.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
-
 			values, err := vp.GetConfigChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
@@ -232,16 +223,9 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		BeforeEach(func() {
-			c.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
-
 			By("creating secrets managed outside of this package for whose secretsmanager.Get() will be called")
 			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca-provider-gcp-controlplane", Namespace: namespace}})).To(Succeed())
 			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
-
-			c.EXPECT().Delete(context.TODO(), &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-validation", Namespace: namespace}})
-			c.EXPECT().Delete(context.TODO(), &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-validation", Namespace: namespace}})
-			c.EXPECT().Delete(context.TODO(), &vpaautoscalingv1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-webhook-vpa", Namespace: namespace}})
-			c.EXPECT().Delete(context.TODO(), &policyv1.PodDisruptionBudget{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-validation", Namespace: namespace}})
 		})
 
 		It("should return correct control plane chart values", func() {
@@ -911,14 +895,4 @@ var _ = Describe("ValuesProvider", func() {
 func encode(obj runtime.Object) []byte {
 	data, _ := json.Marshal(obj)
 	return data
-}
-
-func clientGet(result runtime.Object) interface{} {
-	return func(_ context.Context, _ client.ObjectKey, obj runtime.Object, _ ...client.GetOption) error {
-		switch obj.(type) {
-		case *corev1.Secret:
-			*obj.(*corev1.Secret) = *result.(*corev1.Secret)
-		}
-		return nil
-	}
 }

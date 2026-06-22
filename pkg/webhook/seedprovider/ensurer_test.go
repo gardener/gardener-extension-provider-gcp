@@ -6,22 +6,19 @@ package seedprovider
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	druidcorev1alpha1 "github.com/gardener/etcd-druid/api/core/v1alpha1"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/mock/gomock"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/config"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -41,32 +38,23 @@ var _ = Describe("Ensurer", func() {
 		}
 		backupBucketName = "test-bb"
 
-		c *mockclient.MockClient
-
-		ctrl *gomock.Controller
-
-		ctx context.Context
+		ctx = context.TODO()
 
 		dummyContext = gcontext.NewGardenContext(nil, nil)
+
+		scheme *runtime.Scheme
 	)
 
 	BeforeEach(func() {
-		ctx = context.TODO()
-		ctrl = gomock.NewController(GinkgoT())
-		scheme := runtime.NewScheme()
+		scheme = runtime.NewScheme()
 		Expect(extensionsv1alpha1.AddToScheme(scheme)).To(Succeed())
 		Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
 		Expect(apisgcp.AddToScheme(scheme)).To(Succeed())
-
-		c = mockclient.NewMockClient(ctrl)
-	})
-
-	AfterEach(func() {
-		ctrl.Finish()
 	})
 
 	Describe("#EnsureETCD", func() {
 		It("should add or modify elements to etcd-main statefulset", func() {
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 			etcd := &druidcorev1alpha1.Etcd{
 				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
 			}
@@ -77,6 +65,7 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should error when fetching backupbucket fails", func() {
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 			etcd := &druidcorev1alpha1.Etcd{
 				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
 				Spec: druidcorev1alpha1.EtcdSpec{
@@ -88,28 +77,12 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			c.EXPECT().Get(ctx, client.ObjectKey{Name: backupBucketName}, gomock.AssignableToTypeOf(&extensionsv1alpha1.BackupBucket{})).DoAndReturn(
-				func(_ context.Context, _ client.ObjectKey, _ *extensionsv1alpha1.BackupBucket, _ ...client.GetOption) error {
-					return fmt.Errorf("failed to fetch backupbucket")
-				},
-			)
-
+			// BackupBucket not pre-populated → fake client returns not-found
 			ensurer := NewEnsurer(etcdStorage, c, logger)
 			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(HaveOccurred())
 		})
 
 		It("should add or modify backup endpointOverride of the etcd spec", func() {
-			etcd := &druidcorev1alpha1.Etcd{
-				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
-				Spec: druidcorev1alpha1.EtcdSpec{
-					Backup: druidcorev1alpha1.BackupSpec{
-						Store: &druidcorev1alpha1.StoreSpec{
-							Container: ptr.To(backupBucketName),
-						},
-					},
-				},
-			}
-
 			backupBucket := &extensionsv1alpha1.BackupBucket{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: backupBucketName,
@@ -122,13 +95,18 @@ var _ = Describe("Ensurer", func() {
 					},
 				},
 			}
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(backupBucket).Build()
 
-			c.EXPECT().Get(ctx, client.ObjectKey{Name: backupBucketName}, gomock.AssignableToTypeOf(&extensionsv1alpha1.BackupBucket{})).DoAndReturn(
-				func(_ context.Context, _ client.ObjectKey, bb *extensionsv1alpha1.BackupBucket, _ ...client.GetOption) error {
-					*bb = *backupBucket
-					return nil
+			etcd := &druidcorev1alpha1.Etcd{
+				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
+				Spec: druidcorev1alpha1.EtcdSpec{
+					Backup: druidcorev1alpha1.BackupSpec{
+						Store: &druidcorev1alpha1.StoreSpec{
+							Container: ptr.To(backupBucketName),
+						},
+					},
 				},
-			)
+			}
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
 			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Succeed())
@@ -136,6 +114,7 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should modify existing elements of etcd-main statefulset", func() {
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 			r := resource.MustParse("10Gi")
 			etcd := &druidcorev1alpha1.Etcd{
 				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
@@ -150,18 +129,6 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should modify existing backup endpointOverride of the etcd spec", func() {
-			etcd := &druidcorev1alpha1.Etcd{
-				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
-				Spec: druidcorev1alpha1.EtcdSpec{
-					Backup: druidcorev1alpha1.BackupSpec{
-						Store: &druidcorev1alpha1.StoreSpec{
-							Container:        ptr.To(backupBucketName),
-							EndpointOverride: ptr.To("https://storage.me-central1.rep.googleapis.com"),
-						},
-					},
-				},
-			}
-
 			backupBucket := &extensionsv1alpha1.BackupBucket{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: backupBucketName,
@@ -174,13 +141,19 @@ var _ = Describe("Ensurer", func() {
 					},
 				},
 			}
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(backupBucket).Build()
 
-			c.EXPECT().Get(ctx, client.ObjectKey{Name: backupBucketName}, gomock.AssignableToTypeOf(&extensionsv1alpha1.BackupBucket{})).DoAndReturn(
-				func(_ context.Context, _ client.ObjectKey, bb *extensionsv1alpha1.BackupBucket, _ ...client.GetOption) error {
-					*bb = *backupBucket
-					return nil
+			etcd := &druidcorev1alpha1.Etcd{
+				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
+				Spec: druidcorev1alpha1.EtcdSpec{
+					Backup: druidcorev1alpha1.BackupSpec{
+						Store: &druidcorev1alpha1.StoreSpec{
+							Container:        ptr.To(backupBucketName),
+							EndpointOverride: ptr.To("https://storage.me-central1.rep.googleapis.com"),
+						},
+					},
 				},
-			)
+			}
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
 			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Succeed())
@@ -188,6 +161,7 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should add or modify elements to etcd-events statefulset", func() {
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 			etcd := &druidcorev1alpha1.Etcd{
 				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDEvents},
 			}
@@ -198,6 +172,7 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should modify existing elements of etcd-events statefulset", func() {
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 			r := resource.MustParse("20Gi")
 			etcd := &druidcorev1alpha1.Etcd{
 				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDEvents},

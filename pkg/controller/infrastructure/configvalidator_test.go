@@ -13,7 +13,6 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/test"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -23,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -40,7 +40,6 @@ const (
 var _ = Describe("ConfigValidator", func() {
 	var (
 		ctrl             *gomock.Controller
-		c                *mockclient.MockClient
 		gcpClientFactory *mockgcpclient.MockFactory
 		gcpComputeClient *mockgcpclient.MockComputeClient
 		ctx              context.Context
@@ -53,13 +52,13 @@ var _ = Describe("ConfigValidator", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 
-		c = mockclient.NewMockClient(ctrl)
 		gcpClientFactory = mockgcpclient.NewMockFactory(ctrl)
 		gcpComputeClient = mockgcpclient.NewMockComputeClient(ctrl)
 
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
+		c := fakeclient.NewClientBuilder().Build()
 		mgr = &test.FakeManager{Client: c}
 
 		cv = infractrl.NewConfigValidator(mgr, logger, gcpClientFactory)
@@ -94,13 +93,9 @@ var _ = Describe("ConfigValidator", func() {
 		}
 	})
 
-	AfterEach(func() {
-		ctrl.Finish()
-	})
-
 	Describe("#Validate", func() {
 		BeforeEach(func() {
-			gcpClientFactory.EXPECT().Compute(ctx, c, infra.Spec.SecretRef).Return(gcpComputeClient, nil)
+			gcpClientFactory.EXPECT().Compute(ctx, gomock.Any(), infra.Spec.SecretRef).Return(gcpComputeClient, nil)
 		})
 
 		It("should succeed if there are no NAT IP names", func() {

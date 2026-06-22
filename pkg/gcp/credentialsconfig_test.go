@@ -8,12 +8,12 @@ import (
 	"context"
 	"fmt"
 
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var _ = Describe("Service Account", func() {
@@ -36,12 +36,10 @@ var _ = Describe("Service Account", func() {
 		}
 	})
 
-	var ctrl *gomock.Controller
+	var scheme *runtime.Scheme
 	BeforeEach(func() {
-		ctrl = gomock.NewController(GinkgoT())
-	})
-	AfterEach(func() {
-		ctrl.Finish()
+		scheme = runtime.NewScheme()
+		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 	})
 
 	Describe("#ExtractServiceAccountProjectID", func() {
@@ -142,7 +140,6 @@ credentialsConfig:
 	Describe("#GetCredentialsConfigData", func() {
 		It("should retrieve the service account data", func() {
 			var (
-				c         = mockclient.NewMockClient(ctrl)
 				ctx       = context.TODO()
 				namespace = "foo"
 				name      = "bar"
@@ -151,11 +148,12 @@ credentialsConfig:
 					Name:      name,
 				}
 			)
-			c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
-					*actual = *secret
-					return nil
-				})
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+					Data:       secret.Data,
+				},
+			).Build()
 
 			actual, err := GetCredentialsConfigFromSecretReference(ctx, c, secretRef)
 
@@ -167,7 +165,6 @@ credentialsConfig:
 	Describe("#GetCredentialsConfig", func() {
 		It("should correctly retrieve the service account", func() {
 			var (
-				c         = mockclient.NewMockClient(ctrl)
 				ctx       = context.TODO()
 				namespace = "foo"
 				name      = "bar"
@@ -176,11 +173,12 @@ credentialsConfig:
 					Name:      name,
 				}
 			)
-			c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
-					*actual = *secret
-					return nil
-				})
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+					Data:       secret.Data,
+				},
+			).Build()
 
 			actual, err := GetCredentialsConfigFromSecretReference(ctx, c, secretRef)
 
