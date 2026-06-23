@@ -12,6 +12,9 @@ linters:
     - unparam
     - whitespace
   settings:
+    govet:
+      disable:
+        - inline # go1.26 inliner does not yet support type parameter inference (slices package)
     importas:
       alias:
         # internal packages
