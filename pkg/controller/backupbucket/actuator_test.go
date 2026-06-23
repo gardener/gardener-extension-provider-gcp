@@ -13,7 +13,6 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/test"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -35,7 +34,6 @@ var _ = Describe("Actuator", func() {
 	var (
 		ctrl             *gomock.Controller
 		fakeClient       client.Client
-		sw               *mockclient.MockStatusWriter
 		gcpClientFactory *mockgcpclient.MockFactory
 		gcpStorageClient *mockgcpclient.MockStorageClient
 		ctx              context.Context
@@ -71,20 +69,13 @@ var _ = Describe("Actuator", func() {
 		fakeClient = fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 		mgr = &test.FakeManager{Scheme: scheme, Client: fakeClient}
 
-		sw = mockclient.NewMockStatusWriter(ctrl)
 		gcpClientFactory = mockgcpclient.NewMockFactory(ctrl)
 		gcpStorageClient = mockgcpclient.NewMockStorageClient(ctrl)
-
-		sw.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
 		a = NewActuator(mgr, gcpClientFactory)
-	})
-
-	AfterEach(func() {
-		ctrl.Finish()
 	})
 
 	Describe("#Reconcile", func() {

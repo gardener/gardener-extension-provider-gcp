@@ -11,7 +11,6 @@ import (
 	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/gardener/gardener/pkg/utils/test"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -22,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -38,7 +37,6 @@ const (
 var _ = Describe("ConfigValidator", func() {
 	var (
 		ctrl             *gomock.Controller
-		c                *mockclient.MockClient
 		mgr              *test.FakeManager
 		gcpClientFactory *mockgcpclient.MockFactory
 		gcpComputeClient *mockgcpclient.MockComputeClient
@@ -54,15 +52,11 @@ var _ = Describe("ConfigValidator", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 
-		c = mockclient.NewMockClient(ctrl)
 		gcpClientFactory = mockgcpclient.NewMockFactory(ctrl)
 		gcpComputeClient = mockgcpclient.NewMockComputeClient(ctrl)
 
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
-
-		mgr = &test.FakeManager{Client: c}
-		cv = NewConfigValidator(mgr, logger, gcpClientFactory)
 
 		bastion = &extensionsv1alpha1.Bastion{}
 		cluster = &extensions.Cluster{}
@@ -97,23 +91,24 @@ var _ = Describe("ConfigValidator", func() {
 				},
 			},
 		}
-
-	})
-
-	AfterEach(func() {
-		ctrl.Finish()
 	})
 
 	Describe("#Validate", func() {
 		BeforeEach(func() {
 			cluster = createClusters()
-			key := client.ObjectKey{Namespace: cluster.ObjectMeta.Name, Name: cluster.Shoot.Name}
-			c.EXPECT().Get(ctx, key, &extensionsv1alpha1.Worker{}).DoAndReturn(
-				func(_ context.Context, _ client.ObjectKey, obj *extensionsv1alpha1.Worker, _ ...client.GetOption) error {
-					worker.DeepCopyInto(obj)
-					return nil
-				})
-			gcpClientFactory.EXPECT().Compute(ctx, c, secretBinding.SecretRef).Return(gcpComputeClient, nil)
+
+			scheme := runtime.NewScheme()
+			Expect(extensionsv1alpha1.AddToScheme(scheme)).To(Succeed())
+
+			workerObj := worker.DeepCopy()
+			workerObj.Name = cluster.Shoot.Name
+			workerObj.Namespace = cluster.ObjectMeta.Name
+
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(workerObj).Build()
+			mgr = &test.FakeManager{Client: c}
+			cv = NewConfigValidator(mgr, logger, gcpClientFactory)
+
+			gcpClientFactory.EXPECT().Compute(ctx, gomock.Any(), secretBinding.SecretRef).Return(gcpComputeClient, nil)
 		})
 
 		It("should succeed if there are infrastructureStatus passed", func() {

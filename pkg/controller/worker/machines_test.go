@@ -24,7 +24,6 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	mockkubernetes "github.com/gardener/gardener/pkg/client/kubernetes/mock"
 	"github.com/gardener/gardener/pkg/utils"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo/v2"
@@ -38,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/gardener/gardener-extension-provider-gcp/charts"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -51,9 +51,7 @@ var _ = Describe("Machines", func() {
 		ctx = context.Background()
 
 		ctrl         *gomock.Controller
-		c            *mockclient.MockClient
 		chartApplier *mockkubernetes.MockChartApplier
-		statusWriter *mockclient.MockStatusWriter
 
 		workerDelegate genericworkeractuator.WorkerDelegate
 		scheme         *runtime.Scheme
@@ -63,18 +61,14 @@ var _ = Describe("Machines", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 
-		c = mockclient.NewMockClient(ctrl)
 		chartApplier = mockkubernetes.NewMockChartApplier(ctrl)
-		statusWriter = mockclient.NewMockStatusWriter(ctrl)
 
 		scheme = runtime.NewScheme()
 		_ = apisgcp.AddToScheme(scheme)
 		_ = apiv1alpha1.AddToScheme(scheme)
+		_ = corev1.AddToScheme(scheme)
+		_ = extensionsv1alpha1.AddToScheme(scheme)
 		decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
-	})
-
-	AfterEach(func() {
-		ctrl.Finish()
 	})
 
 	Context("WorkerDelegate", func() {
@@ -159,6 +153,7 @@ var _ = Describe("Machines", func() {
 				clusterWithoutImages   *extensionscontroller.Cluster
 				cluster                *extensionscontroller.Cluster
 				w                      *extensionsv1alpha1.Worker
+				c                      client.Client
 			)
 
 			BeforeEach(func() {
@@ -571,17 +566,15 @@ var _ = Describe("Machines", func() {
 				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, []string{}, additionalData2, nil)
 				workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, nil, nil, nil)
 
+				c = fakeclient.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(w).WithObjects(
+					w,
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{Name: userDataSecretName, Namespace: namespace},
+						Data:       map[string][]byte{userDataSecretDataKey: userData},
+					},
+				).Build()
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, clusterWithoutImages)
 			})
-
-			expectedUserDataSecretRefRead := func() {
-				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: userDataSecretName}, gomock.AssignableToTypeOf(&corev1.Secret{})).DoAndReturn(
-					func(_ context.Context, _ client.ObjectKey, secret *corev1.Secret, _ ...client.GetOption) error {
-						secret.Data = map[string][]byte{userDataSecretDataKey: userData}
-						return nil
-					},
-				).AnyTimes()
-			}
 
 			Describe("machine images", func() {
 				var (
@@ -884,9 +877,13 @@ var _ = Describe("Machines", func() {
 							},
 						}),
 					}
-					workerDelegateCloudRouter, _ := NewWorkerDelegate(c, scheme, chartApplier, "", workerCloudRouter, cluster)
-
-					expectedUserDataSecretRefRead()
+					workerDelegateCloudRouter, _ := NewWorkerDelegate(fakeclient.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(workerCloudRouter).WithObjects(
+						workerCloudRouter,
+						&corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{Name: userDataSecretName, Namespace: namespace},
+							Data:       map[string][]byte{userDataSecretDataKey: userData},
+						},
+					).Build(), scheme, chartApplier, "", workerCloudRouter, cluster)
 
 					// Test WorkerDelegate.DeployMachineClasses()
 					chartApplier.EXPECT().ApplyFromEmbeddedFS(
@@ -950,9 +947,6 @@ var _ = Describe("Machines", func() {
 					workerWithExpectedImages.Status.ProviderStatus = &runtime.RawExtension{
 						Object: expectedStatus,
 					}
-					c.EXPECT().Status().Return(statusWriter)
-					statusWriter.EXPECT().Patch(ctx, workerWithExpectedImages, gomock.Any()).Return(nil)
-
 					err = workerDelegateCloudRouter.UpdateMachineImagesStatus(ctx)
 					Expect(err).NotTo(HaveOccurred())
 
@@ -967,7 +961,6 @@ var _ = Describe("Machines", func() {
 				cluster.Shoot.Spec.Networking.IPFamilies = []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4}
 				wd, err := NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 				Expect(err).NotTo(HaveOccurred())
-				expectedUserDataSecretRefRead()
 				_, err = wd.GenerateMachineDeployments(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				workerDelegate := wd.(*WorkerDelegate)
@@ -998,7 +991,6 @@ var _ = Describe("Machines", func() {
 				}
 				wd, err := NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 				Expect(err).NotTo(HaveOccurred())
-				expectedUserDataSecretRefRead()
 				_, err = wd.GenerateMachineDeployments(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				workerDelegate := wd.(*WorkerDelegate)
@@ -1109,8 +1101,6 @@ var _ = Describe("Machines", func() {
 
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 
-				expectedUserDataSecretRefRead()
-
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				resultSettings := result[0].MachineConfiguration
 				resultNodeConditions := strings.Join(testNodeConditions, ",")
@@ -1147,7 +1137,6 @@ var _ = Describe("Machines", func() {
 
 				wd, err := NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 				Expect(err).NotTo(HaveOccurred())
-				expectedUserDataSecretRefRead()
 				_, err = wd.GenerateMachineDeployments(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				workerDelegate := wd.(*WorkerDelegate)
@@ -1172,8 +1161,6 @@ var _ = Describe("Machines", func() {
 				}
 				w.Spec.Pools[1].ClusterAutoscaler = nil
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
-
-				expectedUserDataSecretRefRead()
 
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				Expect(err).NotTo(HaveOccurred())
@@ -1241,7 +1228,6 @@ var _ = Describe("Machines", func() {
 
 					wd, err := NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 					Expect(err).NotTo(HaveOccurred())
-					expectedUserDataSecretRefRead()
 					_, err = wd.GenerateMachineDeployments(ctx)
 					Expect(err).NotTo(HaveOccurred())
 					workerDelegate := wd.(*WorkerDelegate)

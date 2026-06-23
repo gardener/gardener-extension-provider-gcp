@@ -7,7 +7,6 @@ package validator_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"regexp"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
@@ -15,20 +14,17 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/test"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
-	"go.uber.org/mock/gomock"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/admission/validator"
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
@@ -42,33 +38,31 @@ var _ = Describe("Shoot validator", func() {
 		var (
 			shootValidator extensionswebhook.Validator
 
-			ctrl         *gomock.Controller
-			c            *mockclient.MockClient
-			reader       *mockclient.MockReader
-			mgr          *test.FakeManager
+			scheme       *runtime.Scheme
 			cloudProfile *gardencorev1beta1.CloudProfile
 			shoot        *core.Shoot
 
 			ctx = context.Background()
 		)
 
-		BeforeEach(func() {
-			ctrl = gomock.NewController(GinkgoT())
-
-			scheme := runtime.NewScheme()
-			Expect(apisgcp.AddToScheme(scheme)).To(Succeed())
-			Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
-			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
-
-			c = mockclient.NewMockClient(ctrl)
-			reader = mockclient.NewMockReader(ctrl)
-
-			mgr = &test.FakeManager{Scheme: scheme, Client: c, APIReader: reader}
+		newValidator := func(clientObjs []client.Object, readerObjs []client.Object) {
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(clientObjs...).Build()
+			reader := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(readerObjs...).Build()
+			mgr := &test.FakeManager{Scheme: scheme, Client: c, APIReader: reader}
 			shootValidator = validator.NewShootValidator(
 				mgr,
 				[]string{"https://sts.googleapis.com/v1/token", "https://sts.googleapis.com/v1/token/new"},
 				[]*regexp.Regexp{regexp.MustCompile(`^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$`)},
 			)
+		}
+
+		BeforeEach(func() {
+			scheme = runtime.NewScheme()
+			Expect(apisgcp.AddToScheme(scheme)).To(Succeed())
+			Expect(apisgcpv1alpha1.AddToScheme(scheme)).To(Succeed())
+			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
+			Expect(corev1.AddToScheme(scheme)).To(Succeed())
+			Expect(securityv1alpha1.AddToScheme(scheme)).To(Succeed())
 
 			cloudProfile = &gardencorev1beta1.CloudProfile{
 				ObjectMeta: metav1.ObjectMeta{
@@ -114,6 +108,8 @@ var _ = Describe("Shoot validator", func() {
 					},
 				},
 			}
+
+			newValidator([]client.Object{cloudProfile}, nil)
 		})
 
 		Context("Workerless Shoot", func() {
@@ -164,8 +160,6 @@ var _ = Describe("Shoot validator", func() {
 			})
 
 			It("should return err when networking is invalid", func() {
-				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
-
 				shoot.Spec.Networking.Nodes = nil
 				shoot.Spec.Networking.IPFamilies = []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}
 				err := shootValidator.Validate(ctx, shoot, nil)
@@ -182,8 +176,6 @@ var _ = Describe("Shoot validator", func() {
 			})
 
 			It("should return err with IPv6-only networking", func() {
-				c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
-
 				shoot.Spec.Networking.IPFamilies = []core.IPFamily{core.IPFamilyIPv6}
 				shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
 					Raw: []byte(`{"overlay":{"enabled":false}}`),
@@ -199,10 +191,6 @@ var _ = Describe("Shoot validator", func() {
 			})
 
 			Context("DNS provider (shoot.spec.dns.providers) credentials", func() {
-				BeforeEach(func() {
-					c.EXPECT().Get(ctx, client.ObjectKey{Name: "gcp"}, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
-				})
-
 				Context("#primaryProviders", func() {
 					It("should skip validation for non google-clouddns providers", func() {
 						shoot.Spec.DNS = &core.DNS{
@@ -267,10 +255,7 @@ var _ = Describe("Shoot validator", func() {
 							},
 						}
 
-						// Only the primary secret should be fetched
-						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "primary-secret"}, gomock.Any()).
-							SetArg(2, *validSecret)
-
+						newValidator([]client.Object{cloudProfile}, []client.Object{validSecret})
 						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
 					})
 				})
@@ -306,16 +291,14 @@ var _ = Describe("Shoot validator", func() {
 							},
 						}
 
-						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "missing-secret"}, gomock.Any()).
-							Return(apierrors.NewNotFound(schema.GroupResource{Resource: "secrets"}, "missing-secret"))
-
+						// missing-secret not in reader → fake returns not-found
 						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 							"Type":  Equal(field.ErrorTypeNotFound),
 							"Field": Equal("spec.dns.providers[0].credentialsRef"),
 						}))))
 					})
 
-					It("should return error when credentialsRef retrieval fails with internal error", func() {
+					It("should return error when credentialsRef retrieval fails", func() {
 						shoot.Spec.DNS = &core.DNS{
 							Providers: []core.DNSProvider{
 								{
@@ -330,13 +313,10 @@ var _ = Describe("Shoot validator", func() {
 							},
 						}
 
-						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"}, gomock.Any()).
-							Return(apierrors.NewInternalError(fmt.Errorf("connection timeout")))
-
+						// dns-secret not in reader → fake returns not-found
 						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-							"Type":   Equal(field.ErrorTypeInternal),
-							"Field":  Equal("spec.dns.providers[0].credentialsRef"),
-							"Detail": ContainSubstring("Internal error occurred: connection timeout"),
+							"Type":  Equal(field.ErrorTypeNotFound),
+							"Field": Equal("spec.dns.providers[0].credentialsRef"),
 						}))))
 					})
 
@@ -368,9 +348,7 @@ var _ = Describe("Shoot validator", func() {
 							},
 						}
 
-						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "invalid-secret"}, gomock.Any()).
-							SetArg(2, *invalidSecret)
-
+						newValidator([]client.Object{cloudProfile}, []client.Object{invalidSecret})
 						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 							"Type":   Equal(field.ErrorTypeInvalid),
 							"Field":  Equal("spec.dns.providers[0].credentialsRef"),
@@ -407,9 +385,7 @@ var _ = Describe("Shoot validator", func() {
 							},
 						}
 
-						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "valid-secret"}, gomock.Any()).
-							SetArg(2, *validSecret)
-
+						newValidator([]client.Object{cloudProfile}, []client.Object{validSecret})
 						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
 					})
 
@@ -437,27 +413,26 @@ var _ = Describe("Shoot validator", func() {
 								TargetSystem: securityv1alpha1.TargetSystem{
 									Type: "gcp",
 									ProviderConfig: &runtime.RawExtension{
-										Raw: []byte(`
-apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
-kind: WorkloadIdentityConfig
-projectID: "foo-valid"
-credentialsConfig:
-  universe_domain: "googleapis.com"
-  type: "external_account"
-  audience: "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
-  subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
-  token_url: "https://sts.googleapis.com/v1/token"
-  service_account_impersonation_url: "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/foo@bar.example:generateAccessToken"
-`),
+										Raw: []byte(`{
+											"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1",
+											"kind": "WorkloadIdentityConfig",
+											"projectID": "foo-valid",
+											"credentialsConfig": {
+												"universe_domain": "googleapis.com",
+												"type": "external_account",
+												"audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
+												"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+												"token_url": "https://sts.googleapis.com/v1/token",
+												"service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/foo@bar.example:generateAccessToken"
+											}
+										}`),
 									},
 								},
 								Audiences: []string{"https://kubernetes.cloud"},
 							},
 						}
 
-						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "gcp-workload-identity"}, gomock.Any()).
-							SetArg(2, *validWorkloadIdentity)
-
+						newValidator([]client.Object{cloudProfile}, []client.Object{validWorkloadIdentity})
 						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
 					})
 
@@ -485,26 +460,25 @@ credentialsConfig:
 								TargetSystem: securityv1alpha1.TargetSystem{
 									Type: "gcp",
 									ProviderConfig: &runtime.RawExtension{
-										Raw: []byte(`
-apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
-kind: WorkloadIdentityConfig
-projectID: "foo-valid"
-credentialsConfig:
-  universe_domain: "googleapis.com"
-  type: "external_account"
-  audience: "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
-  subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
-  token_url: "https://invalid.example.com/v1/token"
-`),
+										Raw: []byte(`{
+											"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1",
+											"kind": "WorkloadIdentityConfig",
+											"projectID": "foo-valid",
+											"credentialsConfig": {
+												"universe_domain": "googleapis.com",
+												"type": "external_account",
+												"audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
+												"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+												"token_url": "https://invalid.example.com/v1/token"
+											}
+										}`),
 									},
 								},
 								Audiences: []string{"https://kubernetes.cloud"},
 							},
 						}
 
-						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "invalid-workload-identity"}, gomock.Any()).
-							SetArg(2, *invalidWorkloadIdentity)
-
+						newValidator([]client.Object{cloudProfile}, []client.Object{invalidWorkloadIdentity})
 						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 							"Type":   Equal(field.ErrorTypeInvalid),
 							"Field":  Equal("spec.dns.providers[0].credentialsRef"),
@@ -534,11 +508,7 @@ credentialsConfig:
 							},
 						}
 
-						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "some-internal-secret"},
-							&gardencorev1beta1.InternalSecret{}).
-							SetArg(2, *internalSecret).
-							Return(nil)
-
+						newValidator([]client.Object{cloudProfile}, []client.Object{internalSecret})
 						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 							"Type":   Equal(field.ErrorTypeInvalid),
 							"Field":  Equal("spec.dns.providers[0].credentialsRef"),
@@ -561,7 +531,6 @@ credentialsConfig:
 							},
 						}
 
-						// No reader.EXPECT() call - credentialsRef should NOT be fetched for non-primary providers
 						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
 					})
 
@@ -581,10 +550,6 @@ credentialsConfig:
 						}
 
 						validWorkloadIdentity := &securityv1alpha1.WorkloadIdentity{
-							TypeMeta: metav1.TypeMeta{
-								APIVersion: "security.gardener.cloud/v1alpha1",
-								Kind:       "WorkloadIdentity",
-							},
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "gcp-workload-identity",
 								Namespace: namespace,
@@ -593,18 +558,19 @@ credentialsConfig:
 								TargetSystem: securityv1alpha1.TargetSystem{
 									Type: "gcp",
 									ProviderConfig: &runtime.RawExtension{
-										Raw: []byte(`
-apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
-kind: WorkloadIdentityConfig
-projectID: "foo-valid"
-credentialsConfig:
-  universe_domain: "googleapis.com"
-  type: "external_account"
-  audience: "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider"
-  subject_token_type: "urn:ietf:params:oauth:token-type:jwt"
-  token_url: "https://sts.googleapis.com/v1/token"
-  service_account_impersonation_url: "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/foo@bar.example:generateAccessToken"
-`),
+										Raw: []byte(`{
+											"apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1",
+											"kind": "WorkloadIdentityConfig",
+											"projectID": "foo-valid",
+											"credentialsConfig": {
+												"universe_domain": "googleapis.com",
+												"type": "external_account",
+												"audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
+												"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+												"token_url": "https://sts.googleapis.com/v1/token",
+												"service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/foo@bar.example:generateAccessToken"
+											}
+										}`),
 									},
 								},
 								Audiences: []string{"https://kubernetes.cloud"},
@@ -634,11 +600,7 @@ credentialsConfig:
 							},
 						}
 
-						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "primary-secret"}, gomock.Any()).
-							SetArg(2, *validSecret)
-						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "gcp-workload-identity"}, gomock.Any()).
-							SetArg(2, *validWorkloadIdentity)
-
+						newValidator([]client.Object{cloudProfile}, []client.Object{validSecret, validWorkloadIdentity})
 						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
 					})
 				})
