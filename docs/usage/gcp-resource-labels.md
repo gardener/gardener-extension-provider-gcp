@@ -8,9 +8,9 @@ Worker node VMs receive labels from two sources: fixed labels set by the extensi
 
 ### Fixed Labels
 
-| Label Key | Label Value | Description |
-|---|---|---|
-| `name` | Sanitized shoot name | Identifies the shoot the node belongs to |
+| Label Key | Label Value                         | Description |
+|---|-------------------------------------|---|
+| `name` | `worker.name`                       | Identifies the shoot the node belongs to |
 | `k8s-cluster-name` | Sanitized Technical ID of the Shoot | Ensures consistency with the label added to all disks by the CSI driver |
 
 ### Worker Pool Labels
@@ -23,8 +23,8 @@ In addition to labels, GCP VM network tags are set on worker node instances. Net
 
 | Tag | Description |
 |---|---|
-| `<shoot-technical-id>` | Technical ID of the Shoot, used to identify the cluster |
-| `kubernetes-io-cluster-<shoot-technical-id>` | Kubernetes cluster identifier tag |
+| `<shoot-technical-id>` | Technical ID of the Shoot; used by Gardener firewall rules to identify the cluster |
+| `kubernetes-io-cluster-<shoot-technical-id>` | Cluster identifier following the Kubernetes GCP cloud-provider / CCM convention; required by components such as the GCP CCM and CSI driver that look up cluster resources by this tag |
 | `kubernetes-io-role-node` | Marks the instance as a Kubernetes worker node |
 
 ### Disks
@@ -37,7 +37,7 @@ Bastion host VMs are created with a single network tag set to the bastion instan
 
 | Tag | Value |
 |---|---|
-| Network tag | `<bastion-instance-name>` (derived from cluster name and bastion name) |
+| Network tag | `<cluster-name>-<bastion-name>-bastion-<5-char-hash>` |
 
 ## Label Sanitization
 
@@ -53,6 +53,15 @@ The extension sanitizes worker pool label keys and values before applying them t
 3. For label keys only: leading digits and underscores are stripped, since GCP requires keys to start with a letter.
 4. Keys or values that exceed 63 characters are truncated to 63 characters.
 5. Keys that are empty after sanitization are dropped entirely.
+
+### Key Collisions
+
+Sanitization can cause key collisions in two situations:
+
+- **Pool label collides with a fixed label** — if a pool label sanitizes to `name` or `k8s-cluster-name` (the fixed keys), the pool label silently overwrites the fixed value. For example, a pool label with key `name` would replace the shoot-name label.
+- **Two pool labels sanitize to the same key** — different raw keys can produce the same sanitized key (e.g. `My-label` and `my_label` both become `my-label`). In that case one value silently overwrites the other (Go map iteration order is random, so the winning value is non-deterministic).
+
+To avoid unexpected behavior, ensure pool label keys are unique after sanitization and do not clash with the fixed keys `name` and `k8s-cluster-name`.
 
 ### Example
 
