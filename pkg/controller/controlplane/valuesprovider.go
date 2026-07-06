@@ -485,6 +485,9 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 			"enabled":             IsDualStackEnabled(cluster.Shoot.Spec.Networking, cluster.Shoot.Status.Networking),
 			"replicas":            replicas,
 			"useWorkloadIdentity": shouldUseWorkloadIdentity(credentialsConfig),
+			"podAnnotations": map[string]interface{}{
+				"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+			},
 		},
 	}, nil
 }
