@@ -17,6 +17,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/pkg/utils/chart"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
@@ -358,6 +359,13 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 	}
 
+	// Decode infrastructureProviderStatus. It is needed to compute the checksum of the
+	// ingress-gce cloud provider configmap (see getControlPlaneChartValues).
+	infraStatus := &apisgcp.InfrastructureStatus{}
+	if _, _, err := vp.decoder.Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
+		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
+	}
+
 	// Get credentials configuration
 	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, vp.client, cp.Spec.SecretRef)
 	if err != nil {
@@ -369,7 +377,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, err
 	}
 
-	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
+	return vp.getControlPlaneChartValues(cpConfig, infraStatus, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
@@ -447,6 +455,7 @@ func shouldUseWorkloadIdentity(credentialsConfig *gcp.CredentialsConfig) bool {
 // getControlPlaneChartValues collects and returns the control plane chart values.
 func (vp *valuesProvider) getControlPlaneChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
+	infraStatus *apisgcp.InfrastructureStatus,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 	secretsReader secretsmanager.Reader,
@@ -457,17 +466,24 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 	map[string]interface{},
 	error,
 ) {
+	// Compute checksums for the cloud-provider configmaps mounted by ingress-gce,
+	// csi-driver-controller and csi-driver-filestore-controller. The framework only
+	// hashes the CCM cloud-provider-config configmap, so these are computed locally
+	// from the same input values that render each configmap.
+	ingressGCEConfigChecksum := computeIngressGCECloudProviderConfigChecksum(cpConfig, infraStatus, cp, credentialsConfig)
+	csiConfigChecksum := computeCSICloudProviderConfigChecksum(cpConfig, credentialsConfig)
+
 	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, shouldUseWorkloadIdentity(credentialsConfig))
 	if err != nil {
 		return nil, err
 	}
 
-	csi, err := getCSIControllerChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
+	csi, err := getCSIControllerChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, csiConfigChecksum, scaledDown)
 	if err != nil {
 		return nil, err
 	}
 
-	csiFilestore := getCSIFilestoreControllerChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
+	csiFilestore := getCSIFilestoreControllerChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, csiConfigChecksum, scaledDown)
 
 	replicas := 0
 	if IsDualStackEnabled(cluster.Shoot.Spec.Networking, nil) {
@@ -486,10 +502,43 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 			"replicas":            replicas,
 			"useWorkloadIdentity": shouldUseWorkloadIdentity(credentialsConfig),
 			"podAnnotations": map[string]interface{}{
-				"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+				"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:      checksums[v1beta1constants.SecretNameCloudProvider],
+				"checksum/configmap-" + internal.CloudProviderConfigIngressGCEName: ingressGCEConfigChecksum,
 			},
 		},
 	}, nil
+}
+
+// computeIngressGCECloudProviderConfigChecksum returns a checksum over the input values that determine
+// the rendered content of the cloud-provider-config-ingress-gce configmap. Any change to these values
+// changes the checksum, which triggers a rolling restart of the ingress-gce pod via its pod annotation.
+func computeIngressGCECloudProviderConfigChecksum(
+	cpConfig *apisgcp.ControlPlaneConfig,
+	infraStatus *apisgcp.InfrastructureStatus,
+	cp *extensionsv1alpha1.ControlPlane,
+	credentialsConfig *gcp.CredentialsConfig,
+) string {
+	networkName, _, subNetworkNameNodes := getNetworkNames(infraStatus, cp)
+	return utils.ComputeChecksum(map[string]string{
+		"projectID":           credentialsConfig.ProjectID,
+		"networkName":         networkName,
+		"subNetworkNameNodes": subNetworkNameNodes,
+		"zone":                cpConfig.Zone,
+		"nodeTags":            cp.Namespace,
+	})
+}
+
+// computeCSICloudProviderConfigChecksum returns a checksum over the input values that determine the
+// rendered content of the csi-driver-controller-config and csi-filestore-controller-config configmaps.
+// Both configmaps are rendered from the same two values, so a single checksum covers both.
+func computeCSICloudProviderConfigChecksum(
+	cpConfig *apisgcp.ControlPlaneConfig,
+	credentialsConfig *gcp.CredentialsConfig,
+) string {
+	return utils.ComputeChecksum(map[string]string{
+		"projectID": credentialsConfig.ProjectID,
+		"zone":      cpConfig.Zone,
+	})
 }
 
 // IsDualStackEnabled returns true if dual-stack is enabled based on the provided networking and networking status. If the cluster is migrating from dual-stack to single-stack, it still returns true.
@@ -583,6 +632,7 @@ func getCSIControllerChartValues(
 	_ secretsmanager.Reader,
 	credentialsConfig *gcp.CredentialsConfig,
 	checksums map[string]string,
+	configChecksum string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
 	values := map[string]interface{}{
@@ -592,6 +642,7 @@ func getCSIControllerChartValues(
 		"zone":      cpConfig.Zone,
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+			"checksum/configmap-" + gcp.CSIControllerConfigName:           configChecksum,
 		},
 		"csiSnapshotController": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
@@ -639,6 +690,7 @@ func getCSIFilestoreControllerChartValues(
 	_ secretsmanager.Reader,
 	credentialsConfig *gcp.CredentialsConfig,
 	checksums map[string]string,
+	configChecksum string,
 	scaledDown bool,
 ) map[string]interface{} {
 	values := map[string]interface{}{
@@ -648,6 +700,7 @@ func getCSIFilestoreControllerChartValues(
 		"zone":      cpConfig.Zone,
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+			"checksum/configmap-" + gcp.CSIFilestoreControllerConfigName:  configChecksum,
 		},
 		"useWorkloadIdentity": shouldUseWorkloadIdentity(credentialsConfig),
 	}

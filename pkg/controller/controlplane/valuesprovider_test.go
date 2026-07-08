@@ -126,6 +126,11 @@ var _ = Describe("ValuesProvider", func() {
 			internal.CloudProviderConfigName:         "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
 		}
 
+		// Checksums computed locally from the same input values that render each configmap.
+		// See computeIngressGCECloudProviderConfigChecksum and computeCSICloudProviderConfigChecksum.
+		ingressGCEConfigChecksum = "61bfad39fdd7c5ad86b28bcb6355c8150f3aa2e23a82b4c44c902265efecbe82"
+		csiConfigChecksum        = "9275b3ff5c8701e655c58605973e10cbe2656479f034488044a2ea625cabebed"
+
 		enabledTrue = map[string]interface{}{"enabled": true}
 
 		fakeClient         client.Client
@@ -246,6 +251,7 @@ var _ = Describe("ValuesProvider", func() {
 					"zone":      zone,
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + gcp.CSIControllerConfigName:           csiConfigChecksum,
 					},
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
@@ -260,6 +266,7 @@ var _ = Describe("ValuesProvider", func() {
 					"zone":      zone,
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + gcp.CSIFilestoreControllerConfigName:  csiConfigChecksum,
 					},
 					"useWorkloadIdentity": false,
 				},
@@ -268,7 +275,8 @@ var _ = Describe("ValuesProvider", func() {
 					"replicas":            0,
 					"useWorkloadIdentity": false,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:      checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + internal.CloudProviderConfigIngressGCEName: ingressGCEConfigChecksum,
 					},
 				},
 			}))
@@ -301,6 +309,7 @@ var _ = Describe("ValuesProvider", func() {
 					"zone":      zone,
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + gcp.CSIControllerConfigName:           csiConfigChecksum,
 					},
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
@@ -315,6 +324,7 @@ var _ = Describe("ValuesProvider", func() {
 					"zone":      zone,
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + gcp.CSIFilestoreControllerConfigName:  csiConfigChecksum,
 					},
 					"useWorkloadIdentity": false,
 				},
@@ -323,7 +333,8 @@ var _ = Describe("ValuesProvider", func() {
 					"replicas":            1,
 					"useWorkloadIdentity": false,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:      checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + internal.CloudProviderConfigIngressGCEName: ingressGCEConfigChecksum,
 					},
 				},
 			}))
@@ -355,6 +366,7 @@ var _ = Describe("ValuesProvider", func() {
 					"zone":      zone,
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + gcp.CSIControllerConfigName:           csiConfigChecksum,
 					},
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
@@ -369,6 +381,7 @@ var _ = Describe("ValuesProvider", func() {
 					"zone":      zone,
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + gcp.CSIFilestoreControllerConfigName:  csiConfigChecksum,
 					},
 					"useWorkloadIdentity": false,
 				},
@@ -377,7 +390,8 @@ var _ = Describe("ValuesProvider", func() {
 					"replicas":            0,
 					"useWorkloadIdentity": false,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:      checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + internal.CloudProviderConfigIngressGCEName: ingressGCEConfigChecksum,
 					},
 				},
 			}))
