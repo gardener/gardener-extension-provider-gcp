@@ -121,10 +121,22 @@ var _ = Describe("ValuesProvider", func() {
 			},
 		}
 
+		ingressGCEConfigMap = &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      internal.CloudProviderConfigIngressGCEName,
+				Namespace: namespace,
+			},
+			Data: map[string]string{"cloudprovider.conf": "ingress-gce-content"},
+		}
+
 		checksums = map[string]string{
 			v1beta1constants.SecretNameCloudProvider: "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
 			internal.CloudProviderConfigName:         "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
 		}
+
+		// Checksum computed locally over the .Data of the ingress-gce configmap fixture above,
+		// matching what computeConfigMapChecksum does at runtime.
+		ingressGCEConfigChecksum = "7767e78e603af512385dc40c04665e9e385e2944606d9a7324fccb086969f72d"
 
 		enabledTrue = map[string]interface{}{"enabled": true}
 
@@ -135,7 +147,10 @@ var _ = Describe("ValuesProvider", func() {
 	)
 
 	BeforeEach(func() {
-		c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(cpSecret).Build()
+		c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(
+			cpSecret,
+			ingressGCEConfigMap,
+		).Build()
 
 		mgr = &test.FakeManager{Client: c, Scheme: scheme}
 		vp = NewValuesProvider(mgr)
@@ -268,7 +283,8 @@ var _ = Describe("ValuesProvider", func() {
 					"replicas":            0,
 					"useWorkloadIdentity": false,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:      checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + internal.CloudProviderConfigIngressGCEName: ingressGCEConfigChecksum,
 					},
 				},
 			}))
@@ -323,7 +339,8 @@ var _ = Describe("ValuesProvider", func() {
 					"replicas":            1,
 					"useWorkloadIdentity": false,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:      checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + internal.CloudProviderConfigIngressGCEName: ingressGCEConfigChecksum,
 					},
 				},
 			}))
@@ -377,7 +394,8 @@ var _ = Describe("ValuesProvider", func() {
 					"replicas":            0,
 					"useWorkloadIdentity": false,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:      checksums[v1beta1constants.SecretNameCloudProvider],
+						"checksum/configmap-" + internal.CloudProviderConfigIngressGCEName: ingressGCEConfigChecksum,
 					},
 				},
 			}))
