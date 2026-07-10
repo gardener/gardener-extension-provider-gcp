@@ -49,6 +49,7 @@ spec:
         - --logtostderr
         - --v=3
         - --enable-storage-pools
+        - --http-endpoint=0.0.0.0:3301
         {{- if .Values.enableDataCache }}
         - --enable-data-cache
         {{- end }}
@@ -74,6 +75,9 @@ spec:
         ports:
         - name: healthz
           containerPort: 9808
+          protocol: TCP
+        - name: metrics
+          containerPort: 3301
           protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
