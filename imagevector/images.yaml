@@ -14,15 +14,15 @@ images:
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
   tag: v32.2.4
   labels:
-    - name: gardener.cloud/cve-categorisation
-      value:
-        network_exposure: protected
-        authentication_enforced: false
-        user_interaction: gardener-operator
-        confidentiality_requirement: high
-        integrity_requirement: high
-        availability_requirement: low
-      signing: false
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
   targetVersion: 1.32.x
 # version-mapping
 - name: cloud-controller-manager
@@ -205,7 +205,7 @@ images:
 - name: csi-resizer
   sourceRepository: github.com/kubernetes-csi/external-resizer
   repository: registry.k8s.io/sig-storage/csi-resizer
-  tag: v2.2.0
+  tag: v2.2.1
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
