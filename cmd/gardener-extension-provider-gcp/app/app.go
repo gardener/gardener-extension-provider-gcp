@@ -244,6 +244,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			reconcileOpts.Completed().Apply(&gcpbastion.DefaultAddOptions.IgnoreOperationAnnotation)
 			reconcileOpts.Completed().Apply(&gcpdnsrecord.DefaultAddOptions.IgnoreOperationAnnotation)
 			reconcileOpts.Completed().Apply(&gcpbackupbucket.DefaultAddOptions.IgnoreOperationAnnotation)
+			reconcileOpts.Completed().Apply(&gcpbackupentry.DefaultAddOptions.IgnoreOperationAnnotation)
 			workerCtrlOpts.Completed().Apply(&gcpworker.DefaultAddOptions.Controller)
 			gcpworker.DefaultAddOptions.GardenCluster = gardenCluster
 			generalCfg := generalOpts.Completed()
@@ -254,6 +255,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			gcpbastion.DefaultAddOptions.ExtensionClasses = slices.Clone(generalCfg.ExtensionClasses)
 			gcpdnsrecord.DefaultAddOptions.ExtensionClasses = slices.Clone(generalCfg.ExtensionClasses)
 			gcpbackupbucket.DefaultAddOptions.ExtensionClasses = slices.Clone(generalCfg.ExtensionClasses)
+			gcpbackupentry.DefaultAddOptions.ExtensionClasses = slices.Clone(generalCfg.ExtensionClasses)
 
 			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil)
 			if err != nil {
