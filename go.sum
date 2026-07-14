@@ -200,8 +200,8 @@ github.com/gardener/etcd-druid/api v0.36.4 h1:o/17ciPrbh/w+igKMUuglW7N9XLjoMh7Av
 github.com/gardener/etcd-druid/api v0.36.4/go.mod h1:RwZzKp8K415AS0zg8VoODjBxYepCAUYyLgXnZc1bmbo=
 github.com/gardener/gardener v1.145.0 h1:4vwUQtjr+hLIiDGci0Mu6sJhVWWSj/CoLD3T172nmg0=
 github.com/gardener/gardener v1.145.0/go.mod h1:cDTZIPHaoj9ywmBTvronK5SpPBc/zI942hsp2//WVNo=
-github.com/gardener/gardener/pkg/apis v1.145.0 h1:E9mnDYOKOoOEJnpGCPpFuS0OX32uoOnv27a03b/nlP0=
-github.com/gardener/gardener/pkg/apis v1.145.0/go.mod h1:LsjZw5/3awWSMDnKg4bgftM1kW9Dkeor/ged5DNHVPI=
+github.com/gardener/gardener/pkg/apis v1.146.3 h1:9VM5K4vh6YI/MzMIut7AdpOqNMXTVycqXyLIVmQ2Tms=
+github.com/gardener/gardener/pkg/apis v1.146.3/go.mod h1:S6v1kxYVnqIYsGE2P3emsTUs27bduXEHRYpLx4Zpd9I=
 github.com/gardener/machine-controller-manager v0.62.1 h1:TQ4Qs9aaYTqSkqFownIaEAvnrYoNpBMcp7ZMYVEgUWM=
 github.com/gardener/machine-controller-manager v0.62.1/go.mod h1:ICsymXK4VHm7NVr8Mpl6USvYcTZjUNSk6+XaVu/dd74=
 github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
