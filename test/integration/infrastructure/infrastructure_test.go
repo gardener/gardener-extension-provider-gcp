@@ -425,7 +425,7 @@ func runTest(
 		},
 		Spec: extensionsv1alpha1.ClusterSpec{
 			CloudProfile: runtime.RawExtension{Raw: []byte("{}")},
-			Seed:         runtime.RawExtension{Raw: []byte("{}")},
+			Seed:         &runtime.RawExtension{Raw: []byte("{}")},
 			Shoot:        runtime.RawExtension{Raw: shootJSON},
 		},
 	}
@@ -925,7 +925,7 @@ func newCluster(name string) (*extensionsv1alpha1.Cluster, error) {
 		},
 		Spec: extensionsv1alpha1.ClusterSpec{
 			CloudProfile: runtime.RawExtension{Raw: []byte("{}")},
-			Seed:         runtime.RawExtension{Raw: []byte("{}")},
+			Seed:         &runtime.RawExtension{Raw: []byte("{}")},
 			Shoot:        runtime.RawExtension{Raw: shootJSON},
 		},
 	}
