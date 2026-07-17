@@ -11,7 +11,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"strconv"
+	"slices"
 	"strings"
 	"time"
 
@@ -94,6 +94,7 @@ var _ = Describe("Machines", func() {
 				userData                       []byte
 				userDataSecretName             string
 				userDataSecretDataKey          string
+				nodeAgentSecretName            string
 				subnetName                     string
 
 				volumeType string
@@ -174,6 +175,7 @@ var _ = Describe("Machines", func() {
 				userData = []byte("some-user-data")
 				userDataSecretName = "userdata-secret-name"
 				userDataSecretDataKey = "userdata-secret-key"
+				nodeAgentSecretName = "node-agent-secret-name"
 				subnetName = "subnet-nodes"
 
 				volumeType = "normal"
@@ -457,7 +459,8 @@ var _ = Describe("Machines", func() {
 									zone1,
 									zone2,
 								},
-								Labels: poolLabels,
+								Labels:              poolLabels,
+								NodeAgentSecretName: &nodeAgentSecretName,
 							},
 							{
 								Name:           namePool2,
@@ -505,7 +508,8 @@ var _ = Describe("Machines", func() {
 									zone1,
 									zone2,
 								},
-								Labels: poolLabels,
+								Labels:              poolLabels,
+								NodeAgentSecretName: &nodeAgentSecretName,
 							},
 							{
 								Name:              namePool3,
@@ -554,17 +558,41 @@ var _ = Describe("Machines", func() {
 									zone1,
 									zone2,
 								},
-								Labels: poolLabels,
+								Labels:              poolLabels,
+								NodeAgentSecretName: &nodeAgentSecretName,
 							},
 						},
 					},
 				}
 
-				additionalData1 := []string{fmt.Sprintf("%dGi", volumeSize), minCPUPlatform, acceleratorTypeName, strconv.Itoa(int(acceleratorCount)), localVolumeInterface}
-				additionalData2 := []string{fmt.Sprintf("%dGi", volumeSize), minCPUPlatform, "foo", "bar", localVolumeInterface}
-				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, []string{}, additionalData1, nil)
-				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, []string{}, additionalData2, nil)
-				workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, nil, nil, nil)
+				// Mirror generateWorkerPoolHash: prepend the sorted data-volume fields (name, size, type)
+				// to the WorkerPoolHashDataV2 output, so the expected machine class names never drift
+				// from what the controller computes.
+				dataVolumePrefix := []string{"", fmt.Sprintf("%dGi", volumeSize), localVolumeType}
+
+				additionalData1V2, _ := WorkerPoolHashDataV2(w.Spec.Pools[0], &apisgcp.WorkerConfig{
+					Volume: &apisgcp.Volume{
+						LocalSSDInterface: &localVolumeInterface,
+					},
+					MinCpuPlatform: &minCPUPlatform,
+					GPU: &apisgcp.GPU{
+						AcceleratorType: acceleratorTypeName,
+						Count:           acceleratorCount,
+					},
+				})
+				additionalData2V2, _ := WorkerPoolHashDataV2(w.Spec.Pools[1], &apisgcp.WorkerConfig{
+					Volume: &apisgcp.Volume{
+						LocalSSDInterface: &localVolumeInterface,
+					},
+					ServiceAccount: &apisgcp.ServiceAccount{
+						Email:  "foo",
+						Scopes: []string{"bar"},
+					},
+					MinCpuPlatform: &minCPUPlatform,
+				})
+				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, append(slices.Clone(dataVolumePrefix), additionalData1V2...), nil)
+				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, append(slices.Clone(dataVolumePrefix), additionalData2V2...), nil)
+				workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, nil, nil)
 
 				c = fakeclient.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(w).WithObjects(
 					w,
@@ -1009,7 +1037,7 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the version is invalid", func() {
-				clusterWithoutImages.Shoot.Spec.Kubernetes.Version = "invalid"
+				w.Spec.Pools[2].KubernetesVersion = ptr.To("invalid")
 				workerDelegate, _ = NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
 
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)
@@ -1222,7 +1250,8 @@ var _ = Describe("Machines", func() {
 							Zones: []string{
 								zone1,
 							},
-							Labels: poolLabels,
+							Labels:              poolLabels,
+							NodeAgentSecretName: &nodeAgentSecretName,
 						},
 					}
 
@@ -1269,10 +1298,10 @@ var _ = Describe("Machines", func() {
 					w2PoolHashDataV2, err := WorkerPoolHashDataV2(w2.Spec.Pools[0], w2Config)
 					Expect(err).ToNot(HaveOccurred())
 
-					w1Hash, err := worker.WorkerPoolHash(w1.Spec.Pools[0], cluster, nil, w1PoolHashDataV2, nil)
+					w1Hash, err := worker.WorkerPoolHash(w1.Spec.Pools[0], cluster, w1PoolHashDataV2, nil)
 					Expect(err).ToNot(HaveOccurred())
 
-					w2Hash, err := worker.WorkerPoolHash(w2.Spec.Pools[0], cluster, nil, w2PoolHashDataV2, nil)
+					w2Hash, err := worker.WorkerPoolHash(w2.Spec.Pools[0], cluster, w2PoolHashDataV2, nil)
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(w1Hash).To(Equal(w2Hash), fmt.Sprintf("w1Def: %q, w2Def:%q, w1Hash: %q, w2Hash: %q", w1Def, w2Def, w1Hash, w2Hash))
