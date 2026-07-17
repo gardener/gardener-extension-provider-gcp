@@ -17,6 +17,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/pkg/utils/chart"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
@@ -369,7 +370,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, err
 	}
 
-	return vp.getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
+	return vp.getControlPlaneChartValues(ctx, cpConfig, cp, cluster, secretsReader, credentialsConfig, checksums, scaledDown)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
@@ -446,6 +447,7 @@ func shouldUseWorkloadIdentity(credentialsConfig *gcp.CredentialsConfig) bool {
 
 // getControlPlaneChartValues collects and returns the control plane chart values.
 func (vp *valuesProvider) getControlPlaneChartValues(
+	ctx context.Context,
 	cpConfig *apisgcp.ControlPlaneConfig,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
@@ -457,6 +459,14 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 	map[string]interface{},
 	error,
 ) {
+	// The generic actuator only computes a checksum for the CCM cloud-provider-config configmap.
+	// Compute a checksum for the cloud-provider-config-ingress-gce configmap so that the
+	// ingress-gce pods roll when its data (e.g. network name, node tags) changes.
+	ingressGCEConfigChecksum, err := computeConfigMapChecksum(ctx, vp.client, cp.Namespace, internal.CloudProviderConfigIngressGCEName)
+	if err != nil {
+		return nil, err
+	}
+
 	ccm, err := vp.getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, shouldUseWorkloadIdentity(credentialsConfig))
 	if err != nil {
 		return nil, err
@@ -486,10 +496,22 @@ func (vp *valuesProvider) getControlPlaneChartValues(
 			"replicas":            replicas,
 			"useWorkloadIdentity": shouldUseWorkloadIdentity(credentialsConfig),
 			"podAnnotations": map[string]interface{}{
-				"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+				"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:      checksums[v1beta1constants.SecretNameCloudProvider],
+				"checksum/configmap-" + internal.CloudProviderConfigIngressGCEName: ingressGCEConfigChecksum,
 			},
 		},
 	}, nil
+}
+
+// computeConfigMapChecksum fetches the configmap with the given name from the given namespace
+// and returns a SHA256 checksum over its data. Used to roll pods when configmaps that are not
+// hashed by the generic actuator (which only hashes the CCM cloud-provider-config) change.
+func computeConfigMapChecksum(ctx context.Context, c k8sclient.Client, namespace, name string) (string, error) {
+	cm := &corev1.ConfigMap{}
+	if err := c.Get(ctx, k8sclient.ObjectKey{Namespace: namespace, Name: name}, cm); err != nil {
+		return "", fmt.Errorf("could not get configmap '%s/%s': %w", namespace, name, err)
+	}
+	return utils.ComputeConfigMapChecksum(cm.Data), nil
 }
 
 // IsDualStackEnabled returns true if dual-stack is enabled based on the provided networking and networking status. If the cluster is migrating from dual-stack to single-stack, it still returns true.
