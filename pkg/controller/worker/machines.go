@@ -395,7 +395,7 @@ func (w *WorkerDelegate) generateWorkerPoolHash(pool v1alpha1.WorkerPool, worker
 	}
 	additionalDataV2 := append(additionalData, v2HashData...)
 
-	return worker.WorkerPoolHash(pool, w.cluster, []string{}, additionalDataV2, []string{})
+	return worker.WorkerPoolHash(pool, w.cluster, additionalDataV2, []string{})
 }
 
 // WorkerPoolHashDataV2 computes additional hash data for the worker pool. It returns a slice of strings containing the

@@ -201,7 +201,7 @@ var _ = Describe("Bastion tests", func() {
 						Object: cloudProfile,
 						Raw:    cloudProfileJSON,
 					},
-					Seed: runtime.RawExtension{
+					Seed: &runtime.RawExtension{
 						Raw: []byte("{}"),
 					},
 					Shoot: runtime.RawExtension{
