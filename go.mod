@@ -230,9 +230,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
-
-// github.com/gardener/remedy-controller still depends on the old monolithic opentelemetry-operator
-// module, but github.com/gardener/gardener uses the split opentelemetry-operator/apis module.
-// Both provide the same packages, causing an ambiguous import. Excluding the old monolithic module
-// forces Go to use only the split module.
-exclude github.com/open-telemetry/opentelemetry-operator v0.129.1
