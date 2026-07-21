@@ -9,7 +9,7 @@ spec:
     kind: Deployment
     name: ingress-gce
   updatePolicy:
-    updateMode: Recreate
+    updateMode: InPlaceOrRecreate
   resourcePolicy:
     containerPolicies:
     - containerName: glbc
