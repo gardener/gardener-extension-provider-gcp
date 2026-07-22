@@ -12,7 +12,7 @@ require (
 	github.com/gardener/gardener/hack/tools v1.147.0
 	github.com/gardener/gardener/pkg/apis v1.147.0
 	github.com/gardener/machine-controller-manager v0.62.1
-	github.com/go-logr/logr v1.4.3
+	github.com/go-logr/logr v1.4.4
 	github.com/google/go-cmp v0.7.0
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.1
@@ -24,7 +24,7 @@ require (
 	golang.org/x/exp v0.0.0-20260718201538-764159d718ef
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.22.0
-	google.golang.org/api v0.289.0
+	google.golang.org/api v0.290.0
 	gopkg.in/inf.v0 v0.9.1
 	k8s.io/api v0.36.2
 	k8s.io/apiextensions-apiserver v0.36.2
