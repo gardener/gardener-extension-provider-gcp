@@ -35,30 +35,28 @@
 Add `SubnetReference` type and two new optional fields on `NetworkConfig`:
 
 ```go
-// SubnetReference references an existing subnetwork in an existing VPC.
+// SubnetReference is a reference to a user-managed GCP subnetwork.
 type SubnetReference struct {
     // Name is the name of the subnetwork.
     Name string `json:"name"`
 
-    // PodSecondaryRangeName is the name of the secondary IP range on the
-    // referenced subnetwork carrying the IPv4 pod CIDR (alias-IP pod IPAM).
-    // Required on SubnetNodes for dual-stack shoots.
-    // Forbidden on SubnetNodes for single-stack IPv4 and on SubnetServices.
+    // PodSecondaryRangeName is the name of the secondary IP range on the nodes subnet
+    // that is used for pod IPs (required for dual-stack BYO shoots).
     // +optional
     PodSecondaryRangeName *string `json:"podSecondaryRangeName,omitempty"`
 }
 
 // NetworkConfig — add alongside existing fields:
 
-// SubnetNodes is an optional reference to an already-existing worker subnetwork.
-// When set, the reconciler creates no network-layer resources (no subnet, no Cloud Router,
-// no Cloud NAT, no static firewall rules). Requires Networks.VPC.Name.
+// SubnetWorkers is a reference to a user-managed subnet for worker nodes.
+// When set, the extension operates in BYO (bring-your-own) subnet mode:
+// Gardener does not create or delete the subnet; it only attaches to it.
+// VPC.Name must be set; CloudNAT, Internal, Worker/Workers, FlowLogs, and MTU must not be set.
 // +optional
-SubnetNodes *SubnetReference `json:"subnetNodes,omitempty"`
+SubnetWorkers *SubnetReference `json:"subnetWorkers,omitempty"`
 
-// SubnetServices is an optional reference to an already-existing subnetwork used to
-// allocate the IPv6 services CIDR. Required with SubnetNodes for dual-stack shoots.
-// Forbidden for single-stack IPv4 and without SubnetNodes.
+// SubnetServices is a reference to a user-managed subnet for services (required for dual-stack BYO shoots).
+// Only valid when SubnetWorkers is set.
 // +optional
 SubnetServices *SubnetReference `json:"subnetServices,omitempty"`
 ```
@@ -67,9 +65,10 @@ Add helper method on `InfrastructureConfig` (internal type only; v1alpha1 uses c
 
 ```go
 // IsUserManagedEgress reports whether the shoot opts into BYO subnetworks and
-// user-managed egress.
-func (c *InfrastructureConfig) IsUserManagedEgress() bool {
-    return c != nil && c.Networks.SubnetNodes != nil
+// user-managed egress (i.e., SubnetWorkers is set), meaning the extension does
+// not manage egress resources.
+func (i *InfrastructureConfig) IsUserManagedEgress() bool {
+    return i.Networks.SubnetWorkers != nil
 }
 ```
 
@@ -85,76 +84,76 @@ make generate
 
 **File**: `pkg/apis/gcp/validation/infrastructure.go`
 
-Extend `ValidateInfrastructureConfig` with a new block that fires when `infra.Networks.SubnetNodes != nil`:
+Extend `ValidateInfrastructureConfig` with a new block that fires when `infra.Networks.SubnetWorkers != nil`:
 
 ```go
-if infra.Networks.SubnetNodes != nil {
+if infra.Networks.SubnetWorkers != nil {
     byoPath := fldPath.Child("networks")
 
     // VPC.Name required
     if infra.Networks.VPC == nil || len(infra.Networks.VPC.Name) == 0 {
         allErrs = append(allErrs, field.Required(byoPath.Child("vpc", "name"),
-            "must be set when subnetNodes is provided"))
+            "must be set when subnetWorkers is provided"))
     }
     // CloudRouter forbidden
     if infra.Networks.VPC != nil && infra.Networks.VPC.CloudRouter != nil {
         allErrs = append(allErrs, field.Forbidden(byoPath.Child("vpc", "cloudRouter"),
-            "must not be set when subnetNodes is provided"))
+            "must not be set when subnetWorkers is provided"))
     }
     // Workers / Worker forbidden
     if len(infra.Networks.Workers) > 0 {
         allErrs = append(allErrs, field.Forbidden(byoPath.Child("workers"),
-            "must not be set when subnetNodes is provided"))
+            "must not be set when subnetWorkers is provided"))
     }
     if len(infra.Networks.Worker) > 0 {
         allErrs = append(allErrs, field.Forbidden(byoPath.Child("worker"),
-            "must not be set when subnetNodes is provided"))
+            "must not be set when subnetWorkers is provided"))
     }
     // Internal forbidden
     if infra.Networks.Internal != nil {
         allErrs = append(allErrs, field.Forbidden(byoPath.Child("internal"),
-            "must not be set when subnetNodes is provided"))
+            "must not be set when subnetWorkers is provided"))
     }
     // CloudNAT forbidden
     if infra.Networks.CloudNAT != nil {
         allErrs = append(allErrs, field.Forbidden(byoPath.Child("cloudNAT"),
-            "must not be set when subnetNodes is provided"))
+            "must not be set when subnetWorkers is provided"))
     }
     // FlowLogs forbidden
     if infra.Networks.FlowLogs != nil {
         allErrs = append(allErrs, field.Forbidden(byoPath.Child("flowLogs"),
-            "must not be set when subnetNodes is provided"))
+            "must not be set when subnetWorkers is provided"))
     }
     // MTU forbidden
     if infra.Networks.MTU != nil {
         allErrs = append(allErrs, field.Forbidden(byoPath.Child("mtu"),
-            "must not be set when subnetNodes is provided"))
+            "must not be set when subnetWorkers is provided"))
     }
-    // SubnetNodes.Name required
-    if len(infra.Networks.SubnetNodes.Name) == 0 {
-        allErrs = append(allErrs, field.Required(byoPath.Child("subnetNodes", "name"),
+    // SubnetWorkers.Name required
+    if len(infra.Networks.SubnetWorkers.Name) == 0 {
+        allErrs = append(allErrs, field.Required(byoPath.Child("subnetWorkers", "name"),
             "must not be empty"))
     } else {
-        allErrs = append(allErrs, validateGcpResourceName(infra.Networks.SubnetNodes.Name,
-            byoPath.Child("subnetNodes", "name"))...)
+        allErrs = append(allErrs, validateGcpResourceName(infra.Networks.SubnetWorkers.Name,
+            byoPath.Child("subnetWorkers", "name"))...)
     }
 
     isDualStack := nodesCIDR != nil // use the ipFamilies from the caller — adjust as needed
 
     // PodSecondaryRangeName: forbidden for IPv4, required for dual-stack
-    if !isDualStack && infra.Networks.SubnetNodes.PodSecondaryRangeName != nil {
-        allErrs = append(allErrs, field.Forbidden(byoPath.Child("subnetNodes", "podSecondaryRangeName"),
+    if !isDualStack && infra.Networks.SubnetWorkers.PodSecondaryRangeName != nil {
+        allErrs = append(allErrs, field.Forbidden(byoPath.Child("subnetWorkers", "podSecondaryRangeName"),
             "must not be set for single-stack IPv4 shoots"))
     }
-    if isDualStack && infra.Networks.SubnetNodes.PodSecondaryRangeName == nil {
-        allErrs = append(allErrs, field.Required(byoPath.Child("subnetNodes", "podSecondaryRangeName"),
+    if isDualStack && infra.Networks.SubnetWorkers.PodSecondaryRangeName == nil {
+        allErrs = append(allErrs, field.Required(byoPath.Child("subnetWorkers", "podSecondaryRangeName"),
             "required for dual-stack shoots"))
     }
 
     // SubnetServices: required for dual-stack, forbidden for IPv4
     if isDualStack && infra.Networks.SubnetServices == nil {
         allErrs = append(allErrs, field.Required(byoPath.Child("subnetServices"),
-            "required for dual-stack shoots when subnetNodes is set"))
+            "required for dual-stack shoots when subnetWorkers is set"))
     }
     if !isDualStack && infra.Networks.SubnetServices != nil {
         allErrs = append(allErrs, field.Forbidden(byoPath.Child("subnetServices"),
@@ -162,10 +161,10 @@ if infra.Networks.SubnetNodes != nil {
     }
 }
 
-// SubnetServices without SubnetNodes
-if infra.Networks.SubnetServices != nil && infra.Networks.SubnetNodes == nil {
+// SubnetServices without SubnetWorkers
+if infra.Networks.SubnetServices != nil && infra.Networks.SubnetWorkers == nil {
     allErrs = append(allErrs, field.Forbidden(fldPath.Child("networks", "subnetServices"),
-        "must not be set without subnetNodes"))
+        "must not be set without subnetWorkers"))
 }
 ```
 
@@ -175,22 +174,22 @@ Extend `ValidateInfrastructureConfigUpdate` in the same file with immutability r
 
 ```go
 // Mode transition forbidden
-oldBYO := oldConfig.Networks.SubnetNodes != nil
-newBYO := newConfig.Networks.SubnetNodes != nil
+oldBYO := oldConfig.Networks.SubnetWorkers != nil
+newBYO := newConfig.Networks.SubnetWorkers != nil
 if oldBYO != newBYO {
-    allErrs = append(allErrs, field.Forbidden(fldPath.Child("networks", "subnetNodes"),
-        "cannot add or remove subnetNodes on an existing shoot"))
+    allErrs = append(allErrs, field.Forbidden(fldPath.Child("networks", "subnetWorkers"),
+        "cannot add or remove subnetWorkers on an existing shoot"))
 }
-// SubnetNodes.Name immutable
-if oldConfig.Networks.SubnetNodes != nil && newConfig.Networks.SubnetNodes != nil {
+// SubnetWorkers.Name immutable
+if oldConfig.Networks.SubnetWorkers != nil && newConfig.Networks.SubnetWorkers != nil {
     allErrs = append(allErrs, apivalidation.ValidateImmutableField(
-        newConfig.Networks.SubnetNodes.Name,
-        oldConfig.Networks.SubnetNodes.Name,
-        fldPath.Child("networks", "subnetNodes", "name"))...)
+        newConfig.Networks.SubnetWorkers.Name,
+        oldConfig.Networks.SubnetWorkers.Name,
+        fldPath.Child("networks", "subnetWorkers", "name"))...)
     allErrs = append(allErrs, apivalidation.ValidateImmutableField(
-        newConfig.Networks.SubnetNodes.PodSecondaryRangeName,
-        oldConfig.Networks.SubnetNodes.PodSecondaryRangeName,
-        fldPath.Child("networks", "subnetNodes", "podSecondaryRangeName"))...)
+        newConfig.Networks.SubnetWorkers.PodSecondaryRangeName,
+        oldConfig.Networks.SubnetWorkers.PodSecondaryRangeName,
+        fldPath.Child("networks", "subnetWorkers", "podSecondaryRangeName"))...)
 }
 // SubnetServices.Name immutable
 if oldConfig.Networks.SubnetServices != nil && newConfig.Networks.SubnetServices != nil {
@@ -219,7 +218,7 @@ if infraConfig.IsUserManagedEgress() {
     }
 
     // 2. Worker subnet exists in region
-    sub, err := computeClient.GetSubnet(ctx, region, infraConfig.Networks.SubnetNodes.Name)
+    sub, err := computeClient.GetSubnet(ctx, region, infraConfig.Networks.SubnetWorkers.Name)
     if err != nil { return ... }
     if sub == nil {
         allErrs = append(allErrs, field.Invalid(..., "referenced worker subnet does not exist"))
@@ -237,7 +236,7 @@ if infraConfig.IsUserManagedEgress() {
             // secondary range named PodSecondaryRangeName exists and matches pods CIDR
             found := false
             for _, r := range sub.SecondaryIpRanges {
-                if r.RangeName == *infraConfig.Networks.SubnetNodes.PodSecondaryRangeName {
+                if r.RangeName == *infraConfig.Networks.SubnetWorkers.PodSecondaryRangeName {
                     found = true
                     if r.IpCidrRange != podsCIDR {
                         allErrs = append(allErrs, ...)
@@ -284,7 +283,7 @@ Add two new functions adjacent to `ensureUserManagedVPC` and `ensureUserManagedC
 // ensureUserManagedNodesSubnet verifies the user's worker subnet exists and stores it
 // on the whiteboard. Never creates or patches anything.
 func (fctx *FlowContext) ensureUserManagedNodesSubnet(ctx context.Context) error {
-    subnetName := fctx.config.Networks.SubnetNodes.Name
+    subnetName := fctx.config.Networks.SubnetWorkers.Name
     subnet, err := fctx.computeClient.GetSubnet(ctx, fctx.infra.Spec.Region, subnetName)
     if err != nil {
         return err
@@ -588,7 +587,7 @@ New integration scenarios:
 
 Minimises risk by getting the machine-checkable parts (types, validation, unit tests) in first:
 
-1. **API types + generated code** (`SubnetReference`, `SubnetNodes`, `SubnetServices`, `IsUserManagedEgress`). No behavior change; unit tests can compile and be added.
+1. **API types + generated code** (`SubnetReference`, `SubnetWorkers`, `SubnetServices`, `IsUserManagedEgress`). No behavior change; unit tests can compile and be added.
 2. **API-level validation** in `pkg/apis/gcp/validation/infrastructure.go`. Unit tests for `C1`–`C12`, `D1`–`D4`.
 3. **Runtime pre-flight `ConfigValidator` extension**. Unit tests for `C13`–`C17`.
 4. **Reconciler task-graph branching** — add `ensureUserManagedNodesSubnet`, `ensureUserManagedServicesSubnet`, gate tasks in graph. Manual smoke test against a pre-provisioned BYO subnet in a scratch GCP project.
