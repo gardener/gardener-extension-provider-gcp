@@ -408,6 +408,46 @@ func (fctx *FlowContext) ensureServicesSubnet(ctx context.Context) error {
 	return nil
 }
 
+// ensureUserManagedWorkersSubnet looks up the user-provided nodes subnet and stores it on the whiteboard.
+// It does NOT create or modify the subnet — only reads it.
+func (fctx *FlowContext) ensureUserManagedWorkersSubnet(ctx context.Context) error {
+	subnetRef := fctx.config.Networks.SubnetWorkers
+	if subnetRef == nil {
+		return fmt.Errorf("subnetWorkers must not be nil in BYO mode")
+	}
+
+	subnet, err := fctx.computeClient.GetSubnet(ctx, fctx.infra.Spec.Region, subnetRef.Name)
+	if err != nil {
+		return err
+	}
+	if subnet == nil {
+		return fmt.Errorf("user-managed nodes subnet %q not found in region %q", subnetRef.Name, fctx.infra.Spec.Region)
+	}
+
+	fctx.whiteboard.SetObject(ObjectKeyNodeSubnet, subnet)
+	return nil
+}
+
+// ensureUserManagedServicesSubnet looks up the user-provided services subnet and stores it on the whiteboard.
+// It does NOT create or modify the subnet — only reads it.
+func (fctx *FlowContext) ensureUserManagedServicesSubnet(ctx context.Context) error {
+	subnetRef := fctx.config.Networks.SubnetServices
+	if subnetRef == nil {
+		return fmt.Errorf("subnetServices must not be nil for dual-stack BYO mode")
+	}
+
+	subnet, err := fctx.computeClient.GetSubnet(ctx, fctx.infra.Spec.Region, subnetRef.Name)
+	if err != nil {
+		return err
+	}
+	if subnet == nil {
+		return fmt.Errorf("user-managed services subnet %q not found in region %q", subnetRef.Name, fctx.infra.Spec.Region)
+	}
+
+	fctx.whiteboard.SetObject(ObjectKeyServicesSubnet, subnet)
+	return nil
+}
+
 func (fctx *FlowContext) ensureCloudRouter(ctx context.Context) error {
 	if fctx.config.Networks.VPC != nil && fctx.config.Networks.VPC.CloudRouter != nil {
 		return fctx.ensureUserManagedCloudRouter(ctx)

@@ -44,6 +44,26 @@ type NetworkConfig struct {
 	// Valid values: 1300 to 8896. If unspecified, GCP defaults to 1460.
 	// +optional
 	MTU *int32 `json:"mtu,omitempty"`
+	// SubnetWorkers is a reference to a user-managed subnet for worker nodes.
+	// When set, the extension operates in BYO (bring-your-own) subnet mode:
+	// Gardener does not create or delete the subnet; it only attaches to it.
+	// VPC.Name must be set; CloudNAT, Internal, Worker/Workers, FlowLogs, and MTU must not be set.
+	// +optional
+	SubnetWorkers *SubnetReference `json:"subnetWorkers,omitempty"`
+	// SubnetServices is a reference to a user-managed subnet for services (required for dual-stack BYO shoots).
+	// Only valid when SubnetWorkers is set.
+	// +optional
+	SubnetServices *SubnetReference `json:"subnetServices,omitempty"`
+}
+
+// SubnetReference is a reference to a user-managed GCP subnetwork.
+type SubnetReference struct {
+	// Name is the name of the subnetwork.
+	Name string `json:"name"`
+	// PodSecondaryRangeName is the name of the secondary IP range on the nodes subnet
+	// that is used for pod IPs (required for dual-stack BYO shoots).
+	// +optional
+	PodSecondaryRangeName *string `json:"podSecondaryRangeName,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -7,6 +7,7 @@ package validation_test
 import (
 	"fmt"
 
+	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -62,7 +63,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		Context("CIDR", func() {
 			It("should forbid invalid worker CIDRs", func() {
 				infrastructureConfig.Networks.Workers = invalidCIDR
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -74,7 +75,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid invalid internal CIDR", func() {
 				invalidCIDR = "invalid-cidr"
 				infrastructureConfig.Networks.Internal = &invalidCIDR
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -85,7 +86,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid workers CIDR which are not in Nodes CIDR", func() {
 				infrastructureConfig.Networks.Workers = "1.1.1.1/32"
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -98,7 +99,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				overlappingCIDR := "10.250.1.0/30"
 				infrastructureConfig.Networks.Internal = &overlappingCIDR
 				infrastructureConfig.Networks.Workers = overlappingCIDR
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &overlappingCIDR, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &overlappingCIDR, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -118,7 +119,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				internal := "10.10.0.4/24"
 				infrastructureConfig.Networks.Internal = &internal
 				infrastructureConfig.Networks.Workers = "10.250.3.8/24"
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodeCIDR, &podCIDR, &serviceCIDR, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodeCIDR, &podCIDR, &serviceCIDR, nil, fldPath)
 
 				Expect(errorList).To(HaveLen(2))
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -133,12 +134,12 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should allow specifying valid config", func() {
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(BeEmpty())
 			})
 
 			It("should allow specifying valid config with podsCIDR=nil and servicesCIDR=nil", func() {
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, nil, nil, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, nil, nil, nil, fldPath)
 				Expect(errorList).To(BeEmpty())
 			})
 		})
@@ -153,7 +154,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid configuring CloudRouter if VPC name is not set", func() {
 				testInfrastructureConfig.Networks.VPC = &apisgcp.VPC{}
 				testInfrastructureConfig.Networks.VPC.CloudRouter = &apisgcp.CloudRouter{}
-				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -168,7 +169,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid empty VPC flow log config", func() {
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeRequired),
@@ -181,7 +182,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				testInfrastructureConfig.Networks.VPC = &apisgcp.VPC{
 					Name: "test-vpc",
 				}
-				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -195,7 +196,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Name:        "test-vpc",
 					CloudRouter: &apisgcp.CloudRouter{},
 				}
-				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -208,7 +209,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				testInfrastructureConfig.Networks.VPC = &apisgcp.VPC{
 					Name: "test-vpc",
 				}
-				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -222,7 +223,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Name:        "test-vpc",
 					CloudRouter: &apisgcp.CloudRouter{},
 				}
-				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(testInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -233,7 +234,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid empty VPC flow log config", func() {
 				infrastructureConfig.Networks.FlowLogs = &apisgcp.FlowLogs{}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeRequired),
@@ -244,7 +245,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid invalid VPC name", func() {
 				infrastructureConfig.Networks.VPC.Name = "invalid-VPC-name"
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
@@ -257,7 +258,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid invalid VPC cloud router name", func() {
 				infrastructureConfig.Networks.VPC.CloudRouter.Name = "invalid-CLOUD-ROUTER-name"
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
@@ -276,7 +277,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				for _, mtu := range []int32{1300, 1460, 1500, 8896} {
 					mtuVal := mtu
 					newInfrastructureConfig.Networks.MTU = &mtuVal
-					errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+					errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 					Expect(errorList).To(BeEmpty())
 				}
 			})
@@ -285,7 +286,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
 				newInfrastructureConfig.Networks.VPC = nil
 				newInfrastructureConfig.Networks.MTU = ptr.To[int32](1299)
-				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -298,7 +299,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
 				newInfrastructureConfig.Networks.VPC = nil
 				newInfrastructureConfig.Networks.MTU = ptr.To[int32](8897)
-				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -310,7 +311,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid MTU when using an existing VPC", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
 				newInfrastructureConfig.Networks.MTU = ptr.To[int32](8896)
-				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeForbidden),
@@ -322,7 +323,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should allow nil MTU", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
 				newInfrastructureConfig.Networks.MTU = nil
-				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 				Expect(errorList).To(BeEmpty())
 			})
 		})
@@ -335,7 +336,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Metadata:            ptr.To("INCLUDE_ALL_METADATA"),
 					FlowSampling:        ptr.To[float64](0.5),
 				}
-				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(BeEmpty())
 			})
@@ -347,7 +348,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 						{Name: "test"},
 					},
 				}
-				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(BeEmpty())
 			})
@@ -355,7 +356,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should allow CloudNAT config without NatIPNames present", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
 				newInfrastructureConfig.Networks.CloudNAT = &apisgcp.CloudNAT{}
-				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(BeEmpty())
 			})
@@ -365,7 +366,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newInfrastructureConfig.Networks.CloudNAT = &apisgcp.CloudNAT{
 					NatIPNames: []apisgcp.NatIPName{},
 				}
-				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(newInfrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -376,7 +377,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid invalid cloud nat IP name", func() {
 				infrastructureConfig.Networks.CloudNAT.NatIPNames[0].Name = "invalid-CLOUD-NAT-ip-name"
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
@@ -389,7 +390,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid invalid flow logs aggregation interval", func() {
 				infrastructureConfig.Networks.FlowLogs.AggregationInterval = ptr.To("INTERVAL_25_SEC")
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
@@ -401,7 +402,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid invalid flow logs sampling rate", func() {
 				infrastructureConfig.Networks.FlowLogs.FlowSampling = ptr.To(1.2)
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
@@ -414,7 +415,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid invalid flow logs metadata", func() {
 				infrastructureConfig.Networks.FlowLogs.Metadata = ptr.To("foo")
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
 
 				Expect(errorList).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
@@ -423,6 +424,227 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					})),
 				))
 			})
+		})
+	})
+
+	Describe("#ValidateInfrastructureConfig BYO mode", func() {
+		var byoConfig *apisgcp.InfrastructureConfig
+
+		BeforeEach(func() {
+			byoConfig = &apisgcp.InfrastructureConfig{
+				Networks: apisgcp.NetworkConfig{
+					VPC: &apisgcp.VPC{
+						Name: "my-vpc",
+					},
+					SubnetWorkers: &apisgcp.SubnetReference{
+						Name: "my-workers",
+					},
+				},
+			}
+		})
+
+		It("should allow valid BYO config (C1 happy path)", func() {
+			Expect(ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)).To(BeEmpty())
+		})
+
+		It("should require VPC.Name in BYO mode (C2)", func() {
+			byoConfig.Networks.VPC = nil
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("networks.vpc.name"),
+			}))
+		})
+
+		It("should require VPC.Name non-empty in BYO mode (C2)", func() {
+			byoConfig.Networks.VPC = &apisgcp.VPC{Name: ""}
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("networks.vpc.name"),
+			}))
+		})
+
+		It("should forbid CloudRouter in BYO mode (C3)", func() {
+			byoConfig.Networks.VPC.CloudRouter = &apisgcp.CloudRouter{Name: "my-cr"}
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.vpc.cloudRouter"),
+			}))
+		})
+
+		It("should forbid Workers CIDR in BYO mode (C4)", func() {
+			byoConfig.Networks.Workers = "10.250.0.0/16"
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.workers"),
+			}))
+		})
+
+		It("should forbid Worker CIDR in BYO mode (C4)", func() {
+			byoConfig.Networks.Worker = "10.250.0.0/16"
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.worker"),
+			}))
+		})
+
+		It("should forbid Internal subnet in BYO mode (C5)", func() {
+			byoConfig.Networks.Internal = ptr.To("10.10.0.0/24")
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.internal"),
+			}))
+		})
+
+		It("should forbid CloudNAT in BYO mode (C6)", func() {
+			byoConfig.Networks.CloudNAT = &apisgcp.CloudNAT{}
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.cloudNAT"),
+			}))
+		})
+
+		It("should forbid FlowLogs in BYO mode (C7)", func() {
+			byoConfig.Networks.FlowLogs = &apisgcp.FlowLogs{
+				AggregationInterval: ptr.To("INTERVAL_5_SEC"),
+			}
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.flowLogs"),
+			}))
+		})
+
+		It("should forbid MTU in BYO mode (C8)", func() {
+			byoConfig.Networks.MTU = ptr.To[int32](1500)
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.mtu"),
+			}))
+		})
+
+		It("should require SubnetWorkers.Name to be non-empty (C9)", func() {
+			byoConfig.Networks.SubnetWorkers.Name = ""
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("networks.subnetWorkers.name"),
+			}))
+		})
+
+		It("should forbid SubnetServices on a non-dual-stack shoot (C10)", func() {
+			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.subnetServices"),
+			}))
+		})
+
+		It("should allow valid SubnetServices on a dual-stack shoot (C11)", func() {
+			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
+			Expect(ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)).To(BeEmpty())
+		})
+
+		It("should forbid empty SubnetServices.Name on a dual-stack shoot (C11b)", func() {
+			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: ""}
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("networks.subnetServices.name"),
+			}))
+		})
+
+		It("should forbid podSecondaryRangeName on a non-dual-stack shoot (C12)", func() {
+			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("ipv4-pod-cidr")
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.subnetWorkers.podSecondaryRangeName"),
+			}))
+		})
+
+		It("should forbid empty podSecondaryRangeName on a dual-stack shoot (C12b)", func() {
+			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("")
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.subnetWorkers.podSecondaryRangeName"),
+			}))
+		})
+
+		It("should allow valid podSecondaryRangeName on a dual-stack shoot (C12 happy path)", func() {
+			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("ipv4-pod-cidr")
+			Expect(ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)).To(BeEmpty())
+		})
+	})
+
+	Describe("#ValidateInfrastructureConfigUpdate BYO mode", func() {
+		var byoConfig *apisgcp.InfrastructureConfig
+
+		BeforeEach(func() {
+			byoConfig = &apisgcp.InfrastructureConfig{
+				Networks: apisgcp.NetworkConfig{
+					VPC: &apisgcp.VPC{Name: "my-vpc"},
+					SubnetWorkers: &apisgcp.SubnetReference{
+						Name: "my-workers",
+					},
+				},
+			}
+		})
+
+		It("should forbid switching from managed mode to BYO mode (D1)", func() {
+			oldConfig := infrastructureConfig.DeepCopy()
+			newConfig := byoConfig.DeepCopy()
+			errs := ValidateInfrastructureConfigUpdate(oldConfig, newConfig, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.subnetWorkers"),
+			}))
+		})
+
+		It("should forbid switching from BYO mode to managed mode (D2)", func() {
+			oldConfig := byoConfig.DeepCopy()
+			newConfig := infrastructureConfig.DeepCopy()
+			errs := ValidateInfrastructureConfigUpdate(oldConfig, newConfig, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.subnetWorkers"),
+			}))
+		})
+
+		It("should forbid changing SubnetWorkers on update (D3)", func() {
+			oldConfig := byoConfig.DeepCopy()
+			newConfig := byoConfig.DeepCopy()
+			newConfig.Networks.SubnetWorkers = &apisgcp.SubnetReference{Name: "different-workers"}
+			errs := ValidateInfrastructureConfigUpdate(oldConfig, newConfig, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.subnetWorkers"),
+			}))
+		})
+
+		It("should forbid changing SubnetServices on update (D4)", func() {
+			oldConfig := byoConfig.DeepCopy()
+			oldConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
+			newConfig := oldConfig.DeepCopy()
+			newConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "different-services"}
+			errs := ValidateInfrastructureConfigUpdate(oldConfig, newConfig, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.subnetServices"),
+			}))
+		})
+
+		It("should allow unchanged BYO config on update", func() {
+			Expect(ValidateInfrastructureConfigUpdate(byoConfig, byoConfig.DeepCopy(), fldPath)).To(BeEmpty())
 		})
 	})
 

@@ -1433,6 +1433,30 @@ integer
 <p>MTU is the maximum transmission unit size (in bytes) for the VPC network.<br />Only applicable for Gardener-managed VPCs (i.e., when VPC field is not set).<br />Valid values: 1300 to 8896. If unspecified, GCP defaults to 1460.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>subnetWorkers</code></br>
+<em>
+<a href="#subnetreference">SubnetReference</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SubnetWorkers is a reference to a user-managed subnet for worker nodes.<br />When set, the extension operates in BYO (bring-your-own) subnet mode:<br />Gardener does not create or delete the subnet; it only attaches to it.<br />VPC.Name must be set; CloudNAT, Internal, Worker/Workers, FlowLogs, and MTU must not be set.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subnetServices</code></br>
+<em>
+<a href="#subnetreference">SubnetReference</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SubnetServices is a reference to a user-managed subnet for services (required for dual-stack BYO shoots).<br />Only valid when SubnetWorkers is set.</p>
+</td>
+</tr>
 
 </tbody>
 </table>
@@ -1824,6 +1848,55 @@ string
 <p>
 SubnetPurpose is a purpose of a subnet.
 </p>
+
+
+<h3 id="subnetreference">SubnetReference
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#networkconfig">NetworkConfig</a>)
+</p>
+
+<p>
+SubnetReference is a reference to a user-managed GCP subnetwork.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the subnetwork.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecondaryRangeName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecondaryRangeName is the name of the secondary IP range on the nodes subnet<br />that is used for pod IPs (required for dual-stack BYO shoots).</p>
+</td>
+</tr>
+
+</tbody>
+</table>
 
 
 <h3 id="vpc">VPC
