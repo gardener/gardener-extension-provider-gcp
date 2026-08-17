@@ -317,7 +317,7 @@ type valuesProvider struct {
 func (vp *valuesProvider) GetConfigChartValues(
 	ctx context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
-	_ *extensionscontroller.Cluster,
+	cluster *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
 	// Decode providerConfig
 	cpConfig := &apisgcp.ControlPlaneConfig{}
@@ -333,13 +333,21 @@ func (vp *valuesProvider) GetConfigChartValues(
 		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 	}
 
+	// Decode infrastructureConfig to detect BYO subnet mode
+	infraConfig := &apisgcp.InfrastructureConfig{}
+	if cluster.Shoot.Spec.Provider.InfrastructureConfig != nil {
+		if _, _, err := vp.decoder.Decode(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, nil, infraConfig); err != nil {
+			return nil, fmt.Errorf("could not decode infrastructureConfig of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
+		}
+	}
+
 	credentialsConfig, err := gcp.GetCredentialsConfigFromSecretReference(ctx, vp.client, cp.Spec.SecretRef)
 	if err != nil {
 		return nil, fmt.Errorf("could not get credentials config from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
 
 	// Get config chart values
-	return getConfigChartValues(cpConfig, infraStatus, cp, credentialsConfig)
+	return getConfigChartValues(cpConfig, infraStatus, infraConfig, cp, credentialsConfig)
 }
 
 // GetControlPlaneChartValues returns the values for the control plane chart applied by the generic actuator.
@@ -424,11 +432,12 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 func getConfigChartValues(
 	cpConfig *apisgcp.ControlPlaneConfig,
 	infraStatus *apisgcp.InfrastructureStatus,
+	infraConfig *apisgcp.InfrastructureConfig,
 	cp *extensionsv1alpha1.ControlPlane,
 	credentialsConfig *gcp.CredentialsConfig,
 ) (map[string]interface{}, error) {
 	// Determine network names
-	networkName, subNetworkName, subNetworkNameNodes := getNetworkNames(infraStatus, cp)
+	networkName, subNetworkName, subNetworkNameNodes := getNetworkNames(infraStatus, infraConfig, cp)
 
 	// Collect config chart values
 	return map[string]interface{}{
@@ -747,6 +756,7 @@ func isCSIFilestoreEnabled(cpConfig *apisgcp.ControlPlaneConfig) bool {
 // getNetworkNames determines the network and subnetwork names from the given infrastructure status and controlplane.
 func getNetworkNames(
 	infraStatus *apisgcp.InfrastructureStatus,
+	infraConfig *apisgcp.InfrastructureConfig,
 	cp *extensionsv1alpha1.ControlPlane,
 ) (string, string, string) {
 	networkName := infraStatus.Networks.VPC.Name
@@ -763,6 +773,10 @@ func getNetworkNames(
 	subnet, _ = apihelper.FindSubnetForPurpose(infraStatus.Networks.Subnets, apisgcp.PurposeNodes)
 	if subnet != nil {
 		subNetworkNameNodes = subnet.Name
+		// In BYO subnet mode there is no internal subnet; fall back to the nodes subnet for internal LB frontend IPs.
+		if infraConfig.IsUserManagedEgress() {
+			subNetworkName = subnet.Name
+		}
 	}
 
 	return networkName, subNetworkName, subNetworkNameNodes

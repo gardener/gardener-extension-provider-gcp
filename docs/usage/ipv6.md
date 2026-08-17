@@ -158,3 +158,87 @@ The required annotation `cloud.google.com/l4-rbs: enabled` for ingress-gce is ad
   - `"networking.gke.io/load-balancer-type=Internal"`
   - `"cloud.google.com/load-balancer-type=internal"` (deprecated).
   Internal load balancers are created by cloud-controller-manger and get an IPv4 address from the internal subnet.
+
+## Dual-Stack BYO Subnet Requirements
+
+When using [BYO subnet mode](user-managed-egress.md) with a dual-stack shoot, you must pre-provision the subnets with specific properties that Gardener cannot configure for you.
+
+### Worker subnet (`subnetWorkers`)
+
+The worker subnet must be configured as dual-stack before shoot creation:
+
+- **`stackType: IPV4_IPV6`** and **`ipv6AccessType: EXTERNAL`** — GCP assigns an external `/64` IPv6 prefix at subnet creation time. Each worker VM receives a `/96` from this prefix, and the cloud-allocator further slices `/112` pod ranges per node from that `/96`.
+- **Primary IPv4 range** — must contain `shoot.spec.networking.nodes` and must not overlap with `shoot.spec.networking.pods` or `shoot.spec.networking.services`.
+- **Secondary IPv4 range** — must exist with a name matching `subnetWorkers.podSecondaryRangeName` in `InfrastructureConfig`, and its CIDR must **exactly equal** `shoot.spec.networking.pods`. This is the range the cloud-allocator uses for pod-CIDR assignment.
+
+```bash
+gcloud compute networks subnets create my-workers \
+  --project=<project> \
+  --network=my-vpc \
+  --region=<region> \
+  --range=10.100.0.0/16 \
+  --stack-type=IPV4_IPV6 \
+  --ipv6-access-type=EXTERNAL \
+  --secondary-range=my-pods=10.96.0.0/11
+```
+
+The `InfrastructureConfig` for this subnet:
+
+```yaml
+subnetWorkers:
+  name: my-workers
+  podSecondaryRangeName: my-pods   # must match the --secondary-range name above
+```
+
+### Services subnet (`subnetServices`)
+
+A separate services subnet is required for dual-stack shoots.
+The extension uses the `/64` IPv6 prefix GCP assigns to this subnet to derive the IPv6 services CIDR, slicing a `/108` out of it.
+
+- **`stackType: IPV4_IPV6`** and **`ipv6AccessType: EXTERNAL`** — required so GCP assigns the external IPv6 prefix.
+- **Primary IPv4 range** — required by GCP; choose any small non-overlapping range. It is not used by Gardener.
+- No secondary range is needed.
+
+```bash
+gcloud compute networks subnets create my-services \
+  --project=<project> \
+  --network=my-vpc \
+  --region=<region> \
+  --range=192.168.255.0/29 \
+  --stack-type=IPV4_IPV6 \
+  --ipv6-access-type=EXTERNAL
+```
+
+The `InfrastructureConfig` for this subnet:
+
+```yaml
+subnetServices:
+  name: my-services
+```
+
+### Complete dual-stack BYO example
+
+```yaml
+apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+kind: InfrastructureConfig
+networks:
+  vpc:
+    name: my-vpc
+  subnetWorkers:
+    name: my-workers
+    podSecondaryRangeName: my-pods
+  subnetServices:
+    name: my-services
+```
+
+```yaml
+spec:
+  networking:
+    ipFamilies: [IPv4, IPv6]
+    nodes:    10.100.0.0/16
+    pods:     10.96.0.0/11
+    services: 10.200.0.0/20
+```
+
+For firewall rule requirements and full pre-provisioning steps, see [User-Managed Egress — Pre-provisioning dual-stack](user-managed-egress.md#pre-provisioning--dual-stack).
+

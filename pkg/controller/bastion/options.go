@@ -5,6 +5,7 @@
 package bastion
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -17,6 +18,7 @@ import (
 	"github.com/gardener/gardener/pkg/extensions"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/helper"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 // Maximum length for "base" name due to fact that we use this name to name other GCP resources,
@@ -76,13 +78,13 @@ func NewBaseOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluste
 // NewOpts determines the information that is required to reconcile a Bastion.
 // Not all fields in Options are required for deletion.
 // This function does not create any IaaS resources.
-func NewOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, projectID, vNetworkName, subnetWork string) (*Options, error) {
+func NewOpts(ctx context.Context, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, gcpClient gcpclient.ComputeClient, projectID, vNetworkName, subnetWork string) (*Options, error) {
 	baseOpts, err := NewBaseOpts(bastion, cluster)
 	if err != nil {
 		return nil, err
 	}
 
-	workersCidr, err := getWorkersCIDR(cluster)
+	workersCidr, err := getWorkersCIDR(ctx, cluster, gcpClient)
 	if err != nil {
 		return nil, err
 	}

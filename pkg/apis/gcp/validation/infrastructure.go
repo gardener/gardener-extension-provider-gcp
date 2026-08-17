@@ -7,6 +7,7 @@ package validation
 import (
 	"slices"
 
+	"github.com/gardener/gardener/pkg/apis/core"
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -32,8 +33,15 @@ var (
 )
 
 // ValidateInfrastructureConfig validates a InfrastructureConfig object.
-func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string, fldPath *field.Path) field.ErrorList {
+func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string, ipFamilies []core.IPFamily, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+
+	networksPath := fldPath.Child("networks")
+
+	if infra.Networks.SubnetWorkers != nil {
+		allErrs = append(allErrs, validateBYONetworkConfig(&infra.Networks, ipFamilies, networksPath)...)
+		return allErrs
+	}
 
 	var (
 		nodes    cidrvalidation.CIDR
@@ -52,7 +60,6 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 		services = cidrvalidation.NewCIDR(*servicesCIDR, networkingPath.Child("services"))
 	}
 
-	networksPath := fldPath.Child("networks")
 	if len(infra.Networks.Worker) == 0 && len(infra.Networks.Workers) == 0 {
 		allErrs = append(allErrs, field.Required(networksPath.Child("workers"), "must specify the network range for the worker network"))
 	}
@@ -134,6 +141,67 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 	return allErrs
 }
 
+// validateBYONetworkConfig validates network configuration when SubnetWorkers is set (BYO subnet mode).
+func validateBYONetworkConfig(networks *apisgcp.NetworkConfig, ipFamilies []core.IPFamily, networksPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	// VPC.Name is required in BYO mode
+	if networks.VPC == nil || len(networks.VPC.Name) == 0 {
+		allErrs = append(allErrs, field.Required(networksPath.Child("vpc", "name"), "vpc name must be set when using BYO subnet mode"))
+	}
+
+	// CloudRouter must not be set in BYO mode (user manages egress)
+	if networks.VPC != nil && networks.VPC.CloudRouter != nil {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("vpc", "cloudRouter"), "cloudRouter must not be set in BYO subnet mode; manage egress outside of Gardener"))
+	}
+
+	// Fields that are only for managed mode must not be set
+	if len(networks.Worker) > 0 {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("worker"), "worker CIDR must not be set in BYO subnet mode; use subnetWorkers instead"))
+	}
+	if len(networks.Workers) > 0 {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("workers"), "workers CIDR must not be set in BYO subnet mode; use subnetWorkers instead"))
+	}
+	if networks.Internal != nil {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("internal"), "internal subnet must not be set in BYO subnet mode"))
+	}
+	if networks.CloudNAT != nil {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("cloudNAT"), "cloudNAT must not be set in BYO subnet mode; manage egress outside of Gardener"))
+	}
+	if networks.FlowLogs != nil {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("flowLogs"), "flowLogs must not be set in BYO subnet mode"))
+	}
+	if networks.MTU != nil {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("mtu"), "mtu must not be set in BYO subnet mode"))
+	}
+
+	// SubnetWorkers must have a non-empty name
+	subnetWorkersPath := networksPath.Child("subnetWorkers")
+	if len(networks.SubnetWorkers.Name) == 0 {
+		allErrs = append(allErrs, field.Required(subnetWorkersPath.Child("name"), "subnetWorkers name must not be empty"))
+	}
+
+	// SubnetServices is only valid for dual-stack shoots
+	isDualStack := slices.Contains(ipFamilies, core.IPFamilyIPv6)
+	subnetServicesPath := networksPath.Child("subnetServices")
+	if !isDualStack && networks.SubnetServices != nil {
+		allErrs = append(allErrs, field.Forbidden(subnetServicesPath, "subnetServices is only allowed for dual-stack shoots"))
+	}
+	if isDualStack && networks.SubnetServices != nil && len(networks.SubnetServices.Name) == 0 {
+		allErrs = append(allErrs, field.Required(subnetServicesPath.Child("name"), "subnetServices name must not be empty"))
+	}
+
+	podSecondaryRangeNamePath := subnetWorkersPath.Child("podSecondaryRangeName")
+	if !isDualStack && networks.SubnetWorkers.PodSecondaryRangeName != nil {
+		allErrs = append(allErrs, field.Forbidden(podSecondaryRangeNamePath, "podSecondaryRangeName is only allowed for dual-stack shoots"))
+	}
+	if isDualStack && networks.SubnetWorkers.PodSecondaryRangeName != nil && len(*networks.SubnetWorkers.PodSecondaryRangeName) == 0 {
+		allErrs = append(allErrs, field.Invalid(podSecondaryRangeNamePath, "", "podSecondaryRangeName must not be empty in dual-stack mode"))
+	}
+
+	return allErrs
+}
+
 func validateNetworkFlowLogs(flowLogs apisgcp.FlowLogs, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
@@ -207,6 +275,22 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.Infrastruc
 		networksPath = fldPath.Child("networks")
 		vpcPath      = networksPath.Child("vpc")
 	)
+
+	// Switching between BYO and managed mode is not allowed
+	oldBYO := oldConfig.Networks.SubnetWorkers != nil
+	newBYO := newConfig.Networks.SubnetWorkers != nil
+	if oldBYO != newBYO {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("subnetWorkers"), "cannot switch between BYO subnet mode and managed mode"))
+		return allErrs
+	}
+
+	// SubnetWorkers and SubnetServices are immutable once set
+	if oldBYO {
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.SubnetWorkers, oldConfig.Networks.SubnetWorkers, networksPath.Child("subnetWorkers"))...)
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.SubnetServices, oldConfig.Networks.SubnetServices, networksPath.Child("subnetServices"))...)
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.VPC, oldConfig.Networks.VPC, vpcPath)...)
+		return allErrs
+	}
 
 	oldVPC := oldConfig.Networks.VPC
 	newVPC := newConfig.Networks.VPC

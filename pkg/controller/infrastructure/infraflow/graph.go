@@ -18,6 +18,23 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithSpan().WithLogger(fctx.log).WithPersist(fctx.persistState)
 	g := flow.NewGraph("infrastructure reconciliation")
 
+	if fctx.config.IsUserManagedEgress() {
+		ensureVPC := fctx.AddTask(g, "ensure VPC", fctx.ensureVPC,
+			shared.Timeout(defaultCreateTimeout),
+		)
+		ensureNodesSubnet := fctx.AddTask(g, "ensure worker subnet", fctx.ensureUserManagedWorkersSubnet,
+			shared.Timeout(defaultCreateTimeout),
+			shared.Dependencies(ensureVPC),
+		)
+		if fctx.isDualStack() {
+			fctx.AddTask(g, "ensure IPv6 services subnet", fctx.ensureUserManagedServicesSubnet,
+				shared.Timeout(defaultCreateTimeout),
+				shared.Dependencies(ensureVPC, ensureNodesSubnet),
+			)
+		}
+		return g
+	}
+
 	fctx.AddTask(g, "ensure service account", fctx.ensureServiceAccount,
 		shared.Timeout(defaultCreateTimeout),
 		shared.DoIf(
@@ -27,33 +44,40 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	ensureVPC := fctx.AddTask(g, "ensure VPC", fctx.ensureVPC,
 		shared.Timeout(defaultCreateTimeout),
 	)
+
 	ensureDualStackKubernetesRoutesCleanup := fctx.AddTask(g, "ensure kubernetes routes cleanup", fctx.ensureKubernetesRoutesCleanupForDualStackMigration,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
 		shared.DoIf(isToDualStackMigration(fctx.shoot)),
 	)
+
 	ensureNodesSubnet := fctx.AddTask(g, "ensure worker subnet", fctx.ensureNodesSubnet,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC, ensureDualStackKubernetesRoutesCleanup),
 	)
+
 	fctx.AddTask(g, "ensure alias ip ranges", fctx.ensureAliasIpRanges,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC, ensureDualStackKubernetesRoutesCleanup, ensureNodesSubnet),
 	)
+
 	ensureInternalSubnet := fctx.AddTask(g, "ensure internal subnet", fctx.ensureInternalSubnet,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
 	)
+
 	ensureServicesSubnet := fctx.AddTask(g, "ensure IPv6 services subnet", fctx.ensureServicesSubnet,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
 		shared.DoIf(fctx.isDualStack()),
 	)
-	ensureIPv6Services := fctx.AddTask(g, "ensure IPv6 CIDR services", fctx.ensureIPv6CIDRs,
+
+	ensureIPv6CIDRs := fctx.AddTask(g, "ensure IPv6 CIDR services", fctx.ensureIPv6CIDRs,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureNodesSubnet, ensureServicesSubnet),
 		shared.DoIf(fctx.isDualStack()),
 	)
+
 	ensureRouter := fctx.AddTask(g, "ensure router", fctx.ensureCloudRouter,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
@@ -68,7 +92,7 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	)
 	fctx.AddTask(g, "ensure firewall", fctx.ensureFirewallRules,
 		shared.Timeout(defaultCreateTimeout),
-		shared.Dependencies(ensureVPC, ensureNodesSubnet, ensureInternalSubnet, ensureIPv6Services),
+		shared.Dependencies(ensureVPC, ensureNodesSubnet, ensureInternalSubnet, ensureServicesSubnet, ensureIPv6CIDRs),
 	)
 
 	return g
@@ -78,11 +102,19 @@ func (fctx *FlowContext) buildDeleteGraph() *flow.Graph {
 	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithLogger(fctx.log).WithSpan()
 	g := flow.NewGraph("infrastructure deletion")
 
+	if fctx.config.IsUserManagedEgress() {
+		return g
+	}
+
 	fctx.AddTask(g, "destroy service account", fctx.ensureServiceAccountDeleted,
 		shared.Timeout(defaultDeleteTimeout), shared.DoIf(fctx.whiteboard.Get(CreatedServiceAccountKey) != nil),
 	)
-	fctx.AddTask(g, "destroy kubernetes routes", fctx.ensureKubernetesRoutesDeleted, shared.Timeout(defaultDeleteTimeout))
-	ensureFirewallDeleted := fctx.AddTask(g, "destroy infrastructure firewall", fctx.ensureFirewallRulesDeleted, shared.Timeout(20*time.Minute))
+	fctx.AddTask(g, "destroy kubernetes routes", fctx.ensureKubernetesRoutesDeleted,
+		shared.Timeout(defaultDeleteTimeout),
+	)
+	ensureFirewallDeleted := fctx.AddTask(g, "destroy infrastructure firewall", fctx.ensureFirewallRulesDeleted,
+		shared.Timeout(20*time.Minute),
+	)
 	ensureNatDeleted := fctx.AddTask(g, "destroy nats", fctx.ensureCloudNATDeleted,
 		shared.Timeout(defaultDeleteTimeout),
 		// we do not need to clean up CloudNAT for managed CloudRouters because it will be deleted with the router deletion.

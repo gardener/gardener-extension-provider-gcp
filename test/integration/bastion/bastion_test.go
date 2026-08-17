@@ -48,6 +48,7 @@ import (
 	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	bastionctrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 const (
@@ -71,13 +72,14 @@ func validateFlags() {
 }
 
 var (
-	ctx            context.Context
-	log            logr.Logger
-	project        string
-	computeService *compute.Service
-	testEnv        *envtest.Environment
-	mgrCancel      context.CancelFunc
-	c              client.Client
+	ctx              context.Context
+	log              logr.Logger
+	project          string
+	computeService   *compute.Service
+	gcpComputeClient gcpclient.ComputeClient
+	testEnv          *envtest.Environment
+	mgrCancel        context.CancelFunc
+	c                client.Client
 )
 
 var _ = BeforeSuite(func() {
@@ -153,6 +155,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	computeService, err = compute.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(compute.CloudPlatformScope))
 	Expect(err).NotTo(HaveOccurred())
+	gcpComputeClient, err = gcpclient.NewComputeClient(ctx, sa)
+	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = Describe("Bastion tests", func() {
@@ -217,7 +221,7 @@ var _ = Describe("Bastion tests", func() {
 				CloudProfile: cloudProfile,
 			}
 
-			testBastion, testOptions := createBastion(testControllerCluster, name, project, networkName, subnetName, myPublicIP)
+			testBastion, testOptions := createBastion(ctx, testControllerCluster, name, project, networkName, subnetName, myPublicIP)
 
 			By("setup Infrastructure")
 			err = prepareNewNetwork(ctx, log, project, computeService, networkName, routerName, subnetName)
@@ -411,7 +415,7 @@ func getResourceNameFromSelfLink(link string) string {
 	return parts[len(parts)-1]
 }
 
-func createBastion(cluster *controller.Cluster, name, project, networkName, subnet, publicIP string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {
+func createBastion(ctx context.Context, cluster *controller.Cluster, name, project, networkName, subnet, publicIP string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {
 	bastion := &extensionsv1alpha1.Bastion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "-bastion",
@@ -430,7 +434,7 @@ func createBastion(cluster *controller.Cluster, name, project, networkName, subn
 		},
 	}
 
-	options, err := bastionctrl.NewOpts(bastion, cluster, project, networkName, subnet)
+	options, err := bastionctrl.NewOpts(ctx, bastion, cluster, gcpComputeClient, project, networkName, subnet)
 	Expect(err).NotTo(HaveOccurred())
 
 	return bastion, options
