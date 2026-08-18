@@ -1208,6 +1208,7 @@ func runBYOTest(
 		},
 		Spec: gardencorev1beta1.ShootSpec{
 			Networking: &gardencorev1beta1.Networking{
+				Nodes:      ptr.To(byoWorkersSubnetCIDR),
 				Pods:       ptr.To(byoPodsCIDR),
 				Services:   ptr.To(subnetCIDR),
 				IPFamilies: ipFamilies,
