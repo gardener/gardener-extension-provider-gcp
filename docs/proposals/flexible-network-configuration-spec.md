@@ -2,7 +2,7 @@
 
 **Status**: implementation checklist derived from [flexible-network-configuration-proposal.md](./flexible-network-configuration-proposal.md). The proposal is the source of truth for design intent and constraints; this spec captures the concrete file changes, code sketches, and test surface needed to satisfy the proposal's acceptance criteria.
 
-**Audience**: coding agents and implementing engineers. Anything in this document may be revised during implementation as long as the changes still satisfy the proposal's acceptance criteria (referenced below by their proposal IDs — `A1`–`A4`, `B1`–`B5`, `C1`–`C17`, `D1`–`D4`, `E1`–`E9`, `F1`–`F3`, `G1`–`G4`).
+**Audience**: coding agents and implementing engineers. Anything in this document may be revised during implementation as long as the changes still satisfy the proposal's acceptance criteria (referenced below by their proposal IDs — `A1`–`A4`, `B1`–`B5`, `C1`–`C17`, `D1`–`D4`, `E1`–`E9`, `F1`–`F3`).
 
 <!-- toc -->
 
@@ -84,7 +84,7 @@ make generate
 
 **File**: `pkg/apis/gcp/validation/infrastructure.go`
 
-Extend `ValidateInfrastructureConfig` with a new block that fires when `infra.Networks.SubnetWorkers != nil`:
+Extend `ValidateInfrastructureConfig` with an `ipFamilies []core.IPFamily` parameter (added after `servicesCIDR`) and a new block that fires when `infra.Networks.SubnetWorkers != nil`. Update the call site in `pkg/admission/validator/shoot.go` to pass `valContext.shoot.Spec.Networking.IPFamilies`:
 
 ```go
 if infra.Networks.SubnetWorkers != nil {
@@ -138,16 +138,22 @@ if infra.Networks.SubnetWorkers != nil {
             byoPath.Child("subnetWorkers", "name"))...)
     }
 
-    isDualStack := nodesCIDR != nil // use the ipFamilies from the caller — adjust as needed
+    isDualStack := slices.Contains(ipFamilies, core.IPFamilyIPv6)
 
-    // PodSecondaryRangeName: forbidden for IPv4, required for dual-stack
+    // PodSecondaryRangeName: forbidden for IPv4, required and non-empty for dual-stack
+    podRangePath := byoPath.Child("subnetWorkers", "podSecondaryRangeName")
     if !isDualStack && infra.Networks.SubnetWorkers.PodSecondaryRangeName != nil {
-        allErrs = append(allErrs, field.Forbidden(byoPath.Child("subnetWorkers", "podSecondaryRangeName"),
+        allErrs = append(allErrs, field.Forbidden(podRangePath,
             "must not be set for single-stack IPv4 shoots"))
     }
     if isDualStack && infra.Networks.SubnetWorkers.PodSecondaryRangeName == nil {
-        allErrs = append(allErrs, field.Required(byoPath.Child("subnetWorkers", "podSecondaryRangeName"),
+        allErrs = append(allErrs, field.Required(podRangePath,
             "required for dual-stack shoots"))
+    }
+    if isDualStack && infra.Networks.SubnetWorkers.PodSecondaryRangeName != nil &&
+        len(*infra.Networks.SubnetWorkers.PodSecondaryRangeName) == 0 {
+        allErrs = append(allErrs, field.Invalid(podRangePath, "",
+            "must not be empty"))
     }
 
     // SubnetServices: required for dual-stack, forbidden for IPv4
@@ -159,6 +165,16 @@ if infra.Networks.SubnetWorkers != nil {
         allErrs = append(allErrs, field.Forbidden(byoPath.Child("subnetServices"),
             "must not be set for single-stack IPv4 shoots"))
     }
+    if isDualStack && infra.Networks.SubnetServices != nil {
+        if len(infra.Networks.SubnetServices.Name) == 0 {
+            allErrs = append(allErrs, field.Required(byoPath.Child("subnetServices", "name"),
+                "must not be empty"))
+        }
+        if infra.Networks.SubnetServices.PodSecondaryRangeName != nil {
+            allErrs = append(allErrs, field.Forbidden(byoPath.Child("subnetServices", "podSecondaryRangeName"),
+                "only valid on subnetWorkers, not subnetServices"))
+        }
+    }
 }
 
 // SubnetServices without SubnetWorkers
@@ -167,8 +183,6 @@ if infra.Networks.SubnetServices != nil && infra.Networks.SubnetWorkers == nil {
         "must not be set without subnetWorkers"))
 }
 ```
-
-Note: `ValidateInfrastructureConfig` currently receives `nodesCIDR, podsCIDR, servicesCIDR *string`. The dual-stack detection should be derived from the shoot's `IPFamilies` list, which is available in the admission plugin. Check the existing call sites in `plugin/pkg/shoot/validator/` to confirm how to pass IP family information here, and adjust the signature if needed.
 
 Extend `ValidateInfrastructureConfigUpdate` in the same file with immutability rules:
 
@@ -217,7 +231,7 @@ if infraConfig.IsUserManagedEgress() {
         allErrs = append(allErrs, field.Invalid(..., "referenced VPC does not exist"))
     }
 
-    // 2. Worker subnet exists in region
+    // 2. Worker subnet exists in region and belongs to the declared VPC
     sub, err := computeClient.GetSubnet(ctx, region, infraConfig.Networks.SubnetWorkers.Name)
     if err != nil { return ... }
     if sub == nil {
@@ -225,6 +239,11 @@ if infraConfig.IsUserManagedEgress() {
     }
 
     if sub != nil {
+        // sub.Network is a self-link; compare the resource name suffix against VPC.Name
+        if lastPathSegment(sub.Network) != infraConfig.Networks.VPC.Name {
+            allErrs = append(allErrs, field.Invalid(..., "worker subnet does not belong to the referenced VPC"))
+        }
+
         // 3. subnet CIDR contains shoot.spec.networking.nodes, non-overlapping with pods/services
         // subnetCIDR.ValidateSubset(nodes) — the nodes CIDR must fit inside the subnet
 
@@ -249,10 +268,18 @@ if infraConfig.IsUserManagedEgress() {
         }
     }
 
-    // 5. Services subnet (dual-stack)
+    // 5. Services subnet (dual-stack): exists in region, belongs to declared VPC,
+    //    stackType: IPV4_IPV6, IPv6 CIDR assigned
     if isDualStack && infraConfig.Networks.SubnetServices != nil {
         svcSub, err := computeClient.GetSubnet(ctx, region, infraConfig.Networks.SubnetServices.Name)
-        // verify exists, stackType: IPV4_IPV6, IPv6 CIDR assigned
+        if err != nil { return ... }
+        if svcSub == nil {
+            allErrs = append(allErrs, field.Invalid(..., "referenced services subnet does not exist"))
+        }
+        if svcSub != nil && lastPathSegment(svcSub.Network) != infraConfig.Networks.VPC.Name {
+            allErrs = append(allErrs, field.Invalid(..., "services subnet does not belong to the referenced VPC"))
+        }
+        // verify svcSub.StackType == "IPV4_IPV6" and svcSub.Ipv6CidrRange != ""
     }
 }
 ```
@@ -280,31 +307,45 @@ func isUserManagedEgress(config *gcp.InfrastructureConfig) bool {
 Add two new functions adjacent to `ensureUserManagedVPC` and `ensureUserManagedCloudRouter`:
 
 ```go
-// ensureUserManagedNodesSubnet verifies the user's worker subnet exists and stores it
-// on the whiteboard. Never creates or patches anything.
-func (fctx *FlowContext) ensureUserManagedNodesSubnet(ctx context.Context) error {
-    subnetName := fctx.config.Networks.SubnetWorkers.Name
-    subnet, err := fctx.computeClient.GetSubnet(ctx, fctx.infra.Spec.Region, subnetName)
+// ensureUserManagedWorkersSubnet verifies the user's worker subnet exists, belongs to
+// the configured VPC, and stores it on the whiteboard. Never creates or patches anything.
+func (fctx *FlowContext) ensureUserManagedWorkersSubnet(ctx context.Context) error {
+    subnetRef := fctx.config.Networks.SubnetWorkers
+    if subnetRef == nil {
+        return fmt.Errorf("subnetWorkers must not be nil in BYO mode")
+    }
+    subnet, err := fctx.computeClient.GetSubnet(ctx, fctx.infra.Spec.Region, subnetRef.Name)
     if err != nil {
         return err
     }
     if subnet == nil {
-        return fmt.Errorf("failed to locate user-managed worker subnet [Name=%s]", subnetName)
+        return fmt.Errorf("user-managed worker subnet %q not found in region %q", subnetRef.Name, fctx.infra.Spec.Region)
+    }
+    vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
+    if subnet.Network != vpc.SelfLink {
+        return fmt.Errorf("user-managed worker subnet %q belongs to network %q, not to the configured VPC %q", subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
     }
     fctx.whiteboard.SetObject(ObjectKeyNodeSubnet, subnet)
     return nil
 }
 
-// ensureUserManagedServicesSubnet verifies the user's services subnet exists and stores
-// it on the whiteboard. Never creates or patches anything.
+// ensureUserManagedServicesSubnet verifies the user's services subnet exists, belongs to
+// the configured VPC, and stores it on the whiteboard. Never creates or patches anything.
 func (fctx *FlowContext) ensureUserManagedServicesSubnet(ctx context.Context) error {
-    subnetName := fctx.config.Networks.SubnetServices.Name
-    subnet, err := fctx.computeClient.GetSubnet(ctx, fctx.infra.Spec.Region, subnetName)
+    subnetRef := fctx.config.Networks.SubnetServices
+    if subnetRef == nil {
+        return fmt.Errorf("subnetServices must not be nil for dual-stack BYO mode")
+    }
+    subnet, err := fctx.computeClient.GetSubnet(ctx, fctx.infra.Spec.Region, subnetRef.Name)
     if err != nil {
         return err
     }
     if subnet == nil {
-        return fmt.Errorf("failed to locate user-managed services subnet [Name=%s]", subnetName)
+        return fmt.Errorf("user-managed services subnet %q not found in region %q", subnetRef.Name, fctx.infra.Spec.Region)
+    }
+    vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
+    if subnet.Network != vpc.SelfLink {
+        return fmt.Errorf("user-managed services subnet %q belongs to network %q, not to the configured VPC %q", subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
     }
     fctx.whiteboard.SetObject(ObjectKeyServicesSubnet, subnet)
     return nil
@@ -322,7 +363,7 @@ In the **reconcile graph**, replace the existing unconditional task registration
 var ensureNodesSubnet *shared.Task
 if isUserManagedEgress(fctx.config) {
     ensureNodesSubnet = fctx.AddTask(g, "ensure worker subnet",
-        fctx.ensureUserManagedNodesSubnet,
+        fctx.ensureUserManagedWorkersSubnet,
         shared.Timeout(defaultCreateTimeout),
         shared.Dependencies(ensureVPC))
 } else {
@@ -353,14 +394,6 @@ if !isUserManagedEgress(fctx.config) {
 if isDualStack && !isUserManagedEgress(fctx.config) {
     // existing ensureIPv6CIDRs task
 }
-
-// BYO labels — BYO mode only
-if isUserManagedEgress(fctx.config) {
-    fctx.AddTask(g, "ensure byo resource labels",
-        fctx.ensureBYOResourceLabels,
-        shared.Timeout(defaultCreateTimeout),
-        shared.Dependencies(ensureVPC, ensureNodesSubnet))
-}
 ```
 
 In the **delete graph**, add matching skip conditions:
@@ -379,12 +412,6 @@ fctx.AddTask(g, "ensure router deleted",
 
 // ensureFirewallRulesDeleted still runs (cleans up CCM's k8s-fw-* rules) — no change needed
 // ensureKubernetesRoutesDeleted still runs — no change needed
-
-// BYO label removal
-if isUserManagedEgress(fctx.config) {
-    fctx.AddTask(g, "remove byo resource labels", fctx.removeBYOResourceLabels,
-        shared.Timeout(defaultDeleteTimeout))
-}
 ```
 
 Covers `E1`–`E3` (reconciler makes no create/update calls against BYO resources).
@@ -420,56 +447,16 @@ if isUserManagedEgress(fctx.config) {
 
 Covers `E9`.
 
-### Metadata labels task
-
-**File**: `pkg/controller/infrastructure/infraflow/ensure.go`
-
-Add two new functions:
-
-```go
-func (fctx *FlowContext) ensureBYOResourceLabels(ctx context.Context) error {
-    labelKey := fmt.Sprintf("kubernetes-io-cluster-%s", normalizeLabel(fctx.clusterName))
-    labelValue := "shared"
-
-    vpc, _ := fctx.whiteboard.GetObject(ObjectKeyVPC).(*compute.Network)
-    if vpc != nil {
-        if err := fctx.computeClient.PatchNetworkLabel(ctx, vpc.Name, labelKey, labelValue); err != nil {
-            fctx.log.Info("warning: failed to set BYO VPC label, continuing", "error", err)
-        }
-    }
-
-    nodeSubnet, _ := fctx.whiteboard.GetObject(ObjectKeyNodeSubnet).(*compute.Subnetwork)
-    if nodeSubnet != nil {
-        if err := fctx.computeClient.PatchSubnetLabel(ctx, fctx.infra.Spec.Region, nodeSubnet.Name, labelKey, labelValue); err != nil {
-            fctx.log.Info("warning: failed to set BYO worker subnet label, continuing", "error", err)
-        }
-    }
-    // ... repeat for services subnet if dual-stack ...
-    return nil
-}
-
-func (fctx *FlowContext) removeBYOResourceLabels(ctx context.Context) error {
-    // Best-effort removal of own label from VPC and subnet(s); log warning on failure, continue.
-    ...
-    return nil
-}
-```
-
-The label write must check whether the label already has the correct value before issuing a PATCH (satisfies `G1` no-op requirement and avoids spurious API calls on every reconcile).
-
-If the GCP compute client does not yet have `PatchNetworkLabel` / `PatchSubnetLabel` methods, add them to `pkg/gcp/client/compute.go` following the existing `updater` pattern — a targeted metadata PATCH rather than a full resource GET+PUT.
-
-Covers `G1`–`G4`.
-
 ## Cloud-provider config
 
 **File**: `pkg/controller/controlplane/valuesprovider.go`
 
-In `getNetworkNames` (line ~748), the existing code already falls back from `PurposeInternal` to nothing when no internal subnet is found. Extend the fallback so that when `PurposeInternal` is absent, `subNetworkName` is set from the `PurposeNodes` subnet:
+In `getNetworkNames`, add an `infraConfig *apisgcp.InfrastructureConfig` parameter and change the nodes-subnet fallback so it only fires in BYO mode — not in managed mode when `Internal` happens to be absent:
 
 ```go
 func getNetworkNames(
     infraStatus *apisgcp.InfrastructureStatus,
+    infraConfig *apisgcp.InfrastructureConfig,
     cp *extensionsv1alpha1.ControlPlane,
 ) (string, string, string) {
     // ... existing networkName logic ...
@@ -486,10 +473,10 @@ func getNetworkNames(
     subnet, _ = apihelper.FindSubnetForPurpose(infraStatus.Networks.Subnets, apisgcp.PurposeNodes)
     if subnet != nil {
         subNetworkNameNodes = subnet.Name
-        // Fallback: if no internal subnet, use the nodes subnet for ILB frontend IPs.
-        // This is always the case in BYO mode and also activates when Internal is not
-        // configured in managed mode.
-        if subNetworkName == "" {
+        // In BYO subnet mode there is no internal subnet; fall back to the nodes subnet
+        // for internal LB frontend IPs. The guard is intentionally BYO-only: in managed
+        // mode without an internal subnet, subNetworkName stays empty (existing behaviour).
+        if infraConfig.IsUserManagedEgress() {
             subNetworkName = subnet.Name
         }
     }
@@ -553,7 +540,7 @@ Covers `E8`.
 - `C17`: dual-stack subnet with secondary range CIDR mismatch.
 - Happy path for both IPv4 and dual-stack.
 
-**`pkg/controller/infrastructure/infraflow/ensure_test.go`** (new or extend) — cover `ensureUserManagedNodesSubnet`:
+**`pkg/controller/infrastructure/infraflow/ensure_test.go`** (new or extend) — cover `ensureUserManagedWorkersSubnet`:
 - Happy path: subnet found, stored on whiteboard.
 - Subnet not found: error returned.
 - Dual-stack path: `ensureUserManagedServicesSubnet` happy path and not-found error.
@@ -590,10 +577,9 @@ Minimises risk by getting the machine-checkable parts (types, validation, unit t
 1. **API types + generated code** (`SubnetReference`, `SubnetWorkers`, `SubnetServices`, `IsUserManagedEgress`). No behavior change; unit tests can compile and be added.
 2. **API-level validation** in `pkg/apis/gcp/validation/infrastructure.go`. Unit tests for `C1`–`C12`, `D1`–`D4`.
 3. **Runtime pre-flight `ConfigValidator` extension**. Unit tests for `C13`–`C17`.
-4. **Reconciler task-graph branching** — add `ensureUserManagedNodesSubnet`, `ensureUserManagedServicesSubnet`, gate tasks in graph. Manual smoke test against a pre-provisioned BYO subnet in a scratch GCP project.
+4. **Reconciler task-graph branching** — add `ensureUserManagedWorkersSubnet`, `ensureUserManagedServicesSubnet`, gate tasks in graph. Manual smoke test against a pre-provisioned BYO subnet in a scratch GCP project.
 5. **Status-builder changes** — populate `Subnets[]` and (if not present) `CIDR` field from BYO subnet's `IpCidrRange`.
 6. **`cloud-provider-config` fallback in `getNetworkNames`**. Unit test for `E4`, `E6`.
 7. **Bastion `getWorkersCIDR` fix**. Unit test for `E8`.
-8. **Metadata labels task** (`ensureBYOResourceLabels`, `removeBYOResourceLabels`). Manual test with and without label-write IAM permission (`G1`–`G4`).
-9. **Integration test harness updates**. Add scenarios `B1`, `B3`, `B4`, `E1`, `F1`.
-10. **Documentation** — `docs/usage/user-managed-egress.md` and the pointer from `docs/usage/usage.md` and `docs/usage/ipv6.md`.
+8. **Integration test harness updates**. Add scenarios `B1`, `B3`, `B4`, `E1`, `F1`.
+9. **Documentation** — `docs/usage/user-managed-egress.md` and the pointer from `docs/usage/usage.md` and `docs/usage/ipv6.md`.

@@ -178,8 +178,9 @@ type SubnetReference struct {
     // Name is the name of the subnetwork.
     Name string `json:"name"`
 
-    // PodSecondaryRangeName is the name of the secondary IP range on the nodes subnet
+    // PodSecondaryRangeName is the name of the secondary IP range on the workers subnet
     // that is used for pod IPs (required for dual-stack BYO shoots).
+    // Only valid on SubnetWorkers; forbidden on SubnetServices.
     // +optional
     PodSecondaryRangeName *string `json:"podSecondaryRangeName,omitempty"`
 }
@@ -224,8 +225,10 @@ Added in `pkg/apis/gcp/validation/infrastructure.go`.
 | `Networks.MTU` forbidden | MTU is a property of the BYO subnet. |
 | `Networks.SubnetWorkers.Name` non-empty, valid GCP resource name | Standard field validation. |
 | `Networks.SubnetWorkers.PodSecondaryRangeName` forbidden for single-stack IPv4 | Not used (custom routes). |
-| `Networks.SubnetWorkers.PodSecondaryRangeName` required for dual-stack | Alias-IP pod IPAM depends on it. |
+| `Networks.SubnetWorkers.PodSecondaryRangeName` required and non-empty for dual-stack | Alias-IP pod IPAM depends on it. |
 | `Networks.SubnetServices` required for dual-stack | IPv6 services CIDR is sliced from this subnet's IPv6 range. |
+| `Networks.SubnetServices.Name` non-empty when SubnetServices is set | Standard field validation. |
+| `Networks.SubnetServices.PodSecondaryRangeName` forbidden | Only meaningful on the workers subnet. |
 | `Networks.SubnetServices` forbidden for single-stack IPv4 | Only used for IPv6 services. |
 | `Networks.SubnetServices` forbidden without `Networks.SubnetWorkers` | The two are a matched pair. |
 
@@ -263,7 +266,6 @@ Task-gating in `pkg/controller/infrastructure/infraflow/graph.go`:
 | `ensureFirewallRules` | **skipped** |
 | `ensureIPv6CIDRs` | **skipped** (user's subnets already have IPv6 CIDRs) |
 | `ensureAliasIpRanges` | dual-stack migration only, unchanged — writes are per-instance, not VPC-scoped |
-| `ensureBYOResourceLabels` (new) | best-effort label on BYO VPC + subnet(s) |
 
 Delete graph: skip destruction of workers subnet, services subnet, VPC, router, NAT, and the four static firewall rules. Run `ensureKubernetesRoutesDeleted` and `ensureFirewallRulesDeleted` unchanged — they remove the CCM's runtime writes from the BYO VPC on shoot delete.
 
@@ -384,17 +386,17 @@ The three bastion firewall rules (`<base>-allow-ssh`, `<base>-egress-worker`, `<
 
 Gardener's GCP principal must have `compute.firewalls.{create,update,delete}` permission on the project owning the BYO VPC.
 
-### Metadata labels on BYO resources
+### Single-stack IPv4 specifics
 
-For observability, apply a label on BYO resources:
+In single-stack IPv4 BYO mode, the worker subnet must have `stackType: IPV4_ONLY` (or omitted, which defaults to IPv4-only). Pod-to-pod traffic uses **custom routes**: the CCM route controller writes one `shoot--*` VPC route per node (next-hop = the node VM). No secondary IP range is required or permitted on the worker subnet — setting `SubnetWorkers.PodSecondaryRangeName` is rejected. `SubnetServices` is likewise forbidden. Custom routes are cleaned up by `ensureKubernetesRoutesDeleted` on shoot deletion.
 
-- **VPC network**: `kubernetes-io-cluster-<technicalID> = shared`.
-- **Worker subnetwork**: same key.
-- **Services subnetwork** (dual-stack): same key.
+The user must pre-provision firewall rules equivalent to `<technicalID>-allow-internal-access` (IPv4 intra-VPC) and `<technicalID>-allow-health-checks` (GCP LB health-check probes). IAM permissions to create/delete custom routes and firewall rules in the BYO project are required for the Gardener GCP principal.
 
-Operations are best-effort: on IAM or Org-Policy denial, log a warning and continue. Labels are informational only; no code reads them back. Multiple shoots on shared BYO resources each add their own label; each shoot removes only its own label on deletion. Implementation: new task `ensureBYOResourceLabels` in the reconcile graph, `removeBYOResourceLabels` in the delete graph.
+### Dual-stack specifics
 
-The label-write task must only issue a PATCH when the label is not already present (compare before write), to avoid spurious API calls on every reconcile.
+In dual-stack BYO mode, both `SubnetWorkers` and `SubnetServices` must be provided. The worker subnet must have `stackType: IPV4_IPV6` with an assigned external IPv6 `/64`. Pod-to-pod traffic uses **alias IPs**: the MCM writes an alias IP range per VM from the secondary IPv4 range named by `SubnetWorkers.PodSecondaryRangeName`, whose `ipCidrRange` must exactly match `shoot.spec.networking.pods`. No custom routes are written.
+
+The services subnet must have `stackType: IPV4_IPV6` and `ipv6AccessType: EXTERNAL`; the extension slices a `/108` from its IPv6 `/64` for the shoot's IPv6 services CIDR. Additional firewall rules for IPv6 (`<technicalID>-allow-internal-access-ipv6`, `<technicalID>-allow-health-checks-ipv6`) must be pre-provisioned by the user. `ingress-gce` writes `k8s-fw-l7-*` rules into the BYO VPC at runtime.
 
 ## Configuration patterns
 
@@ -428,7 +430,7 @@ kind: InfrastructureConfig
 networks:
   vpc:
     name: my-vpc
-  subnetNodes:
+  subnetWorkers:
     name: my-workers
 ```
 
@@ -453,7 +455,7 @@ kind: InfrastructureConfig
 networks:
   vpc:
     name: my-vpc
-  subnetNodes:
+  subnetWorkers:
     name: my-workers
     podSecondaryRangeName: my-pods
   subnetServices:
