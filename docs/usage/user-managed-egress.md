@@ -149,7 +149,7 @@ gcloud compute networks subnets create my-workers \
 ```
 
 Requirements:
-- `--range` must contain `shoot.spec.networking.nodes` and must not overlap with pods or services CIDRs.
+- `--range` must be inside `shoot.spec.networking.nodes` and must not overlap with pods or services CIDRs.
 - `--secondary-range` name must match `subnetWorkers.podSecondaryRangeName`; its CIDR must **exactly equal** `shoot.spec.networking.pods`.
 - `--stack-type=IPV4_IPV6` and `--ipv6-access-type=EXTERNAL` are required so GCP assigns an external `/64` IPv6 CIDR.
 
@@ -165,7 +165,7 @@ gcloud compute networks subnets create my-services \
   --ipv6-access-type=EXTERNAL
 ```
 
-The primary IPv4 range is required by GCP but is not used by Gardener — choose any small non-overlapping range.
+The primary IPv4 range (`--range`) is required by GCP but is not used by Gardener — choose any small non-overlapping range.
 `--stack-type=IPV4_IPV6` and `--ipv6-access-type=EXTERNAL` are required.
 
 **4. Create firewall rules** (see [Required firewall rules — dual-stack](#required-firewall-rules--dual-stack)).
@@ -193,6 +193,7 @@ gcloud compute firewall-rules create <name>-allow-internal \
   --network=my-vpc \
   --direction=INGRESS \
   --priority=1000 \
+  --action=ALLOW \
   --source-ranges=<networks.workers> \
   --target-tags=<technicalID> \
   --rules=icmp,ipip,tcp:1-65535,udp:1-65535
@@ -203,6 +204,7 @@ gcloud compute firewall-rules create <name>-allow-health-checks \
   --network=my-vpc \
   --direction=INGRESS \
   --priority=1000 \
+  --action=ALLOW \
   --source-ranges=35.191.0.0/16,130.211.0.0/22,209.85.152.0/22,209.85.204.0/22 \
   --target-tags=<technicalID> \
   --rules=tcp:30000-32767,udp:30000-32767
@@ -228,16 +230,18 @@ gcloud compute firewall-rules create <name>-allow-internal-ipv6 \
   --project=<project> \
   --network=my-vpc \
   --direction=INGRESS \
+  --action=ALLOW \
   --priority=1000 \
   --source-ranges=<workers-ipv6-cidr>,<services-ipv6-cidr> \
   --target-tags=<technicalID> \
-  --rules=ipv6-icmp,ipip,tcp:1-65535,udp:1-65535
+  --rules=58,ipip,tcp:1-65535,udp:1-65535
 
 # IPv6 GCP load-balancer health-check probes
 gcloud compute firewall-rules create <name>-allow-health-checks-ipv6 \
   --project=<project> \
   --network=my-vpc \
   --direction=INGRESS \
+  --action=ALLOW \
   --priority=1000 \
   --source-ranges=2600:2d00:1:b029::/64,2600:2d00:1:1::/64,2600:1901:8001::/48 \
   --target-tags=<technicalID> \
