@@ -424,6 +424,11 @@ func (fctx *FlowContext) ensureUserManagedWorkersSubnet(ctx context.Context) err
 		return fmt.Errorf("user-managed nodes subnet %q not found in region %q", subnetRef.Name, fctx.infra.Spec.Region)
 	}
 
+	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
+	if subnet.Network != vpc.SelfLink {
+		return fmt.Errorf("user-managed nodes subnet %q belongs to network %q, not to the configured VPC %q", subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
+	}
+
 	fctx.whiteboard.SetObject(ObjectKeyNodeSubnet, subnet)
 	return nil
 }
@@ -442,6 +447,11 @@ func (fctx *FlowContext) ensureUserManagedServicesSubnet(ctx context.Context) er
 	}
 	if subnet == nil {
 		return fmt.Errorf("user-managed services subnet %q not found in region %q", subnetRef.Name, fctx.infra.Spec.Region)
+	}
+
+	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
+	if subnet.Network != vpc.SelfLink {
+		return fmt.Errorf("user-managed services subnet %q belongs to network %q, not to the configured VPC %q", subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
 	}
 
 	fctx.whiteboard.SetObject(ObjectKeyServicesSubnet, subnet)
