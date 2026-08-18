@@ -332,8 +332,6 @@ var _ = Describe("Bastion tests", func() {
 			CloudProfile: cloudProfile,
 		}
 
-		testBastion, testOptions := createBastion(ctx, testControllerCluster, name, project, networkName, subnetName, myPublicIP)
-
 		By("setup Infrastructure")
 		err = prepareNewNetwork(ctx, log, project, computeService, networkName, routerName, subnetName)
 		Expect(err).NotTo(HaveOccurred())
@@ -341,6 +339,8 @@ var _ = Describe("Bastion tests", func() {
 			cleanupErr := teardownNetwork(ctx, log, project, computeService, networkName, routerName, subnetName)
 			Expect(cleanupErr).NotTo(HaveOccurred())
 		})
+
+		testBastion, testOptions := createBastion(ctx, testControllerCluster, name, project, networkName, subnetName, myPublicIP)
 
 		By("create namespace for test execution")
 		setupEnvironmentObjects(ctx, c, namespace(name), secret, testExtensionsCluster, worker)
