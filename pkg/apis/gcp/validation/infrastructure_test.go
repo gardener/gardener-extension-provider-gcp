@@ -550,15 +550,38 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 		It("should allow valid SubnetServices on a dual-stack shoot", func() {
 			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
+			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("my-pods")
 			Expect(ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)).To(BeEmpty())
+		})
+
+		It("should require SubnetServices on a dual-stack shoot", func() {
+			byoConfig.Networks.SubnetServices = nil
+			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("my-pods")
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("networks.subnetServices"),
+			}))
 		})
 
 		It("should forbid empty SubnetServices.Name on a dual-stack shoot", func() {
 			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: ""}
+			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("my-pods")
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
 				"Type":  Equal(field.ErrorTypeRequired),
 				"Field": Equal("networks.subnetServices.name"),
+			}))
+		})
+
+		It("should forbid podSecondaryRangeName on subnetServices", func() {
+			podRange := "my-pods"
+			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services", PodSecondaryRangeName: &podRange}
+			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("my-pods")
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.subnetServices.podSecondaryRangeName"),
 			}))
 		})
 
@@ -571,7 +594,18 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
+		It("should require podSecondaryRangeName on a dual-stack shoot", func() {
+			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
+			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = nil
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeRequired),
+				"Field": Equal("networks.subnetWorkers.podSecondaryRangeName"),
+			}))
+		})
+
 		It("should forbid empty podSecondaryRangeName on a dual-stack shoot", func() {
+			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
 			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("")
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -580,7 +614,8 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should allow valid podSecondaryRangeName on a dual-stack shoot (C12 happy path)", func() {
+		It("should allow valid podSecondaryRangeName on a dual-stack shoot", func() {
+			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
 			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("ipv4-pod-cidr")
 			Expect(ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)).To(BeEmpty())
 		})

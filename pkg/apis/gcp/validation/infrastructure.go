@@ -187,13 +187,24 @@ func validateBYONetworkConfig(networks *apisgcp.NetworkConfig, ipFamilies []core
 	if !isDualStack && networks.SubnetServices != nil {
 		allErrs = append(allErrs, field.Forbidden(subnetServicesPath, "subnetServices is only allowed for dual-stack shoots"))
 	}
-	if isDualStack && networks.SubnetServices != nil && len(networks.SubnetServices.Name) == 0 {
-		allErrs = append(allErrs, field.Required(subnetServicesPath.Child("name"), "subnetServices name must not be empty"))
+	if isDualStack && networks.SubnetServices == nil {
+		allErrs = append(allErrs, field.Required(subnetServicesPath, "subnetServices is required for dual-stack shoots"))
+	}
+	if isDualStack && networks.SubnetServices != nil {
+		if len(networks.SubnetServices.Name) == 0 {
+			allErrs = append(allErrs, field.Required(subnetServicesPath.Child("name"), "subnetServices name must not be empty"))
+		}
+		if networks.SubnetServices.PodSecondaryRangeName != nil {
+			allErrs = append(allErrs, field.Forbidden(subnetServicesPath.Child("podSecondaryRangeName"), "podSecondaryRangeName is only valid on subnetWorkers, not subnetServices"))
+		}
 	}
 
 	podSecondaryRangeNamePath := subnetWorkersPath.Child("podSecondaryRangeName")
 	if !isDualStack && networks.SubnetWorkers.PodSecondaryRangeName != nil {
 		allErrs = append(allErrs, field.Forbidden(podSecondaryRangeNamePath, "podSecondaryRangeName is only allowed for dual-stack shoots"))
+	}
+	if isDualStack && networks.SubnetWorkers.PodSecondaryRangeName == nil {
+		allErrs = append(allErrs, field.Required(podSecondaryRangeNamePath, "podSecondaryRangeName is required for dual-stack shoots"))
 	}
 	if isDualStack && networks.SubnetWorkers.PodSecondaryRangeName != nil && len(*networks.SubnetWorkers.PodSecondaryRangeName) == 0 {
 		allErrs = append(allErrs, field.Invalid(podSecondaryRangeNamePath, "", "podSecondaryRangeName must not be empty in dual-stack mode"))
