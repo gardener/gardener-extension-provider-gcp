@@ -8,7 +8,9 @@ import (
 
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/api/core/v1beta1/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
 	"google.golang.org/api/compute/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/controller/infrastructure/infraflow/shared"
@@ -406,4 +408,64 @@ func IPFamiliesFromCIDRs(cidrs []string) []gardencorev1beta1.IPFamily {
 		}
 	}
 	return result
+}
+
+func validateWorkerSubnetCIDRRelationships(workerSubnetCIDR string, networking *gardencorev1beta1.Networking) error {
+	if networking == nil {
+		return nil
+	}
+	subnetPath := field.NewPath("networks", "subnetWorkers")
+	networkingPath := field.NewPath("networking")
+
+	workerCIDR := cidrvalidation.NewCIDR(workerSubnetCIDR, subnetPath)
+	if errs := cidrvalidation.ValidateCIDRParse(workerCIDR); len(errs) > 0 {
+		return errs.ToAggregate()
+	}
+
+	var allErrs field.ErrorList
+	if networking.Nodes != nil {
+		nodes := cidrvalidation.NewCIDR(*networking.Nodes, networkingPath.Child("nodes"))
+		allErrs = append(allErrs, workerCIDR.ValidateSubset(nodes)...)
+	}
+	if networking.Pods != nil {
+		pods := cidrvalidation.NewCIDR(*networking.Pods, networkingPath.Child("pods"))
+		allErrs = append(allErrs, workerCIDR.ValidateNotOverlap(pods)...)
+	}
+	if networking.Services != nil {
+		services := cidrvalidation.NewCIDR(*networking.Services, networkingPath.Child("services"))
+		allErrs = append(allErrs, workerCIDR.ValidateNotOverlap(services)...)
+	}
+	return allErrs.ToAggregate()
+}
+
+func validateServicesSubnetCIDRRelationships(servicesSubnetCIDR string, networking *gardencorev1beta1.Networking) error {
+	if networking == nil {
+		return nil
+	}
+	subnetPath := field.NewPath("networks", "subnetServices")
+	networkingPath := field.NewPath("networking")
+
+	servicesCIDR := cidrvalidation.NewCIDR(servicesSubnetCIDR, subnetPath)
+	if errs := cidrvalidation.ValidateCIDRParse(servicesCIDR); len(errs) > 0 {
+		return errs.ToAggregate()
+	}
+
+	var allErrs field.ErrorList
+	if networking.Services != nil {
+		// The services subnet primary CIDR must exactly match shoot.spec.networking.services,
+		// because Gardener configures kube-proxy and the CCM using that CIDR.
+		if servicesSubnetCIDR != *networking.Services {
+			allErrs = append(allErrs, field.Invalid(subnetPath, servicesSubnetCIDR,
+				fmt.Sprintf("services subnet primary CIDR must match shoot networking.services %q", *networking.Services)))
+		}
+	}
+	if networking.Nodes != nil {
+		nodes := cidrvalidation.NewCIDR(*networking.Nodes, networkingPath.Child("nodes"))
+		allErrs = append(allErrs, servicesCIDR.ValidateNotOverlap(nodes)...)
+	}
+	if networking.Pods != nil {
+		pods := cidrvalidation.NewCIDR(*networking.Pods, networkingPath.Child("pods"))
+		allErrs = append(allErrs, servicesCIDR.ValidateNotOverlap(pods)...)
+	}
+	return allErrs.ToAggregate()
 }
