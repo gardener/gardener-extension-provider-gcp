@@ -447,7 +447,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			Expect(ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)).To(BeEmpty())
 		})
 
-		It("should require VPC.Name in BYO mode (C2)", func() {
+		It("should require VPC.Name in BYO mode", func() {
 			byoConfig.Networks.VPC = nil
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -456,7 +456,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should require VPC.Name non-empty in BYO mode (C2)", func() {
+		It("should require VPC.Name non-empty in BYO mode", func() {
 			byoConfig.Networks.VPC = &apisgcp.VPC{Name: ""}
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -465,7 +465,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid CloudRouter in BYO mode (C3)", func() {
+		It("should forbid CloudRouter in BYO mode", func() {
 			byoConfig.Networks.VPC.CloudRouter = &apisgcp.CloudRouter{Name: "my-cr"}
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -474,7 +474,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid Workers CIDR in BYO mode (C4)", func() {
+		It("should forbid Workers CIDR in BYO mode", func() {
 			byoConfig.Networks.Workers = "10.250.0.0/16"
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -483,7 +483,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid Worker CIDR in BYO mode (C4)", func() {
+		It("should forbid Worker CIDR in BYO mode", func() {
 			byoConfig.Networks.Worker = "10.250.0.0/16"
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -492,7 +492,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid Internal subnet in BYO mode (C5)", func() {
+		It("should forbid Internal subnet in BYO mode", func() {
 			byoConfig.Networks.Internal = ptr.To("10.10.0.0/24")
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -501,7 +501,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid CloudNAT in BYO mode (C6)", func() {
+		It("should forbid CloudNAT in BYO mode", func() {
 			byoConfig.Networks.CloudNAT = &apisgcp.CloudNAT{}
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -510,7 +510,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid FlowLogs in BYO mode (C7)", func() {
+		It("should forbid FlowLogs in BYO mode", func() {
 			byoConfig.Networks.FlowLogs = &apisgcp.FlowLogs{
 				AggregationInterval: ptr.To("INTERVAL_5_SEC"),
 			}
@@ -521,7 +521,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid MTU in BYO mode (C8)", func() {
+		It("should forbid MTU in BYO mode", func() {
 			byoConfig.Networks.MTU = ptr.To[int32](1500)
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -530,7 +530,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should require SubnetWorkers.Name to be non-empty (C9)", func() {
+		It("should require SubnetWorkers.Name to be non-empty", func() {
 			byoConfig.Networks.SubnetWorkers.Name = ""
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -539,7 +539,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid SubnetServices on a non-dual-stack shoot (C10)", func() {
+		It("should forbid SubnetServices on a non-dual-stack shoot", func() {
 			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -548,12 +548,12 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should allow valid SubnetServices on a dual-stack shoot (C11)", func() {
+		It("should allow valid SubnetServices on a dual-stack shoot", func() {
 			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
 			Expect(ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)).To(BeEmpty())
 		})
 
-		It("should forbid empty SubnetServices.Name on a dual-stack shoot (C11b)", func() {
+		It("should forbid empty SubnetServices.Name on a dual-stack shoot", func() {
 			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: ""}
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -562,7 +562,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid podSecondaryRangeName on a non-dual-stack shoot (C12)", func() {
+		It("should forbid podSecondaryRangeName on a non-dual-stack shoot", func() {
 			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("ipv4-pod-cidr")
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -571,7 +571,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid empty podSecondaryRangeName on a dual-stack shoot (C12b)", func() {
+		It("should forbid empty podSecondaryRangeName on a dual-stack shoot", func() {
 			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("")
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
 			Expect(errs).To(ConsistOfFields(Fields{
@@ -600,7 +600,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}
 		})
 
-		It("should forbid switching from managed mode to BYO mode (D1)", func() {
+		It("should forbid switching from managed mode to BYO mode", func() {
 			oldConfig := infrastructureConfig.DeepCopy()
 			newConfig := byoConfig.DeepCopy()
 			errs := ValidateInfrastructureConfigUpdate(oldConfig, newConfig, fldPath)
@@ -610,7 +610,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid switching from BYO mode to managed mode (D2)", func() {
+		It("should forbid switching from BYO mode to managed mode", func() {
 			oldConfig := byoConfig.DeepCopy()
 			newConfig := infrastructureConfig.DeepCopy()
 			errs := ValidateInfrastructureConfigUpdate(oldConfig, newConfig, fldPath)
@@ -620,7 +620,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid changing SubnetWorkers on update (D3)", func() {
+		It("should forbid changing SubnetWorkers on update", func() {
 			oldConfig := byoConfig.DeepCopy()
 			newConfig := byoConfig.DeepCopy()
 			newConfig.Networks.SubnetWorkers = &apisgcp.SubnetReference{Name: "different-workers"}
@@ -631,7 +631,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
-		It("should forbid changing SubnetServices on update (D4)", func() {
+		It("should forbid changing SubnetServices on update", func() {
 			oldConfig := byoConfig.DeepCopy()
 			oldConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
 			newConfig := oldConfig.DeepCopy()
