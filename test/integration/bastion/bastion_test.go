@@ -838,7 +838,7 @@ func verifyEgressDestinationCIDR(ctx context.Context, project string, computeSer
 	Expect(firewall.DestinationRanges).To(ContainElement(expectedCIDR))
 }
 
-func verifyDeletion(ctx context.Context, project string, computeService *compute.Service, options *bastionctrl.Options) {	// bastion firewalls should be gone
+func verifyDeletion(ctx context.Context, project string, computeService *compute.Service, options *bastionctrl.Options) { // bastion firewalls should be gone
 	// Check Firewall for Ingress / Egress
 	checkFirewallDoesNotExist(ctx, project, computeService, bastionctrl.FirewallIngressAllowSSHResourceName(options.BastionInstanceName))
 	checkFirewallDoesNotExist(ctx, project, computeService, bastionctrl.FirewallEgressAllowOnlyResourceName(options.BastionInstanceName))
