@@ -27,9 +27,13 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 			shared.Dependencies(ensureVPC),
 		)
 		if fctx.isDualStack() {
-			fctx.AddTask(g, "ensure IPv6 services subnet", fctx.ensureUserManagedServicesSubnet,
+			ensureServicesSubnet := fctx.AddTask(g, "ensure IPv6 services subnet", fctx.ensureUserManagedServicesSubnet,
 				shared.Timeout(defaultCreateTimeout),
 				shared.Dependencies(ensureVPC, ensureNodesSubnet),
+			)
+			fctx.AddTask(g, "ensure IPv6 CIDRs", fctx.ensureIPv6CIDRs,
+				shared.Timeout(defaultCreateTimeout),
+				shared.Dependencies(ensureNodesSubnet, ensureServicesSubnet),
 			)
 		}
 		return g
@@ -82,14 +86,17 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC),
 	)
+
 	ensureIpAddresses := fctx.AddTask(g, "ensure IP addresses", fctx.ensureAddresses,
 		shared.Timeout(defaultCreateTimeout),
 		shared.DoIf(fctx.config.Networks.CloudNAT != nil && len(fctx.config.Networks.CloudNAT.NatIPNames) > 0),
 	)
+
 	fctx.AddTask(g, "ensure nats", fctx.ensureCloudNAT,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureRouter, ensureNodesSubnet, ensureIpAddresses),
 	)
+
 	fctx.AddTask(g, "ensure firewall", fctx.ensureFirewallRules,
 		shared.Timeout(defaultCreateTimeout),
 		shared.Dependencies(ensureVPC, ensureNodesSubnet, ensureInternalSubnet, ensureServicesSubnet, ensureIPv6CIDRs),
