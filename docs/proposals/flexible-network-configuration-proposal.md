@@ -147,9 +147,9 @@ The CCM has no concept of an egress topology. It only creates forwarding rules r
 |---|---|---|---|
 | Rows 1–14 | Resources created by the infrastructure reconciler | deleted by the reconciler | not created, nothing to delete |
 | Rows 15–18 | Bastion resources | deleted by bastion controller on Bastion CR delete | unchanged |
-| Row 19 | CCM custom routes | deleted by `ensureKubernetesRoutesDeleted` | same filter, works against BYO VPC |
-| Row 20 | CCM firewall rules | deleted by `ensureFirewallRulesDeleted` (filter: `k8s`-prefix + `TargetTag = <technicalID>`) | same filter, same behavior |
-| Row 21 | `ingress-gce` resources | cleaned up by `ingress-gce` when owning `Ingress`/`Service` deleted; firewall rules swept by `ensureFirewallRulesDeleted` | same, but user's project retains any leaked global resources if `ingress-gce` deletion did not complete cleanly |
+| Row 19 | CCM custom routes | deleted by `ensureKubernetesRoutesDeleted` | cleaned up by the in-cluster CCM route controller as nodes are deleted |
+| Row 20 | CCM firewall rules | deleted by `ensureFirewallRulesDeleted` (filter: `k8s`-prefix + `TargetTag = <technicalID>`) | cleaned up by the in-cluster CCM LB controller when owning `Service` is deleted |
+| Row 21 | `ingress-gce` resources | cleaned up by `ingress-gce` when owning `Ingress`/`Service` deleted; firewall rules swept by `ensureFirewallRulesDeleted` | same; user's project retains leaked global resources if `ingress-gce` deletion did not complete cleanly |
 
 ### API changes
 
@@ -267,7 +267,7 @@ Task-gating in `pkg/controller/infrastructure/infraflow/graph.go`:
 | `ensureIPv6CIDRs` | **skipped** (user's subnets already have IPv6 CIDRs) |
 | `ensureAliasIpRanges` | dual-stack migration only, unchanged — writes are per-instance, not VPC-scoped |
 
-Delete graph: skip destruction of workers subnet, services subnet, VPC, router, NAT, and the four static firewall rules. Run `ensureKubernetesRoutesDeleted` and `ensureFirewallRulesDeleted` unchanged — they remove the CCM's runtime writes from the BYO VPC on shoot delete.
+Delete graph: skip all deletion tasks in BYO mode via an early return — BYO resources (workers subnet, services subnet, VPC, router, NAT, static firewall rules) are user-owned and must not be deleted by Gardener. `ensureKubernetesRoutesDeleted` and `ensureFirewallRulesDeleted` are likewise skipped; the CCM cleans up its own `shoot--*` routes and `k8s-fw-*` firewall rules before the infrastructure deletion step runs.
 
 ### Status shape
 
@@ -508,8 +508,8 @@ The user MUST NOT:
 - BYO VPC, worker subnetwork, services subnetwork (dual-stack) — never deleted by Gardener.
 - Cloud Router / Cloud NAT — never created in BYO mode, never deleted.
 - Four static infra firewall rules — never created in BYO mode, never deleted.
-- CCM-authored `k8s-fw-*` firewall rules — deleted by `ensureFirewallRulesDeleted`, filter matches `k8s`-prefix + `TargetTag` = shoot technical ID.
-- CCM-authored `shoot--*` custom routes (IPv4 only) — deleted by `ensureKubernetesRoutesDeleted`.
+- CCM-authored `k8s-fw-*` firewall rules — cleaned up by the in-cluster CCM LB controller when the owning `Service` is deleted before shoot teardown.
+- CCM-authored `shoot--*` custom routes (IPv4 only) — cleaned up by the in-cluster CCM route controller as nodes are drained and deleted before shoot teardown.
 - `ingress-gce` L7 global resources — cleaned up by `ingress-gce` when the owning `Ingress`/`Service` is deleted. Users must ensure all such objects are deleted before shoot deletion.
 - Observability labels on BYO VPC / subnets — removed best-effort; failure logs a warning and does not block deletion.
 - Orphan artifacts (CCM-authored firewall rules, custom routes) that the CCM did not manage to remove before teardown (crash, force-delete, transient API errors) remain in the user's VPC. The user is responsible for pruning them.

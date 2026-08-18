@@ -396,22 +396,19 @@ if isDualStack && !isUserManagedEgress(fctx.config) {
 }
 ```
 
-In the **delete graph**, add matching skip conditions:
+In the **delete graph**, use an early return to skip all deletion tasks in BYO mode — BYO resources (subnet, VPC, router, NAT, firewall rules) are owned by the user and must not be deleted by Gardener. `ensureKubernetesRoutesDeleted` and `ensureFirewallRulesDeleted` are also skipped because the CCM cleans up its own `shoot--*` routes and `k8s-fw-*` rules before the shoot is deleted:
 
 ```go
-// Skip subnet, router, NAT, firewall deletion in BYO mode
-fctx.AddTask(g, "destroy worker subnet",
-    fctx.ensureSubnetDeletedFactory(...),
-    shared.DoIf(!isUserManagedEgress(fctx.config)),
-    ...)
+func (fctx *FlowContext) buildDeleteGraph() *flow.Graph {
+    fctx.BasicFlowContext = shared.NewBasicFlowContext().WithLogger(fctx.log).WithSpan()
+    g := flow.NewGraph("infrastructure deletion")
 
-fctx.AddTask(g, "ensure router deleted",
-    fctx.ensureCloudRouterDeleted,
-    shared.DoIf(!isUserManagedEgress(fctx.config) && !isUserRouter(fctx.config)),
-    ...)
+    if fctx.config.IsUserManagedEgress() {
+        return g
+    }
 
-// ensureFirewallRulesDeleted still runs (cleans up CCM's k8s-fw-* rules) — no change needed
-// ensureKubernetesRoutesDeleted still runs — no change needed
+    // ... existing managed-mode deletion tasks unchanged ...
+}
 ```
 
 Covers `E1`–`E3` (reconciler makes no create/update calls against BYO resources).
