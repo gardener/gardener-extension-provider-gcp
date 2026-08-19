@@ -55,6 +55,7 @@ var _ = Describe("BYO subnet validation", func() {
 			computeClient: mockClient,
 			whiteboard:    wb,
 			networking:    networking,
+			shoot:         &gardencorev1beta1.Shoot{},
 			infra: &extensionsv1alpha1.Infrastructure{
 				Spec: extensionsv1alpha1.InfrastructureSpec{
 					Region: region,
@@ -157,6 +158,63 @@ var _ = Describe("BYO subnet validation", func() {
 				Return(&compute.Subnetwork{Name: workerSubnetName, Network: vpcSelfLink, IpCidrRange: workerSubnetCIDR}, nil)
 
 			Expect(fctx.ensureUserManagedWorkersSubnet(context.TODO())).To(MatchError(ContainSubstring("must not overlap with")))
+		})
+
+		It("should succeed when the named secondary range exists on the subnet", func() {
+			fctx = newFctx(&gcp.SubnetReference{Name: workerSubnetName, PodSecondaryRangeName: ptr.To("pods")}, nil, &gardencorev1beta1.Networking{
+				Nodes:      ptr.To(nodesCIDR),
+				Pods:       ptr.To(podsCIDR),
+				Services:   ptr.To(servicesCIDR),
+				IPFamilies: []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4, gardencorev1beta1.IPFamilyIPv6},
+			})
+			mockClient.EXPECT().
+				GetSubnet(gomock.Any(), region, workerSubnetName).
+				Return(&compute.Subnetwork{
+					Name:        workerSubnetName,
+					Network:     vpcSelfLink,
+					IpCidrRange: workerSubnetCIDR,
+					SecondaryIpRanges: []*compute.SubnetworkSecondaryRange{
+						{RangeName: "pods", IpCidrRange: podsCIDR},
+					},
+				}, nil)
+
+			Expect(fctx.ensureUserManagedWorkersSubnet(context.TODO())).To(Succeed())
+		})
+
+		It("should fail when the named secondary range is missing from the subnet", func() {
+			fctx = newFctx(&gcp.SubnetReference{Name: workerSubnetName, PodSecondaryRangeName: ptr.To("pods")}, nil, &gardencorev1beta1.Networking{
+				Nodes:      ptr.To(nodesCIDR),
+				Pods:       ptr.To(podsCIDR),
+				Services:   ptr.To(servicesCIDR),
+				IPFamilies: []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4, gardencorev1beta1.IPFamilyIPv6},
+			})
+			mockClient.EXPECT().
+				GetSubnet(gomock.Any(), region, workerSubnetName).
+				Return(&compute.Subnetwork{
+					Name:        workerSubnetName,
+					Network:     vpcSelfLink,
+					IpCidrRange: workerSubnetCIDR,
+				}, nil)
+
+			Expect(fctx.ensureUserManagedWorkersSubnet(context.TODO())).To(MatchError(ContainSubstring("does not have a secondary IP range named")))
+		})
+
+		It("should not check secondary ranges for IPv4-only shoots", func() {
+			fctx = newFctx(&gcp.SubnetReference{Name: workerSubnetName, PodSecondaryRangeName: ptr.To("pods")}, nil, &gardencorev1beta1.Networking{
+				Nodes:      ptr.To(nodesCIDR),
+				Pods:       ptr.To(podsCIDR),
+				Services:   ptr.To(servicesCIDR),
+				IPFamilies: []gardencorev1beta1.IPFamily{gardencorev1beta1.IPFamilyIPv4},
+			})
+			mockClient.EXPECT().
+				GetSubnet(gomock.Any(), region, workerSubnetName).
+				Return(&compute.Subnetwork{
+					Name:        workerSubnetName,
+					Network:     vpcSelfLink,
+					IpCidrRange: workerSubnetCIDR,
+				}, nil)
+
+			Expect(fctx.ensureUserManagedWorkersSubnet(context.TODO())).To(Succeed())
 		})
 	})
 

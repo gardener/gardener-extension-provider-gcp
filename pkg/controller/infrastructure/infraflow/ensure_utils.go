@@ -438,6 +438,15 @@ func validateWorkerSubnetCIDRRelationships(workerSubnetCIDR string, networking *
 	return allErrs.ToAggregate()
 }
 
+func validatePodSecondaryRange(subnetName, rangeName string, secondaryRanges []*compute.SubnetworkSecondaryRange) error {
+	for _, r := range secondaryRanges {
+		if r.RangeName == rangeName {
+			return nil
+		}
+	}
+	return fmt.Errorf("user-managed nodes subnet %q does not have a secondary IP range named %q", subnetName, rangeName)
+}
+
 func validateServicesSubnetCIDRRelationships(servicesSubnetCIDR string, networking *gardencorev1beta1.Networking) error {
 	if networking == nil {
 		return nil
