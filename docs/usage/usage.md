@@ -258,7 +258,7 @@ networks:
   vpc:
     name: my-vpc       # existing VPC; cloudRouter must NOT be set
   subnetWorkers:
-    name: my-workers   # existing subnet; primary range must contain shoot.spec.networking.nodes
+    name: my-workers   # existing subnet; primary range must be contained in shoot.spec.networking.nodes
 ```
 
 For full pre-provisioning instructions, firewall rule recipes, dual-stack requirements, IAM permissions, and a description of what Gardener writes into your VPC at runtime, see **[User-Managed Egress](user-managed-egress.md)**.
