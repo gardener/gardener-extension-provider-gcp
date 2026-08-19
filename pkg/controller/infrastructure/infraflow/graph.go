@@ -110,6 +110,9 @@ func (fctx *FlowContext) buildDeleteGraph() *flow.Graph {
 	g := flow.NewGraph("infrastructure deletion")
 
 	if fctx.config.IsUserManagedEgress() {
+		fctx.AddTask(g, "destroy kubernetes routes", fctx.ensureKubernetesRoutesDeleted,
+			shared.Timeout(defaultDeleteTimeout),
+		)
 		return g
 	}
 
