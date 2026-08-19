@@ -753,6 +753,8 @@ func (fctx *FlowContext) ensureFirewallRulesDeleted(ctx context.Context) error {
 	return nil
 }
 
+// ensureKubernetesRoutesDeleted removes per-node pod-CIDR routes (shoot--<cluster>-*) written by the CCM
+// in routes-based networking mode.
 func (fctx *FlowContext) ensureKubernetesRoutesDeleted(ctx context.Context) error {
 	log := shared.LogFromContext(ctx)
 	vpcName := fctx.vpcNameFromConfig()
