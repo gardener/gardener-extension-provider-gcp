@@ -994,10 +994,10 @@ func newProviderConfigForExistingVPC() (string, *gcpv1alpha1.InfrastructureConfi
 }
 
 const (
-	byoWorkersSubnetCIDR   = "10.251.0.0/19"
-	byoPodsCIDR            = "100.128.0.0/11"
-	byoServicesPlaceholder = "192.168.255.0/29"
-	byoPodRangeName        = "pods"
+	byoWorkersSubnetCIDR  = "10.251.0.0/19"
+	byoPodsCIDR           = "100.128.0.0/11"
+	byoServicesSubnetCIDR = "192.168.255.0/29"
+	byoPodRangeName       = "pods"
 )
 
 func newProviderConfigBYO(dualStack bool) (string, *gcpv1alpha1.InfrastructureConfig) {
@@ -1105,7 +1105,7 @@ func prepareBYONetwork(ctx context.Context, logger logr.Logger, project string, 
 		svcSubnet := &computev1.Subnetwork{
 			Name:           servicesSubnetName,
 			Network:        networkOp.TargetLink,
-			IpCidrRange:    byoServicesPlaceholder,
+			IpCidrRange:    byoServicesSubnetCIDR,
 			Region:         *region,
 			StackType:      "IPV4_IPV6",
 			Ipv6AccessType: "EXTERNAL",
