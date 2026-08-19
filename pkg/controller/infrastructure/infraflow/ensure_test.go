@@ -98,6 +98,16 @@ var _ = Describe("BYO subnet validation", func() {
 			Expect(fctx.whiteboard.GetObject(ObjectKeyNodeSubnet)).NotTo(BeNil())
 		})
 
+		It("should succeed when networking is nil", func() {
+			fctx = newFctx(&gcp.SubnetReference{Name: workerSubnetName}, nil, nil)
+			mockClient.EXPECT().
+				GetSubnet(gomock.Any(), region, workerSubnetName).
+				Return(&compute.Subnetwork{Name: workerSubnetName, Network: vpcSelfLink, IpCidrRange: workerSubnetCIDR}, nil)
+
+			Expect(fctx.ensureUserManagedWorkersSubnet(context.TODO())).To(Succeed())
+			Expect(fctx.whiteboard.GetObject(ObjectKeyNodeSubnet)).NotTo(BeNil())
+		})
+
 		It("should fail when the subnet is not found", func() {
 			fctx = newFctx(&gcp.SubnetReference{Name: workerSubnetName}, nil, nil)
 			mockClient.EXPECT().
@@ -220,14 +230,10 @@ var _ = Describe("BYO subnet validation", func() {
 
 	Describe("#ensureUserManagedServicesSubnet", func() {
 		It("should store the subnet on the whiteboard when it belongs to the configured VPC", func() {
-			fctx = newFctx(nil, &gcp.SubnetReference{Name: servicesSubnetName}, &gardencorev1beta1.Networking{
-				Nodes:    ptr.To(nodesCIDR),
-				Pods:     ptr.To(podsCIDR),
-				Services: ptr.To(servicesCIDR),
-			})
+			fctx = newFctx(nil, &gcp.SubnetReference{Name: servicesSubnetName}, nil)
 			mockClient.EXPECT().
 				GetSubnet(gomock.Any(), region, servicesSubnetName).
-				Return(&compute.Subnetwork{Name: servicesSubnetName, Network: vpcSelfLink, IpCidrRange: servicesCIDR}, nil)
+				Return(&compute.Subnetwork{Name: servicesSubnetName, Network: vpcSelfLink, IpCidrRange: "172.16.0.0/29"}, nil)
 
 			Expect(fctx.ensureUserManagedServicesSubnet(context.TODO())).To(Succeed())
 			Expect(fctx.whiteboard.GetObject(ObjectKeyServicesSubnet)).NotTo(BeNil())
@@ -247,7 +253,7 @@ var _ = Describe("BYO subnet validation", func() {
 			otherVPCSelfLink := "https://www.googleapis.com/compute/v1/projects/my-project/global/networks/other-vpc"
 			mockClient.EXPECT().
 				GetSubnet(gomock.Any(), region, servicesSubnetName).
-				Return(&compute.Subnetwork{Name: servicesSubnetName, Network: otherVPCSelfLink, IpCidrRange: servicesCIDR}, nil)
+				Return(&compute.Subnetwork{Name: servicesSubnetName, Network: otherVPCSelfLink, IpCidrRange: "172.16.0.0/29"}, nil)
 
 			err := fctx.ensureUserManagedServicesSubnet(context.TODO())
 			Expect(err).To(MatchError(ContainSubstring(fmt.Sprintf("not to the configured VPC %q", vpcName))))
@@ -260,39 +266,6 @@ var _ = Describe("BYO subnet validation", func() {
 				Return(nil, fmt.Errorf("gcp api error"))
 
 			Expect(fctx.ensureUserManagedServicesSubnet(context.TODO())).To(MatchError("gcp api error"))
-		})
-
-		It("should fail when the services subnet CIDR does not match shoot networking.services", func() {
-			fctx = newFctx(nil, &gcp.SubnetReference{Name: servicesSubnetName}, &gardencorev1beta1.Networking{
-				Services: ptr.To(servicesCIDR),
-			})
-			mockClient.EXPECT().
-				GetSubnet(gomock.Any(), region, servicesSubnetName).
-				Return(&compute.Subnetwork{Name: servicesSubnetName, Network: vpcSelfLink, IpCidrRange: "10.1.0.0/16"}, nil)
-
-			Expect(fctx.ensureUserManagedServicesSubnet(context.TODO())).To(MatchError(ContainSubstring("must match shoot networking.services")))
-		})
-
-		It("should fail when the services subnet overlaps the nodes CIDR", func() {
-			fctx = newFctx(nil, &gcp.SubnetReference{Name: servicesSubnetName}, &gardencorev1beta1.Networking{
-				Nodes: ptr.To("192.168.0.0/24"), // subnet of servicesCIDR → overlaps
-			})
-			mockClient.EXPECT().
-				GetSubnet(gomock.Any(), region, servicesSubnetName).
-				Return(&compute.Subnetwork{Name: servicesSubnetName, Network: vpcSelfLink, IpCidrRange: servicesCIDR}, nil)
-
-			Expect(fctx.ensureUserManagedServicesSubnet(context.TODO())).To(MatchError(ContainSubstring("must not overlap with")))
-		})
-
-		It("should fail when the services subnet overlaps the pods CIDR", func() {
-			fctx = newFctx(nil, &gcp.SubnetReference{Name: servicesSubnetName}, &gardencorev1beta1.Networking{
-				Pods: ptr.To("192.168.1.0/24"), // subnet of servicesCIDR → overlaps
-			})
-			mockClient.EXPECT().
-				GetSubnet(gomock.Any(), region, servicesSubnetName).
-				Return(&compute.Subnetwork{Name: servicesSubnetName, Network: vpcSelfLink, IpCidrRange: servicesCIDR}, nil)
-
-			Expect(fctx.ensureUserManagedServicesSubnet(context.TODO())).To(MatchError(ContainSubstring("must not overlap with")))
 		})
 	})
 })

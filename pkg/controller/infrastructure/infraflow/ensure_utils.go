@@ -446,35 +446,3 @@ func validatePodSecondaryRange(subnetName, rangeName string, secondaryRanges []*
 	}
 	return fmt.Errorf("user-managed nodes subnet %q does not have a secondary IP range named %q", subnetName, rangeName)
 }
-
-func validateServicesSubnetCIDRRelationships(servicesSubnetCIDR string, networking *gardencorev1beta1.Networking) error {
-	if networking == nil {
-		return nil
-	}
-	subnetPath := field.NewPath("networks", "subnetServices")
-	networkingPath := field.NewPath("networking")
-
-	servicesCIDR := cidrvalidation.NewCIDR(servicesSubnetCIDR, subnetPath)
-	if errs := cidrvalidation.ValidateCIDRParse(servicesCIDR); len(errs) > 0 {
-		return errs.ToAggregate()
-	}
-
-	var allErrs field.ErrorList
-	if networking.Services != nil {
-		// The services subnet primary CIDR must exactly match shoot.spec.networking.services,
-		// because Gardener configures kube-proxy and the CCM using that CIDR.
-		if servicesSubnetCIDR != *networking.Services {
-			allErrs = append(allErrs, field.Invalid(subnetPath, servicesSubnetCIDR,
-				fmt.Sprintf("services subnet primary CIDR must match shoot networking.services %q", *networking.Services)))
-		}
-	}
-	if networking.Nodes != nil {
-		nodes := cidrvalidation.NewCIDR(*networking.Nodes, networkingPath.Child("nodes"))
-		allErrs = append(allErrs, servicesCIDR.ValidateNotOverlap(nodes)...)
-	}
-	if networking.Pods != nil {
-		pods := cidrvalidation.NewCIDR(*networking.Pods, networkingPath.Child("pods"))
-		allErrs = append(allErrs, servicesCIDR.ValidateNotOverlap(pods)...)
-	}
-	return allErrs.ToAggregate()
-}

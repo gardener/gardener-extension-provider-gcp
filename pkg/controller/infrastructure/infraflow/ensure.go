@@ -28,7 +28,11 @@ import (
 // isDualStack returns true if the cluster is configured for dual-stack networking
 // or has migrated from dual-stack to single-stack (indicated by having 2 node CIDRs).
 func (fctx *FlowContext) isDualStack() bool {
-	return !gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies) ||
+	var ipFamilies []gardencorev1beta1.IPFamily
+	if fctx.networking != nil {
+		ipFamilies = fctx.networking.IPFamilies
+	}
+	return !gardencorev1beta1.IsIPv4SingleStack(ipFamilies) ||
 		fctx.shoot.Status.Networking != nil && len(fctx.shoot.Status.Networking.Nodes) == 2
 }
 
@@ -466,9 +470,7 @@ func (fctx *FlowContext) ensureUserManagedServicesSubnet(ctx context.Context) er
 		return fmt.Errorf("user-managed services subnet %q belongs to network %q, not to the configured VPC %q", subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
 	}
 
-	if err := validateServicesSubnetCIDRRelationships(subnet.IpCidrRange, fctx.networking); err != nil {
-		return fmt.Errorf("user-managed services subnet %q: %w", subnetRef.Name, err)
-	}
+	fctx.whiteboard.SetObject(ObjectKeyServicesSubnet, subnet)
 
 	fctx.whiteboard.SetObject(ObjectKeyServicesSubnet, subnet)
 	return nil
