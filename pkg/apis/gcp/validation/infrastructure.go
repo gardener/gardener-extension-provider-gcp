@@ -38,6 +38,10 @@ func ValidateInfrastructureConfig(infra *apisgcp.InfrastructureConfig, nodesCIDR
 
 	networksPath := fldPath.Child("networks")
 
+	if infra.Networks.SubnetWorkers == nil && infra.Networks.SubnetServices != nil {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("subnetServices"), "subnetServices may only be set in combination with subnetWorkers (bring-your-own-subnet mode)"))
+	}
+
 	if infra.Networks.SubnetWorkers != nil {
 		allErrs = append(allErrs, validateBYONetworkConfig(&infra.Networks, ipFamilies, networksPath)...)
 		return allErrs

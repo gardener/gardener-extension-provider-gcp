@@ -60,6 +60,15 @@ var _ = Describe("InfrastructureConfig validation", func() {
 	})
 
 	Describe("#ValidateInfrastructureConfig", func() {
+		It("should forbid subnetServices without subnetWorkers", func() {
+			infrastructureConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
+			errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errorList).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.subnetServices"),
+			}))
+		})
+
 		Context("CIDR", func() {
 			It("should forbid invalid worker CIDRs", func() {
 				infrastructureConfig.Networks.Workers = invalidCIDR
