@@ -1210,7 +1210,7 @@ func runBYOTest(
 			Networking: &gardencorev1beta1.Networking{
 				Nodes:      ptr.To(byoWorkersSubnetCIDR),
 				Pods:       ptr.To(byoPodsCIDR),
-				Services:   ptr.To(subnetCIDR),
+				Services:   ptr.To(byoServicesSubnetCIDR),
 				IPFamilies: ipFamilies,
 			},
 		},
