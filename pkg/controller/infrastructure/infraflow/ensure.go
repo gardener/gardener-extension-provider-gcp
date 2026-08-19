@@ -426,11 +426,19 @@ func (fctx *FlowContext) ensureUserManagedWorkersSubnet(ctx context.Context) err
 
 	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
 	if subnet.Network != vpc.SelfLink {
-		return fmt.Errorf("user-managed nodes subnet %q belongs to network %q, not to the configured VPC %q", subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
+		return fmt.Errorf("user-managed nodes subnet %q belongs to network %q, not to the configured VPC %q",
+			subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
 	}
 
 	if err := validateWorkerSubnetCIDRRelationships(subnet.IpCidrRange, fctx.networking); err != nil {
 		return fmt.Errorf("user-managed nodes subnet %q: %w", subnetRef.Name, err)
+	}
+
+	if fctx.isDualStack() && subnetRef.PodSecondaryRangeName != nil {
+		err = validatePodSecondaryRange(subnetRef.Name, *subnetRef.PodSecondaryRangeName, subnet.SecondaryIpRanges)
+		if err != nil {
+			return err
+		}
 	}
 
 	fctx.whiteboard.SetObject(ObjectKeyNodeSubnet, subnet)
