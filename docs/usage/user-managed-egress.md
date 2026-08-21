@@ -7,7 +7,8 @@ You own the egress topology entirely.
 
 Gardener still manages the following on your behalf in BYO mode:
 
-- **CCM-authored firewall rules and custom routes** — the in-cluster Cloud Controller Manager creates `k8s-fw-*` firewall rules per `Service type=LoadBalancer` and `shoot--*` custom routes per node (IPv4 only), and cleans them up when those resources are removed. Gardener sweeps any residuals at shoot deletion time.
+- **CCM-authored custom routes** — the in-cluster Cloud Controller Manager creates `shoot--*` custom routes per node (single-stack IPv4 only) and removes them when the corresponding node is deleted. At shoot deletion Gardener sweeps any residual `shoot--*` routes belonging to this cluster.
+- **CCM-authored firewall rules** — the CCM creates `k8s-fw-*` firewall rules per `Service type=LoadBalancer` and removes them when the Service is deleted. At shoot deletion Gardener sweeps any residual `k8s-fw-*` rules tag-scoped to this cluster as a safety net (see [Deletion / teardown](#deletion--teardown)).
 - **Bastion firewall rules** — the bastion controller creates three tag-scoped firewall rules when a bastion is requested and removes them when the bastion is deleted.
 
 ## When to use this
@@ -16,6 +17,17 @@ Gardener still manages the following on your behalf in BYO mode:
 - Multiple shoot clusters must share a single VPC and subnet.
 - Your organization's security policy requires audited, infrastructure-as-code-managed network resources.
 - You want to reuse an existing subnet that was provisioned outside of Gardener.
+
+## Sharing a VPC across multiple clusters
+
+> [!IMPORTANT]
+> When multiple shoots share a single BYO VPC **with overlay networking disabled**, you must give each shoot **non-overlapping pod CIDRs** (and, in practice, non-overlapping node and service CIDRs too).
+
+This matters because in routes-based (non-overlay) networking the CCM programs one VPC-wide `shoot--*` route per node, mapping a pod CIDR to that node instance. GCP has no per-cluster route table — all routes live in the VPC's single routing table. If two clusters in the same VPC use overlapping pod CIDRs, their routes collide and pod traffic from one cluster can be misrouted to a node in the other.
+
+Note that **all dual-stack (IPv4 + IPv6) shoots run with overlay disabled**, because GCP IPv6 forces overlay off — so this constraint always applies to dual-stack clusters sharing a VPC. Overlay-enabled single-stack shoots encapsulate pod traffic and do not program pod-CIDR routes into the VPC, so they are not affected.
+
+Gardener **cannot** detect this conflict for you: each shoot is validated only against its own declared CIDRs, and the extension has no cross-shoot awareness. Guaranteeing non-overlapping CIDRs across shoots that share a VPC is the responsibility of whoever allocates shoot networking (your IPAM / operator).
 
 ## How it works
 
@@ -271,9 +283,9 @@ The table below describes every write that can occur after shoot creation.
 | **MCM** | seed | Creates/deletes worker VMs in the nodes subnet; attaches network tags (`<technicalID>`, `kubernetes-io-cluster-<technicalID>`, `kubernetes-io-role-node`) to every VM NIC | MCM on scale-down / node deletion |
 | **CCM (IPv4 routing)** | shoot | Creates one `shoot--*` custom route per node for pod-CIDR routing (single-stack IPv4 only) | `ensureKubernetesRoutesDeleted` on shoot delete; CCM on node deletion |
 | **CCM (LoadBalancer)** | shoot | Creates `k8s-fw-<hash>` firewall rule + `k8s-<hash>-hc` health-check rule per `Service type=LoadBalancer`, scoped by tag to `<technicalID>` VMs | CCM on Service delete |
-| **`ingress-gce`** | seed (dual-stack only) | Creates `k8s-fw-l7-*` firewall rules + global forwarding rules, backend services, health checks, NEGs | `ingress-gce` on Ingress/Service delete; residual firewall rules swept by `ensureFirewallRulesDeleted` on shoot delete |
+| **`ingress-gce`** | seed (dual-stack only) | Creates `k8s-fw-l7-*` firewall rules + global forwarding rules, backend services, health checks, NEGs | `ingress-gce` on Ingress/Service delete; residual `k8s-fw-*` rules swept by the infrastructure reconciler on shoot delete |
 | **Bastion controller** | seed | Creates bastion VM + disk + NIC in the nodes subnet; creates three tag-scoped firewall rules for SSH access | Bastion controller on Bastion CR delete |
-| **Infrastructure reconciler (delete)** | seed | Removes residual CCM-authored `k8s-fw-*` firewall rules and `shoot--*` custom routes at shoot deletion time | — |
+| **Infrastructure reconciler (delete)** | seed | Removes residual CCM-authored `shoot--*` custom routes (single-stack IPv4 only) and `k8s-fw-*` firewall rules belonging to this cluster at shoot deletion time. Does **not** remove the static user-created firewall rules. | — |
 
 > [!IMPORTANT]
 > Do not run competing automation against the CCM-authored `k8s-fw-*` firewall rules or `shoot--*` custom routes.
@@ -297,9 +309,14 @@ On shoot deletion Gardener:
 
 - **Does not delete** your VPC, worker subnet, or services subnet.
 - **Does not delete** your Cloud Router or Cloud NAT (they were never created).
-- **Does not delete** the four static firewall rules you created during pre-provisioning (they were never created by Gardener).
-- **Does delete** CCM-authored `k8s-fw-*` firewall rules (filter: `k8s` prefix + `TargetTag` = shoot technical ID).
-- **Does delete** CCM-authored `shoot--*` custom routes (single-stack IPv4 only).
+- **Does not delete** the static firewall rules you created during pre-provisioning (they were never created by Gardener, and in BYO mode they are yours to manage).
+- **Does delete** CCM-authored `k8s-fw-*` firewall rules tag-scoped to this cluster (filter: `k8s` prefix + `TargetTag` == shoot technical ID). This is a safety net for the force-delete case where the CCM is gone before it can remove its own LoadBalancer rules; on a graceful delete the CCM removes them first. The exact `TargetTag` match means rules belonging to other clusters sharing the same VPC are left untouched.
+- **Does delete** CCM-authored `shoot--*` custom routes belonging to this cluster (single-stack IPv4 only). Routes are selected by next-hop instance ownership, so routes belonging to other clusters sharing the same VPC are left untouched.
 
-If the shoot is force-deleted or the CCM crashes before it can clean up its firewall rules or custom routes, those resources will remain in your VPC.
+Gardener sweeps only resources it (or its in-cluster CCM) authored and can attribute to this cluster — the tag-scoped `k8s-fw-*` rules and next-hop-scoped `shoot--*` routes. It never touches your VPC, subnets, router, NAT, or the static firewall rules you provisioned. Stale `shoot--*` routes are the most important to remove because they are VPC-wide and, if their pod CIDR overlaps another cluster in the same VPC, can misroute that cluster's traffic; the `k8s-fw-*` sweep is primarily hygiene, since a rule targeting deleted VMs is inert.
+
+If the shoot is force-deleted before Gardener completes the sweep, residual `k8s-fw-<hash>` rules or `shoot--*` routes may remain in your VPC.
 Check for and remove any residual `k8s-fw-<hash>` rules and `shoot--*` routes after forced shoot deletion.
+
+> [!NOTE]
+> If multiple clusters share this VPC, see [Sharing a VPC across multiple clusters](#sharing-a-vpc-across-multiple-clusters) for the pod-CIDR overlap constraint that prevents cross-cluster route misrouting.

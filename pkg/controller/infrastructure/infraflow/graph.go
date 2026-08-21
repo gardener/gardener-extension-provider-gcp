@@ -113,6 +113,9 @@ func (fctx *FlowContext) buildDeleteGraph() *flow.Graph {
 		fctx.AddTask(g, "destroy kubernetes routes", fctx.ensureKubernetesRoutesDeleted,
 			shared.Timeout(defaultDeleteTimeout),
 		)
+		fctx.AddTask(g, "destroy CCM firewall rules", fctx.ensureCCMFirewallRulesDeleted,
+			shared.Timeout(defaultDeleteTimeout),
+		)
 		return g
 	}
 

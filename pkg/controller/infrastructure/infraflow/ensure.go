@@ -755,6 +755,44 @@ func (fctx *FlowContext) ensureFirewallRulesDeleted(ctx context.Context) error {
 	return nil
 }
 
+// ensureCCMFirewallRulesDeleted removes only the CCM-authored k8s-fw-* firewall rules that are
+// tag-scoped to this cluster. It is used on BYO teardown as a safety net for the force-delete case
+// where the in-cluster CCM is gone before it can clean up its own LoadBalancer firewall rules.
+// It deliberately does not touch the static FirewallRuleAllow* rules, which in BYO mode are
+// user-created and user-owned.
+func (fctx *FlowContext) ensureCCMFirewallRulesDeleted(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
+
+	vpcName := fctx.vpcNameFromConfig()
+
+	fws, err := fctx.computeClient.ListFirewallRules(ctx, client.FirewallListOpts{
+		Filter: fmt.Sprintf(`network eq ".*(%s).*"`, vpcName),
+		ClientFilter: func(f *compute.Firewall) bool {
+			if !strings.HasPrefix(f.Name, KubernetesFirewallNamePrefix) {
+				return false
+			}
+			for _, targetTag := range f.TargetTags {
+				if targetTag == fctx.clusterName {
+					return true
+				}
+			}
+			return false
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, fw := range fws {
+		log.Info("destroying CCM firewall rule", "name", fw.Name)
+		if err := fctx.computeClient.DeleteFirewallRule(ctx, fw.Name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ensureKubernetesRoutesDeleted removes per-node pod-CIDR routes (shoot--<cluster>-*) written by the CCM
 // in routes-based networking mode.
 func (fctx *FlowContext) ensureKubernetesRoutesDeleted(ctx context.Context) error {
