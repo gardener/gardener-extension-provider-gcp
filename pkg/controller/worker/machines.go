@@ -120,6 +120,18 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 		return err
 	}
 
+	// Determine the pod secondary range name: use PodSecondaryRangeName from BYO config if available,
+	// otherwise fall back to the hardcoded managed default.
+	podSecondaryRangeName := infraflow.DefaultSecondarySubnetName
+	if w.cluster.Shoot.Spec.Provider.InfrastructureConfig != nil {
+		infraConfig := &apisgcp.InfrastructureConfig{}
+		if _, _, err := w.decoder.Decode(w.cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, nil, infraConfig); err == nil {
+			if infraConfig.Networks.SubnetWorkers != nil && infraConfig.Networks.SubnetWorkers.PodSecondaryRangeName != nil {
+				podSecondaryRangeName = *infraConfig.Networks.SubnetWorkers.PodSecondaryRangeName
+			}
+		}
+	}
+
 	for _, pool := range w.worker.Spec.Pools {
 		zoneLen := int32(len(pool.Zones)) // #nosec: G115 - We check if pool zones exceeds max_int32.
 
@@ -246,7 +258,7 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 						"stackType":           w.getStackType(),
 						"ipv6accessType":      "EXTERNAL",
 						"ipCidrRange":         ipCidrRange,
-						"subnetworkRangeName": infraflow.DefaultSecondarySubnetName,
+						"subnetworkRangeName": podSecondaryRangeName,
 					},
 				}
 			}
