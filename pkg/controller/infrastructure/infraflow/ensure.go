@@ -28,7 +28,11 @@ import (
 // isDualStack returns true if the cluster is configured for dual-stack networking
 // or has migrated from dual-stack to single-stack (indicated by having 2 node CIDRs).
 func (fctx *FlowContext) isDualStack() bool {
-	return !gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies) ||
+	var ipFamilies []gardencorev1beta1.IPFamily
+	if fctx.networking != nil {
+		ipFamilies = fctx.networking.IPFamilies
+	}
+	return !gardencorev1beta1.IsIPv4SingleStack(ipFamilies) ||
 		fctx.shoot.Status.Networking != nil && len(fctx.shoot.Status.Networking.Nodes) == 2
 }
 
@@ -408,6 +412,70 @@ func (fctx *FlowContext) ensureServicesSubnet(ctx context.Context) error {
 	return nil
 }
 
+// ensureUserManagedWorkersSubnet looks up the user-provided nodes subnet and stores it on the whiteboard.
+// It does NOT create or modify the subnet — only reads it.
+func (fctx *FlowContext) ensureUserManagedWorkersSubnet(ctx context.Context) error {
+	subnetRef := fctx.config.Networks.SubnetWorkers
+	if subnetRef == nil {
+		return fmt.Errorf("subnetWorkers must not be nil in BYO mode")
+	}
+
+	subnet, err := fctx.computeClient.GetSubnet(ctx, fctx.infra.Spec.Region, subnetRef.Name)
+	if err != nil {
+		return err
+	}
+	if subnet == nil {
+		return fmt.Errorf("user-managed nodes subnet %q not found in region %q", subnetRef.Name, fctx.infra.Spec.Region)
+	}
+
+	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
+	if subnet.Network != vpc.SelfLink {
+		return fmt.Errorf("user-managed nodes subnet %q belongs to network %q, not to the configured VPC %q",
+			subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
+	}
+
+	if err := validateWorkerSubnetCIDRRelationships(subnet.IpCidrRange, fctx.networking); err != nil {
+		return fmt.Errorf("user-managed nodes subnet %q: %w", subnetRef.Name, err)
+	}
+
+	if fctx.isDualStack() && subnetRef.PodSecondaryRangeName != nil {
+		err = validatePodSecondaryRange(subnetRef.Name, *subnetRef.PodSecondaryRangeName, subnet.SecondaryIpRanges)
+		if err != nil {
+			return err
+		}
+	}
+
+	fctx.whiteboard.SetObject(ObjectKeyNodeSubnet, subnet)
+	return nil
+}
+
+// ensureUserManagedServicesSubnet looks up the user-provided services subnet and stores it on the whiteboard.
+// It does NOT create or modify the subnet — only reads it.
+func (fctx *FlowContext) ensureUserManagedServicesSubnet(ctx context.Context) error {
+	subnetRef := fctx.config.Networks.SubnetServices
+	if subnetRef == nil {
+		return fmt.Errorf("subnetServices must not be nil for dual-stack BYO mode")
+	}
+
+	subnet, err := fctx.computeClient.GetSubnet(ctx, fctx.infra.Spec.Region, subnetRef.Name)
+	if err != nil {
+		return err
+	}
+	if subnet == nil {
+		return fmt.Errorf("user-managed services subnet %q not found in region %q", subnetRef.Name, fctx.infra.Spec.Region)
+	}
+
+	vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
+	if subnet.Network != vpc.SelfLink {
+		return fmt.Errorf("user-managed services subnet %q belongs to network %q, not to the configured VPC %q", subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
+	}
+
+	fctx.whiteboard.SetObject(ObjectKeyServicesSubnet, subnet)
+
+	fctx.whiteboard.SetObject(ObjectKeyServicesSubnet, subnet)
+	return nil
+}
+
 func (fctx *FlowContext) ensureCloudRouter(ctx context.Context) error {
 	if fctx.config.Networks.VPC != nil && fctx.config.Networks.VPC.CloudRouter != nil {
 		return fctx.ensureUserManagedCloudRouter(ctx)
@@ -687,6 +755,46 @@ func (fctx *FlowContext) ensureFirewallRulesDeleted(ctx context.Context) error {
 	return nil
 }
 
+// ensureCCMFirewallRulesDeleted removes only the CCM-authored k8s-fw-* firewall rules that are
+// tag-scoped to this cluster. It is used on BYO teardown as a safety net for the force-delete case
+// where the in-cluster CCM is gone before it can clean up its own LoadBalancer firewall rules.
+// It deliberately does not touch the static FirewallRuleAllow* rules, which in BYO mode are
+// user-created and user-owned.
+func (fctx *FlowContext) ensureCCMFirewallRulesDeleted(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
+
+	vpcName := fctx.vpcNameFromConfig()
+
+	fws, err := fctx.computeClient.ListFirewallRules(ctx, client.FirewallListOpts{
+		Filter: fmt.Sprintf(`network eq ".*(%s).*"`, vpcName),
+		ClientFilter: func(f *compute.Firewall) bool {
+			if !strings.HasPrefix(f.Name, KubernetesFirewallNamePrefix) {
+				return false
+			}
+			for _, targetTag := range f.TargetTags {
+				if targetTag == fctx.clusterName {
+					return true
+				}
+			}
+			return false
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, fw := range fws {
+		log.Info("destroying CCM firewall rule", "name", fw.Name)
+		if err := fctx.computeClient.DeleteFirewallRule(ctx, fw.Name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ensureKubernetesRoutesDeleted removes per-node pod-CIDR routes (shoot--<cluster>-*) written by the CCM
+// in routes-based networking mode.
 func (fctx *FlowContext) ensureKubernetesRoutesDeleted(ctx context.Context) error {
 	log := shared.LogFromContext(ctx)
 	vpcName := fctx.vpcNameFromConfig()
