@@ -7,10 +7,10 @@ require (
 	cloud.google.com/go/storage v1.67.0
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/coreos/go-systemd/v22 v22.7.0
-	github.com/gardener/etcd-druid/api v0.38.1
-	github.com/gardener/gardener v1.150.0
-	github.com/gardener/gardener/hack/tools v1.150.0
-	github.com/gardener/gardener/pkg/apis v1.150.0
+	github.com/gardener/etcd-druid/api v0.38.2
+	github.com/gardener/gardener v1.150.2
+	github.com/gardener/gardener/hack/tools v1.150.2
+	github.com/gardener/gardener/pkg/apis v1.150.2
 	github.com/gardener/machine-controller-manager v0.62.1
 	github.com/go-logr/logr v1.4.4
 	github.com/google/go-cmp v0.7.0
