@@ -39,6 +39,7 @@ type AddOptions struct {
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
 // The opts.Reconciler is being set with a newly instantiated actuator.
 func AddToManagerWithOptions(_ context.Context, mgr manager.Manager, opts AddOptions) error {
+	// https://github.com/gardener/gardener/blob/1cccf45631183f178378cde41aa831437b10253e/pkg/provider-local/controller/backupbucket/add.go#L27-L28
 	classes := slices.DeleteFunc(opts.ExtensionClasses, func(class extensionsv1alpha1.ExtensionClass) bool {
 		return !supportedExtensionClasses.Has(class)
 	})
