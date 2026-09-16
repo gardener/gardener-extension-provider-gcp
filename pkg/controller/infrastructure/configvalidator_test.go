@@ -10,6 +10,7 @@ import (
 	"errors"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/test"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
@@ -18,10 +19,13 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"go.uber.org/mock/gomock"
+	compute "google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -47,6 +51,7 @@ var _ = Describe("ConfigValidator", func() {
 		cv               infrastructure.ConfigValidator
 		infra            *extensionsv1alpha1.Infrastructure
 		mgr              *test.FakeManager
+		c                client.Client
 	)
 
 	BeforeEach(func() {
@@ -58,7 +63,9 @@ var _ = Describe("ConfigValidator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
-		c := fakeclient.NewClientBuilder().Build()
+		scheme := runtime.NewScheme()
+		Expect(extensionsv1alpha1.AddToScheme(scheme)).To(Succeed())
+		c = fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 		mgr = &test.FakeManager{Client: c}
 
 		cv = infractrl.NewConfigValidator(mgr, logger, gcpClientFactory)
@@ -168,7 +175,204 @@ var _ = Describe("ConfigValidator", func() {
 			}))
 		})
 	})
+
+	Describe("#Validate BYO worker subnet", func() {
+		const workerSubnetName = "byo-workers"
+
+		byoConfig := func() *apisgcp.InfrastructureConfig {
+			return &apisgcp.InfrastructureConfig{
+				Networks: apisgcp.NetworkConfig{
+					VPC: &apisgcp.VPC{Name: "test-vpc"},
+					SubnetWorkers: &apisgcp.SubnetReference{
+						Name: workerSubnetName,
+					},
+				},
+			}
+		}
+
+		BeforeEach(func() {
+			infra.Spec.ProviderConfig.Raw = encode(byoConfig())
+			gcpClientFactory.EXPECT().Compute(ctx, gomock.Any(), infra.Spec.SecretRef).Return(gcpComputeClient, nil)
+			// nodes fits inside the worker subnet 10.250.0.0/19; pods and services live in separate ranges.
+			Expect(c.Create(ctx, newCluster(namespace, "10.250.0.0/24", "100.96.0.0/11", "100.64.0.0/13"))).To(Succeed())
+		})
+
+		It("should succeed if the worker subnet CIDR fits the cluster networking", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange: "10.250.0.0/19",
+			}, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should forbid a worker subnet that does not contain the node network", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange: "10.180.0.0/19",
+			}, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networking.nodes"),
+			}))))
+		})
+
+		It("should forbid a worker subnet CIDR that overlaps with the pod network", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange: "100.96.0.0/19",
+			}, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networking.pods"),
+			}))))
+		})
+
+		It("should return NotFound if the worker subnet does not exist", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(nil, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeNotFound),
+				"Field": Equal("networks.subnetWorkers.name"),
+			}))
+		})
+
+		It("should fail with InternalError if getting the worker subnet failed", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(nil, errors.New("boom"))
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInternal),
+				"Field": Equal("networks.subnetWorkers"),
+			}))))
+		})
+
+		It("should allow an IPV4_IPV6 worker subnet for an IPv4 cluster", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange: "10.250.0.0/19",
+				StackType:   "IPV4_IPV6",
+			}, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should forbid an IPV6_ONLY worker subnet for an IPv4 cluster", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange: "10.250.0.0/19",
+				StackType:   "IPV6_ONLY",
+			}, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.subnetWorkers.stackType"),
+			}))))
+		})
+	})
+
+	Describe("#Validate BYO subnets for a dual-stack cluster", func() {
+		const (
+			workerSubnetName   = "byo-workers"
+			servicesSubnetName = "byo-services"
+		)
+
+		byoConfig := func() *apisgcp.InfrastructureConfig {
+			return &apisgcp.InfrastructureConfig{
+				Networks: apisgcp.NetworkConfig{
+					VPC:            &apisgcp.VPC{Name: "test-vpc"},
+					SubnetWorkers:  &apisgcp.SubnetReference{Name: workerSubnetName},
+					SubnetServices: &apisgcp.SubnetReference{Name: servicesSubnetName},
+				},
+			}
+		}
+
+		BeforeEach(func() {
+			infra.Spec.ProviderConfig.Raw = encode(byoConfig())
+			gcpClientFactory.EXPECT().Compute(ctx, gomock.Any(), infra.Spec.SecretRef).Return(gcpComputeClient, nil)
+			Expect(c.Create(ctx, newCluster(namespace, "10.250.0.0/24", "100.96.0.0/11", "100.64.0.0/13",
+				gardencorev1beta1.IPFamilyIPv4, gardencorev1beta1.IPFamilyIPv6))).To(Succeed())
+		})
+
+		It("should succeed when both subnets are IPV4_IPV6", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange: "10.250.0.0/19",
+				StackType:   "IPV4_IPV6",
+			}, nil)
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, servicesSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange: "10.251.0.0/19",
+				StackType:   "IPV4_IPV6",
+			}, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should forbid an IPV4_ONLY worker subnet for a dual-stack cluster", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange: "10.250.0.0/19",
+				StackType:   "IPV4_ONLY",
+			}, nil)
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, servicesSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange: "10.251.0.0/19",
+				StackType:   "IPV4_IPV6",
+			}, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.subnetWorkers.stackType"),
+			}))))
+		})
+
+		It("should forbid an IPV4_ONLY services subnet for a dual-stack cluster", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange: "10.250.0.0/19",
+				StackType:   "IPV4_IPV6",
+			}, nil)
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, servicesSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange: "10.251.0.0/19",
+				StackType:   "IPV4_ONLY",
+			}, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.subnetServices.stackType"),
+			}))))
+		})
+	})
 })
+
+func newCluster(namespace, nodes, pods, services string, ipFamilies ...gardencorev1beta1.IPFamily) *extensionsv1alpha1.Cluster {
+	shoot := &gardencorev1beta1.Shoot{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "core.gardener.cloud/v1beta1",
+			Kind:       "Shoot",
+		},
+		Spec: gardencorev1beta1.ShootSpec{
+			Networking: &gardencorev1beta1.Networking{
+				Nodes:      ptr.To(nodes),
+				Pods:       ptr.To(pods),
+				Services:   ptr.To(services),
+				IPFamilies: ipFamilies,
+			},
+		},
+	}
+	return &extensionsv1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: namespace,
+		},
+		Spec: extensionsv1alpha1.ClusterSpec{
+			CloudProfile: runtime.RawExtension{Raw: []byte("{}")},
+			Seed:         &runtime.RawExtension{Raw: []byte("{}")},
+			Shoot:        runtime.RawExtension{Raw: encode(shoot)},
+		},
+	}
+}
 
 func encode(obj runtime.Object) []byte {
 	data, _ := json.Marshal(obj)

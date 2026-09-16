@@ -434,10 +434,6 @@ func (fctx *FlowContext) ensureUserManagedWorkersSubnet(ctx context.Context) err
 			subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
 	}
 
-	if err := validateWorkerSubnetCIDRRelationships(subnet.IpCidrRange, fctx.networking); err != nil {
-		return fmt.Errorf("user-managed nodes subnet %q: %w", subnetRef.Name, err)
-	}
-
 	if fctx.isDualStack() && subnetRef.PodSecondaryRangeName != nil {
 		err = validatePodSecondaryRange(subnetRef.Name, *subnetRef.PodSecondaryRangeName, subnet.SecondaryIpRanges)
 		if err != nil {
@@ -445,6 +441,10 @@ func (fctx *FlowContext) ensureUserManagedWorkersSubnet(ctx context.Context) err
 		}
 	}
 
+	// Mark that Gardener has reconciled resources it must clean up on deletion (kubernetes routes and CCM
+	// firewall rules). Without this marker the delete flow short-circuits and those resources leak, because
+	// BYO mode does not create the VPC/subnets that otherwise set it.
+	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
 	fctx.whiteboard.SetObject(ObjectKeyNodeSubnet, subnet)
 	return nil
 }
@@ -469,8 +469,6 @@ func (fctx *FlowContext) ensureUserManagedServicesSubnet(ctx context.Context) er
 	if subnet.Network != vpc.SelfLink {
 		return fmt.Errorf("user-managed services subnet %q belongs to network %q, not to the configured VPC %q", subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
 	}
-
-	fctx.whiteboard.SetObject(ObjectKeyServicesSubnet, subnet)
 
 	fctx.whiteboard.SetObject(ObjectKeyServicesSubnet, subnet)
 	return nil

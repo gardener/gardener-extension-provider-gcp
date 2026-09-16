@@ -563,6 +563,16 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			Expect(ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)).To(BeEmpty())
 		})
 
+		It("should forbid SubnetServices referencing the same subnet as SubnetWorkers", func() {
+			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: byoConfig.Networks.SubnetWorkers.Name}
+			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("my-pods")
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networks.subnetServices.name"),
+			}))))
+		})
+
 		It("should require SubnetServices on a dual-stack shoot", func() {
 			byoConfig.Networks.SubnetServices = nil
 			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("my-pods")
@@ -689,6 +699,57 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 		It("should allow unchanged BYO config on update", func() {
 			Expect(ValidateInfrastructureConfigUpdate(byoConfig, byoConfig.DeepCopy(), fldPath)).To(BeEmpty())
+		})
+	})
+
+	Describe("#ValidateInfrastructureConfigStackMigration", func() {
+		var (
+			byoConfig     *apisgcp.InfrastructureConfig
+			managedConfig *apisgcp.InfrastructureConfig
+			singleStack   *core.Networking
+			dualStack     *core.Networking
+		)
+
+		BeforeEach(func() {
+			byoConfig = &apisgcp.InfrastructureConfig{
+				Networks: apisgcp.NetworkConfig{
+					VPC:           &apisgcp.VPC{Name: "my-vpc"},
+					SubnetWorkers: &apisgcp.SubnetReference{Name: "my-workers"},
+				},
+			}
+			managedConfig = infrastructureConfig.DeepCopy()
+			singleStack = &core.Networking{IPFamilies: []core.IPFamily{core.IPFamilyIPv4}}
+			dualStack = &core.Networking{IPFamilies: []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}}
+		})
+
+		It("should forbid migrating a BYO shoot from single-stack to dual-stack", func() {
+			errs := ValidateInfrastructureConfigStackMigration(byoConfig, singleStack, dualStack, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networking.ipFamilies"),
+			}))
+		})
+
+		It("should forbid migrating a BYO shoot from dual-stack to single-stack", func() {
+			errs := ValidateInfrastructureConfigStackMigration(byoConfig, dualStack, singleStack, fldPath)
+			Expect(errs).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("networking.ipFamilies"),
+			}))
+		})
+
+		It("should allow an unchanged stack for a BYO shoot", func() {
+			Expect(ValidateInfrastructureConfigStackMigration(byoConfig, singleStack, singleStack, fldPath)).To(BeEmpty())
+			Expect(ValidateInfrastructureConfigStackMigration(byoConfig, dualStack, dualStack, fldPath)).To(BeEmpty())
+		})
+
+		It("should ignore stack migration for managed (non-BYO) shoots", func() {
+			Expect(ValidateInfrastructureConfigStackMigration(managedConfig, singleStack, dualStack, fldPath)).To(BeEmpty())
+		})
+
+		It("should not panic when networking is nil", func() {
+			Expect(ValidateInfrastructureConfigStackMigration(byoConfig, nil, dualStack, fldPath)).To(BeEmpty())
+			Expect(ValidateInfrastructureConfigStackMigration(byoConfig, singleStack, nil, fldPath)).To(BeEmpty())
 		})
 	})
 

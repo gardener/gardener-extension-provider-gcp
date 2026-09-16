@@ -36,7 +36,6 @@ var _ = Describe("BYO subnet validation", func() {
 		nodesCIDR        = "10.0.0.0/24"
 		podsCIDR         = "100.128.0.0/11"
 		servicesCIDR     = "192.168.0.0/16"
-		overlappingCIDR  = "10.0.0.0/16"
 	)
 
 	var (
@@ -98,6 +97,21 @@ var _ = Describe("BYO subnet validation", func() {
 			Expect(fctx.whiteboard.GetObject(ObjectKeyNodeSubnet)).NotTo(BeNil())
 		})
 
+		It("should mark that resources exist so the delete flow is not skipped", func() {
+			fctx = newFctx(&gcp.SubnetReference{Name: workerSubnetName}, nil, &gardencorev1beta1.Networking{
+				Nodes:    ptr.To(nodesCIDR),
+				Pods:     ptr.To(podsCIDR),
+				Services: ptr.To(servicesCIDR),
+			})
+			mockClient.EXPECT().
+				GetSubnet(gomock.Any(), region, workerSubnetName).
+				Return(&compute.Subnetwork{Name: workerSubnetName, Network: vpcSelfLink, IpCidrRange: workerSubnetCIDR}, nil)
+
+			Expect(fctx.ensureUserManagedWorkersSubnet(context.TODO())).To(Succeed())
+			Expect(fctx.whiteboard.Get(CreatedResourcesExistKey)).To(HaveValue(Equal("true")))
+			Expect(fctx.whiteboard.ExportAsFlatMap()).To(HaveKeyWithValue(CreatedResourcesExistKey, "true"))
+		})
+
 		It("should succeed when networking is nil", func() {
 			fctx = newFctx(&gcp.SubnetReference{Name: workerSubnetName}, nil, nil)
 			mockClient.EXPECT().
@@ -135,39 +149,6 @@ var _ = Describe("BYO subnet validation", func() {
 				Return(nil, fmt.Errorf("gcp api error"))
 
 			Expect(fctx.ensureUserManagedWorkersSubnet(context.TODO())).To(MatchError("gcp api error"))
-		})
-
-		It("should fail when the nodes CIDR is not contained in the worker subnet", func() {
-			fctx = newFctx(&gcp.SubnetReference{Name: workerSubnetName}, nil, &gardencorev1beta1.Networking{
-				Nodes: ptr.To("172.16.0.0/24"),
-			})
-			mockClient.EXPECT().
-				GetSubnet(gomock.Any(), region, workerSubnetName).
-				Return(&compute.Subnetwork{Name: workerSubnetName, Network: vpcSelfLink, IpCidrRange: workerSubnetCIDR}, nil)
-
-			Expect(fctx.ensureUserManagedWorkersSubnet(context.TODO())).To(MatchError(ContainSubstring("must be a subset of")))
-		})
-
-		It("should fail when the worker subnet overlaps the pods CIDR", func() {
-			fctx = newFctx(&gcp.SubnetReference{Name: workerSubnetName}, nil, &gardencorev1beta1.Networking{
-				Pods: ptr.To(overlappingCIDR),
-			})
-			mockClient.EXPECT().
-				GetSubnet(gomock.Any(), region, workerSubnetName).
-				Return(&compute.Subnetwork{Name: workerSubnetName, Network: vpcSelfLink, IpCidrRange: workerSubnetCIDR}, nil)
-
-			Expect(fctx.ensureUserManagedWorkersSubnet(context.TODO())).To(MatchError(ContainSubstring("must not overlap with")))
-		})
-
-		It("should fail when the worker subnet overlaps the services CIDR", func() {
-			fctx = newFctx(&gcp.SubnetReference{Name: workerSubnetName}, nil, &gardencorev1beta1.Networking{
-				Services: ptr.To(overlappingCIDR),
-			})
-			mockClient.EXPECT().
-				GetSubnet(gomock.Any(), region, workerSubnetName).
-				Return(&compute.Subnetwork{Name: workerSubnetName, Network: vpcSelfLink, IpCidrRange: workerSubnetCIDR}, nil)
-
-			Expect(fctx.ensureUserManagedWorkersSubnet(context.TODO())).To(MatchError(ContainSubstring("must not overlap with")))
 		})
 
 		It("should succeed when the named secondary range exists on the subnet", func() {

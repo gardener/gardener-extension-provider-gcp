@@ -201,6 +201,12 @@ func validateBYONetworkConfig(networks *apisgcp.NetworkConfig, ipFamilies []core
 		if networks.SubnetServices.PodSecondaryRangeName != nil {
 			allErrs = append(allErrs, field.Forbidden(subnetServicesPath.Child("podSecondaryRangeName"), "podSecondaryRangeName is only valid on subnetWorkers, not subnetServices"))
 		}
+		// The services IPv6 range is carved from the services subnet's own /64 prefix, while nodes/pods use the
+		// full /64 of the workers subnet. Pointing both references at the same subnet would derive both ranges
+		// from one /64, overlapping services with nodes/pods. They may share a VPC, but not a subnet.
+		if len(networks.SubnetServices.Name) > 0 && networks.SubnetServices.Name == networks.SubnetWorkers.Name {
+			allErrs = append(allErrs, field.Forbidden(subnetServicesPath.Child("name"), "subnetServices must reference a different subnet than subnetWorkers"))
+		}
 	}
 
 	podSecondaryRangeNamePath := subnetWorkersPath.Child("podSecondaryRangeName")
@@ -342,6 +348,25 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisgcp.Infrastruc
 	}
 
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.MTU, oldConfig.Networks.MTU, networksPath.Child("mtu"))...)
+
+	return allErrs
+}
+
+// ValidateInfrastructureConfigStackMigration forbids migrating a BYO subnet shoot between single-stack and
+// dual-stack networking
+func ValidateInfrastructureConfigStackMigration(config *apisgcp.InfrastructureConfig, oldNetworking, newNetworking *core.Networking, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	// Only relevant in BYO subnet mode.
+	if config.Networks.SubnetWorkers == nil || oldNetworking == nil || newNetworking == nil {
+		return allErrs
+	}
+
+	oldDualStack := slices.Contains(oldNetworking.IPFamilies, core.IPFamilyIPv6)
+	newDualStack := slices.Contains(newNetworking.IPFamilies, core.IPFamilyIPv6)
+	if oldDualStack != newDualStack {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("networking", "ipFamilies"), "cannot migrate a BYO subnet shoot between single-stack and dual-stack networking"))
+	}
 
 	return allErrs
 }
