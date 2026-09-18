@@ -125,10 +125,11 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 	podSecondaryRangeName := infraflow.DefaultSecondarySubnetName
 	if w.cluster.Shoot.Spec.Provider.InfrastructureConfig != nil {
 		infraConfig := &apisgcp.InfrastructureConfig{}
-		if _, _, err := w.decoder.Decode(w.cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, nil, infraConfig); err == nil {
-			if infraConfig.Networks.SubnetWorkers != nil && infraConfig.Networks.SubnetWorkers.PodSecondaryRangeName != nil {
-				podSecondaryRangeName = *infraConfig.Networks.SubnetWorkers.PodSecondaryRangeName
-			}
+		if _, _, err := w.decoder.Decode(w.cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, nil, infraConfig); err != nil {
+			return err
+		}
+		if infraConfig.Networks.SubnetWorkers != nil && infraConfig.Networks.SubnetWorkers.PodSecondaryRangeName != nil {
+			podSecondaryRangeName = *infraConfig.Networks.SubnetWorkers.PodSecondaryRangeName
 		}
 	}
 
