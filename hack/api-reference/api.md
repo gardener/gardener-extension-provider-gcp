@@ -16,6 +16,44 @@ Resource Types:
 </li>
 </ul>
 
+<h3 id="advancedmachinefeatures">AdvancedMachineFeatures
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#workerconfig">WorkerConfig</a>)
+</p>
+
+<p>
+AdvancedMachineFeatures contains advanced configuration for GCP VM instances.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>enableNestedVirtualization</code></br>
+<em>
+boolean
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableNestedVirtualization enables nested virtualization for the VM.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
 <h3 id="backupbucketconfig">BackupBucketConfig
 </h3>
 
@@ -2024,6 +2062,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>advancedMachineFeatures</code></br>
+<em>
+<a href="#advancedmachinefeatures">AdvancedMachineFeatures</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AdvancedMachineFeatures contains settings for advanced machine features.</p>
 </td>
 </tr>
 

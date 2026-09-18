@@ -1445,6 +1445,45 @@ var _ = Describe("Machines", func() {
 		)
 	})
 
+	Describe("WorkerPoolHashDataV2 with AdvancedMachineFeatures", func() {
+		var pool extensionsv1alpha1.WorkerPool
+
+		BeforeEach(func() {
+			pool = extensionsv1alpha1.WorkerPool{
+				KubernetesVersion: ptr.To("1.35.0"),
+			}
+		})
+
+		It("should include enableNestedVirtualization=true in hash data when set", func() {
+			cfg := &apisgcp.WorkerConfig{
+				AdvancedMachineFeatures: &apisgcp.AdvancedMachineFeatures{
+					EnableNestedVirtualization: ptr.To(true),
+				},
+			}
+			got, err := WorkerPoolHashDataV2(pool, cfg)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(ContainElement("true"))
+		})
+
+		It("should include enableNestedVirtualization=false in hash data when set", func() {
+			cfg := &apisgcp.WorkerConfig{
+				AdvancedMachineFeatures: &apisgcp.AdvancedMachineFeatures{
+					EnableNestedVirtualization: ptr.To(false),
+				},
+			}
+			got, err := WorkerPoolHashDataV2(pool, cfg)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(ContainElement("false"))
+		})
+
+		It("should not include advancedMachineFeatures in hash data when nil", func() {
+			cfg := &apisgcp.WorkerConfig{}
+			got, err := WorkerPoolHashDataV2(pool, cfg)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).NotTo(ContainElements("true", "false"))
+		})
+	})
+
 	Describe("sanitize gcp label/value ", func() {
 		It("gcp label must start with lowercase character", func() {
 			Expect(SanitizeGcpLabel("////Abcd-efg")).To(Equal("abcd-efg"))
