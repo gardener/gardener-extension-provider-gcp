@@ -420,6 +420,12 @@ The worker configuration contains:
   * GPU-attached machines can't be live migrated during host maintenance events. Find out how to handle that in your application [here](https://cloud.google.com/compute/docs/gpus/gpu-host-maintenance)
   * GPU count specified here is considered for forming node template during scale-from-zero in Cluster Autoscaler
 
+* Optional `advancedMachineFeatures` configuration for advanced VM settings.
+
+  * `enableNestedVirtualization` enables nested virtualization on the VM. Not all machine types support this — refer to the [GCP documentation](https://cloud.google.com/compute/docs/instances/nested-virtualization/overview) for supported machine types and requirements.
+
+  **Note**: A rolling update of the worker group is triggered when `enableNestedVirtualization` is changed.
+
 * The `.nodeTemplate` is used to specify resource information of the machine during runtime. This then helps in Scale-from-Zero.
     Some points to note for this field:
     - Currently only cpu, gpu and memory are configurable.
