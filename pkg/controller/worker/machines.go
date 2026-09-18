@@ -329,6 +329,12 @@ func (w *WorkerDelegate) generateMachineConfig(ctx context.Context) error {
 			if workerConfig.MinCpuPlatform != nil {
 				machineClassSpec["minCpuPlatform"] = *workerConfig.MinCpuPlatform
 			}
+
+			if workerConfig.AdvancedMachineFeatures != nil && workerConfig.AdvancedMachineFeatures.EnableNestedVirtualization != nil {
+				machineClassSpec["advancedMachineFeatures"] = map[string]interface{}{
+					"enableNestedVirtualization": *workerConfig.AdvancedMachineFeatures.EnableNestedVirtualization,
+				}
+			}
 			var nodeTemplate *v1alpha1.NodeTemplate
 			if pool.NodeTemplate != nil {
 				nodeTemplate = pool.NodeTemplate.DeepCopy()
@@ -661,6 +667,10 @@ func hashDataForWorkerConfig(workerConfig *apisgcp.WorkerConfig) (hashData []str
 
 	if workerConfig.MinCpuPlatform != nil {
 		hashData = append(hashData, *workerConfig.MinCpuPlatform)
+	}
+
+	if workerConfig.AdvancedMachineFeatures != nil && workerConfig.AdvancedMachineFeatures.EnableNestedVirtualization != nil {
+		hashData = append(hashData, strconv.FormatBool(*workerConfig.AdvancedMachineFeatures.EnableNestedVirtualization))
 	}
 
 	if workerConfig.ServiceAccount != nil {
