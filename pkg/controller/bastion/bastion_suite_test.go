@@ -5,6 +5,7 @@
 package bastion
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -24,6 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	apisgcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
+	mock "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client/mock"
 )
 
 func TestBastion(t *testing.T) {
@@ -49,16 +51,50 @@ var _ = DescribeTableSubtree("Bastion", func(isCapabilityCloudProfile bool) {
 	})
 
 	Describe("getWorkersCIDR", func() {
-		It("getWorkersCIDR", func() {
-			cidr, err := getWorkersCIDR(createGCPTestCluster(isCapabilityCloudProfile))
+		It("should return the workers CIDR from infra config", func() {
+			mockClient := mock.NewMockComputeClient(ctrl)
+			cidr, err := getWorkersCIDR(context.Background(), createGCPTestCluster(isCapabilityCloudProfile), mockClient)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(cidr).To(Equal("10.250.0.0/16"))
+		})
+
+		It("should look up the subnet CIDR via GCP API when Workers is empty (BYO mode, E8)", func() {
+			mockClient := mock.NewMockComputeClient(ctrl)
+			byoCluster := createGCPTestCluster(isCapabilityCloudProfile)
+			byoCluster.Shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{
+				Raw: mustEncode(apisgcp.InfrastructureConfig{
+					Networks: apisgcp.NetworkConfig{
+						VPC:           &apisgcp.VPC{Name: "my-vpc"},
+						SubnetWorkers: &apisgcp.SubnetReference{Name: "my-workers"},
+					},
+				}),
+			}
+
+			mockClient.EXPECT().
+				GetSubnet(gomock.Any(), byoCluster.Shoot.Spec.Region, "my-workers").
+				Return(&compute.Subnetwork{IpCidrRange: "10.100.0.0/16"}, nil)
+
+			cidr, err := getWorkersCIDR(context.Background(), byoCluster, mockClient)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(cidr).To(Equal("10.100.0.0/16"))
+		})
+		It("should return an error when neither Workers nor SubnetWorkers is set", func() {
+			mockClient := mock.NewMockComputeClient(ctrl)
+			emptyCluster := createGCPTestCluster(isCapabilityCloudProfile)
+			emptyCluster.Shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{
+				Raw: mustEncode(apisgcp.InfrastructureConfig{
+					Networks: apisgcp.NetworkConfig{},
+				}),
+			}
+			_, err := getWorkersCIDR(context.Background(), emptyCluster, mockClient)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
 	Describe("Determine options", func() {
 		It("should return options", func() {
-			options, err := NewOpts(bastion, cluster, projectID, "vNet", "subnet")
+			mockClient := mock.NewMockComputeClient(ctrl)
+			options, err := NewOpts(context.Background(), bastion, cluster, mockClient, projectID, "vNet", "subnet")
 			Expect(err).To(Not(HaveOccurred()))
 
 			Expect(options.BastionInstanceName).To(Equal("cluster1-bastionName1-bastion-1cdc8"))

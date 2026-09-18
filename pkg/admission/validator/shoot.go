@@ -131,7 +131,7 @@ func (s *shoot) validateContext(ctx context.Context, valContext *validationConte
 
 	if valContext.shoot.Spec.Networking != nil {
 		allErrors = append(allErrors, gcpvalidation.ValidateNetworking(valContext.shoot.Spec.Networking, networkPath)...)
-		allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfig(valContext.infrastructureConfig, valContext.shoot.Spec.Networking.Nodes, valContext.shoot.Spec.Networking.Pods, valContext.shoot.Spec.Networking.Services, infrastructureConfigPath)...)
+		allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfig(valContext.infrastructureConfig, valContext.shoot.Spec.Networking.Nodes, valContext.shoot.Spec.Networking.Pods, valContext.shoot.Spec.Networking.Services, valContext.shoot.Spec.Networking.IPFamilies, infrastructureConfigPath)...)
 	}
 
 	allErrors = append(allErrors, gcpvalidation.ValidateWorkers(valContext.shoot.Spec.Provider.Workers, workersPath)...)
@@ -185,6 +185,15 @@ func (s *shoot) validateUpdate(ctx context.Context, oldShoot, currentShoot *core
 	if !reflect.DeepEqual(oldInfrastructureConfig, currentInfrastructureConfig) {
 		allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfigUpdate(oldInfrastructureConfig, currentInfrastructureConfig, infrastructureConfigPath)...)
 	}
+
+	// Checked outside the config-diff guard above because a stack migration changes only the shoot's
+	// IP families, leaving the infrastructureConfig itself unchanged.
+	allErrors = append(allErrors, gcpvalidation.ValidateInfrastructureConfigStackMigration(
+		currentInfrastructureConfig,
+		oldValContext.shoot.Spec.Networking,
+		currentValContext.shoot.Spec.Networking,
+		specPath,
+	)...)
 
 	if !reflect.DeepEqual(oldControlPlaneConfig, currentControlPlaneConfig) {
 		allErrors = append(allErrors, gcpvalidation.ValidateControlPlaneConfigUpdate(oldControlPlaneConfig, currentControlPlaneConfig, controlPlaneConfigPath)...)

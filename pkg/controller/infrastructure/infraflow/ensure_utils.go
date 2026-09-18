@@ -407,3 +407,12 @@ func IPFamiliesFromCIDRs(cidrs []string) []gardencorev1beta1.IPFamily {
 	}
 	return result
 }
+
+func validatePodSecondaryRange(subnetName, rangeName string, secondaryRanges []*compute.SubnetworkSecondaryRange) error {
+	for _, r := range secondaryRanges {
+		if r.RangeName == rangeName {
+			return nil
+		}
+	}
+	return fmt.Errorf("user-managed nodes subnet %q does not have a secondary IP range named %q", subnetName, rangeName)
+}
