@@ -40,6 +40,26 @@ type NetworkConfig struct {
 	// Valid values: 1300 to 8896. If unspecified, GCP defaults to 1460.
 	// +optional
 	MTU *int32
+	// SubnetWorkers is a reference to a user-managed subnet for worker nodes.
+	// When set, the extension operates in BYO (bring-your-own) subnet mode:
+	// Gardener does not create or delete the subnet; it only attaches to it.
+	// VPC.Name must be set; CloudNAT, Internal, Worker/Workers, FlowLogs, and MTU must not be set.
+	// +optional
+	SubnetWorkers *SubnetReference
+	// SubnetServices is a reference to a user-managed subnet for services (required for dual-stack BYO shoots).
+	// Only valid when SubnetWorkers is set.
+	// +optional
+	SubnetServices *SubnetReference
+}
+
+// SubnetReference is a reference to a user-managed GCP subnetwork.
+type SubnetReference struct {
+	// Name is the name of the subnetwork.
+	Name string
+	// PodSecondaryRangeName is the name of the secondary IP range on the nodes subnet
+	// that is used for pod IPs (required for dual-stack BYO shoots).
+	// +optional
+	PodSecondaryRangeName *string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -88,6 +108,12 @@ type Subnet struct {
 	Name string
 	// Purpose is the purpose for which the subnet was created.
 	Purpose SubnetPurpose
+}
+
+// IsUserManagedEgress returns true when the shoot is configured in BYO subnet mode
+// (i.e., SubnetWorkers is set), meaning the extension does not manage egress resources.
+func (i *InfrastructureConfig) IsUserManagedEgress() bool {
+	return i.Networks.SubnetWorkers != nil
 }
 
 // VPC contains information about the VPC and some related resources.

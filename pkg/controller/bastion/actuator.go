@@ -74,13 +74,29 @@ func getCredentialsConfig(ctx context.Context, reader client.Reader, bastion *v1
 	return gcp.GetCredentialsConfigFromSecretReference(ctx, reader, corev1.SecretReference{Namespace: bastion.Namespace, Name: constants.SecretNameCloudProvider})
 }
 
-func getWorkersCIDR(cluster *controller.Cluster) (string, error) {
+func getWorkersCIDR(ctx context.Context, cluster *controller.Cluster, gcpClient gcpclient.ComputeClient) (string, error) {
 	infrastructureConfig := &apisgcp.InfrastructureConfig{}
-	err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig)
-	if err != nil {
+	if err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig); err != nil {
 		return "", err
 	}
-	return infrastructureConfig.Networks.Workers, nil
+
+	if len(infrastructureConfig.Networks.Workers) > 0 {
+		return infrastructureConfig.Networks.Workers, nil
+	}
+
+	// BYO mode: Workers is empty — look up the subnet's primary CIDR from GCP.
+	if infrastructureConfig.Networks.SubnetWorkers != nil {
+		subnet, err := gcpClient.GetSubnet(ctx, cluster.Shoot.Spec.Region, infrastructureConfig.Networks.SubnetWorkers.Name)
+		if err != nil {
+			return "", fmt.Errorf("failed to get worker subnet %q: %w", infrastructureConfig.Networks.SubnetWorkers.Name, err)
+		}
+		if subnet == nil {
+			return "", fmt.Errorf("worker subnet %q not found", infrastructureConfig.Networks.SubnetWorkers.Name)
+		}
+		return subnet.IpCidrRange, nil
+	}
+
+	return "", fmt.Errorf("no workers CIDR found: neither Networks.Workers nor Networks.SubnetWorkers is set")
 }
 
 func getDefaultGCPZone(ctx context.Context, client gcpclient.ComputeClient, region string) (string, error) {
