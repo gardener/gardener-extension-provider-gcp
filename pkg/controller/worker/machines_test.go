@@ -1313,6 +1313,77 @@ var _ = Describe("Machines", func() {
 				Entry("TERMINATE for machines with TPUs", "ct6e-standard-4t", "TERMINATE"),
 			)
 
+			DescribeTable("should render advancedMachineFeatures.enableNestedVirtualization into the machine class spec",
+				func(workerConfig *apisgcp.WorkerConfig, expectPresent bool, expectedValue bool) {
+					w.Spec.Pools = []extensionsv1alpha1.WorkerPool{
+						{
+							Name:           namePool1,
+							Minimum:        minPool1,
+							Maximum:        maxPool1,
+							MaxSurge:       maxSurgePool1,
+							MaxUnavailable: maxUnavailablePool1,
+							MachineType:    machineNameAMD,
+							Architecture:   ptr.To(archAMD),
+							MachineImage: extensionsv1alpha1.MachineImage{
+								Name:    machineImageName,
+								Version: machineImageVersion,
+							},
+							NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+								Capacity: nodeCapacity,
+							},
+							ProviderConfig: &runtime.RawExtension{
+								Raw: encode(workerConfig),
+							},
+							UserDataSecretRef: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: userDataSecretName},
+								Key:                  userDataSecretDataKey,
+							},
+							Volume: &extensionsv1alpha1.Volume{
+								Type: &volumeType,
+								Size: fmt.Sprintf("%dGi", volumeSize),
+							},
+							Zones: []string{
+								zone1,
+							},
+							Labels:              poolLabels,
+							NodeAgentSecretName: &nodeAgentSecretName,
+						},
+					}
+
+					wd, err := NewWorkerDelegate(c, scheme, chartApplier, "", w, cluster)
+					Expect(err).NotTo(HaveOccurred())
+					_, err = wd.GenerateMachineDeployments(ctx)
+					Expect(err).NotTo(HaveOccurred())
+					workerDelegate := wd.(*WorkerDelegate)
+
+					mClasses := workerDelegate.GetMachineClasses()
+					Expect(mClasses).To(HaveLen(1))
+
+					if !expectPresent {
+						Expect(mClasses[0]).NotTo(HaveKey("advancedMachineFeatures"))
+						return
+					}
+
+					advancedMachineFeatures, ok := mClasses[0]["advancedMachineFeatures"].(map[string]interface{})
+					Expect(ok).To(BeTrue(), "advancedMachineFeatures should be a map")
+					Expect(advancedMachineFeatures).To(HaveKeyWithValue("enableNestedVirtualization", expectedValue))
+				},
+				Entry("enableNestedVirtualization=true",
+					&apisgcp.WorkerConfig{
+						AdvancedMachineFeatures: &apisgcp.AdvancedMachineFeatures{
+							EnableNestedVirtualization: ptr.To(true),
+						},
+					}, true, true),
+				Entry("enableNestedVirtualization=false",
+					&apisgcp.WorkerConfig{
+						AdvancedMachineFeatures: &apisgcp.AdvancedMachineFeatures{
+							EnableNestedVirtualization: ptr.To(false),
+						},
+					}, true, false),
+				Entry("advancedMachineFeatures nil -> key omitted",
+					&apisgcp.WorkerConfig{}, false, false),
+			)
+
 			DescribeTable("should generate same worker pool hash even when virtualCapacity is newly added or changed", Label("virtualCapacity"),
 				func(w1Def string, w2Def string) {
 					var w1, w2 extensionsv1alpha1.Worker
