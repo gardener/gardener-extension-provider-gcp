@@ -670,7 +670,7 @@ func hashDataForWorkerConfig(workerConfig *apisgcp.WorkerConfig) (hashData []str
 	}
 
 	if workerConfig.AdvancedMachineFeatures != nil && workerConfig.AdvancedMachineFeatures.EnableNestedVirtualization != nil {
-		hashData = append(hashData, strconv.FormatBool(*workerConfig.AdvancedMachineFeatures.EnableNestedVirtualization))
+		hashData = append(hashData, "enableNestedVirtualization="+strconv.FormatBool(*workerConfig.AdvancedMachineFeatures.EnableNestedVirtualization))
 	}
 
 	if workerConfig.ServiceAccount != nil {

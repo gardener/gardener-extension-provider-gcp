@@ -1533,7 +1533,7 @@ var _ = Describe("Machines", func() {
 			}
 			got, err := WorkerPoolHashDataV2(pool, cfg)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(got).To(ContainElement("true"))
+			Expect(got).To(ContainElement("enableNestedVirtualization=true"))
 		})
 
 		It("should include enableNestedVirtualization=false in hash data when set", func() {
@@ -1544,14 +1544,14 @@ var _ = Describe("Machines", func() {
 			}
 			got, err := WorkerPoolHashDataV2(pool, cfg)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(got).To(ContainElement("false"))
+			Expect(got).To(ContainElement("enableNestedVirtualization=false"))
 		})
 
 		It("should not include advancedMachineFeatures in hash data when nil", func() {
 			cfg := &apisgcp.WorkerConfig{}
 			got, err := WorkerPoolHashDataV2(pool, cfg)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(got).NotTo(ContainElements("true", "false"))
+			Expect(got).To(BeEmpty())
 		})
 	})
 
