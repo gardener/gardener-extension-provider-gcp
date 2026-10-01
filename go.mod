@@ -8,9 +8,9 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/gardener/etcd-druid/api v0.38.2
-	github.com/gardener/gardener v1.151.0
-	github.com/gardener/gardener/hack/tools v1.151.0
-	github.com/gardener/gardener/pkg/apis v1.151.0
+	github.com/gardener/gardener v1.152.0
+	github.com/gardener/gardener/hack/tools v1.152.0
+	github.com/gardener/gardener/pkg/apis v1.152.0
 	github.com/gardener/machine-controller-manager v0.62.1
 	github.com/go-logr/logr v1.4.4
 	github.com/google/go-cmp v0.7.0
@@ -60,7 +60,7 @@ require (
 	github.com/VictoriaMetrics/metrics v1.44.0 // indirect
 	github.com/VictoriaMetrics/metricsql v0.87.3 // indirect
 	github.com/VictoriaMetrics/operator/api v0.74.1 // indirect
-	github.com/andybalholm/brotli v1.2.3 // indirect
+	github.com/andybalholm/brotli v1.2.4 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.43.4 // indirect
@@ -245,7 +245,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	helm.sh/helm/v4 v4.2.4 // indirect
-	istio.io/api v1.29.7 // indirect
+	istio.io/api v1.29.8 // indirect
 	istio.io/client-go v1.29.2 // indirect
 	k8s.io/apiserver v0.36.4 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
