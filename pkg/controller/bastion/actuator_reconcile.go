@@ -63,7 +63,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return err
 	}
 
-	opt, err := NewOpts(bastion, cluster, credentialsConfig.ProjectID, infrastructureStatus.Networks.VPC.Name, subnet)
+	opt, err := NewOpts(ctx, bastion, cluster, gcpClient, credentialsConfig.ProjectID, infrastructureStatus.Networks.VPC.Name, subnet)
 	if err != nil {
 		return fmt.Errorf("failed to determine Options: %w", err)
 	}
