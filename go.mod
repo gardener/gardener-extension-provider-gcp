@@ -21,7 +21,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	go.uber.org/atomic v1.12.0
 	go.uber.org/mock v0.6.0
-	golang.org/x/exp v0.0.0-20261007180756-3d68b386da03
+	golang.org/x/exp v0.0.0-20261007192929-f45ad48fbe92
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.23.0
 	google.golang.org/api v0.301.0
