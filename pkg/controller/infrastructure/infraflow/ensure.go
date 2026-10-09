@@ -28,7 +28,11 @@ import (
 // isDualStack returns true if the cluster is configured for dual-stack networking
 // or has migrated from dual-stack to single-stack (indicated by having 2 node CIDRs).
 func (fctx *FlowContext) isDualStack() bool {
-	return !gardencorev1beta1.IsIPv4SingleStack(fctx.networking.IPFamilies) ||
+	var ipFamilies []gardencorev1beta1.IPFamily
+	if fctx.networking != nil {
+		ipFamilies = fctx.networking.IPFamilies
+	}
+	return !gardencorev1beta1.IsIPv4SingleStack(ipFamilies) ||
 		fctx.shoot.Status.Networking != nil && len(fctx.shoot.Status.Networking.Nodes) == 2
 }
 
@@ -84,27 +88,6 @@ func (fctx *FlowContext) ensureVPC(ctx context.Context) error {
 
 	fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
 	fctx.whiteboard.SetObject(ObjectKeyVPC, current)
-	return nil
-}
-
-func (fctx *FlowContext) ensureUserManagedVPC(ctx context.Context) error {
-	var (
-		log     = shared.LogFromContext(ctx)
-		vpcSpec = fctx.config.Networks.VPC
-		vpcName = vpcSpec.Name
-		err     error
-	)
-
-	vpc, err := fctx.computeClient.GetNetwork(ctx, vpcName)
-	if err != nil {
-		return err
-	}
-	if vpc == nil {
-		log.Error(nil, fmt.Sprintf("failed to locate user-managed VPC [Name=%s]", vpcName))
-		return fmt.Errorf("failed to locate user-managed VPC [Name=%s]", vpcName)
-	}
-
-	fctx.whiteboard.SetObject(ObjectKeyVPC, vpc)
 	return nil
 }
 
@@ -687,6 +670,46 @@ func (fctx *FlowContext) ensureFirewallRulesDeleted(ctx context.Context) error {
 	return nil
 }
 
+// ensureCCMFirewallRulesDeleted removes only the CCM-authored k8s-fw-* firewall rules that are
+// tag-scoped to this cluster. It is used on BYO teardown as a safety net for the force-delete case
+// where the in-cluster CCM is gone before it can clean up its own LoadBalancer firewall rules.
+// It deliberately does not touch the static FirewallRuleAllow* rules, which in BYO mode are
+// user-created and user-owned.
+func (fctx *FlowContext) ensureCCMFirewallRulesDeleted(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
+
+	vpcName := fctx.vpcNameFromConfig()
+
+	fws, err := fctx.computeClient.ListFirewallRules(ctx, client.FirewallListOpts{
+		Filter: fmt.Sprintf(`network eq ".*(%s).*"`, vpcName),
+		ClientFilter: func(f *compute.Firewall) bool {
+			if !strings.HasPrefix(f.Name, KubernetesFirewallNamePrefix) {
+				return false
+			}
+			for _, targetTag := range f.TargetTags {
+				if targetTag == fctx.clusterName {
+					return true
+				}
+			}
+			return false
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, fw := range fws {
+		log.Info("destroying CCM firewall rule", "name", fw.Name)
+		if err := fctx.computeClient.DeleteFirewallRule(ctx, fw.Name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ensureKubernetesRoutesDeleted removes per-node pod-CIDR routes (shoot--<cluster>-*) written by the CCM
+// in routes-based networking mode.
 func (fctx *FlowContext) ensureKubernetesRoutesDeleted(ctx context.Context) error {
 	log := shared.LogFromContext(ctx)
 	vpcName := fctx.vpcNameFromConfig()

@@ -48,6 +48,7 @@ import (
 	gcpv1alpha1 "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp/v1alpha1"
 	bastionctrl "github.com/gardener/gardener-extension-provider-gcp/pkg/controller/bastion"
 	"github.com/gardener/gardener-extension-provider-gcp/pkg/gcp"
+	gcpclient "github.com/gardener/gardener-extension-provider-gcp/pkg/gcp/client"
 )
 
 const (
@@ -71,13 +72,14 @@ func validateFlags() {
 }
 
 var (
-	ctx            context.Context
-	log            logr.Logger
-	project        string
-	computeService *compute.Service
-	testEnv        *envtest.Environment
-	mgrCancel      context.CancelFunc
-	c              client.Client
+	ctx              context.Context
+	log              logr.Logger
+	project          string
+	computeService   *compute.Service
+	gcpComputeClient gcpclient.ComputeClient
+	testEnv          *envtest.Environment
+	mgrCancel        context.CancelFunc
+	c                client.Client
 )
 
 var _ = BeforeSuite(func() {
@@ -153,6 +155,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	computeService, err = compute.NewService(ctx, option.WithCredentialsJSON([]byte(*serviceAccount)), option.WithScopes(compute.CloudPlatformScope))
 	Expect(err).NotTo(HaveOccurred())
+	gcpComputeClient, err = gcpclient.NewComputeClient(ctx, sa)
+	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = Describe("Bastion tests", func() {
@@ -217,7 +221,7 @@ var _ = Describe("Bastion tests", func() {
 				CloudProfile: cloudProfile,
 			}
 
-			testBastion, testOptions := createBastion(testControllerCluster, name, project, networkName, subnetName, myPublicIP)
+			testBastion, testOptions := createBastion(ctx, testControllerCluster, name, project, networkName, subnetName, myPublicIP)
 
 			By("setup Infrastructure")
 			err = prepareNewNetwork(ctx, log, project, computeService, networkName, routerName, subnetName)
@@ -267,6 +271,115 @@ var _ = Describe("Bastion tests", func() {
 		Entry("with legacy architecture field format", createCloudProfileLegacy, "legacy architecture field"),
 		Entry("with capability-based format", createCloudProfileWithCapabilities, "capability-based format"),
 	)
+
+	It("should successfully create and delete a bastion in BYO network mode", func() {
+		By("generating randomized test resource identifiers")
+		randString, err := randomString()
+		Expect(err).NotTo(HaveOccurred())
+
+		name := fmt.Sprintf("gcp-bastion-byo-it--%s", randString)
+		networkName := name + "-network"
+		routerName := name + "-cloud-router"
+		subnetName := name + "-nodes"
+
+		worker := createWorker(name, networkName, subnetName)
+
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "cloudprovider",
+				Namespace: name,
+			},
+			Data: map[string][]byte{
+				gcp.ServiceAccountJSONField: []byte(*serviceAccount),
+			},
+		}
+
+		myPublicIP, err := getMyPublicIPWithMask()
+		Expect(err).ToNot(HaveOccurred())
+
+		cloudProfile := createCloudProfileWithCapabilities()
+		// BYO mode: Workers is empty, SubnetWorkers references the pre-existing subnet by name.
+		// The bastion actuator must look up the CIDR via the GCP API instead of reading it from the config.
+		infrastructureConfig := createInfrastructureConfigBYO(subnetName)
+		infrastructureConfigJSON, err := json.Marshal(&infrastructureConfig)
+		Expect(err).NotTo(HaveOccurred())
+		shoot := createShoot(name, infrastructureConfigJSON)
+		shootJSON, _ := json.Marshal(shoot)
+		cloudProfileJSON, _ := json.Marshal(cloudProfile)
+
+		testExtensionsCluster := &extensionsv1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+			},
+			Spec: extensionsv1alpha1.ClusterSpec{
+				CloudProfile: runtime.RawExtension{
+					Object: cloudProfile,
+					Raw:    cloudProfileJSON,
+				},
+				Seed: &runtime.RawExtension{
+					Raw: []byte("{}"),
+				},
+				Shoot: runtime.RawExtension{
+					Object: shoot,
+					Raw:    shootJSON,
+				},
+			},
+		}
+
+		testControllerCluster := &controller.Cluster{
+			ObjectMeta:   metav1.ObjectMeta{Name: name},
+			Shoot:        shoot,
+			CloudProfile: cloudProfile,
+		}
+
+		By("setup Infrastructure")
+		err = prepareNewNetwork(ctx, log, project, computeService, networkName, routerName, subnetName)
+		Expect(err).NotTo(HaveOccurred())
+		DeferCleanup(func() {
+			cleanupErr := teardownNetwork(ctx, log, project, computeService, networkName, routerName, subnetName)
+			Expect(cleanupErr).NotTo(HaveOccurred())
+		})
+
+		testBastion, testOptions := createBastion(ctx, testControllerCluster, name, project, networkName, subnetName, myPublicIP)
+
+		By("create namespace for test execution")
+		setupEnvironmentObjects(ctx, c, namespace(name), secret, testExtensionsCluster, worker)
+		DeferCleanup(func() {
+			teardownShootEnvironment(ctx, c, namespace(name), secret, testExtensionsCluster, worker)
+		})
+
+		By("setup bastion")
+		err = c.Create(ctx, testBastion)
+		Expect(err).NotTo(HaveOccurred())
+
+		DeferCleanup(func() {
+			teardownBastion(ctx, log, c, testBastion)
+
+			By("verify bastion deletion")
+			verifyDeletion(ctx, project, computeService, testOptions)
+		})
+
+		By("wait until bastion is reconciled")
+		Expect(extensions.WaitUntilExtensionObjectReady(
+			ctx,
+			c,
+			log,
+			testBastion,
+			extensionsv1alpha1.BastionResource,
+			15*time.Second,
+			60*time.Second,
+			5*time.Minute,
+			nil,
+		)).To(Succeed())
+
+		time.Sleep(60 * time.Second)
+		verifyPort22IsOpen(ctx, c, testBastion)
+		verifyPort42IsClosed(ctx, c, testBastion)
+
+		By("verify cloud resources — egress firewall destination must match subnet CIDR fetched from GCP")
+		verifyCreation(ctx, project, myPublicIP, computeService, testOptions)
+		verifyEgressDestinationCIDR(ctx, project, computeService, testOptions, workersSubnetCIDR)
+	})
 })
 
 func verifyPort22IsOpen(ctx context.Context, c client.Client, bastion *extensionsv1alpha1.Bastion) {
@@ -411,7 +524,7 @@ func getResourceNameFromSelfLink(link string) string {
 	return parts[len(parts)-1]
 }
 
-func createBastion(cluster *controller.Cluster, name, project, networkName, subnet, publicIP string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {
+func createBastion(ctx context.Context, cluster *controller.Cluster, name, project, networkName, subnet, publicIP string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {
 	bastion := &extensionsv1alpha1.Bastion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "-bastion",
@@ -430,7 +543,7 @@ func createBastion(cluster *controller.Cluster, name, project, networkName, subn
 		},
 	}
 
-	options, err := bastionctrl.NewOpts(bastion, cluster, project, networkName, subnet)
+	options, err := bastionctrl.NewOpts(ctx, bastion, cluster, gcpComputeClient, project, networkName, subnet)
 	Expect(err).NotTo(HaveOccurred())
 
 	return bastion, options
@@ -444,6 +557,18 @@ func createInfrastructureConfig() *gcpv1alpha1.InfrastructureConfig {
 		},
 		Networks: gcpv1alpha1.NetworkConfig{
 			Workers: workersSubnetCIDR,
+		},
+	}
+}
+
+func createInfrastructureConfigBYO(subnetName string) *gcpv1alpha1.InfrastructureConfig {
+	return &gcpv1alpha1.InfrastructureConfig{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: gcpv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "InfrastructureConfig",
+		},
+		Networks: gcpv1alpha1.NetworkConfig{
+			SubnetWorkers: &gcpv1alpha1.SubnetReference{Name: subnetName},
 		},
 	}
 }
@@ -703,8 +828,17 @@ func verifyCreation(ctx context.Context, project, publicIP string, computeServic
 	Expect(*createdInstance.Metadata.Items[0].Value).To(Equal(userDataConst))
 }
 
-func verifyDeletion(ctx context.Context, project string, computeService *compute.Service, options *bastionctrl.Options) {
-	// bastion firewalls should be gone
+// verifyEgressDestinationCIDR asserts that the egress-allow firewall rule's destination CIDR
+// matches expectedCIDR — critical for BYO mode where the CIDR is looked up from GCP rather than
+// read directly from the shoot's InfrastructureConfig.
+func verifyEgressDestinationCIDR(ctx context.Context, project string, computeService *compute.Service, options *bastionctrl.Options, expectedCIDR string) {
+	By("checking egress firewall destination CIDR matches subnet CIDR from GCP")
+	firewall, err := computeService.Firewalls.Get(project, bastionctrl.FirewallEgressAllowOnlyResourceName(options.BastionInstanceName)).Context(ctx).Do()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(firewall.DestinationRanges).To(ContainElement(expectedCIDR))
+}
+
+func verifyDeletion(ctx context.Context, project string, computeService *compute.Service, options *bastionctrl.Options) { // bastion firewalls should be gone
 	// Check Firewall for Ingress / Egress
 	checkFirewallDoesNotExist(ctx, project, computeService, bastionctrl.FirewallIngressAllowSSHResourceName(options.BastionInstanceName))
 	checkFirewallDoesNotExist(ctx, project, computeService, bastionctrl.FirewallEgressAllowOnlyResourceName(options.BastionInstanceName))
