@@ -50,6 +50,9 @@ providerSpec:
 {{- if $machineClass.minCpuPlatform }}
   minCpuPlatform: {{ $machineClass.minCpuPlatform }}
 {{- end }}
+{{- if $machineClass.advancedMachineFeatures }}
+  advancedMachineFeatures: {{- toYaml $machineClass.advancedMachineFeatures | nindent 4 }}
+{{- end }}
   networkInterfaces: {{- toYaml $machineClass.networkInterfaces | nindent 2 }}
   scheduling:
     automaticRestart: {{ $machineClass.scheduling.automaticRestart }}
