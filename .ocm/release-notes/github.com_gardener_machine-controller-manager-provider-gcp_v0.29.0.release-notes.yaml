@@ -1,0 +1,36 @@
+ocm:
+  component_name: github.com/gardener/machine-controller-manager-provider-gcp
+  component_version: v0.29.0
+release_notes:
+- audience: developer
+  author:
+    hostname: github.com
+    type: githubUser
+    username: aaronfern
+  category: improvement
+  contents: Remove unused `.ci/pipeline_integration_test` file
+  mimetype: text/markdown
+  reference: '[#205](https://github.com/gardener/machine-controller-manager-provider-gcp/pull/205)'
+  type: standard
+- audience: user
+  author:
+    hostname: github.com
+    type: githubUser
+    username: r4mek
+  category: improvement
+  contents: Bump golang version to 1.26.5
+  mimetype: text/markdown
+  reference: '[#220](https://github.com/gardener/machine-controller-manager-provider-gcp/pull/220)'
+  type: standard
+- audience: operator
+  author:
+    hostname: github.com
+    type: githubUser
+    username: vpnachev
+  category: bugfix
+  contents: 'Fix multi-arch container image build to compile the binary for the configured
+    `TARGETARCH` instead of always for `amd64`, i.e. the `arm64` image now contains
+    `arm64` binary instead of `amd64`. '
+  mimetype: text/markdown
+  reference: '[#204](https://github.com/gardener/machine-controller-manager-provider-gcp/pull/204)'
+  type: standard
