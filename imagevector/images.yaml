@@ -75,7 +75,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/cloud-provider-gcp
   repository: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager
-  tag: v36.0.7
+  tag: v36.0.21
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -121,7 +121,7 @@ images:
 - name: csi-driver
   sourceRepository: github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
   repository: registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver
-  tag: v1.26.0
+  tag: v1.27.1
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -135,7 +135,7 @@ images:
 - name: csi-driver-filestore
   sourceRepository: github.com/kubernetes-sigs/gcp-filestore-csi-driver
   repository: registry.k8s.io/cloud-provider-gcp/gcp-filestore-csi-driver
-  tag: v1.12.0
+  tag: v1.12.2
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -191,7 +191,7 @@ images:
 - name: csi-provisioner
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: registry.k8s.io/sig-storage/csi-provisioner
-  tag: v6.3.0
+  tag: v6.4.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -220,7 +220,7 @@ images:
 - name: csi-resizer
   sourceRepository: github.com/kubernetes-csi/external-resizer
   repository: registry.k8s.io/sig-storage/csi-resizer
-  tag: v2.2.1
+  tag: v2.3.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -293,7 +293,7 @@ images:
 - name: machine-controller-manager-provider-gcp
   sourceRepository: github.com/gardener/machine-controller-manager-provider-gcp
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/machine-controller-manager-provider-gcp
-  tag: v0.28.1
+  tag: v0.29.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
