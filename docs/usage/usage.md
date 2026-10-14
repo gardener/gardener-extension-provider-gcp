@@ -217,7 +217,11 @@ Overlapping pod CIDRs will lead to disfunctional shoot clusters.
 
 The `networks.workers` section describes the CIDR for a subnet that is used for all shoot worker nodes, i.e., VMs which later run your applications.
 
-The `networks.internal` section is optional and can describe a CIDR for a subnet that is used for [internal load balancers](https://cloud.google.com/load-balancing/docs/internal/). If it is omitted, no internal Loadbalancers can be created.
+The `networks.internal` section is optional and describes a CIDR for a dedicated subnet used as the default source for [internal load balancer](https://cloud.google.com/load-balancing/docs/internal/) VIPs. When set, the Gardener GCP provider creates this subnet and propagates it to the cloud-controller-manager as the global default for all internal LBs in the cluster.
+
+If it is omitted, the cloud-controller-manager has no default subnet configured for internal LBs. Internal LBs will fail unless each Service explicitly specifies a subnet via the `networking.gke.io/internal-load-balancer-subnet` annotation (e.g. pointing at the nodes subnet). However, using the nodes subnet for internal LB VIPs is **not recommended**: node VMs and LB VIPs then compete for IPs in the same range, which can lead to IP exhaustion and hard failures when scaling the cluster or adding more internal LB Services. A dedicated `networks.internal` subnet (a `/24` or `/26` is typically sufficient) keeps LB VIPs isolated and independently sized.
+
+Note that once `networks.internal` is set it is **immutable** — the CIDR cannot be changed or removed without recreating the cluster.
 
 The `networks.cloudNAT.minPortsPerVM` is optional and is used to define the [minimum number of ports allocated to a VM for the CloudNAT](https://cloud.google.com/nat/docs/overview#number_of_nat_ports_and_connections)
 
