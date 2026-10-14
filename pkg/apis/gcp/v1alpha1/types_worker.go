@@ -49,6 +49,17 @@ type WorkerConfig struct {
 	// NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.
 	// +optional
 	NodeTemplate *extensionsv1alpha1.NodeTemplate `json:"nodeTemplate,omitempty"`
+
+	// AdvancedMachineFeatures contains settings for advanced machine features.
+	// +optional
+	AdvancedMachineFeatures *AdvancedMachineFeatures `json:"advancedMachineFeatures,omitempty"`
+}
+
+// AdvancedMachineFeatures contains advanced configuration for GCP VM instances.
+type AdvancedMachineFeatures struct {
+	// EnableNestedVirtualization enables nested virtualization for the VM.
+	// +optional
+	EnableNestedVirtualization *bool `json:"enableNestedVirtualization,omitempty"`
 }
 
 // Volume contains general configuration for all disks attached to VMs.
