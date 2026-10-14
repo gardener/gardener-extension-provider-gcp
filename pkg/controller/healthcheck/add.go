@@ -39,6 +39,7 @@ var (
 				Burst: ptr.To(130),
 			},
 		},
+		ExtensionClasses: []extensionsv1alpha1.ExtensionClass{extensionsv1alpha1.ExtensionClassShoot},
 	}
 )
 

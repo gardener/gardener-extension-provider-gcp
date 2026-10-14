@@ -23,7 +23,7 @@ var (
 	DefaultAddOptions = AddOptions{}
 
 	// supportedExtensionClasses are the extension classes supported by the backupentry controller.
-	// https://github.com/gardener/gardener/blob/master/pkg/provider-local/controller/backupentry/add.go#L28-L29
+	// Needs to be kept in sync with https://github.com/gardener/gardener/blob/master/pkg/provider-local/controller/backupentry/add.go#L28-L29
 	supportedExtensionClasses = sets.New(extensionsv1alpha1.ExtensionClassGarden, extensionsv1alpha1.ExtensionClassShoot)
 )
 
