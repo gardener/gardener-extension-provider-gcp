@@ -24,7 +24,7 @@ require (
 	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.24.0
-	google.golang.org/api v0.303.0
+	google.golang.org/api v0.304.0
 	gopkg.in/inf.v0 v0.9.1
 	k8s.io/api v0.36.4
 	k8s.io/apiextensions-apiserver v0.36.4
