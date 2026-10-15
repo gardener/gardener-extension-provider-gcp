@@ -202,6 +202,48 @@ var _ = Describe("ValuesProvider", func() {
 				"nodeTags":            namespace,
 			}))
 		})
+
+		It("should use nodes subnet as subNetworkName when no internal subnet is present (BYO mode, E4/E6)", func() {
+			byoCP := cp.DeepCopy()
+			byoCP.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
+				Raw: encode(&apisgcp.InfrastructureStatus{
+					Networks: apisgcp.NetworkStatus{
+						VPC: apisgcp.VPC{
+							Name: "vpc-1234",
+						},
+						Subnets: []apisgcp.Subnet{
+							{
+								Name:    "subnet-nodes1234",
+								Purpose: apisgcp.PurposeNodes,
+							},
+						},
+					},
+				}),
+			}
+			byoCluster := &extensionscontroller.Cluster{
+				ObjectMeta: cluster.ObjectMeta,
+				Seed:       cluster.Seed,
+				Shoot:      cluster.Shoot.DeepCopy(),
+			}
+			byoCluster.Shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{
+				Raw: encode(&apisgcp.InfrastructureConfig{
+					Networks: apisgcp.NetworkConfig{
+						VPC:           &apisgcp.VPC{Name: "vpc-1234"},
+						SubnetWorkers: &apisgcp.SubnetReference{Name: "subnet-nodes1234"},
+					},
+				}),
+			}
+			values, err := vp.GetConfigChartValues(ctx, byoCP, byoCluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"projectID":           projectID,
+				"networkName":         "vpc-1234",
+				"subNetworkName":      "subnet-nodes1234",
+				"subNetworkNameNodes": "subnet-nodes1234",
+				"zone":                zone,
+				"nodeTags":            namespace,
+			}))
+		})
 	})
 
 	Describe("#GetControlPlaneChartValues", func() {
