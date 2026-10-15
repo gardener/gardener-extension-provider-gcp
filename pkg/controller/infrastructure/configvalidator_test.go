@@ -198,8 +198,8 @@ var _ = Describe("ConfigValidator", func() {
 			infra.Spec.ProviderConfig.Raw = encode(byoConfig())
 			gcpClientFactory.EXPECT().Compute(ctx, gomock.Any(), infra.Spec.SecretRef).Return(gcpComputeClient, nil)
 			gcpComputeClient.EXPECT().GetNetwork(ctx, vpcName).Return(&compute.Network{Name: vpcName, SelfLink: vpcSelfLink}, nil).AnyTimes()
-			// nodes fits inside the worker subnet 10.250.0.0/19; pods and services live in separate ranges.
-			Expect(c.Create(ctx, newCluster(namespace, "10.250.0.0/24", "100.96.0.0/11", "100.64.0.0/13"))).To(Succeed())
+			// worker subnet 10.250.0.0/19 fits inside nodes 10.250.0.0/16; pods and services live in separate ranges.
+			Expect(c.Create(ctx, newCluster(namespace, "10.250.0.0/16", "100.96.0.0/11", "100.64.0.0/13"))).To(Succeed())
 		})
 
 		It("should succeed if the worker subnet CIDR fits the cluster networking", func() {
@@ -212,7 +212,7 @@ var _ = Describe("ConfigValidator", func() {
 			Expect(errorList).To(BeEmpty())
 		})
 
-		It("should forbid a worker subnet that does not contain the node network", func() {
+		It("should forbid a worker subnet that is not a subset of the node network", func() {
 			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(&compute.Subnetwork{
 				IpCidrRange: "10.180.0.0/19",
 				Network:     vpcSelfLink,
@@ -221,7 +221,7 @@ var _ = Describe("ConfigValidator", func() {
 			errorList := cv.Validate(ctx, infra)
 			Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
-				"Field": Equal("networking.nodes"),
+				"Field": Equal("networks.subnetWorkers"),
 			}))))
 		})
 
@@ -319,7 +319,7 @@ var _ = Describe("ConfigValidator", func() {
 			infra.Spec.ProviderConfig.Raw = encode(byoConfig())
 			gcpClientFactory.EXPECT().Compute(ctx, gomock.Any(), infra.Spec.SecretRef).Return(gcpComputeClient, nil)
 			gcpComputeClient.EXPECT().GetNetwork(ctx, vpcName).Return(&compute.Network{Name: vpcName, SelfLink: vpcSelfLink}, nil).AnyTimes()
-			Expect(c.Create(ctx, newCluster(namespace, "10.250.0.0/24", "100.96.0.0/11", "100.64.0.0/13",
+			Expect(c.Create(ctx, newCluster(namespace, "10.250.0.0/16", "100.96.0.0/11", "100.64.0.0/13",
 				gardencorev1beta1.IPFamilyIPv4, gardencorev1beta1.IPFamilyIPv6))).To(Succeed())
 		})
 

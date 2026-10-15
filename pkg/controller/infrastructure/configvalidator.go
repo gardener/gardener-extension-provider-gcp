@@ -237,7 +237,7 @@ func validateWorkerSubnetCIDRRelationships(workerSubnetCIDR string, networking *
 	var allErrs field.ErrorList
 	if networking.Nodes != nil {
 		nodes := cidrvalidation.NewCIDR(*networking.Nodes, networkingPath.Child("nodes"))
-		allErrs = append(allErrs, workerCIDR.ValidateSubset(nodes)...)
+		allErrs = append(allErrs, nodes.ValidateSubset(workerCIDR)...)
 	}
 	if networking.Pods != nil {
 		pods := cidrvalidation.NewCIDR(*networking.Pods, networkingPath.Child("pods"))
