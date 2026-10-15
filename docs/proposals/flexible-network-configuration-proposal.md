@@ -108,7 +108,7 @@ The CCM has no concept of an egress topology. It only creates forwarding rules r
 
 | # | Resource | Managed mode | BYO mode |
 |---|---|---|---|
-| 1 | GCP IAM Service Account | created (`<technicalID>`) | unchanged — still created |
+| 1 | GCP IAM Service Account | created (`<technicalID>`) | not created — the BYO reconcile branch does not schedule `ensureServiceAccount` |
 | 2 | VPC network | created (`<technicalID>`) unless `Networks.VPC.Name` set | required BYO reference (`Networks.VPC.Name`) — verify-only |
 | 3 | Worker subnetwork (`PurposeNodes`) | created (`<technicalID>-nodes`) | required BYO reference (`Networks.SubnetWorkers.Name`) — verify-only |
 | 4 | Internal subnetwork (`PurposeInternal`) | created (`<technicalID>-internal`) if `Networks.Internal` set | forbidden; internal LB IPs allocate from the workers subnet via `subnetwork-name` fallback in `cloudprovider.conf` |
@@ -120,7 +120,7 @@ The CCM has no concept of an egress topology. It only creates forwarding rules r
 | 10 | Firewall rule `<technicalID>-allow-health-checks` (IPv4) | created, untargeted | not created; user pre-provisions equivalent |
 | 11 | Firewall rule `<technicalID>-allow-internal-access-ipv6` | created, untargeted, dual-stack only | dual-stack: not created; user pre-provisions equivalent |
 | 12 | Firewall rule `<technicalID>-allow-health-checks-ipv6` | created, untargeted, dual-stack only | dual-stack: not created; user pre-provisions equivalent |
-| 13 | IPv6 CIDR assignment on subnets | waited-for during reconcile, dual-stack only | N/A — user's subnets bring their own IPv6 CIDRs already |
+| 13 | IPv6 CIDR assignment on subnets | waited-for during reconcile, dual-stack only | dual-stack: `ensureIPv6CIDRs` slices the shoot's IPv6 node/services CIDRs from the user subnets' pre-assigned external `/64` prefixes; Gardener assigns nothing on the subnet itself |
 | 14 | Alias-IP ranges on worker VMs (dual-stack only) | written per-VM by MCM using the workers subnet's secondary range `ipv4-pod-cidr` | dual-stack: written per-VM by MCM using the workers subnet's secondary range named by `SubnetWorkers.PodSecondaryRangeName` |
 
 **Per-Bastion resources (bastion controller):**
@@ -146,8 +146,8 @@ The CCM has no concept of an egress topology. It only creates forwarding rules r
 |---|---|---|---|
 | Rows 1–14 | Resources created by the infrastructure reconciler | deleted by the reconciler | not created, nothing to delete |
 | Rows 15–18 | Bastion resources | deleted by bastion controller on Bastion CR delete | unchanged |
-| Row 19 | CCM custom routes | deleted by `ensureKubernetesRoutesDeleted` | cleaned up by the in-cluster CCM route controller as nodes are deleted |
-| Row 20 | CCM firewall rules | deleted by `ensureFirewallRulesDeleted` (filter: `k8s`-prefix + `TargetTag = <technicalID>`) | cleaned up by the in-cluster CCM LB controller when owning `Service` is deleted |
+| Row 19 | CCM custom routes | deleted by `ensureKubernetesRoutesDeleted` | deleted by `ensureKubernetesRoutesDeleted` (BYO branch runs it as a force-delete safety net); normally the in-cluster CCM route controller removes them first as nodes are deleted |
+| Row 20 | CCM firewall rules | deleted by `ensureFirewallRulesDeleted` (filter: `k8s`-prefix + `TargetTag = <technicalID>`) | deleted by `ensureCCMFirewallRulesDeleted` (filter: `k8s-fw-*` prefix + `TargetTag = <technicalID>`); normally the in-cluster CCM LB controller removes them first when the owning `Service` is deleted |
 | Row 21 | `ingress-gce` resources | cleaned up by `ingress-gce` when owning `Ingress`/`Service` deleted; firewall rules swept by `ensureFirewallRulesDeleted` | same; user's project retains leaked global resources if `ingress-gce` deletion did not complete cleanly |
 
 ### API changes
@@ -230,6 +230,7 @@ Added in `pkg/apis/gcp/validation/infrastructure.go`.
 | `Networks.SubnetServices.PodSecondaryRangeName` forbidden | Only meaningful on the workers subnet. |
 | `Networks.SubnetServices` forbidden for single-stack IPv4 | Only used for IPv6 services. |
 | `Networks.SubnetServices` forbidden without `Networks.SubnetWorkers` | The two are a matched pair. |
+| `Networks.SubnetServices.Name` must differ from `Networks.SubnetWorkers.Name` | Services IPv6 is sliced from the services subnet's `/64`; nodes/pods use the workers subnet's `/64`. Pointing both at one subnet would overlap services with nodes/pods. |
 
 **Runtime (pre-flight, `pkg/controller/infrastructure/configvalidator.go`):**
 
@@ -244,18 +245,22 @@ Added in `pkg/apis/gcp/validation/infrastructure.go`.
 
 **Immutability** (`ValidateInfrastructureConfigUpdate`):
 
-- `Networks.SubnetWorkers` cannot be added or removed after shoot creation.
-- `Networks.SubnetWorkers.Name`, `Networks.SubnetWorkers.PodSecondaryRangeName`, and `Networks.SubnetServices.Name` are immutable once set.
-- Existing VPC and CloudRouter immutability rules continue to apply.
+- Switching between BYO and managed mode is forbidden (`SubnetWorkers` present on exactly one of old/new config).
+- In BYO mode `Networks.SubnetWorkers`, `Networks.SubnetServices`, and `Networks.VPC` are each validated as whole-struct immutable fields (`apivalidation.ValidateImmutableField`) — so `Name`, `PodSecondaryRangeName`, `CloudRouter`, etc. are all immutable once set.
+- Existing VPC and CloudRouter immutability rules continue to apply in managed mode.
+
+**Stack migration** (`ValidateInfrastructureConfigStackMigration`): in BYO mode, migrating a shoot between single-stack and dual-stack networking (adding/removing `IPv6` from `shoot.spec.networking.ipFamilies`) is forbidden. The BYO subnets are provisioned for a fixed stack type, so a stack change would invalidate the referenced ranges.
 
 ### Reconciler behavior
 
 Task-gating in `pkg/controller/infrastructure/infraflow/graph.go`:
 
+The reconcile graph takes a dedicated early-return branch in BYO mode (`buildReconcileGraph`): it schedules only the tasks below and returns, rather than gating each managed-mode task individually.
+
 | Task | BYO mode |
 |---|---|
-| `ensureServiceAccount` | unchanged |
-| `ensureVPC` | verify-only via existing `ensureUserManagedVPC` |
+| `ensureServiceAccount` | **skipped** — not scheduled in the BYO branch |
+| `ensureVPC` | verify-only; `ensureVPC` dispatches to `ensureUserManagedVPC` whenever `Networks.VPC != nil` |
 | `ensureNodesSubnet` | **replaced** by `ensureUserManagedWorkersSubnet` — verify existence, populate whiteboard, do not create or patch |
 | `ensureInternalSubnet` | **skipped** |
 | `ensureServicesSubnet` | **replaced** by `ensureUserManagedServicesSubnet` (dual-stack); skipped in IPv4 |
@@ -263,10 +268,10 @@ Task-gating in `pkg/controller/infrastructure/infraflow/graph.go`:
 | `ensureCloudNAT` | **skipped** |
 | `ensureIpAddresses` | **skipped** |
 | `ensureFirewallRules` | **skipped** |
-| `ensureIPv6CIDRs` | **skipped** (user's subnets already have IPv6 CIDRs) |
-| `ensureAliasIpRanges` | dual-stack migration only, unchanged — writes are per-instance, not VPC-scoped |
+| `ensureIPv6CIDRs` | **run** in dual-stack BYO — slices the shoot's IPv6 node/services CIDRs from the user subnets' external `/64` prefixes; skipped in IPv4 |
+| `ensureAliasIpRanges` | **skipped** — the dual-stack-migration task is managed-mode only and is not scheduled in the BYO branch |
 
-Delete graph: skip all deletion tasks in BYO mode via an early return — BYO resources (workers subnet, services subnet, VPC, router, NAT, static firewall rules) are user-owned and must not be deleted by Gardener. `ensureKubernetesRoutesDeleted` and `ensureFirewallRulesDeleted` are likewise skipped; the CCM cleans up its own `shoot--*` routes and `k8s-fw-*` firewall rules before the infrastructure deletion step runs.
+Delete graph (`buildDeleteGraph`): the BYO branch schedules exactly two cleanup tasks and returns — `ensureKubernetesRoutesDeleted` (removes CCM-authored `shoot--*` per-node routes) and `ensureCCMFirewallRulesDeleted` (removes only CCM-authored `k8s-fw-*` rules that are tag-scoped to this cluster). These run as a force-delete safety net for the case where the in-cluster CCM is already gone and could not clean up after itself. All resource-destroying tasks (workers subnet, services subnet, VPC, router, NAT, static firewall rules) are skipped — those resources are user-owned. Note `ensureCCMFirewallRulesDeleted` is distinct from managed-mode `ensureFirewallRulesDeleted`: it never touches the static `FirewallRuleAllow*` rules, which in BYO mode are user-created.
 
 ### Status shape
 
@@ -280,7 +285,7 @@ Delete graph: skip all deletion tasks in BYO mode via an early return — BYO re
 | `NatIPs[]` | empty |
 | `IPFamilies` | as shoot networking |
 
-`Infrastructure.Status.EgressCIDRs` is **nil** in BYO mode. Gardener has no reliable way to know the user's egress IPs — they may come from a user-provisioned Cloud NAT, an NVA, an on-prem gateway, or nothing at all. Downstream consumers that rely on this field must handle the nil case.
+`Infrastructure.Status.EgressCIDRs` is **empty** in BYO mode. The status builder derives egress CIDRs from the NAT IPs (`status.Networks.NatIPs`), which is empty in BYO mode since Gardener provisions no NAT; the dual-stack IPv6 egress CIDR is only appended when IPv4 egress CIDRs already exist, so it is not added either. Gardener has no reliable way to know the user's egress IPs — they may come from a user-provisioned Cloud NAT, an NVA, an on-prem gateway, or nothing at all. Downstream consumers that rely on this field must handle the empty case.
 
 ### Cloud-provider config
 
@@ -482,6 +487,7 @@ User pre-provisions:
 - Existing managed shoots continue to work with no changes. `Networks.SubnetWorkers` and `Networks.SubnetServices` are optional and additive.
 - New shoots may opt into BYO mode at creation time.
 - In-place transition between managed and BYO mode is **forbidden**. Once created with `SubnetWorkers` set, the shoot stays in BYO mode; once created without, it stays managed. Enforced in `ValidateInfrastructureConfigUpdate`. Rationale: transitioning would recreate/delete the worker subnet, Cloud Router, Cloud NAT, and firewall rules while workloads are running — disruptive and unnecessary for initial delivery.
+- In BYO mode, migrating a shoot between single-stack and dual-stack (changing `shoot.spec.networking.ipFamilies`) is **forbidden**, enforced in `ValidateInfrastructureConfigStackMigration`. The BYO subnets are pre-provisioned for a fixed stack type and ranges; a stack change would invalidate them.
 
 ## User responsibilities
 
@@ -499,7 +505,7 @@ Before creating a BYO shoot the user MUST provide:
 
 The user MUST NOT:
 
-- Rely on `shoot.status.provider.egressCIDRs` — it is nil in BYO mode.
+- Rely on `shoot.status.provider.egressCIDRs` — it is empty in BYO mode.
 - Run competing automation against the CCM's `shoot--*` routes or `k8s-fw-*` firewall rules; these are managed by the in-cluster CCM lifecycle.
 
 ## Deletion / teardown
@@ -507,8 +513,8 @@ The user MUST NOT:
 - BYO VPC, worker subnetwork, services subnetwork (dual-stack) — never deleted by Gardener.
 - Cloud Router / Cloud NAT — never created in BYO mode, never deleted.
 - Four static infra firewall rules — never created in BYO mode, never deleted.
-- CCM-authored `k8s-fw-*` firewall rules — cleaned up by the in-cluster CCM LB controller when the owning `Service` is deleted before shoot teardown.
-- CCM-authored `shoot--*` custom routes (IPv4 only) — cleaned up by the in-cluster CCM route controller as nodes are drained and deleted before shoot teardown.
+- CCM-authored `k8s-fw-*` firewall rules — normally removed by the in-cluster CCM LB controller when the owning `Service` is deleted; the BYO delete flow additionally runs `ensureCCMFirewallRulesDeleted` as a force-delete safety net (tag-scoped `k8s-fw-*` rules only; never the static user-owned allow rules).
+- CCM-authored `shoot--*` custom routes (IPv4 only) — normally removed by the in-cluster CCM route controller as nodes are drained; the BYO delete flow additionally runs `ensureKubernetesRoutesDeleted` as a safety net.
 - `ingress-gce` L7 global resources — cleaned up by `ingress-gce` when the owning `Ingress`/`Service` is deleted. Users must ensure all such objects are deleted before shoot deletion.
 - Orphan artifacts (CCM-authored firewall rules, custom routes) that the CCM did not manage to remove before teardown (crash, force-delete, transient API errors) remain in the user's VPC. The user is responsible for pruning them.
 
@@ -576,6 +582,7 @@ Users must ensure their IAM setup grants Gardener's GCP principal `compute.firew
 | C15 | Dual-stack BYO subnet with `stackType: IPV4_ONLY` | Runtime validator rejects. |
 | C16 | Dual-stack BYO subnet where `PodSecondaryRangeName` does not exist on the subnet | Runtime validator rejects. |
 | C17 | Dual-stack BYO subnet where secondary range CIDR mismatches `shoot.spec.networking.pods` | Runtime validator rejects. |
+| C18 | Dual-stack BYO + `SubnetServices.Name` equal to `SubnetWorkers.Name` | API validation rejects. |
 
 ### Group D — Update / immutability
 
@@ -585,6 +592,8 @@ Users must ensure their IAM setup grants Gardener's GCP principal `compute.firew
 | D2 | BYO shoot: attempt to remove `SubnetWorkers` | Rejected. |
 | D3 | BYO shoot: change `SubnetWorkers.Name` | Rejected. |
 | D4 | Dual-stack BYO shoot: change `SubnetWorkers.PodSecondaryRangeName` or `SubnetServices.Name` | Rejected. |
+| D5 | BYO shoot: change `Networks.VPC` | Rejected (VPC is whole-struct immutable in BYO mode). |
+| D6 | BYO shoot: change `shoot.spec.networking.ipFamilies` (single-stack ↔ dual-stack) | Rejected by `ValidateInfrastructureConfigStackMigration`. |
 
 ### Group E — Runtime invariants
 
@@ -598,7 +607,7 @@ Users must ensure their IAM setup grants Gardener's GCP principal `compute.firew
 | E6 | Creating `Service type=LoadBalancer` with `cloud.google.com/load-balancer-type: Internal` → forwarding rule allocates IP from workers subnet CIDR. |
 | E7 | Creating `Service type=LoadBalancer` with `networking.gke.io/internal-load-balancer-subnet: my-lb-subnet` → forwarding rule allocates IP from `my-lb-subnet`. |
 | E8 | Creating a `Bastion` resource → bastion VM created with NIC in BYO worker subnet; three tag-scoped firewall rules created; ingress SSH from `Bastion.Spec.Ingress` CIDRs succeeds. |
-| E9 | `Infrastructure.Status.EgressCIDRs` is nil. |
+| E9 | `Infrastructure.Status.EgressCIDRs` is empty. |
 
 ### Group F — Deletion / teardown
 
@@ -617,7 +626,7 @@ Users must ensure their IAM setup grants Gardener's GCP principal `compute.firew
 | 3 | Orphan artifacts on shoot deletion | CCM-authored firewall rules and custom routes that were not cleaned up before teardown remain in the user's VPC. | Not cleaned up by Gardener. User responsibility. Documented. |
 | 4 | `ingress-gce` global resources | Global resources created by `ingress-gce` (URL maps, target proxies) are not cleaned up by the extension's teardown. | User must delete all `Ingress`/dual-stack `Service` objects before shoot deletion. Documented. |
 | 5 | IAM permissions | Gardener's GCP principal needs `compute.firewalls.*` and `compute.routes.*` on the project owning the BYO VPC. In locked-down enterprise projects where only specific roles are assigned, LB Services and bastion creation fail. | User-facing prerequisite. Documented. |
-| 6 | `EgressCIDRs` nil | Downstream consumers (e.g. NetworkPolicy automation that uses egress IPs) that rely on `shoot.status.provider.egressCIDRs` will receive nil. | Documented. Consumers must handle nil. |
+| 6 | `EgressCIDRs` empty | Downstream consumers (e.g. NetworkPolicy automation that uses egress IPs) that rely on `shoot.status.provider.egressCIDRs` will receive an empty list. | Documented. Consumers must handle the empty case. |
 
 ## Alternatives considered
 

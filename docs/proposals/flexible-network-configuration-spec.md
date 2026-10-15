@@ -12,7 +12,6 @@
 - [Reconciler](#reconciler)
 - [Cloud-provider config](#cloud-provider-config)
 - [Bastion controller](#bastion-controller)
-- [Metadata labels](#metadata-labels)
 - [Testing plan](#testing-plan)
 - [Suggested implementation order](#suggested-implementation-order)
 
@@ -174,6 +173,13 @@ if infra.Networks.SubnetWorkers != nil {
             allErrs = append(allErrs, field.Forbidden(byoPath.Child("subnetServices", "podSecondaryRangeName"),
                 "only valid on subnetWorkers, not subnetServices"))
         }
+        // services IPv6 is sliced from the services subnet's /64, nodes/pods from the workers subnet's /64,
+        // so the two references must point at different subnets.
+        if len(infra.Networks.SubnetServices.Name) > 0 &&
+            infra.Networks.SubnetServices.Name == infra.Networks.SubnetWorkers.Name {
+            allErrs = append(allErrs, field.Forbidden(byoPath.Child("subnetServices", "name"),
+                "must reference a different subnet than subnetWorkers"))
+        }
     }
 }
 
@@ -184,35 +190,36 @@ if infra.Networks.SubnetServices != nil && infra.Networks.SubnetWorkers == nil {
 }
 ```
 
-Extend `ValidateInfrastructureConfigUpdate` in the same file with immutability rules:
+Extend `ValidateInfrastructureConfigUpdate` in the same file. The implementation treats the BYO references as whole-struct immutable fields (rather than field-by-field) and early-returns once the BYO path is handled:
 
 ```go
-// Mode transition forbidden
+// Mode transition forbidden — early return
 oldBYO := oldConfig.Networks.SubnetWorkers != nil
 newBYO := newConfig.Networks.SubnetWorkers != nil
 if oldBYO != newBYO {
-    allErrs = append(allErrs, field.Forbidden(fldPath.Child("networks", "subnetWorkers"),
-        "cannot add or remove subnetWorkers on an existing shoot"))
+    allErrs = append(allErrs, field.Forbidden(networksPath.Child("subnetWorkers"),
+        "cannot switch between BYO subnet mode and managed mode"))
+    return allErrs
 }
-// SubnetWorkers.Name immutable
-if oldConfig.Networks.SubnetWorkers != nil && newConfig.Networks.SubnetWorkers != nil {
+
+// In BYO mode, SubnetWorkers, SubnetServices, and VPC are each whole-struct immutable.
+if oldBYO {
     allErrs = append(allErrs, apivalidation.ValidateImmutableField(
-        newConfig.Networks.SubnetWorkers.Name,
-        oldConfig.Networks.SubnetWorkers.Name,
-        fldPath.Child("networks", "subnetWorkers", "name"))...)
+        newConfig.Networks.SubnetWorkers, oldConfig.Networks.SubnetWorkers,
+        networksPath.Child("subnetWorkers"))...)
     allErrs = append(allErrs, apivalidation.ValidateImmutableField(
-        newConfig.Networks.SubnetWorkers.PodSecondaryRangeName,
-        oldConfig.Networks.SubnetWorkers.PodSecondaryRangeName,
-        fldPath.Child("networks", "subnetWorkers", "podSecondaryRangeName"))...)
+        newConfig.Networks.SubnetServices, oldConfig.Networks.SubnetServices,
+        networksPath.Child("subnetServices"))...)
+    allErrs = append(allErrs, apivalidation.ValidateImmutableField(
+        newConfig.Networks.VPC, oldConfig.Networks.VPC,
+        networksPath.Child("vpc"))...)
+    return allErrs
 }
-// SubnetServices.Name immutable
-if oldConfig.Networks.SubnetServices != nil && newConfig.Networks.SubnetServices != nil {
-    allErrs = append(allErrs, apivalidation.ValidateImmutableField(
-        newConfig.Networks.SubnetServices.Name,
-        oldConfig.Networks.SubnetServices.Name,
-        fldPath.Child("networks", "subnetServices", "name"))...)
-}
+
+// ... existing managed-mode immutability rules unchanged ...
 ```
+
+Additionally, a separate `ValidateInfrastructureConfigStackMigration(config, oldNetworking, newNetworking, fldPath)` forbids migrating a BYO shoot between single-stack and dual-stack (i.e. adding/removing `IPv6` from `shoot.spec.networking.ipFamilies`), since the user subnets are pre-provisioned for a fixed stack type.
 
 Covers `C1`–`C12`, `D1`–`D4`.
 
@@ -239,17 +246,23 @@ if infraConfig.IsUserManagedEgress() {
     }
 
     if sub != nil {
-        // sub.Network is a self-link; compare the resource name suffix against VPC.Name
-        if lastPathSegment(sub.Network) != infraConfig.Networks.VPC.Name {
+        // sub.Network and vpc.SelfLink are both self-links; compare them directly.
+        if sub.Network != vpc.SelfLink {
             allErrs = append(allErrs, field.Invalid(..., "worker subnet does not belong to the referenced VPC"))
         }
 
         // 3. subnet CIDR contains shoot.spec.networking.nodes, non-overlapping with pods/services
-        // subnetCIDR.ValidateSubset(nodes) — the nodes CIDR must fit inside the subnet
+        // nodes.ValidateSubset(workerCIDR) — the nodes CIDR must fit inside the subnet; workerCIDR must
+        // not overlap pods/services
 
         // 4. Dual-stack checks
         if isDualStack {
             if sub.StackType != "IPV4_IPV6" {
+                allErrs = append(allErrs, ...)
+            }
+            // the subnet must have an external IPv6 /64 prefix assigned (ipv6AccessType EXTERNAL);
+            // ExternalIpv6Prefix == "" is rejected — the reconciler waits on it to allocate IPv6 ranges
+            if sub.ExternalIpv6Prefix == "" {
                 allErrs = append(allErrs, ...)
             }
             // secondary range named PodSecondaryRangeName exists and matches pods CIDR
@@ -276,35 +289,29 @@ if infraConfig.IsUserManagedEgress() {
         if svcSub == nil {
             allErrs = append(allErrs, field.Invalid(..., "referenced services subnet does not exist"))
         }
-        if svcSub != nil && lastPathSegment(svcSub.Network) != infraConfig.Networks.VPC.Name {
+        if svcSub != nil && svcSub.Network != vpc.SelfLink {
             allErrs = append(allErrs, field.Invalid(..., "services subnet does not belong to the referenced VPC"))
         }
-        // verify svcSub.StackType == "IPV4_IPV6" and svcSub.Ipv6CidrRange != ""
+        // verify svcSub.StackType == "IPV4_IPV6" and svcSub.ExternalIpv6Prefix != ""
     }
 }
 ```
+
+The whole BYO block only runs when the shoot's `Networking` is present on the `Cluster` resource; the validator reads it via `extensionscontroller.GetCluster` and resolves the VPC once with `GetNetwork` before validating the subnets.
 
 Covers `C13`–`C17`.
 
 ## Reconciler
 
-### Helper function
+### Mode predicate
 
-**File**: `pkg/controller/infrastructure/infraflow/ensure_utils.go`
-
-Add alongside the existing `isUserVPC` and `isUserRouter` functions:
-
-```go
-func isUserManagedEgress(config *gcp.InfrastructureConfig) bool {
-    return config.IsUserManagedEgress()
-}
-```
+BYO mode is detected directly via the `InfrastructureConfig.IsUserManagedEgress()` method (defined on the API type in `pkg/apis/gcp/types_infrastructure.go`); there is no free-function wrapper. Call sites use `fctx.config.IsUserManagedEgress()`.
 
 ### New ensure functions
 
-**File**: `pkg/controller/infrastructure/infraflow/ensure.go`
+**File**: `pkg/controller/infrastructure/infraflow/ensure_byo.go` (new file; `ensureUserManagedVPC` was extracted here from `ensure.go`)
 
-Add two new functions adjacent to `ensureUserManagedVPC` and `ensureUserManagedCloudRouter`:
+Two new functions alongside `ensureUserManagedVPC`:
 
 ```go
 // ensureUserManagedWorkersSubnet verifies the user's worker subnet exists, belongs to
@@ -319,12 +326,23 @@ func (fctx *FlowContext) ensureUserManagedWorkersSubnet(ctx context.Context) err
         return err
     }
     if subnet == nil {
-        return fmt.Errorf("user-managed worker subnet %q not found in region %q", subnetRef.Name, fctx.infra.Spec.Region)
+        return fmt.Errorf("user-managed nodes subnet %q not found in region %q", subnetRef.Name, fctx.infra.Spec.Region)
     }
     vpc := GetObject[*compute.Network](fctx.whiteboard, ObjectKeyVPC)
     if subnet.Network != vpc.SelfLink {
-        return fmt.Errorf("user-managed worker subnet %q belongs to network %q, not to the configured VPC %q", subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
+        return fmt.Errorf("user-managed nodes subnet %q belongs to network %q, not to the configured VPC %q", subnetRef.Name, subnet.Network, fctx.config.Networks.VPC.Name)
     }
+
+    if fctx.isDualStack() && subnetRef.PodSecondaryRangeName != nil {
+        if err := validatePodSecondaryRange(subnetRef.Name, *subnetRef.PodSecondaryRangeName, subnet.SecondaryIpRanges); err != nil {
+            return err
+        }
+    }
+
+    // Mark that Gardener reconciled resources it must clean up on deletion (kubernetes routes and CCM
+    // firewall rules). Without this marker the delete flow short-circuits and those resources leak,
+    // because BYO mode does not create the VPC/subnets that would otherwise set it.
+    fctx.whiteboard.Set(CreatedResourcesExistKey, "true")
     fctx.whiteboard.SetObject(ObjectKeyNodeSubnet, subnet)
     return nil
 }
@@ -352,51 +370,46 @@ func (fctx *FlowContext) ensureUserManagedServicesSubnet(ctx context.Context) er
 }
 ```
 
+`ensureVPC` (in `ensure.go`) dispatches to `ensureUserManagedVPC` whenever `Networks.VPC != nil`, so the BYO graph reuses `ensureVPC` directly rather than scheduling `ensureUserManagedVPC` by name.
+
 ### Task graph
 
 **File**: `pkg/controller/infrastructure/infraflow/graph.go`
 
-In the **reconcile graph**, replace the existing unconditional task registrations with conditional branches on `isUserManagedEgress(fctx.config)`:
+In the **reconcile graph**, BYO mode takes a dedicated early-return branch at the top of `buildReconcileGraph` rather than gating each managed-mode task. The branch schedules only the verify-only tasks (no service account, no router/NAT/firewall/IP-address tasks) and, for dual-stack, the IPv6-CIDR task:
 
 ```go
-// Nodes subnet — branch on BYO mode
-var ensureNodesSubnet *shared.Task
-if isUserManagedEgress(fctx.config) {
-    ensureNodesSubnet = fctx.AddTask(g, "ensure worker subnet",
-        fctx.ensureUserManagedWorkersSubnet,
-        shared.Timeout(defaultCreateTimeout),
-        shared.Dependencies(ensureVPC))
-} else {
-    ensureNodesSubnet = fctx.AddTask(g, "ensure worker subnet",
-        fctx.ensureNodesSubnet,
-        shared.Timeout(defaultCreateTimeout),
-        shared.Dependencies(ensureVPC, ensureDualStackKubernetesRoutesCleanup))
-}
+func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
+    fctx.BasicFlowContext = shared.NewBasicFlowContext().WithSpan().WithLogger(fctx.log).WithPersist(fctx.persistState)
+    g := flow.NewGraph("infrastructure reconciliation")
 
-// Internal subnet — skip entirely in BYO mode (already handled by DoIf for managed mode)
+    if fctx.config.IsUserManagedEgress() {
+        ensureVPC := fctx.AddTask(g, "ensure VPC", fctx.ensureVPC,
+            shared.Timeout(defaultCreateTimeout))
+        ensureNodesSubnet := fctx.AddTask(g, "ensure worker subnet", fctx.ensureUserManagedWorkersSubnet,
+            shared.Timeout(defaultCreateTimeout),
+            shared.Dependencies(ensureVPC))
+        if fctx.isDualStack() {
+            ensureServicesSubnet := fctx.AddTask(g, "ensure IPv6 services subnet", fctx.ensureUserManagedServicesSubnet,
+                shared.Timeout(defaultCreateTimeout),
+                shared.Dependencies(ensureVPC, ensureNodesSubnet))
+            fctx.AddTask(g, "ensure IPv6 CIDRs", fctx.ensureIPv6CIDRs,
+                shared.Timeout(defaultCreateTimeout),
+                shared.Dependencies(ensureNodesSubnet, ensureServicesSubnet))
+        }
+        return g
+    }
 
-// Services subnet — branch on BYO mode (dual-stack only)
-if isDualStack && isUserManagedEgress(fctx.config) {
-    fctx.AddTask(g, "ensure services subnet",
-        fctx.ensureUserManagedServicesSubnet,
-        shared.Timeout(defaultCreateTimeout),
-        shared.Dependencies(ensureVPC))
-} else if isDualStack {
-    // existing ensureServicesSubnet task
-}
-
-// Cloud Router, Cloud NAT, IP addresses, firewall rules — skip in BYO mode
-if !isUserManagedEgress(fctx.config) {
-    // existing ensureCloudRouter, ensureCloudNAT, ensureIpAddresses, ensureFirewallRules tasks
-}
-
-// IPv6 CIDRs — skip in BYO mode (user's subnets already have them)
-if isDualStack && !isUserManagedEgress(fctx.config) {
-    // existing ensureIPv6CIDRs task
+    // ... existing managed-mode tasks unchanged ...
 }
 ```
 
-In the **delete graph**, use an early return to skip all deletion tasks in BYO mode — BYO resources (subnet, VPC, router, NAT, firewall rules) are owned by the user and must not be deleted by Gardener. `ensureKubernetesRoutesDeleted` and `ensureFirewallRulesDeleted` are also skipped because the CCM cleans up its own `shoot--*` routes and `k8s-fw-*` rules before the shoot is deleted:
+Notes:
+- `ensureVPC` is reused as-is: it dispatches to `ensureUserManagedVPC` whenever `Networks.VPC != nil`.
+- `ensureIPv6CIDRs` is reused unchanged — in dual-stack BYO it slices the shoot's IPv6 node/services CIDRs from the user subnets' external `/64` prefixes.
+- `ensureServiceAccount` is deliberately absent from the BYO branch.
+
+In the **delete graph**, BYO mode takes an early-return branch that schedules exactly two cleanup tasks — it never destroys the user-owned VPC, subnets, router, NAT, or static firewall rules:
 
 ```go
 func (fctx *FlowContext) buildDeleteGraph() *flow.Graph {
@@ -404,6 +417,10 @@ func (fctx *FlowContext) buildDeleteGraph() *flow.Graph {
     g := flow.NewGraph("infrastructure deletion")
 
     if fctx.config.IsUserManagedEgress() {
+        fctx.AddTask(g, "destroy kubernetes routes", fctx.ensureKubernetesRoutesDeleted,
+            shared.Timeout(defaultDeleteTimeout))
+        fctx.AddTask(g, "destroy CCM firewall rules", fctx.ensureCCMFirewallRulesDeleted,
+            shared.Timeout(defaultDeleteTimeout))
         return g
     }
 
@@ -411,36 +428,27 @@ func (fctx *FlowContext) buildDeleteGraph() *flow.Graph {
 }
 ```
 
+`ensureCCMFirewallRulesDeleted` removes only CCM-authored `k8s-fw-*` rules tag-scoped to the cluster — a force-delete safety net for when the in-cluster CCM is gone before it can clean up its own LoadBalancer rules. It never touches the static `FirewallRuleAllow*` rules, which in BYO mode are user-owned. `ensureKubernetesRoutesDeleted` plays the same safety-net role for `shoot--*` per-node routes.
+
 Covers `E1`–`E3` (reconciler makes no create/update calls against BYO resources).
 
 ### Status builder
 
 **File**: `pkg/controller/infrastructure/infraflow/reconciler.go`
 
-In the status-building section (around `buildStatus`), populate `Subnets[]` from the whiteboard in BYO mode:
+The status builder (`getStatus`) needs **no BYO-specific branch**. It unconditionally reads whatever subnet objects the ensure tasks placed on the whiteboard under `ObjectKeyNodeSubnet` / `ObjectKeyServicesSubnet` and appends them as `PurposeNodes` / `PurposeServices`. In BYO mode those objects are populated by `ensureUserManagedWorkersSubnet` / `ensureUserManagedServicesSubnet`, so the resulting status carries the BYO subnet names without any extra code:
 
 ```go
-if isUserManagedEgress(fctx.config) {
-    // PurposeNodes from whiteboard
-    if sub, ok := fctx.whiteboard.GetObject(ObjectKeyNodeSubnet).(*compute.Subnetwork); ok && sub != nil {
-        subnets = append(subnets, v1alpha1.Subnet{
-            Name:    sub.Name,
-            Purpose: v1alpha1.PurposeNodes,
-            // CIDR is available from sub.IpCidrRange
-        })
-    }
-    // PurposeServices (dual-stack)
-    if isDualStack {
-        if sub, ok := fctx.whiteboard.GetObject(ObjectKeyServicesSubnet).(*compute.Subnetwork); ok && sub != nil {
-            subnets = append(subnets, v1alpha1.Subnet{
-                Name:    sub.Name,
-                Purpose: v1alpha1.PurposeServices,
-            })
-        }
-    }
-    // NatIPs remains empty; EgressCIDRs remains nil
+if s := GetObject[*compute.Subnetwork](fctx.whiteboard, ObjectKeyNodeSubnet); s != nil {
+    status.Networks.Subnets = append(status.Networks.Subnets, v1alpha1.Subnet{
+        Name:    s.Name,
+        Purpose: v1alpha1.PurposeNodes,
+    })
 }
+// ... PurposeInternal, PurposeServices identically ...
 ```
+
+Because BYO mode never populates `ObjectKeyRouter` or `ObjectKeyIPAddresses`, `VPC.CloudRouter` and `NatIPs` stay empty automatically. `EgressCIDRs` is derived from `NatIPs` in `PatchProviderStatusAndState`, so it also stays empty.
 
 Covers `E9`.
 
@@ -490,36 +498,36 @@ Covers `E4`, `E6`.
 
 **File**: `pkg/controller/bastion/actuator.go`
 
-`getWorkersCIDR` currently reads from `InfrastructureConfig.Networks.Workers` (line ~77). In BYO mode that field is empty. Fix it to fall back to the CIDR from the `PurposeNodes` subnet in the infrastructure status:
+`getWorkersCIDR` currently reads from `InfrastructureConfig.Networks.Workers` (line ~77). In BYO mode that field is empty. The implementation looks the primary CIDR up **live from GCP** via `GetSubnet(SubnetWorkers.Name)` and returns `subnet.IpCidrRange` — it does not read the infrastructure status. The function therefore takes a `context.Context` and a `gcpclient.ComputeClient`:
 
 ```go
-func getWorkersCIDR(cluster *controller.Cluster) (string, error) {
+func getWorkersCIDR(ctx context.Context, cluster *controller.Cluster, gcpClient gcpclient.ComputeClient) (string, error) {
     infrastructureConfig := &apisgcp.InfrastructureConfig{}
     if err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig); err != nil {
         return "", err
     }
 
-    // BYO mode: Workers field is empty; read CIDR from InfrastructureStatus instead.
-    if infrastructureConfig.IsUserManagedEgress() {
-        infraStatus := &apisgcp.InfrastructureStatus{}
-        if cluster.Shoot.Status.Provider == nil || cluster.Shoot.Status.Provider.InfrastructureStatus == nil {
-            return "", fmt.Errorf("infrastructure status not available")
-        }
-        if err := json.Unmarshal(cluster.Shoot.Status.Provider.InfrastructureStatus.Raw, infraStatus); err != nil {
-            return "", err
-        }
-        subnet, err := apihelper.FindSubnetForPurpose(infraStatus.Networks.Subnets, apisgcp.PurposeNodes)
-        if err != nil || subnet == nil {
-            return "", fmt.Errorf("could not find nodes subnet in infrastructure status")
-        }
-        return subnet.CIDR, nil
+    if len(infrastructureConfig.Networks.Workers) > 0 {
+        return infrastructureConfig.Networks.Workers, nil
     }
 
-    return infrastructureConfig.Networks.Workers, nil
+    // BYO mode: Workers is empty — look up the subnet's primary CIDR from GCP.
+    if infrastructureConfig.Networks.SubnetWorkers != nil {
+        subnet, err := gcpClient.GetSubnet(ctx, cluster.Shoot.Spec.Region, infrastructureConfig.Networks.SubnetWorkers.Name)
+        if err != nil {
+            return "", fmt.Errorf("failed to get worker subnet %q: %w", infrastructureConfig.Networks.SubnetWorkers.Name, err)
+        }
+        if subnet == nil {
+            return "", fmt.Errorf("worker subnet %q not found", infrastructureConfig.Networks.SubnetWorkers.Name)
+        }
+        return subnet.IpCidrRange, nil
+    }
+
+    return "", fmt.Errorf("no workers CIDR found: neither Networks.Workers nor Networks.SubnetWorkers is set")
 }
 ```
 
-Note: `Subnet.CIDR` may not be a field on the current status type — check `types_infrastructure.go`. If the CIDR is not stored in status today, it must be added when building the status from the BYO subnet's `IpCidrRange` (see the status builder section above).
+Reading live from GCP avoids a dependency on the infrastructure status being populated and keeps the status type unchanged (no `Subnet.CIDR` field is needed).
 
 Covers `E8`.
 
@@ -537,19 +545,20 @@ Covers `E8`.
 - `C17`: dual-stack subnet with secondary range CIDR mismatch.
 - Happy path for both IPv4 and dual-stack.
 
-**`pkg/controller/infrastructure/infraflow/ensure_test.go`** (new or extend) — cover `ensureUserManagedWorkersSubnet`:
-- Happy path: subnet found, stored on whiteboard.
+**`pkg/controller/infrastructure/infraflow/ensure_byo_test.go`** (new file) — cover `ensureUserManagedWorkersSubnet`:
+- Happy path: subnet found, stored on whiteboard, `CreatedResourcesExistKey` set.
 - Subnet not found: error returned.
+- Subnet belongs to a different VPC: error returned.
 - Dual-stack path: `ensureUserManagedServicesSubnet` happy path and not-found error.
 
 **`pkg/controller/controlplane/valuesprovider_test.go`** — add a test case for `getNetworkNames` in BYO mode:
 - `PurposeInternal` absent, `PurposeNodes` present → `subNetworkName` equals nodes subnet name. Covers `E4`, `E6`.
 
-**`pkg/controller/bastion/bastion_suite_test.go`** — extend `getWorkersCIDR` test with a BYO-mode scenario where `Networks.Workers` is empty and the CIDR is read from infrastructure status. Covers `E8`.
+**`pkg/controller/bastion/bastion_suite_test.go`** — extend `getWorkersCIDR` test with a BYO-mode scenario where `Networks.Workers` is empty and the CIDR is read live from GCP via a mocked `GetSubnet`. Covers `E8`.
 
 ### Integration tests
 
-**`test/integration/infrastructure/`** — extend the existing integration test harness to support a BYO-mode shoot variant. Pre-provisioning requirements:
+**`test/integration/infrastructure/infrastructure_byo_test.go`** (new file) — a BYO-mode shoot variant alongside the existing infrastructure integration suite. Pre-provisioning requirements:
 
 - A VPC in the test GCP project.
 - A worker subnet with a known primary CIDR that fits within the shoot's nodes CIDR.
@@ -574,8 +583,8 @@ Minimises risk by getting the machine-checkable parts (types, validation, unit t
 1. **API types + generated code** (`SubnetReference`, `SubnetWorkers`, `SubnetServices`, `IsUserManagedEgress`). No behavior change; unit tests can compile and be added.
 2. **API-level validation** in `pkg/apis/gcp/validation/infrastructure.go`. Unit tests for `C1`–`C12`, `D1`–`D4`.
 3. **Runtime pre-flight `ConfigValidator` extension**. Unit tests for `C13`–`C17`.
-4. **Reconciler task-graph branching** — add `ensureUserManagedWorkersSubnet`, `ensureUserManagedServicesSubnet`, gate tasks in graph. Manual smoke test against a pre-provisioned BYO subnet in a scratch GCP project.
-5. **Status-builder changes** — populate `Subnets[]` and (if not present) `CIDR` field from BYO subnet's `IpCidrRange`.
+4. **Reconciler task-graph branching** — add `ensureUserManagedWorkersSubnet` / `ensureUserManagedServicesSubnet` in `ensure_byo.go`, and the dedicated BYO early-return branches in `buildReconcileGraph` / `buildDeleteGraph`. Manual smoke test against a pre-provisioned BYO subnet in a scratch GCP project.
+5. **Status builder** — no change required; `getStatus` already surfaces whatever subnets are on the whiteboard, and `EgressCIDRs`/`NatIPs` stay empty because BYO never populates them.
 6. **`cloud-provider-config` fallback in `getNetworkNames`**. Unit test for `E4`, `E6`.
 7. **Bastion `getWorkersCIDR` fix**. Unit test for `E8`.
 8. **Integration test harness updates**. Add scenarios `B1`, `B3`, `B4`, `E1`, `F1`.
