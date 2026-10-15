@@ -474,6 +474,24 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))
 		})
 
+		It("should forbid a VPC name that is not a valid GCP resource name in BYO mode", func() {
+			byoConfig.Networks.VPC.Name = "Invalid_Name"
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.vpc.name"),
+			}))))
+		})
+
+		It("should forbid a subnetWorkers name that is not a valid GCP resource name in BYO mode", func() {
+			byoConfig.Networks.SubnetWorkers.Name = "Invalid_Name"
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.subnetWorkers.name"),
+			}))))
+		})
+
 		It("should forbid CloudRouter in BYO mode", func() {
 			byoConfig.Networks.VPC.CloudRouter = &apisgcp.CloudRouter{Name: "my-cr"}
 			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, nil, fldPath)
@@ -561,6 +579,26 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
 			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("my-pods")
 			Expect(ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)).To(BeEmpty())
+		})
+
+		It("should forbid a subnetServices name that is not a valid GCP resource name on a dual-stack shoot", func() {
+			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "Invalid_Name"}
+			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("my-pods")
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.subnetServices.name"),
+			}))))
+		})
+
+		It("should forbid a podSecondaryRangeName that is not a valid GCP resource name on a dual-stack shoot", func() {
+			byoConfig.Networks.SubnetServices = &apisgcp.SubnetReference{Name: "my-services"}
+			byoConfig.Networks.SubnetWorkers.PodSecondaryRangeName = ptr.To("Invalid_Name")
+			errs := ValidateInfrastructureConfig(byoConfig, &nodes, &pods, &services, []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}, fldPath)
+			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.subnetWorkers.podSecondaryRangeName"),
+			}))))
 		})
 
 		It("should forbid SubnetServices referencing the same subnet as SubnetWorkers", func() {

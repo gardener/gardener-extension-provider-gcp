@@ -152,6 +152,8 @@ func validateBYONetworkConfig(networks *apisgcp.NetworkConfig, ipFamilies []core
 	// VPC.Name is required in BYO mode
 	if networks.VPC == nil || len(networks.VPC.Name) == 0 {
 		allErrs = append(allErrs, field.Required(networksPath.Child("vpc", "name"), "vpc name must be set when using BYO subnet mode"))
+	} else {
+		allErrs = append(allErrs, validateGcpResourceName(networks.VPC.Name, networksPath.Child("vpc", "name"))...)
 	}
 
 	// CloudRouter must not be set in BYO mode (user manages egress)
@@ -183,6 +185,8 @@ func validateBYONetworkConfig(networks *apisgcp.NetworkConfig, ipFamilies []core
 	subnetWorkersPath := networksPath.Child("subnetWorkers")
 	if len(networks.SubnetWorkers.Name) == 0 {
 		allErrs = append(allErrs, field.Required(subnetWorkersPath.Child("name"), "subnetWorkers name must not be empty"))
+	} else {
+		allErrs = append(allErrs, validateGcpResourceName(networks.SubnetWorkers.Name, subnetWorkersPath.Child("name"))...)
 	}
 
 	// SubnetServices is only valid for dual-stack shoots
@@ -197,6 +201,8 @@ func validateBYONetworkConfig(networks *apisgcp.NetworkConfig, ipFamilies []core
 	if isDualStack && networks.SubnetServices != nil {
 		if len(networks.SubnetServices.Name) == 0 {
 			allErrs = append(allErrs, field.Required(subnetServicesPath.Child("name"), "subnetServices name must not be empty"))
+		} else {
+			allErrs = append(allErrs, validateGcpResourceName(networks.SubnetServices.Name, subnetServicesPath.Child("name"))...)
 		}
 		if networks.SubnetServices.PodSecondaryRangeName != nil {
 			allErrs = append(allErrs, field.Forbidden(subnetServicesPath.Child("podSecondaryRangeName"), "podSecondaryRangeName is only valid on subnetWorkers, not subnetServices"))
@@ -218,6 +224,9 @@ func validateBYONetworkConfig(networks *apisgcp.NetworkConfig, ipFamilies []core
 	}
 	if isDualStack && networks.SubnetWorkers.PodSecondaryRangeName != nil && len(*networks.SubnetWorkers.PodSecondaryRangeName) == 0 {
 		allErrs = append(allErrs, field.Invalid(podSecondaryRangeNamePath, "", "podSecondaryRangeName must not be empty in dual-stack mode"))
+	}
+	if isDualStack && networks.SubnetWorkers.PodSecondaryRangeName != nil && len(*networks.SubnetWorkers.PodSecondaryRangeName) > 0 {
+		allErrs = append(allErrs, validateGcpResourceName(*networks.SubnetWorkers.PodSecondaryRangeName, podSecondaryRangeNamePath)...)
 	}
 
 	return allErrs
