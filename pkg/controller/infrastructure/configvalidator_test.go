@@ -301,6 +301,7 @@ var _ = Describe("ConfigValidator", func() {
 		const (
 			workerSubnetName   = "byo-workers"
 			servicesSubnetName = "byo-services"
+			podRangeName       = "byo-pods"
 			vpcName            = "test-vpc"
 			vpcSelfLink        = "https://www.googleapis.com/compute/v1/projects/test/global/networks/test-vpc"
 		)
@@ -309,7 +310,7 @@ var _ = Describe("ConfigValidator", func() {
 			return &apisgcp.InfrastructureConfig{
 				Networks: apisgcp.NetworkConfig{
 					VPC:            &apisgcp.VPC{Name: vpcName},
-					SubnetWorkers:  &apisgcp.SubnetReference{Name: workerSubnetName},
+					SubnetWorkers:  &apisgcp.SubnetReference{Name: workerSubnetName, PodSecondaryRangeName: ptr.To(podRangeName)},
 					SubnetServices: &apisgcp.SubnetReference{Name: servicesSubnetName},
 				},
 			}
@@ -329,6 +330,9 @@ var _ = Describe("ConfigValidator", func() {
 				StackType:          "IPV4_IPV6",
 				ExternalIpv6Prefix: "2600:1900:4000:1::/64",
 				Network:            vpcSelfLink,
+				SecondaryIpRanges: []*compute.SubnetworkSecondaryRange{
+					{RangeName: podRangeName, IpCidrRange: "100.96.0.0/11"},
+				},
 			}, nil)
 			gcpComputeClient.EXPECT().GetSubnet(ctx, region, servicesSubnetName).Return(&compute.Subnetwork{
 				IpCidrRange:        "10.251.0.0/19",
@@ -339,6 +343,54 @@ var _ = Describe("ConfigValidator", func() {
 
 			errorList := cv.Validate(ctx, infra)
 			Expect(errorList).To(BeEmpty())
+		})
+
+		It("should forbid a worker subnet missing the pod secondary range for a dual-stack cluster", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange:        "10.250.0.0/19",
+				StackType:          "IPV4_IPV6",
+				ExternalIpv6Prefix: "2600:1900:4000:1::/64",
+				Network:            vpcSelfLink,
+				SecondaryIpRanges: []*compute.SubnetworkSecondaryRange{
+					{RangeName: "some-other-range", IpCidrRange: "100.96.0.0/11"},
+				},
+			}, nil)
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, servicesSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange:        "10.251.0.0/19",
+				StackType:          "IPV4_IPV6",
+				ExternalIpv6Prefix: "2600:1900:4000:2::/64",
+				Network:            vpcSelfLink,
+			}, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.subnetWorkers.podSecondaryRangeName"),
+			}))))
+		})
+
+		It("should forbid a pod secondary range whose CIDR does not match the cluster pod network for a dual-stack cluster", func() {
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, workerSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange:        "10.250.0.0/19",
+				StackType:          "IPV4_IPV6",
+				ExternalIpv6Prefix: "2600:1900:4000:1::/64",
+				Network:            vpcSelfLink,
+				SecondaryIpRanges: []*compute.SubnetworkSecondaryRange{
+					{RangeName: podRangeName, IpCidrRange: "100.64.0.0/13"},
+				},
+			}, nil)
+			gcpComputeClient.EXPECT().GetSubnet(ctx, region, servicesSubnetName).Return(&compute.Subnetwork{
+				IpCidrRange:        "10.251.0.0/19",
+				StackType:          "IPV4_IPV6",
+				ExternalIpv6Prefix: "2600:1900:4000:2::/64",
+				Network:            vpcSelfLink,
+			}, nil)
+
+			errorList := cv.Validate(ctx, infra)
+			Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeInvalid),
+				"Field": Equal("networks.subnetWorkers.podSecondaryRangeName"),
+			}))))
 		})
 
 		It("should forbid an IPV4_ONLY worker subnet for a dual-stack cluster", func() {
@@ -367,6 +419,9 @@ var _ = Describe("ConfigValidator", func() {
 				StackType:          "IPV4_IPV6",
 				ExternalIpv6Prefix: "2600:1900:4000:1::/64",
 				Network:            vpcSelfLink,
+				SecondaryIpRanges: []*compute.SubnetworkSecondaryRange{
+					{RangeName: podRangeName, IpCidrRange: "100.96.0.0/11"},
+				},
 			}, nil)
 			gcpComputeClient.EXPECT().GetSubnet(ctx, region, servicesSubnetName).Return(&compute.Subnetwork{
 				IpCidrRange: "10.251.0.0/19",
@@ -407,6 +462,9 @@ var _ = Describe("ConfigValidator", func() {
 				StackType:          "IPV4_IPV6",
 				ExternalIpv6Prefix: "2600:1900:4000:1::/64",
 				Network:            vpcSelfLink,
+				SecondaryIpRanges: []*compute.SubnetworkSecondaryRange{
+					{RangeName: podRangeName, IpCidrRange: "100.96.0.0/11"},
+				},
 			}, nil)
 			gcpComputeClient.EXPECT().GetSubnet(ctx, region, servicesSubnetName).Return(&compute.Subnetwork{
 				IpCidrRange: "10.251.0.0/19",
