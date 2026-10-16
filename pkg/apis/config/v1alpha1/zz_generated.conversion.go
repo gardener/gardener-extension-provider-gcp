@@ -14,7 +14,6 @@ import (
 
 	config "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/config"
 	apisconfigv1alpha1 "github.com/gardener/gardener/extensions/pkg/apis/config/v1alpha1"
-	resource "k8s.io/apimachinery/pkg/api/resource"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	configv1alpha1 "k8s.io/component-base/config/v1alpha1"
@@ -113,12 +112,7 @@ func Convert_config_ControllerConfiguration_To_v1alpha1_ControllerConfiguration(
 }
 
 func autoConvert_v1alpha1_ETCD_To_config_ETCD(in *ETCD, out *config.ETCD, s conversion.Scope) error {
-	if err := Convert_v1alpha1_ETCDStorage_To_config_ETCDStorage(&in.Storage, &out.Storage, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ETCDBackup_To_config_ETCDBackup(&in.Backup, &out.Backup, s); err != nil {
-		return err
-	}
+	*out = *(*config.ETCD)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -128,12 +122,7 @@ func Convert_v1alpha1_ETCD_To_config_ETCD(in *ETCD, out *config.ETCD, s conversi
 }
 
 func autoConvert_config_ETCD_To_v1alpha1_ETCD(in *config.ETCD, out *ETCD, s conversion.Scope) error {
-	if err := Convert_config_ETCDStorage_To_v1alpha1_ETCDStorage(&in.Storage, &out.Storage, s); err != nil {
-		return err
-	}
-	if err := Convert_config_ETCDBackup_To_v1alpha1_ETCDBackup(&in.Backup, &out.Backup, s); err != nil {
-		return err
-	}
+	*out = *(*ETCD)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -143,7 +132,7 @@ func Convert_config_ETCD_To_v1alpha1_ETCD(in *config.ETCD, out *ETCD, s conversi
 }
 
 func autoConvert_v1alpha1_ETCDBackup_To_config_ETCDBackup(in *ETCDBackup, out *config.ETCDBackup, s conversion.Scope) error {
-	out.Schedule = (*string)(unsafe.Pointer(in.Schedule))
+	*out = *(*config.ETCDBackup)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -153,7 +142,7 @@ func Convert_v1alpha1_ETCDBackup_To_config_ETCDBackup(in *ETCDBackup, out *confi
 }
 
 func autoConvert_config_ETCDBackup_To_v1alpha1_ETCDBackup(in *config.ETCDBackup, out *ETCDBackup, s conversion.Scope) error {
-	out.Schedule = (*string)(unsafe.Pointer(in.Schedule))
+	*out = *(*ETCDBackup)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -163,8 +152,7 @@ func Convert_config_ETCDBackup_To_v1alpha1_ETCDBackup(in *config.ETCDBackup, out
 }
 
 func autoConvert_v1alpha1_ETCDStorage_To_config_ETCDStorage(in *ETCDStorage, out *config.ETCDStorage, s conversion.Scope) error {
-	out.ClassName = (*string)(unsafe.Pointer(in.ClassName))
-	out.Capacity = (*resource.Quantity)(unsafe.Pointer(in.Capacity))
+	*out = *(*config.ETCDStorage)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -174,8 +162,7 @@ func Convert_v1alpha1_ETCDStorage_To_config_ETCDStorage(in *ETCDStorage, out *co
 }
 
 func autoConvert_config_ETCDStorage_To_v1alpha1_ETCDStorage(in *config.ETCDStorage, out *ETCDStorage, s conversion.Scope) error {
-	out.ClassName = (*string)(unsafe.Pointer(in.ClassName))
-	out.Capacity = (*resource.Quantity)(unsafe.Pointer(in.Capacity))
+	*out = *(*ETCDStorage)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -185,8 +172,7 @@ func Convert_config_ETCDStorage_To_v1alpha1_ETCDStorage(in *config.ETCDStorage, 
 }
 
 func autoConvert_v1alpha1_ProfilingConfiguration_To_config_ProfilingConfiguration(in *ProfilingConfiguration, out *config.ProfilingConfiguration, s conversion.Scope) error {
-	out.PprofBindAddress = (*string)(unsafe.Pointer(in.PprofBindAddress))
-	out.EnableContentionProfiling = (*bool)(unsafe.Pointer(in.EnableContentionProfiling))
+	*out = *(*config.ProfilingConfiguration)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -196,8 +182,7 @@ func Convert_v1alpha1_ProfilingConfiguration_To_config_ProfilingConfiguration(in
 }
 
 func autoConvert_config_ProfilingConfiguration_To_v1alpha1_ProfilingConfiguration(in *config.ProfilingConfiguration, out *ProfilingConfiguration, s conversion.Scope) error {
-	out.PprofBindAddress = (*string)(unsafe.Pointer(in.PprofBindAddress))
-	out.EnableContentionProfiling = (*bool)(unsafe.Pointer(in.EnableContentionProfiling))
+	*out = *(*ProfilingConfiguration)(unsafe.Pointer(in))
 	return nil
 }
 
