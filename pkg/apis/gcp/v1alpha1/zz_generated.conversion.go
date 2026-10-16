@@ -13,7 +13,6 @@ import (
 	unsafe "unsafe"
 
 	gcp "github.com/gardener/gardener-extension-provider-gcp/pkg/apis/gcp"
-	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -420,7 +419,7 @@ func RegisterConversions(s *runtime.Scheme) error {
 }
 
 func autoConvert_v1alpha1_AdvancedMachineFeatures_To_gcp_AdvancedMachineFeatures(in *AdvancedMachineFeatures, out *gcp.AdvancedMachineFeatures, s conversion.Scope) error {
-	out.EnableNestedVirtualization = (*bool)(unsafe.Pointer(in.EnableNestedVirtualization))
+	*out = *(*gcp.AdvancedMachineFeatures)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -430,7 +429,7 @@ func Convert_v1alpha1_AdvancedMachineFeatures_To_gcp_AdvancedMachineFeatures(in 
 }
 
 func autoConvert_gcp_AdvancedMachineFeatures_To_v1alpha1_AdvancedMachineFeatures(in *gcp.AdvancedMachineFeatures, out *AdvancedMachineFeatures, s conversion.Scope) error {
-	out.EnableNestedVirtualization = (*bool)(unsafe.Pointer(in.EnableNestedVirtualization))
+	*out = *(*AdvancedMachineFeatures)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -462,9 +461,7 @@ func Convert_gcp_BackupBucketConfig_To_v1alpha1_BackupBucketConfig(in *gcp.Backu
 }
 
 func autoConvert_v1alpha1_BootVolume_To_gcp_BootVolume(in *BootVolume, out *gcp.BootVolume, s conversion.Scope) error {
-	if err := Convert_v1alpha1_DiskSettings_To_gcp_DiskSettings(&in.DiskSettings, &out.DiskSettings, s); err != nil {
-		return err
-	}
+	*out = *(*gcp.BootVolume)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -474,9 +471,7 @@ func Convert_v1alpha1_BootVolume_To_gcp_BootVolume(in *BootVolume, out *gcp.Boot
 }
 
 func autoConvert_gcp_BootVolume_To_v1alpha1_BootVolume(in *gcp.BootVolume, out *BootVolume, s conversion.Scope) error {
-	if err := Convert_gcp_DiskSettings_To_v1alpha1_DiskSettings(&in.DiskSettings, &out.DiskSettings, s); err != nil {
-		return err
-	}
+	*out = *(*BootVolume)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -486,7 +481,7 @@ func Convert_gcp_BootVolume_To_v1alpha1_BootVolume(in *gcp.BootVolume, out *Boot
 }
 
 func autoConvert_v1alpha1_CSIFilestore_To_gcp_CSIFilestore(in *CSIFilestore, out *gcp.CSIFilestore, s conversion.Scope) error {
-	out.Enabled = in.Enabled
+	*out = *(*gcp.CSIFilestore)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -496,7 +491,7 @@ func Convert_v1alpha1_CSIFilestore_To_gcp_CSIFilestore(in *CSIFilestore, out *gc
 }
 
 func autoConvert_gcp_CSIFilestore_To_v1alpha1_CSIFilestore(in *gcp.CSIFilestore, out *CSIFilestore, s conversion.Scope) error {
-	out.Enabled = in.Enabled
+	*out = *(*CSIFilestore)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -506,7 +501,7 @@ func Convert_gcp_CSIFilestore_To_v1alpha1_CSIFilestore(in *gcp.CSIFilestore, out
 }
 
 func autoConvert_v1alpha1_CloudControllerManagerConfig_To_gcp_CloudControllerManagerConfig(in *CloudControllerManagerConfig, out *gcp.CloudControllerManagerConfig, s conversion.Scope) error {
-	out.FeatureGates = *(*map[string]bool)(unsafe.Pointer(&in.FeatureGates))
+	*out = *(*gcp.CloudControllerManagerConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -516,7 +511,7 @@ func Convert_v1alpha1_CloudControllerManagerConfig_To_gcp_CloudControllerManager
 }
 
 func autoConvert_gcp_CloudControllerManagerConfig_To_v1alpha1_CloudControllerManagerConfig(in *gcp.CloudControllerManagerConfig, out *CloudControllerManagerConfig, s conversion.Scope) error {
-	out.FeatureGates = *(*map[string]bool)(unsafe.Pointer(&in.FeatureGates))
+	*out = *(*CloudControllerManagerConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -526,16 +521,7 @@ func Convert_gcp_CloudControllerManagerConfig_To_v1alpha1_CloudControllerManager
 }
 
 func autoConvert_v1alpha1_CloudNAT_To_gcp_CloudNAT(in *CloudNAT, out *gcp.CloudNAT, s conversion.Scope) error {
-	out.EndpointIndependentMapping = (*gcp.EndpointIndependentMapping)(unsafe.Pointer(in.EndpointIndependentMapping))
-	out.MinPortsPerVM = (*int32)(unsafe.Pointer(in.MinPortsPerVM))
-	out.MaxPortsPerVM = (*int32)(unsafe.Pointer(in.MaxPortsPerVM))
-	out.EnableDynamicPortAllocation = in.EnableDynamicPortAllocation
-	out.NatIPNames = *(*[]gcp.NatIPName)(unsafe.Pointer(&in.NatIPNames))
-	out.IcmpIdleTimeoutSec = (*int32)(unsafe.Pointer(in.IcmpIdleTimeoutSec))
-	out.TcpEstablishedIdleTimeoutSec = (*int32)(unsafe.Pointer(in.TcpEstablishedIdleTimeoutSec))
-	out.TcpTimeWaitTimeoutSec = (*int32)(unsafe.Pointer(in.TcpTimeWaitTimeoutSec))
-	out.TcpTransitoryIdleTimeoutSec = (*int32)(unsafe.Pointer(in.TcpTransitoryIdleTimeoutSec))
-	out.UdpIdleTimeoutSec = (*int32)(unsafe.Pointer(in.UdpIdleTimeoutSec))
+	*out = *(*gcp.CloudNAT)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -545,16 +531,7 @@ func Convert_v1alpha1_CloudNAT_To_gcp_CloudNAT(in *CloudNAT, out *gcp.CloudNAT, 
 }
 
 func autoConvert_gcp_CloudNAT_To_v1alpha1_CloudNAT(in *gcp.CloudNAT, out *CloudNAT, s conversion.Scope) error {
-	out.EndpointIndependentMapping = (*EndpointIndependentMapping)(unsafe.Pointer(in.EndpointIndependentMapping))
-	out.MinPortsPerVM = (*int32)(unsafe.Pointer(in.MinPortsPerVM))
-	out.MaxPortsPerVM = (*int32)(unsafe.Pointer(in.MaxPortsPerVM))
-	out.EnableDynamicPortAllocation = in.EnableDynamicPortAllocation
-	out.NatIPNames = *(*[]NatIPName)(unsafe.Pointer(&in.NatIPNames))
-	out.IcmpIdleTimeoutSec = (*int32)(unsafe.Pointer(in.IcmpIdleTimeoutSec))
-	out.TcpEstablishedIdleTimeoutSec = (*int32)(unsafe.Pointer(in.TcpEstablishedIdleTimeoutSec))
-	out.TcpTimeWaitTimeoutSec = (*int32)(unsafe.Pointer(in.TcpTimeWaitTimeoutSec))
-	out.TcpTransitoryIdleTimeoutSec = (*int32)(unsafe.Pointer(in.TcpTransitoryIdleTimeoutSec))
-	out.UdpIdleTimeoutSec = (*int32)(unsafe.Pointer(in.UdpIdleTimeoutSec))
+	*out = *(*CloudNAT)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -584,7 +561,7 @@ func Convert_gcp_CloudProfileConfig_To_v1alpha1_CloudProfileConfig(in *gcp.Cloud
 }
 
 func autoConvert_v1alpha1_CloudRouter_To_gcp_CloudRouter(in *CloudRouter, out *gcp.CloudRouter, s conversion.Scope) error {
-	out.Name = in.Name
+	*out = *(*gcp.CloudRouter)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -594,7 +571,7 @@ func Convert_v1alpha1_CloudRouter_To_gcp_CloudRouter(in *CloudRouter, out *gcp.C
 }
 
 func autoConvert_gcp_CloudRouter_To_v1alpha1_CloudRouter(in *gcp.CloudRouter, out *CloudRouter, s conversion.Scope) error {
-	out.Name = in.Name
+	*out = *(*CloudRouter)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -628,11 +605,7 @@ func Convert_gcp_ControlPlaneConfig_To_v1alpha1_ControlPlaneConfig(in *gcp.Contr
 }
 
 func autoConvert_v1alpha1_DataVolume_To_gcp_DataVolume(in *DataVolume, out *gcp.DataVolume, s conversion.Scope) error {
-	out.Name = in.Name
-	out.SourceImage = (*string)(unsafe.Pointer(in.SourceImage))
-	if err := Convert_v1alpha1_DiskSettings_To_gcp_DiskSettings(&in.DiskSettings, &out.DiskSettings, s); err != nil {
-		return err
-	}
+	*out = *(*gcp.DataVolume)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -642,11 +615,7 @@ func Convert_v1alpha1_DataVolume_To_gcp_DataVolume(in *DataVolume, out *gcp.Data
 }
 
 func autoConvert_gcp_DataVolume_To_v1alpha1_DataVolume(in *gcp.DataVolume, out *DataVolume, s conversion.Scope) error {
-	out.Name = in.Name
-	out.SourceImage = (*string)(unsafe.Pointer(in.SourceImage))
-	if err := Convert_gcp_DiskSettings_To_v1alpha1_DiskSettings(&in.DiskSettings, &out.DiskSettings, s); err != nil {
-		return err
-	}
+	*out = *(*DataVolume)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -656,8 +625,7 @@ func Convert_gcp_DataVolume_To_v1alpha1_DataVolume(in *gcp.DataVolume, out *Data
 }
 
 func autoConvert_v1alpha1_DiskEncryption_To_gcp_DiskEncryption(in *DiskEncryption, out *gcp.DiskEncryption, s conversion.Scope) error {
-	out.KmsKeyName = (*string)(unsafe.Pointer(in.KmsKeyName))
-	out.KmsKeyServiceAccount = (*string)(unsafe.Pointer(in.KmsKeyServiceAccount))
+	*out = *(*gcp.DiskEncryption)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -667,8 +635,7 @@ func Convert_v1alpha1_DiskEncryption_To_gcp_DiskEncryption(in *DiskEncryption, o
 }
 
 func autoConvert_gcp_DiskEncryption_To_v1alpha1_DiskEncryption(in *gcp.DiskEncryption, out *DiskEncryption, s conversion.Scope) error {
-	out.KmsKeyName = (*string)(unsafe.Pointer(in.KmsKeyName))
-	out.KmsKeyServiceAccount = (*string)(unsafe.Pointer(in.KmsKeyServiceAccount))
+	*out = *(*DiskEncryption)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -678,9 +645,7 @@ func Convert_gcp_DiskEncryption_To_v1alpha1_DiskEncryption(in *gcp.DiskEncryptio
 }
 
 func autoConvert_v1alpha1_DiskSettings_To_gcp_DiskSettings(in *DiskSettings, out *gcp.DiskSettings, s conversion.Scope) error {
-	out.ProvisionedIops = (*int64)(unsafe.Pointer(in.ProvisionedIops))
-	out.ProvisionedThroughput = (*int64)(unsafe.Pointer(in.ProvisionedThroughput))
-	out.StoragePool = (*string)(unsafe.Pointer(in.StoragePool))
+	*out = *(*gcp.DiskSettings)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -690,9 +655,7 @@ func Convert_v1alpha1_DiskSettings_To_gcp_DiskSettings(in *DiskSettings, out *gc
 }
 
 func autoConvert_gcp_DiskSettings_To_v1alpha1_DiskSettings(in *gcp.DiskSettings, out *DiskSettings, s conversion.Scope) error {
-	out.ProvisionedIops = (*int64)(unsafe.Pointer(in.ProvisionedIops))
-	out.ProvisionedThroughput = (*int64)(unsafe.Pointer(in.ProvisionedThroughput))
-	out.StoragePool = (*string)(unsafe.Pointer(in.StoragePool))
+	*out = *(*DiskSettings)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -702,7 +665,7 @@ func Convert_gcp_DiskSettings_To_v1alpha1_DiskSettings(in *gcp.DiskSettings, out
 }
 
 func autoConvert_v1alpha1_EndpointIndependentMapping_To_gcp_EndpointIndependentMapping(in *EndpointIndependentMapping, out *gcp.EndpointIndependentMapping, s conversion.Scope) error {
-	out.Enabled = in.Enabled
+	*out = *(*gcp.EndpointIndependentMapping)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -712,7 +675,7 @@ func Convert_v1alpha1_EndpointIndependentMapping_To_gcp_EndpointIndependentMappi
 }
 
 func autoConvert_gcp_EndpointIndependentMapping_To_v1alpha1_EndpointIndependentMapping(in *gcp.EndpointIndependentMapping, out *EndpointIndependentMapping, s conversion.Scope) error {
-	out.Enabled = in.Enabled
+	*out = *(*EndpointIndependentMapping)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -758,8 +721,7 @@ func Convert_gcp_FlowLogs_To_v1alpha1_FlowLogs(in *gcp.FlowLogs, out *FlowLogs, 
 }
 
 func autoConvert_v1alpha1_GPU_To_gcp_GPU(in *GPU, out *gcp.GPU, s conversion.Scope) error {
-	out.AcceleratorType = in.AcceleratorType
-	out.Count = in.Count
+	*out = *(*gcp.GPU)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -769,8 +731,7 @@ func Convert_v1alpha1_GPU_To_gcp_GPU(in *GPU, out *gcp.GPU, s conversion.Scope) 
 }
 
 func autoConvert_gcp_GPU_To_v1alpha1_GPU(in *gcp.GPU, out *GPU, s conversion.Scope) error {
-	out.AcceleratorType = in.AcceleratorType
-	out.Count = in.Count
+	*out = *(*GPU)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -780,9 +741,7 @@ func Convert_gcp_GPU_To_v1alpha1_GPU(in *gcp.GPU, out *GPU, s conversion.Scope) 
 }
 
 func autoConvert_v1alpha1_HyperDiskConfig_To_gcp_HyperDiskConfig(in *HyperDiskConfig, out *gcp.HyperDiskConfig, s conversion.Scope) error {
-	out.Enabled = in.Enabled
-	out.ProvisionedIopsOnCreate = (*int64)(unsafe.Pointer(in.ProvisionedIopsOnCreate))
-	out.ProvisionedThroughputOnCreate = (*string)(unsafe.Pointer(in.ProvisionedThroughputOnCreate))
+	*out = *(*gcp.HyperDiskConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -792,9 +751,7 @@ func Convert_v1alpha1_HyperDiskConfig_To_gcp_HyperDiskConfig(in *HyperDiskConfig
 }
 
 func autoConvert_gcp_HyperDiskConfig_To_v1alpha1_HyperDiskConfig(in *gcp.HyperDiskConfig, out *HyperDiskConfig, s conversion.Scope) error {
-	out.Enabled = in.Enabled
-	out.ProvisionedIopsOnCreate = (*int64)(unsafe.Pointer(in.ProvisionedIopsOnCreate))
-	out.ProvisionedThroughputOnCreate = (*string)(unsafe.Pointer(in.ProvisionedThroughputOnCreate))
+	*out = *(*HyperDiskConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -804,9 +761,7 @@ func Convert_gcp_HyperDiskConfig_To_v1alpha1_HyperDiskConfig(in *gcp.HyperDiskCo
 }
 
 func autoConvert_v1alpha1_ImmutableConfig_To_gcp_ImmutableConfig(in *ImmutableConfig, out *gcp.ImmutableConfig, s conversion.Scope) error {
-	out.RetentionType = in.RetentionType
-	out.RetentionPeriod = in.RetentionPeriod
-	out.Locked = in.Locked
+	*out = *(*gcp.ImmutableConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -816,9 +771,7 @@ func Convert_v1alpha1_ImmutableConfig_To_gcp_ImmutableConfig(in *ImmutableConfig
 }
 
 func autoConvert_gcp_ImmutableConfig_To_v1alpha1_ImmutableConfig(in *gcp.ImmutableConfig, out *ImmutableConfig, s conversion.Scope) error {
-	out.RetentionType = in.RetentionType
-	out.RetentionPeriod = in.RetentionPeriod
-	out.Locked = in.Locked
+	*out = *(*ImmutableConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -900,11 +853,7 @@ func Convert_gcp_InfrastructureStatus_To_v1alpha1_InfrastructureStatus(in *gcp.I
 }
 
 func autoConvert_v1alpha1_MachineImage_To_gcp_MachineImage(in *MachineImage, out *gcp.MachineImage, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Version = in.Version
-	out.Image = in.Image
-	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
-	out.Capabilities = *(*v1beta1.Capabilities)(unsafe.Pointer(&in.Capabilities))
+	*out = *(*gcp.MachineImage)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -914,11 +863,7 @@ func Convert_v1alpha1_MachineImage_To_gcp_MachineImage(in *MachineImage, out *gc
 }
 
 func autoConvert_gcp_MachineImage_To_v1alpha1_MachineImage(in *gcp.MachineImage, out *MachineImage, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Version = in.Version
-	out.Image = in.Image
-	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
-	out.Capabilities = *(*v1beta1.Capabilities)(unsafe.Pointer(&in.Capabilities))
+	*out = *(*MachineImage)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -928,8 +873,7 @@ func Convert_gcp_MachineImage_To_v1alpha1_MachineImage(in *gcp.MachineImage, out
 }
 
 func autoConvert_v1alpha1_MachineImageFlavor_To_gcp_MachineImageFlavor(in *MachineImageFlavor, out *gcp.MachineImageFlavor, s conversion.Scope) error {
-	out.Capabilities = *(*v1beta1.Capabilities)(unsafe.Pointer(&in.Capabilities))
-	out.Image = in.Image
+	*out = *(*gcp.MachineImageFlavor)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -939,8 +883,7 @@ func Convert_v1alpha1_MachineImageFlavor_To_gcp_MachineImageFlavor(in *MachineIm
 }
 
 func autoConvert_gcp_MachineImageFlavor_To_v1alpha1_MachineImageFlavor(in *gcp.MachineImageFlavor, out *MachineImageFlavor, s conversion.Scope) error {
-	out.Capabilities = *(*v1beta1.Capabilities)(unsafe.Pointer(&in.Capabilities))
-	out.Image = in.Image
+	*out = *(*MachineImageFlavor)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -950,10 +893,7 @@ func Convert_gcp_MachineImageFlavor_To_v1alpha1_MachineImageFlavor(in *gcp.Machi
 }
 
 func autoConvert_v1alpha1_MachineImageVersion_To_gcp_MachineImageVersion(in *MachineImageVersion, out *gcp.MachineImageVersion, s conversion.Scope) error {
-	out.Version = in.Version
-	out.Image = in.Image
-	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
-	out.CapabilityFlavors = *(*[]gcp.MachineImageFlavor)(unsafe.Pointer(&in.CapabilityFlavors))
+	*out = *(*gcp.MachineImageVersion)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -963,10 +903,7 @@ func Convert_v1alpha1_MachineImageVersion_To_gcp_MachineImageVersion(in *Machine
 }
 
 func autoConvert_gcp_MachineImageVersion_To_v1alpha1_MachineImageVersion(in *gcp.MachineImageVersion, out *MachineImageVersion, s conversion.Scope) error {
-	out.Version = in.Version
-	out.Image = in.Image
-	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
-	out.CapabilityFlavors = *(*[]MachineImageFlavor)(unsafe.Pointer(&in.CapabilityFlavors))
+	*out = *(*MachineImageVersion)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -976,8 +913,7 @@ func Convert_gcp_MachineImageVersion_To_v1alpha1_MachineImageVersion(in *gcp.Mac
 }
 
 func autoConvert_v1alpha1_MachineImages_To_gcp_MachineImages(in *MachineImages, out *gcp.MachineImages, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Versions = *(*[]gcp.MachineImageVersion)(unsafe.Pointer(&in.Versions))
+	*out = *(*gcp.MachineImages)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -987,8 +923,7 @@ func Convert_v1alpha1_MachineImages_To_gcp_MachineImages(in *MachineImages, out 
 }
 
 func autoConvert_gcp_MachineImages_To_v1alpha1_MachineImages(in *gcp.MachineImages, out *MachineImages, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Versions = *(*[]MachineImageVersion)(unsafe.Pointer(&in.Versions))
+	*out = *(*MachineImages)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -998,7 +933,7 @@ func Convert_gcp_MachineImages_To_v1alpha1_MachineImages(in *gcp.MachineImages, 
 }
 
 func autoConvert_v1alpha1_NatIP_To_gcp_NatIP(in *NatIP, out *gcp.NatIP, s conversion.Scope) error {
-	out.IP = in.IP
+	*out = *(*gcp.NatIP)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1008,7 +943,7 @@ func Convert_v1alpha1_NatIP_To_gcp_NatIP(in *NatIP, out *gcp.NatIP, s conversion
 }
 
 func autoConvert_gcp_NatIP_To_v1alpha1_NatIP(in *gcp.NatIP, out *NatIP, s conversion.Scope) error {
-	out.IP = in.IP
+	*out = *(*NatIP)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1018,7 +953,7 @@ func Convert_gcp_NatIP_To_v1alpha1_NatIP(in *gcp.NatIP, out *NatIP, s conversion
 }
 
 func autoConvert_v1alpha1_NatIPName_To_gcp_NatIPName(in *NatIPName, out *gcp.NatIPName, s conversion.Scope) error {
-	out.Name = in.Name
+	*out = *(*gcp.NatIPName)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1028,7 +963,7 @@ func Convert_v1alpha1_NatIPName_To_gcp_NatIPName(in *NatIPName, out *gcp.NatIPNa
 }
 
 func autoConvert_gcp_NatIPName_To_v1alpha1_NatIPName(in *gcp.NatIPName, out *NatIPName, s conversion.Scope) error {
-	out.Name = in.Name
+	*out = *(*NatIPName)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1090,12 +1025,7 @@ func Convert_gcp_NetworkConfig_To_v1alpha1_NetworkConfig(in *gcp.NetworkConfig, 
 }
 
 func autoConvert_v1alpha1_NetworkStatus_To_gcp_NetworkStatus(in *NetworkStatus, out *gcp.NetworkStatus, s conversion.Scope) error {
-	if err := Convert_v1alpha1_VPC_To_gcp_VPC(&in.VPC, &out.VPC, s); err != nil {
-		return err
-	}
-	out.Subnets = *(*[]gcp.Subnet)(unsafe.Pointer(&in.Subnets))
-	out.NatIPs = *(*[]gcp.NatIP)(unsafe.Pointer(&in.NatIPs))
-	out.IPFamilies = *(*[]v1beta1.IPFamily)(unsafe.Pointer(&in.IPFamilies))
+	*out = *(*gcp.NetworkStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1105,12 +1035,7 @@ func Convert_v1alpha1_NetworkStatus_To_gcp_NetworkStatus(in *NetworkStatus, out 
 }
 
 func autoConvert_gcp_NetworkStatus_To_v1alpha1_NetworkStatus(in *gcp.NetworkStatus, out *NetworkStatus, s conversion.Scope) error {
-	if err := Convert_gcp_VPC_To_v1alpha1_VPC(&in.VPC, &out.VPC, s); err != nil {
-		return err
-	}
-	out.Subnets = *(*[]Subnet)(unsafe.Pointer(&in.Subnets))
-	out.NatIPs = *(*[]NatIP)(unsafe.Pointer(&in.NatIPs))
-	out.IPFamilies = *(*[]v1beta1.IPFamily)(unsafe.Pointer(&in.IPFamilies))
+	*out = *(*NetworkStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1120,9 +1045,7 @@ func Convert_gcp_NetworkStatus_To_v1alpha1_NetworkStatus(in *gcp.NetworkStatus, 
 }
 
 func autoConvert_v1alpha1_Route_To_gcp_Route(in *Route, out *gcp.Route, s conversion.Scope) error {
-	out.InstanceName = in.InstanceName
-	out.DestinationCIDR = in.DestinationCIDR
-	out.Zone = in.Zone
+	*out = *(*gcp.Route)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1132,9 +1055,7 @@ func Convert_v1alpha1_Route_To_gcp_Route(in *Route, out *gcp.Route, s conversion
 }
 
 func autoConvert_gcp_Route_To_v1alpha1_Route(in *gcp.Route, out *Route, s conversion.Scope) error {
-	out.InstanceName = in.InstanceName
-	out.DestinationCIDR = in.DestinationCIDR
-	out.Zone = in.Zone
+	*out = *(*Route)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1144,8 +1065,7 @@ func Convert_gcp_Route_To_v1alpha1_Route(in *gcp.Route, out *Route, s conversion
 }
 
 func autoConvert_v1alpha1_ServiceAccount_To_gcp_ServiceAccount(in *ServiceAccount, out *gcp.ServiceAccount, s conversion.Scope) error {
-	out.Email = in.Email
-	out.Scopes = *(*[]string)(unsafe.Pointer(&in.Scopes))
+	*out = *(*gcp.ServiceAccount)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1155,8 +1075,7 @@ func Convert_v1alpha1_ServiceAccount_To_gcp_ServiceAccount(in *ServiceAccount, o
 }
 
 func autoConvert_gcp_ServiceAccount_To_v1alpha1_ServiceAccount(in *gcp.ServiceAccount, out *ServiceAccount, s conversion.Scope) error {
-	out.Email = in.Email
-	out.Scopes = *(*[]string)(unsafe.Pointer(&in.Scopes))
+	*out = *(*ServiceAccount)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1166,13 +1085,7 @@ func Convert_gcp_ServiceAccount_To_v1alpha1_ServiceAccount(in *gcp.ServiceAccoun
 }
 
 func autoConvert_v1alpha1_Storage_To_gcp_Storage(in *Storage, out *gcp.Storage, s conversion.Scope) error {
-	out.ManagedDefaultStorageClass = (*bool)(unsafe.Pointer(in.ManagedDefaultStorageClass))
-	out.DefaultStorageClass = (*string)(unsafe.Pointer(in.DefaultStorageClass))
-	out.ManagedDefaultVolumeSnapshotClass = (*bool)(unsafe.Pointer(in.ManagedDefaultVolumeSnapshotClass))
-	out.CSIFilestore = (*gcp.CSIFilestore)(unsafe.Pointer(in.CSIFilestore))
-	out.HyperDiskBalanced = (*gcp.HyperDiskConfig)(unsafe.Pointer(in.HyperDiskBalanced))
-	out.HyperDiskThroughput = (*gcp.HyperDiskConfig)(unsafe.Pointer(in.HyperDiskThroughput))
-	out.HyperDiskExtreme = (*gcp.HyperDiskConfig)(unsafe.Pointer(in.HyperDiskExtreme))
+	*out = *(*gcp.Storage)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1182,13 +1095,7 @@ func Convert_v1alpha1_Storage_To_gcp_Storage(in *Storage, out *gcp.Storage, s co
 }
 
 func autoConvert_gcp_Storage_To_v1alpha1_Storage(in *gcp.Storage, out *Storage, s conversion.Scope) error {
-	out.ManagedDefaultStorageClass = (*bool)(unsafe.Pointer(in.ManagedDefaultStorageClass))
-	out.DefaultStorageClass = (*string)(unsafe.Pointer(in.DefaultStorageClass))
-	out.ManagedDefaultVolumeSnapshotClass = (*bool)(unsafe.Pointer(in.ManagedDefaultVolumeSnapshotClass))
-	out.CSIFilestore = (*CSIFilestore)(unsafe.Pointer(in.CSIFilestore))
-	out.HyperDiskBalanced = (*HyperDiskConfig)(unsafe.Pointer(in.HyperDiskBalanced))
-	out.HyperDiskThroughput = (*HyperDiskConfig)(unsafe.Pointer(in.HyperDiskThroughput))
-	out.HyperDiskExtreme = (*HyperDiskConfig)(unsafe.Pointer(in.HyperDiskExtreme))
+	*out = *(*Storage)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1198,7 +1105,7 @@ func Convert_gcp_Storage_To_v1alpha1_Storage(in *gcp.Storage, out *Storage, s co
 }
 
 func autoConvert_v1alpha1_Store_To_gcp_Store(in *Store, out *gcp.Store, s conversion.Scope) error {
-	out.EndpointOverride = (*string)(unsafe.Pointer(in.EndpointOverride))
+	*out = *(*gcp.Store)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1208,7 +1115,7 @@ func Convert_v1alpha1_Store_To_gcp_Store(in *Store, out *gcp.Store, s conversion
 }
 
 func autoConvert_gcp_Store_To_v1alpha1_Store(in *gcp.Store, out *Store, s conversion.Scope) error {
-	out.EndpointOverride = (*string)(unsafe.Pointer(in.EndpointOverride))
+	*out = *(*Store)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1218,8 +1125,7 @@ func Convert_gcp_Store_To_v1alpha1_Store(in *gcp.Store, out *Store, s conversion
 }
 
 func autoConvert_v1alpha1_Subnet_To_gcp_Subnet(in *Subnet, out *gcp.Subnet, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Purpose = gcp.SubnetPurpose(in.Purpose)
+	*out = *(*gcp.Subnet)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1229,8 +1135,7 @@ func Convert_v1alpha1_Subnet_To_gcp_Subnet(in *Subnet, out *gcp.Subnet, s conver
 }
 
 func autoConvert_gcp_Subnet_To_v1alpha1_Subnet(in *gcp.Subnet, out *Subnet, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Purpose = SubnetPurpose(in.Purpose)
+	*out = *(*Subnet)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1240,8 +1145,7 @@ func Convert_gcp_Subnet_To_v1alpha1_Subnet(in *gcp.Subnet, out *Subnet, s conver
 }
 
 func autoConvert_v1alpha1_SubnetReference_To_gcp_SubnetReference(in *SubnetReference, out *gcp.SubnetReference, s conversion.Scope) error {
-	out.Name = in.Name
-	out.PodSecondaryRangeName = (*string)(unsafe.Pointer(in.PodSecondaryRangeName))
+	*out = *(*gcp.SubnetReference)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1251,8 +1155,7 @@ func Convert_v1alpha1_SubnetReference_To_gcp_SubnetReference(in *SubnetReference
 }
 
 func autoConvert_gcp_SubnetReference_To_v1alpha1_SubnetReference(in *gcp.SubnetReference, out *SubnetReference, s conversion.Scope) error {
-	out.Name = in.Name
-	out.PodSecondaryRangeName = (*string)(unsafe.Pointer(in.PodSecondaryRangeName))
+	*out = *(*SubnetReference)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1262,8 +1165,7 @@ func Convert_gcp_SubnetReference_To_v1alpha1_SubnetReference(in *gcp.SubnetRefer
 }
 
 func autoConvert_v1alpha1_VPC_To_gcp_VPC(in *VPC, out *gcp.VPC, s conversion.Scope) error {
-	out.Name = in.Name
-	out.CloudRouter = (*gcp.CloudRouter)(unsafe.Pointer(in.CloudRouter))
+	*out = *(*gcp.VPC)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1273,8 +1175,7 @@ func Convert_v1alpha1_VPC_To_gcp_VPC(in *VPC, out *gcp.VPC, s conversion.Scope) 
 }
 
 func autoConvert_gcp_VPC_To_v1alpha1_VPC(in *gcp.VPC, out *VPC, s conversion.Scope) error {
-	out.Name = in.Name
-	out.CloudRouter = (*CloudRouter)(unsafe.Pointer(in.CloudRouter))
+	*out = *(*VPC)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1284,8 +1185,7 @@ func Convert_gcp_VPC_To_v1alpha1_VPC(in *gcp.VPC, out *VPC, s conversion.Scope) 
 }
 
 func autoConvert_v1alpha1_Volume_To_gcp_Volume(in *Volume, out *gcp.Volume, s conversion.Scope) error {
-	out.LocalSSDInterface = (*string)(unsafe.Pointer(in.LocalSSDInterface))
-	out.Encryption = (*gcp.DiskEncryption)(unsafe.Pointer(in.Encryption))
+	*out = *(*gcp.Volume)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1295,8 +1195,7 @@ func Convert_v1alpha1_Volume_To_gcp_Volume(in *Volume, out *gcp.Volume, s conver
 }
 
 func autoConvert_gcp_Volume_To_v1alpha1_Volume(in *gcp.Volume, out *Volume, s conversion.Scope) error {
-	out.LocalSSDInterface = (*string)(unsafe.Pointer(in.LocalSSDInterface))
-	out.Encryption = (*DiskEncryption)(unsafe.Pointer(in.Encryption))
+	*out = *(*Volume)(unsafe.Pointer(in))
 	return nil
 }
 
