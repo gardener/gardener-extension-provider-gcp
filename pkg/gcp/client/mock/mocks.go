@@ -763,6 +763,21 @@ func (mr *MockStorageClientMockRecorder) LockBucket(ctx, bucketName any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockBucket", reflect.TypeOf((*MockStorageClient)(nil).LockBucket), ctx, bucketName)
 }
 
+// ProjectNumber mocks base method.
+func (m *MockStorageClient) ProjectNumber(ctx context.Context) (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ProjectNumber", ctx)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ProjectNumber indicates an expected call of ProjectNumber.
+func (mr *MockStorageClientMockRecorder) ProjectNumber(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProjectNumber", reflect.TypeOf((*MockStorageClient)(nil).ProjectNumber), ctx)
+}
+
 // UpdateBucket mocks base method.
 func (m *MockStorageClient) UpdateBucket(ctx context.Context, bucketName string, bucketAttrsToUpdate storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error) {
 	m.ctrl.T.Helper()
