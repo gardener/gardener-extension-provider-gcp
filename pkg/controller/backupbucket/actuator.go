@@ -14,6 +14,8 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	"github.com/gardener/gardener/extensions/pkg/util"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/api/core/v1beta1/helper"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -79,6 +81,7 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, bb *extens
 			return err
 		}
 	} else if err := verifyBucket(attrs, projectNumber, bb.Spec.Region); err != nil {
+		logger.Error(err, "Failed to verify bucket", "name", bb.Name)
 		return err
 	}
 
@@ -102,7 +105,7 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, bb *extens
 	return nil
 }
 
-func (a *actuator) Delete(ctx context.Context, _ logr.Logger, bb *extensionsv1alpha1.BackupBucket) error {
+func (a *actuator) Delete(ctx context.Context, logger logr.Logger, bb *extensionsv1alpha1.BackupBucket) error {
 	storageClient, err := a.gcpClientFactory.Storage(ctx, a.client, bb.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
@@ -121,6 +124,7 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, bb *extensionsv1al
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 	if err := verifyBucket(attrs, projectNumber, bb.Spec.Region); err != nil {
+		logger.Error(err, "Failed to verify bucket", "name", bb.Name)
 		return err
 	}
 
@@ -175,6 +179,7 @@ func createBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb
 		return nil, util.DetermineError(err, helper.KnownCodes)
 	}
 	if err := verifyBucket(attrs, projectNumber, bb.Spec.Region); err != nil {
+		logger.Error(err, "Failed to verify bucket", "name", bb.Name)
 		return nil, err
 	}
 	return attrs, nil
@@ -182,6 +187,7 @@ func createBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb
 
 func updateBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb *extensionsv1alpha1.BackupBucket, attrs *storage.BucketAttrs, projectNumber uint64, config *apisgcp.BackupBucketConfig, logger logr.Logger) (*storage.BucketAttrs, error) {
 	if err := verifyBucket(attrs, projectNumber, bb.Spec.Region); err != nil {
+		logger.Error(err, "Failed to verify bucket", "name", bb.Name)
 		return nil, err
 	}
 
@@ -224,6 +230,7 @@ func updateBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb
 
 func lockBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb *extensionsv1alpha1.BackupBucket, attrs *storage.BucketAttrs, projectNumber uint64, logger logr.Logger) error {
 	if err := verifyBucket(attrs, projectNumber, bb.Spec.Region); err != nil {
+		logger.Error(err, "Failed to verify bucket", "name", bb.Name)
 		return err
 	}
 
@@ -238,10 +245,16 @@ func lockBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb *
 
 func verifyBucket(attrs *storage.BucketAttrs, projectNumber uint64, region string) error {
 	if attrs.ProjectNumber != projectNumber {
-		return fmt.Errorf("%w: bucket belongs to project number %d, expected %d", errForeignBucket, attrs.ProjectNumber, projectNumber)
+		return gardencorev1beta1helper.NewErrorWithCodes(
+			fmt.Errorf("%w: bucket belongs to project number %d, expected %d", errForeignBucket, attrs.ProjectNumber, projectNumber),
+			gardencorev1beta1.ErrorConfigurationProblem,
+		)
 	}
 	if !strings.EqualFold(attrs.Location, region) {
-		return fmt.Errorf("%w: bucket location %q does not match configured region %q", errForeignBucket, attrs.Location, region)
+		return gardencorev1beta1helper.NewErrorWithCodes(
+			fmt.Errorf("%w: bucket location %q does not match configured region %q", errForeignBucket, attrs.Location, region),
+			gardencorev1beta1.ErrorConfigurationProblem,
+		)
 	}
 	return nil
 }

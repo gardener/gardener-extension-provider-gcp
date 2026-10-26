@@ -241,7 +241,7 @@ An example of the referenced secret containing the credentials for the GCP Cloud
 
 #### Permissions for GCP Cloud Storage
 
-Please make sure the service account associated with the provided credentials has the IAM role [Storage Admin](https://cloud.google.com/storage/docs/access-control/iam-roles).
+Please make sure the service account associated with the provided credentials has the IAM role [Storage Admin](https://cloud.google.com/storage/docs/access-control/iam-roles) and that the [Cloud Resource Manager API](https://cloud.google.com/resource-manager/docs/cloud-resource-manager-api) is enabled for the project.
 
 ### Rolling Update Triggers
 

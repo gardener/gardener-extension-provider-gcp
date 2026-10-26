@@ -11,6 +11,8 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/api/core/v1beta1/helper"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/test"
 	"github.com/go-logr/logr"
@@ -181,6 +183,7 @@ var _ = Describe("Actuator", func() {
 
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).To(MatchError(ContainSubstring("bucket name exists in a foreign project — possible squatting")))
+				Expect(gardencorev1beta1helper.ExtractErrorCodes(err)).To(ConsistOf(gardencorev1beta1.ErrorConfigurationProblem))
 			})
 
 			It("should reject a bucket in a different location without updating it", func() {
@@ -192,6 +195,7 @@ var _ = Describe("Actuator", func() {
 
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).To(MatchError(ContainSubstring("bucket name exists in a foreign project — possible squatting")))
+				Expect(gardencorev1beta1helper.ExtractErrorCodes(err)).To(ConsistOf(gardencorev1beta1.ErrorConfigurationProblem))
 			})
 
 			DescribeTable("should restore bucket security hardening",

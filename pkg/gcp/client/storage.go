@@ -89,7 +89,7 @@ func (s *storageClient) ProjectNumber(ctx context.Context) (uint64, error) {
 			return
 		}
 		if project.ProjectNumber <= 0 {
-			s.projectNumberResolveErr = fmt.Errorf("Cloud Resource Manager returned an invalid project number for project %q", s.projectID)
+			s.projectNumberResolveErr = fmt.Errorf("cloud resource manager returned an invalid project number for project %q", s.projectID)
 			return
 		}
 		s.projectNumber = uint64(project.ProjectNumber)
