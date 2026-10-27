@@ -252,7 +252,7 @@ func verifyBucket(attrs *storage.BucketAttrs, projectNumber uint64, region strin
 	}
 	if !strings.EqualFold(attrs.Location, region) {
 		return gardencorev1beta1helper.NewErrorWithCodes(
-			fmt.Errorf("%w: bucket location %q does not match configured region %q", errForeignBucket, attrs.Location, region),
+			fmt.Errorf("bucket location %q does not match configured region %q", attrs.Location, region),
 			gardencorev1beta1.ErrorConfigurationProblem,
 		)
 	}

@@ -194,7 +194,7 @@ var _ = Describe("Actuator", func() {
 				}, nil)
 
 				err := a.Reconcile(ctx, logger, backupBucket)
-				Expect(err).To(MatchError(ContainSubstring("bucket name exists in a foreign project — possible squatting")))
+				Expect(err).To(MatchError(ContainSubstring("bucket location \"us-central1\" does not match configured region")))
 				Expect(gardencorev1beta1helper.ExtractErrorCodes(err)).To(ConsistOf(gardencorev1beta1.ErrorConfigurationProblem))
 			})
 
