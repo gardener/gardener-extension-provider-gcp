@@ -7,10 +7,12 @@ package client
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/storage"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/iterator"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,6 +23,7 @@ import (
 // StorageClient is an interface which must be implemented by GCS clients.
 type StorageClient interface {
 	// GCS wrappers
+	ProjectNumber(ctx context.Context) (uint64, error)
 	Attrs(ctx context.Context, bucketName string) (*storage.BucketAttrs, error)
 	CreateBucket(ctx context.Context, atts *storage.BucketAttrs) error
 	UpdateBucket(ctx context.Context, bucketName string, bucketAttrsToUpdate storage.BucketAttrsToUpdate) (*storage.BucketAttrs, error)
@@ -30,8 +33,12 @@ type StorageClient interface {
 }
 
 type storageClient struct {
-	client    *storage.Client
-	projectID string
+	client                  *storage.Client
+	projectsService         *cloudresourcemanager.ProjectsService
+	projectID               string
+	projectNumberOnce       sync.Once
+	projectNumber           uint64
+	projectNumberResolveErr error
 }
 
 // NewStorageClient creates a new storage client from the given credential's configuration.
@@ -45,9 +52,20 @@ func NewStorageClient(ctx context.Context, credentialsConfig *gcp.CredentialsCon
 	if err != nil {
 		return nil, err
 	}
+
+	resourceManagerOpts, err := clientOptions(ctx, credentialsConfig, []string{cloudresourcemanager.CloudPlatformReadOnlyScope})
+	if err != nil {
+		return nil, err
+	}
+	resourceManagerService, err := cloudresourcemanager.NewService(ctx, resourceManagerOpts...)
+	if err != nil {
+		return nil, err
+	}
+
 	return &storageClient{
-		client:    client,
-		projectID: credentialsConfig.ProjectID,
+		client:          client,
+		projectsService: resourceManagerService.Projects,
+		projectID:       credentialsConfig.ProjectID,
 	}, nil
 }
 
@@ -59,6 +77,25 @@ func NewStorageClientFromSecretRef(ctx context.Context, r client.Reader, secretR
 	}
 
 	return NewStorageClient(ctx, credentialsConfig)
+}
+
+// ProjectNumber returns the numeric identifier of the project configured in the credentials.
+// The Cloud Resource Manager lookup is performed at most once per client.
+func (s *storageClient) ProjectNumber(ctx context.Context) (uint64, error) {
+	s.projectNumberOnce.Do(func() {
+		project, err := s.projectsService.Get(s.projectID).Context(ctx).Do()
+		if err != nil {
+			s.projectNumberResolveErr = fmt.Errorf("failed to resolve project number for project %q: %w", s.projectID, err)
+			return
+		}
+		if project.ProjectNumber <= 0 {
+			s.projectNumberResolveErr = fmt.Errorf("cloud resource manager returned an invalid project number for project %q", s.projectID)
+			return
+		}
+		s.projectNumber = uint64(project.ProjectNumber)
+	})
+
+	return s.projectNumber, s.projectNumberResolveErr
 }
 
 // Attrs retrieves the attributes of the specified bucket.

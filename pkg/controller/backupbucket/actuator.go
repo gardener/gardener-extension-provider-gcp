@@ -7,11 +7,15 @@ package backupbucket
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
+	"strings"
 
 	"cloud.google.com/go/storage"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	"github.com/gardener/gardener/extensions/pkg/util"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/api/core/v1beta1/helper"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -28,6 +32,8 @@ type actuator struct {
 	client           client.Client
 	gcpClientFactory gcpclient.Factory
 }
+
+var errForeignBucket = errors.New("bucket name exists in a foreign project — possible squatting")
 
 var _ backupbucket.Actuator = (*actuator)(nil)
 
@@ -57,6 +63,12 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, bb *extens
 		}
 	}
 
+	projectNumber, err := storageClient.ProjectNumber(ctx)
+	if err != nil {
+		logger.Error(err, "Failed to resolve credential project number")
+		return util.DetermineError(err, helper.KnownCodes)
+	}
+
 	attrs, err := storageClient.Attrs(ctx, bb.Name)
 	if err != nil && !errors.Is(err, storage.ErrBucketNotExist) {
 		logger.Error(err, "Failed to fetch bucket attributes")
@@ -64,12 +76,17 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, bb *extens
 	}
 
 	if errors.Is(err, storage.ErrBucketNotExist) {
-		attrs, err = createBucket(ctx, storageClient, bb, backupBucketConfig, logger)
+		attrs, err = createBucket(ctx, storageClient, bb, projectNumber, backupBucketConfig, logger)
 		if err != nil {
 			return err
 		}
-	} else if isUpdateRequired(attrs, backupBucketConfig, logger) {
-		attrs, err = updateBucket(ctx, storageClient, bb.Name, backupBucketConfig, logger)
+	} else if err := verifyBucket(attrs, projectNumber, bb.Spec.Region); err != nil {
+		logger.Error(err, "Failed to verify bucket", "name", bb.Name)
+		return err
+	}
+
+	if isUpdateRequired(attrs, backupBucketConfig, logger) {
+		attrs, err = updateBucket(ctx, storageClient, bb, attrs, projectNumber, backupBucketConfig, logger)
 		if err != nil {
 			return err
 		}
@@ -78,7 +95,7 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, bb *extens
 	if attrs.RetentionPolicy != nil && !attrs.RetentionPolicy.IsLocked &&
 		backupBucketConfig != nil && backupBucketConfig.Immutability != nil &&
 		backupBucketConfig.Immutability.Locked {
-		err = lockBucket(ctx, storageClient, bb.Name, logger)
+		err = lockBucket(ctx, storageClient, bb, attrs, projectNumber, logger)
 		if err != nil {
 			return err
 		}
@@ -88,16 +105,33 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, bb *extens
 	return nil
 }
 
-func (a *actuator) Delete(ctx context.Context, _ logr.Logger, bb *extensionsv1alpha1.BackupBucket) error {
+func (a *actuator) Delete(ctx context.Context, logger logr.Logger, bb *extensionsv1alpha1.BackupBucket) error {
 	storageClient, err := a.gcpClientFactory.Storage(ctx, a.client, bb.Spec.SecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
+	projectNumber, err := storageClient.ProjectNumber(ctx)
+	if err != nil {
+		return util.DetermineError(err, helper.KnownCodes)
+	}
+
+	attrs, err := storageClient.Attrs(ctx, bb.Name)
+	if errors.Is(err, storage.ErrBucketNotExist) {
+		return nil
+	}
+	if err != nil {
+		return util.DetermineError(err, helper.KnownCodes)
+	}
+	if err := verifyBucket(attrs, projectNumber, bb.Spec.Region); err != nil {
+		logger.Error(err, "Failed to verify bucket", "name", bb.Name)
+		return err
+	}
+
 	return util.DetermineError(storageClient.DeleteBucketIfExists(ctx, bb.Name), helper.KnownCodes)
 }
 
-func createBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb *extensionsv1alpha1.BackupBucket, config *apisgcp.BackupBucketConfig, logger logr.Logger) (*storage.BucketAttrs, error) {
+func createBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb *extensionsv1alpha1.BackupBucket, projectNumber uint64, config *apisgcp.BackupBucketConfig, logger logr.Logger) (*storage.BucketAttrs, error) {
 	logger.Info("Bucket does not exist; creating", "name", bb.Name)
 	attrs := &storage.BucketAttrs{
 		Name:     bb.Name,
@@ -105,6 +139,7 @@ func createBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb
 		UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
 			Enabled: true,
 		},
+		PublicAccessPrevention: storage.PublicAccessPreventionEnforced,
 		SoftDeletePolicy: &storage.SoftDeletePolicy{
 			RetentionDuration: 0,
 		},
@@ -138,12 +173,29 @@ func createBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb
 		return nil, util.DetermineError(err, helper.KnownCodes)
 	}
 	logger.Info("Bucket created successfully", "name", bb.Name)
+
+	attrs, err := storageClient.Attrs(ctx, bb.Name)
+	if err != nil {
+		return nil, util.DetermineError(err, helper.KnownCodes)
+	}
+	if err := verifyBucket(attrs, projectNumber, bb.Spec.Region); err != nil {
+		logger.Error(err, "Failed to verify bucket", "name", bb.Name)
+		return nil, err
+	}
 	return attrs, nil
 }
 
-func updateBucket(ctx context.Context, storageClient gcpclient.StorageClient, bucketName string, config *apisgcp.BackupBucketConfig, logger logr.Logger) (*storage.BucketAttrs, error) {
-	logger.Info("Updating bucket attributes", "name", bucketName)
+func updateBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb *extensionsv1alpha1.BackupBucket, attrs *storage.BucketAttrs, projectNumber uint64, config *apisgcp.BackupBucketConfig, logger logr.Logger) (*storage.BucketAttrs, error) {
+	if err := verifyBucket(attrs, projectNumber, bb.Spec.Region); err != nil {
+		logger.Error(err, "Failed to verify bucket", "name", bb.Name)
+		return nil, err
+	}
+
+	logger.Info("Updating bucket attributes", "name", bb.Name)
 	updateAttrs := storage.BucketAttrsToUpdate{
+		UniformBucketLevelAccess: &storage.UniformBucketLevelAccess{Enabled: true},
+		PublicAccessPrevention:   storage.PublicAccessPreventionEnforced,
+		SoftDeletePolicy:         &storage.SoftDeletePolicy{RetentionDuration: 0},
 		Lifecycle: &storage.Lifecycle{
 			Rules: []storage.LifecycleRule{
 				{
@@ -167,22 +219,43 @@ func updateBucket(ctx context.Context, storageClient gcpclient.StorageClient, bu
 		updateAttrs.RetentionPolicy.RetentionPeriod = config.Immutability.RetentionPeriod.Duration
 	}
 
-	attrs, err := storageClient.UpdateBucket(ctx, bucketName, updateAttrs)
+	updatedAttrs, err := storageClient.UpdateBucket(ctx, bb.Name, updateAttrs)
 	if err != nil {
-		logger.Error(err, "Failed to update bucket", "name", bucketName)
+		logger.Error(err, "Failed to update bucket", "name", bb.Name)
 		return nil, util.DetermineError(err, helper.KnownCodes)
 	}
-	logger.Info("Bucket updated successfully", "name", bucketName)
-	return attrs, nil
+	logger.Info("Bucket updated successfully", "name", bb.Name)
+	return updatedAttrs, nil
 }
 
-func lockBucket(ctx context.Context, storageClient gcpclient.StorageClient, bucketName string, logger logr.Logger) error {
-	logger.Info("Locking bucket", "name", bucketName)
-	if err := storageClient.LockBucket(ctx, bucketName); err != nil {
-		logger.Error(err, "Failed to lock bucket", "name", bucketName)
+func lockBucket(ctx context.Context, storageClient gcpclient.StorageClient, bb *extensionsv1alpha1.BackupBucket, attrs *storage.BucketAttrs, projectNumber uint64, logger logr.Logger) error {
+	if err := verifyBucket(attrs, projectNumber, bb.Spec.Region); err != nil {
+		logger.Error(err, "Failed to verify bucket", "name", bb.Name)
+		return err
+	}
+
+	logger.Info("Locking bucket", "name", bb.Name)
+	if err := storageClient.LockBucket(ctx, bb.Name); err != nil {
+		logger.Error(err, "Failed to lock bucket", "name", bb.Name)
 		return util.DetermineError(err, helper.KnownCodes)
 	}
-	logger.Info("Bucket locked successfully", "name", bucketName)
+	logger.Info("Bucket locked successfully", "name", bb.Name)
+	return nil
+}
+
+func verifyBucket(attrs *storage.BucketAttrs, projectNumber uint64, region string) error {
+	if attrs.ProjectNumber != projectNumber {
+		return gardencorev1beta1helper.NewErrorWithCodes(
+			fmt.Errorf("%w: bucket belongs to project number %d, expected %d", errForeignBucket, attrs.ProjectNumber, projectNumber),
+			gardencorev1beta1.ErrorConfigurationProblem,
+		)
+	}
+	if !strings.EqualFold(attrs.Location, region) {
+		return gardencorev1beta1helper.NewErrorWithCodes(
+			fmt.Errorf("bucket location %q does not match configured region %q", attrs.Location, region),
+			gardencorev1beta1.ErrorConfigurationProblem,
+		)
+	}
 	return nil
 }
 
@@ -202,6 +275,9 @@ func isUpdateRequired(attrs *storage.BucketAttrs, config *apisgcp.BackupBucketCo
 	}
 
 	lifecycleNeedsUpdate := !reflect.DeepEqual(desiredLifecycle, attrs.Lifecycle)
+	uniformBucketLevelAccessNeedsUpdate := !attrs.UniformBucketLevelAccess.Enabled
+	publicAccessPreventionNeedsUpdate := attrs.PublicAccessPrevention != storage.PublicAccessPreventionEnforced
+	softDeletePolicyNeedsUpdate := attrs.SoftDeletePolicy == nil || attrs.SoftDeletePolicy.RetentionDuration != 0
 	// Determine if the retention policy needs an update
 	var retentionPolicyNeedsUpdate bool
 	if config == nil || config.Immutability == nil {
@@ -216,10 +292,13 @@ func isUpdateRequired(attrs *storage.BucketAttrs, config *apisgcp.BackupBucketCo
 		}
 	}
 
-	updateRequired := lifecycleNeedsUpdate || retentionPolicyNeedsUpdate
+	updateRequired := lifecycleNeedsUpdate || retentionPolicyNeedsUpdate || uniformBucketLevelAccessNeedsUpdate || publicAccessPreventionNeedsUpdate || softDeletePolicyNeedsUpdate
 	logger.Info("Determined update requirement for bucket",
 		"lifecycleNeedsUpdate", lifecycleNeedsUpdate,
 		"retentionPolicyNeedsUpdate", retentionPolicyNeedsUpdate,
+		"uniformBucketLevelAccessNeedsUpdate", uniformBucketLevelAccessNeedsUpdate,
+		"publicAccessPreventionNeedsUpdate", publicAccessPreventionNeedsUpdate,
+		"softDeletePolicyNeedsUpdate", softDeletePolicyNeedsUpdate,
 		"updateRequired", updateRequired)
 
 	return updateRequired
