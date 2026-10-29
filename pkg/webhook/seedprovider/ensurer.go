@@ -38,7 +38,7 @@ type ensurer struct {
 }
 
 // EnsureETCD ensures that the etcd conform to the provider requirements.
-func (e *ensurer) EnsureETCD(ctx context.Context, _ gcontext.GardenContext, newEtcd, _ *druidcorev1alpha1.Etcd) error {
+func (e *ensurer) EnsureETCD(ctx context.Context, gctx gcontext.GardenContext, newEtcd, _ *druidcorev1alpha1.Etcd) error {
 	capacity := resource.MustParse("10Gi")
 	class := ""
 
@@ -48,6 +48,18 @@ func (e *ensurer) EnsureETCD(ctx context.Context, _ gcontext.GardenContext, newE
 		}
 		if e.etcdStorage.ClassName != nil {
 			class = *e.etcdStorage.ClassName
+		}
+	}
+
+	// A per-seed etcd StorageClass (e.g. hyperdisk-balanced for GEN4 nodes that cannot attach pd-ssd)
+	// takes precedence over the extension-wide default.
+	if newEtcd.Name == v1beta1constants.ETCDMain {
+		cluster, err := gctx.GetCluster(ctx)
+		if err != nil {
+			return err
+		}
+		if cluster.Seed != nil && cluster.Seed.Spec.Volume != nil && cluster.Seed.Spec.Volume.ETCDStorageClassName != nil {
+			class = *cluster.Seed.Spec.Volume.ETCDStorageClassName
 		}
 	}
 
