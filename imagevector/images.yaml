@@ -121,7 +121,7 @@ images:
 - name: csi-driver
   sourceRepository: github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
   repository: registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver
-  tag: v1.27.1
+  tag: v1.28.1
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -235,7 +235,7 @@ images:
 - name: csi-snapshot-controller
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/snapshot-controller
-  tag: v8.6.0
+  tag: v8.7.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -249,7 +249,7 @@ images:
 - name: csi-snapshotter
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/csi-snapshotter
-  tag: v8.6.0
+  tag: v8.7.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -263,7 +263,7 @@ images:
 - name: ingress-default-backend
   sourceRepository: github.com/gardener/ingress-default-backend
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/ingress-default-backend
-  tag: 0.27.0
+  tag: 0.28.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
