@@ -9,7 +9,9 @@ import (
 	"testing"
 
 	druidcorev1alpha1 "github.com/gardener/etcd-druid/api/core/v1alpha1"
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
@@ -40,7 +42,9 @@ var _ = Describe("Ensurer", func() {
 
 		ctx = context.TODO()
 
-		dummyContext = gcontext.NewGardenContext(nil, nil)
+		dummyContext = gcontext.NewInternalGardenContext(&extensionscontroller.Cluster{
+			Seed: &gardencorev1beta1.Seed{},
+		})
 
 		scheme *runtime.Scheme
 	)
@@ -61,6 +65,47 @@ var _ = Describe("Ensurer", func() {
 
 			ensurer := NewEnsurer(etcdStorage, c, logger)
 			Expect(ensurer.EnsureETCD(ctx, dummyContext, etcd, nil)).To(Succeed())
+			checkETCDMainStorage(etcd)
+		})
+
+		It("should prefer the per-seed etcd storage class over the static default for etcd-main", func() {
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
+			etcd := &druidcorev1alpha1.Etcd{
+				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
+			}
+
+			seedContext := gcontext.NewInternalGardenContext(&extensionscontroller.Cluster{
+				Seed: &gardencorev1beta1.Seed{
+					Spec: gardencorev1beta1.SeedSpec{
+						Volume: &gardencorev1beta1.SeedVolume{
+							ETCDStorageClassName: ptr.To("gce-sc-hd-balanced"),
+						},
+					},
+				},
+			})
+
+			ensurer := NewEnsurer(etcdStorage, c, logger)
+			Expect(ensurer.EnsureETCD(ctx, seedContext, etcd, nil)).To(Succeed())
+			Expect(*etcd.Spec.StorageClass).To(Equal("gce-sc-hd-balanced"))
+			Expect(*etcd.Spec.StorageCapacity).To(Equal(resource.MustParse("25Gi")))
+		})
+
+		It("should keep the static default for etcd-main when no per-seed etcd storage class is set", func() {
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
+			etcd := &druidcorev1alpha1.Etcd{
+				ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ETCDMain},
+			}
+
+			seedContext := gcontext.NewInternalGardenContext(&extensionscontroller.Cluster{
+				Seed: &gardencorev1beta1.Seed{
+					Spec: gardencorev1beta1.SeedSpec{
+						Volume: &gardencorev1beta1.SeedVolume{},
+					},
+				},
+			})
+
+			ensurer := NewEnsurer(etcdStorage, c, logger)
+			Expect(ensurer.EnsureETCD(ctx, seedContext, etcd, nil)).To(Succeed())
 			checkETCDMainStorage(etcd)
 		})
 
