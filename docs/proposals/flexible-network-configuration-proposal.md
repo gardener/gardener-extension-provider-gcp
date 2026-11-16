@@ -70,7 +70,7 @@ Today the extension supports BYO VPC and BYO Cloud Router, but always creates th
 ## Background: today's egress in `provider-gcp`
 
 - `InfrastructureConfig` API: `pkg/apis/gcp/types_infrastructure.go`. BYO surface today = VPC (`Networks.VPC.Name`) and Cloud Router (`Networks.VPC.CloudRouter.Name`). Neither covers the subnet, NAT, or firewall-rule dimensions.
-- Reconciler is flow-based: `pkg/controller/infrastructure/infraflow/graph.go`. Task graph creates VPC → subnets → Cloud Router → Cloud NAT → firewall rules.
+- The infrastructure reconciler's task graph is defined in `pkg/controller/infrastructure/infraflow/graph.go`. It creates VPC → subnets → Cloud Router → Cloud NAT → firewall rules.
 - The four static firewall rules are explicitly untargeted — `NullFields` in `ensure_utils.go` nulls `TargetTags` and `TargetServiceAccounts`, so every VM in the VPC is a valid destination.
 - At runtime, the CCM and (for dual-stack) `ingress-gce` write additional resources into the same VPC:
 

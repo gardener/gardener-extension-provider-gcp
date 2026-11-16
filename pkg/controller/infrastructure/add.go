@@ -34,9 +34,6 @@ type AddOptions struct {
 	Controller controller.Options
 	// IgnoreOperationAnnotation specifies whether to ignore the operation annotation or not.
 	IgnoreOperationAnnotation bool
-	// DisableProjectedTokenMount specifies whether the projected token mount shall be disabled for the terraformer.
-	// Used for testing only.
-	DisableProjectedTokenMount bool
 	// ExtensionClasses defines the extension classes this extension is responsible for.
 	ExtensionClasses []extensionsv1alpha1.ExtensionClass
 }
@@ -50,7 +47,7 @@ func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddO
 	})
 
 	return infrastructure.Add(mgr, infrastructure.AddArgs{
-		Actuator:          NewActuator(mgr, opts.DisableProjectedTokenMount),
+		Actuator:          NewActuator(mgr),
 		ConfigValidator:   NewConfigValidator(mgr, log.Log, gcpclient.New()),
 		ControllerOptions: opts.Controller,
 		Predicates:        infrastructure.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),

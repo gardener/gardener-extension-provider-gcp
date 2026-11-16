@@ -30,8 +30,8 @@ const (
 
 	// CreatedServiceAccountKey marks whether we have created a service account for the shoot. If not we will skip reconciling the service accounts
 	CreatedServiceAccountKey = "service_account_exist"
-	// CreatedResourcesExistKey is a marker for the Terraform migration case. If the TF state is not empty
-	// we inject this marker into the state to block the deletion without having first a successful reconciliation.
+	// CreatedResourcesExistKey marks resources managed by the infrastructure reconciler.
+	// It ensures that deletion is only skipped when no resources have been managed.
 	CreatedResourcesExistKey = "resources_exist"
 	// ChildKeyIDs is the prefix key for all ids.
 	ChildKeyIDs = "ids"
@@ -139,13 +139,13 @@ func NewFlowContext(ctx context.Context, opts Opts) (*FlowContext, error) {
 func (fctx *FlowContext) Reconcile(ctx context.Context) error {
 	g := fctx.buildReconcileGraph()
 	f := g.Compile()
-	fctx.log.Info("starting Flow Reconciliation")
+	fctx.log.Info("Starting infrastructure reconciliation")
 	err := f.Run(ctx, flow.Opts{
 		Log: fctx.log,
 	})
 	if err != nil {
 		err = flow.Causes(err)
-		fctx.log.Error(err, "flow reconciliation failed")
+		fctx.log.Error(err, "Infrastructure reconciliation failed")
 		return errors.Join(err, fctx.persistState(ctx))
 	}
 

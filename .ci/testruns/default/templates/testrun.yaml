@@ -30,16 +30,13 @@ spec:
         key: serviceaccount.json
 
   testflow:
-  - name: infra-flow-test
+  - name: infrastructure-test
     definition:
       name: infrastructure-test
       config:
       - name: REGION
         type: env
         value: europe-west1
-      - name: RECONCILER
-        type: env
-        value: flow
   - name: backupbucket-test
     definition:
       name: backupbucket-test

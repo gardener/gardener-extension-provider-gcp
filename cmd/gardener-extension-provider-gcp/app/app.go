@@ -19,7 +19,6 @@ import (
 	heartbeatcmd "github.com/gardener/gardener/extensions/pkg/controller/heartbeat/cmd"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	gardenerhealthz "github.com/gardener/gardener/pkg/healthz"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
@@ -278,15 +277,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 
 			if err := mgr.AddReadyzCheck("webhook-server", mgr.GetWebhookServer().StartedChecker()); err != nil {
 				return fmt.Errorf("could not add ready check for webhook server to manager: %w", err)
-			}
-
-			if !slices.Contains(generalCfg.ExtensionClasses, extensionsv1alpha1.ExtensionClassGarden) {
-				// TODO (kon-angelo): Remove after the release of version 1.46.0
-				if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
-					return purgeTerraformerRBACResources(ctx, mgr.GetClient(), log)
-				})); err != nil {
-					return fmt.Errorf("error adding terraformer migrations: %w", err)
-				}
 			}
 
 			if err := mgr.Start(ctx); err != nil {

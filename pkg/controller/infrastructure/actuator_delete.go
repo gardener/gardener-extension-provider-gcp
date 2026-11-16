@@ -53,15 +53,8 @@ func (a *actuator) delete(ctx context.Context, log logr.Logger, infra *extension
 		return fmt.Errorf("failed to create flow context: %v", err)
 	}
 
-	err = fctx.Delete(ctx)
-	if err != nil {
+	if err := a.cleanupTerraformerResources(ctx, infra); err != nil {
 		return err
 	}
-
-	tf, err := NewTerraformer(log, a.restConfig, "infra", infra, a.disableProjectedTokenMount)
-	if err != nil {
-		return err
-	}
-	// TODO(kon-angelo): Remove this when we deprecate support for the terraformer library.
-	return CleanupTerraformerResources(ctx, tf)
+	return fctx.Delete(ctx)
 }
