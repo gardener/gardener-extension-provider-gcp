@@ -338,3 +338,15 @@ spec:
       retentionPeriod: 24h
       locked: true
 ```
+
+## Profiling
+
+The controller exposes a [pprof](https://pkg.go.dev/net/http/pprof) endpoint on `127.0.0.1:8082` for runtime profiling. It binds to localhost only and is reachable exclusively via `kubectl port-forward`. The bind address can be overridden via `.config.profiling.pprofBindAddress` in the Helm values.
+
+To take a heap or goroutine snapshot from a running pod:
+
+```bash
+kubectl port-forward -n <extension-namespace> <pod-name> 8082:8082
+go tool pprof http://localhost:8082/debug/pprof/heap
+go tool pprof http://localhost:8082/debug/pprof/goroutine
+```
