@@ -4,6 +4,12 @@ The [`core.gardener.cloud/v1beta1.Shoot` resource](https://github.com/gardener/g
 
 This document describes the configurable options for GCP and provides an example `Shoot` manifest with minimal configuration that can be used to create a GCP cluster (modulo the landscape-specific information like cloud profile names, secret binding names, etc.).
 
+## Infrastructure Reconciliation
+
+The infrastructure reconciler manages GCP resources using the native Google Cloud APIs. Its state is stored in the Infrastructure resource's `status.state` field as an `InfrastructureState`.
+
+Starting with v1.59.0, migration from legacy Terraform state is no longer supported. Shoots still carrying Terraform state must first complete an infrastructure reconciliation with provider-gcp v1.45 through v1.58 to migrate their state before upgrading to v1.59 or later.
+
 ## Accessing GCP APIs
 
 In order for Gardener to create a Kubernetes cluster using GCP infrastructure components, a Shoot has to provide an authentication mechanism giving sufficient permissions to the desired GCP project.
@@ -242,11 +248,11 @@ You can freely choose these CIDRs and it is your responsibility to properly desi
 
 The `networks.flowLogs` section describes the configuration for the VPC flow logs. In order to enable the VPC flow logs at least one of the following parameters needs to be specified in the flow log section:
 
-* `networks.flowLogs.aggregationInterval` an optional parameter describing the aggregation interval for collecting flow logs. For more details, see [aggregation_interval reference](https://www.terraform.io/docs/providers/google/r/compute_subnetwork.html#aggregation_interval).
+* `networks.flowLogs.aggregationInterval` an optional parameter describing the aggregation interval for collecting flow logs. For more details, see `logConfig.aggregationInterval` in the [Google Cloud Subnetwork API reference](https://cloud.google.com/compute/docs/reference/rest/v1/subnetworks#Subnetwork).
 
-* `networks.flowLogs.flowSampling` an optional parameter describing the sampling rate of VPC flow logs within the subnetwork where 1.0 means all collected logs are reported and 0.0 means no logs are reported. For more details, see [flow_sampling reference](https://www.terraform.io/docs/providers/google/r/compute_subnetwork.html#flow_sampling).
+* `networks.flowLogs.flowSampling` an optional parameter describing the sampling rate of VPC flow logs within the subnetwork where 1.0 means all collected logs are reported and 0.0 means no logs are reported. For more details, see `logConfig.flowSampling` in the [Google Cloud Subnetwork API reference](https://cloud.google.com/compute/docs/reference/rest/v1/subnetworks#Subnetwork).
 
-* `networks.flowLogs.metadata` an optional parameter describing whether metadata fields should be added to the reported VPC flow logs. For more details, see [metadata reference](https://www.terraform.io/docs/providers/google/r/compute_subnetwork.html#metadata).
+* `networks.flowLogs.metadata` an optional parameter describing whether metadata fields should be added to the reported VPC flow logs. For more details, see `logConfig.metadata` in the [Google Cloud Subnetwork API reference](https://cloud.google.com/compute/docs/reference/rest/v1/subnetworks#Subnetwork).
 
 Apart from the VPC and the subnets the GCP extension will also create a dedicated service account for this shoot, and firewall rules.
 
