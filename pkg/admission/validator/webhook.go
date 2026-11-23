@@ -38,6 +38,8 @@ const (
 	Name = "validator"
 	// SecretsValidatorName is the name of the secrets validator.
 	SecretsValidatorName = "secrets." + Name
+
+	shootProviderLabel = "provider.shoot.gardener.cloud/gcp"
 )
 
 var logger = log.Log.WithName("gcp-validator-webhook")

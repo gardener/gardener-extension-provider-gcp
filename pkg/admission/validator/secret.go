@@ -31,19 +31,27 @@ func (s *secret) Validate(_ context.Context, newObj, oldObj client.Object) error
 
 // ValidateSecret checks whether the given new secret contains valid GCP credentials.
 func ValidateSecret(newObj, oldObj client.Object) error {
+	var oldSecret *corev1.Secret
+
 	secret, ok := newObj.(*corev1.Secret)
 	if !ok {
 		return fmt.Errorf("wrong object type %T", newObj)
 	}
 
 	if oldObj != nil {
-		oldSecret, ok := oldObj.(*corev1.Secret)
+		oldSecret, ok = oldObj.(*corev1.Secret)
 		if !ok {
 			return fmt.Errorf("wrong object type %T for old object", oldObj)
 		}
 
-		if equality.Semantic.DeepEqual(secret.Data, oldSecret.Data) {
-			return nil
+		if oldSecret.Labels[shootProviderLabel] == "true" {
+			if equality.Semantic.DeepEqual(secret.Data, oldSecret.Data) {
+				return nil
+			}
+		} else {
+			// Without the provider label, the old data has not necessarily passed validation. Validate the
+			// new data as a fresh secret so that only update-specific immutability checks are skipped.
+			oldSecret = nil
 		}
 	}
 
