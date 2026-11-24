@@ -28,6 +28,65 @@ var _ = Describe("VPC Updater", func() {
 		ctx = context.Background()
 	})
 
+	Context("Router", func() {
+		It("should not patch router when BGP state is unchanged", func() {
+			desired := &compute.Router{Name: "test-router", Network: "test-vpc"}
+			current := &compute.Router{Name: "test-router", Network: "test-vpc"}
+
+			// PatchRouter must not be called
+			result, err := updater.Router(ctx, "europe-west1", desired, current)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(current))
+		})
+
+		It("should patch router with desired (not current) when BgpPeers drift is detected", func() {
+			desired := &compute.Router{Name: "test-router", Network: "test-vpc"}
+			current := &compute.Router{
+				Name:    "test-router",
+				Network: "test-vpc",
+				BgpPeers: []*compute.RouterBgpPeer{
+					{Name: "rogue-peer", PeerIpAddress: "169.254.0.1", PeerAsn: 65001},
+				},
+			}
+
+			patched := &compute.Router{Name: "test-router"}
+			computeClient.EXPECT().
+				PatchRouter(ctx, "europe-west1", "test-router", gomock.AssignableToTypeOf(&compute.Router{})).
+				DoAndReturn(func(_ context.Context, _ string, _ string, r *compute.Router) (*compute.Router, error) {
+					// must send desired, not current — rogue peer must not appear
+					Expect(r.BgpPeers).To(BeEmpty())
+					Expect(r.ForceSendFields).To(ContainElement("BgpPeers"))
+					return patched, nil
+				})
+
+			result, err := updater.Router(ctx, "europe-west1", desired, current)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(patched))
+		})
+
+		It("should patch router with desired (not current) when Bgp drift is detected", func() {
+			desired := &compute.Router{Name: "test-router", Network: "test-vpc"}
+			current := &compute.Router{
+				Name:    "test-router",
+				Network: "test-vpc",
+				Bgp:     &compute.RouterBgp{Asn: 65000},
+			}
+
+			patched := &compute.Router{Name: "test-router"}
+			computeClient.EXPECT().
+				PatchRouter(ctx, "europe-west1", "test-router", gomock.AssignableToTypeOf(&compute.Router{})).
+				DoAndReturn(func(_ context.Context, _ string, _ string, r *compute.Router) (*compute.Router, error) {
+					Expect(r.Bgp).To(BeNil())
+					Expect(r.NullFields).To(ContainElement("Bgp"))
+					return patched, nil
+				})
+
+			result, err := updater.Router(ctx, "europe-west1", desired, current)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(patched))
+		})
+	})
+
 	Context("RoutingConfig", func() {
 		It("should not patch VPC when RoutingConfig is unchanged", func() {
 			desired := &compute.Network{

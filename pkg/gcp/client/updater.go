@@ -187,7 +187,8 @@ func (u *updater) Router(ctx context.Context, region string, desired, current *c
 	if modified {
 		desired.ForceSendFields = forceSendFields
 		desired.NullFields = nullFields
-		return u.compute.PatchRouter(ctx, region, current.Name, current)
+		desired.Name = current.Name
+		return u.compute.PatchRouter(ctx, region, current.Name, desired)
 	}
 	return current, nil
 }
