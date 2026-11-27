@@ -170,6 +170,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			util.ApplyClientConnectionConfigurationToRESTConfig(cfg.Config.ClientConnection, restOpts.Completed().Config)
 
 			managerOptions := mgrOpts.Completed().Options()
+			managerOptions.PprofBindAddress = "127.0.0.1:8082"
 			if profiling := cfg.Config.Profiling; profiling != nil && ptr.Deref(profiling.PprofBindAddress, "") != "" {
 				managerOptions.PprofBindAddress = *profiling.PprofBindAddress
 				if ptr.Deref(profiling.EnableContentionProfiling, false) {
