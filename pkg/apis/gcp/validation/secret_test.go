@@ -285,7 +285,7 @@ var _ = Describe("Secret validation", func() {
 			}))))
 		})
 
-		It("should fail when optional URL field token_uri is present but empty", func() {
+		It("should fail when required field token_uri is empty, with exactly one error", func() {
 			invalidJSON := createServiceAccountJSON(map[string]any{
 				"token_uri": "",
 			})
@@ -293,9 +293,10 @@ var _ = Describe("Secret validation", func() {
 
 			errs := ValidateCloudProviderSecret(secret, fldPath)
 			Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":  Equal(field.ErrorTypeRequired),
+				"Type":  Equal(field.ErrorTypeInvalid),
 				"Field": Equal("secret.data[serviceaccount.json].token_uri"),
 			}))))
+			Expect(errs).To(HaveLen(1))
 		})
 
 		It("should fail when URL field uses http instead of https", func() {
@@ -323,6 +324,29 @@ var _ = Describe("Secret validation", func() {
 				"Field": Equal("secret.data[serviceaccount.json].token_uri"),
 			}))))
 		})
+
+		DescribeTable("token_uri allowlist",
+			func(tokenURI string, expectValid bool) {
+				jsonStr := createServiceAccountJSON(map[string]any{"token_uri": tokenURI})
+				secret.Data[gcp.ServiceAccountJSONField] = []byte(jsonStr)
+
+				errs := ValidateCloudProviderSecret(secret, fldPath)
+				if expectValid {
+					Expect(errs).To(BeEmpty())
+				} else {
+					Expect(errs).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeInvalid),
+						"Field": Equal("secret.data[serviceaccount.json].token_uri"),
+					}))))
+				}
+			},
+			Entry("standard googleapis endpoint", "https://oauth2.googleapis.com/token", true),
+			Entry("mTLS googleapis endpoint", "https://oauth2.mtls.googleapis.com/token", true),
+			Entry("legacy accounts.google.com endpoint", "https://accounts.google.com/o/oauth2/token", true),
+			Entry("arbitrary https host rejected", "https://attacker.example.com/token", false),
+			Entry("internal cluster service rejected", "https://internal-service.seed-ns.svc.cluster.local/token", false),
+			Entry("http scheme rejected", "http://oauth2.googleapis.com/token", false),
+		)
 
 		It("should fail when unexpected field is present", func() {
 			invalidJSON := createServiceAccountJSON(map[string]any{

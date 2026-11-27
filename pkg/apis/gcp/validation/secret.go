@@ -163,17 +163,21 @@ func validateFieldFormats(fields map[string]string, fldPath *field.Path) field.E
 	}
 
 	// Validate URL fields
-	urlFields := []string{
+	httpsURLFields := []string{
 		"auth_uri",
-		"token_uri",
 		"auth_provider_x509_cert_url",
 		"client_x509_cert_url",
 	}
 
-	for _, fieldName := range urlFields {
+	for _, fieldName := range httpsURLFields {
 		if urlValue, ok := fields[fieldName]; ok {
 			allErrs = append(allErrs, validateHTTPSURL(urlValue, fldPath.Child(fieldName))...)
 		}
+	}
+
+	// token_uri is pinned to known Google endpoints to prevent seed-side SSRF.
+	if tokenURI, ok := fields["token_uri"]; ok && tokenURI != "" {
+		allErrs = append(allErrs, validateTokenURI(tokenURI, fldPath.Child("token_uri"))...)
 	}
 
 	return allErrs
