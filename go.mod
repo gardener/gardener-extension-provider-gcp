@@ -4,7 +4,7 @@ module github.com/gardener/gardener-extension-provider-gcp
 go 1.26.9
 
 require (
-	cloud.google.com/go/storage v1.71.0
+	cloud.google.com/go/storage v1.71.1
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/gardener/etcd-druid/api v0.39.0
@@ -24,7 +24,7 @@ require (
 	golang.org/x/exp v0.0.0-20261124000051-d6646c509b6d
 	golang.org/x/oauth2 v0.38.0
 	golang.org/x/sync v0.25.0
-	google.golang.org/api v0.316.0
+	google.golang.org/api v0.317.0
 	gopkg.in/inf.v0 v0.9.1
 	k8s.io/api v0.37.1
 	k8s.io/apiextensions-apiserver v0.37.1
@@ -47,8 +47,8 @@ require (
 	cloud.google.com/go/monitoring v1.31.0 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.62.0 // indirect
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.62.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.63.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.63.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/PaesslerAG/gval v1.2.4 // indirect
@@ -235,8 +235,8 @@ require (
 	golang.org/x/tools v0.53.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20261012220534-4341edf3f941 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20261110000943-09e21b237f2c // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20261110000943-09e21b237f2c // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20261118221215-c8830f628b3f // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261118221215-c8830f628b3f // indirect
 	google.golang.org/grpc v1.85.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
